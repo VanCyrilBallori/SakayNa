@@ -1,10 +1,15 @@
 import { useRouter } from "expo-router";
+<<<<<<< HEAD
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+=======
+import { Button, View } from "react-native";
+>>>>>>> 716f669d67c2b764885255bc6e08f9fc01e9d199
 
 export default function Index() {
   const router = useRouter();
 
+<<<<<<< HEAD
   const features = [
     {
       icon: <Ionicons name="globe-outline" size={26} color="#FFFFFF" />,
@@ -525,3 +530,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+=======
+  return (
+    <View style={{ flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#008F5B", }}>
+      <Button title="Login" onPress={() => router.push("/login")} />
+      <Button title="Sign Up" onPress={() => router.push("/signup")} />
+    </View>
+  );
+}
+>>>>>>> 716f669d67c2b764885255bc6e08f9fc01e9d199

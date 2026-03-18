@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -279,3 +280,14 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
 });
+=======
+import { Text, View } from "react-native";
+
+export default function Signup() {
+  return (
+    <View style={{flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#E2DFDA",}}>
+      <Text>Sign Up Screen</Text>
+    </View>
+  );
+}
+>>>>>>> 716f669d67c2b764885255bc6e08f9fc01e9d199
