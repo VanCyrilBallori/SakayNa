@@ -1,132 +1,132 @@
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 export default function Index() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const compact = width < 960;
+  const narrow = width < 560;
 
   const features = [
     {
-      icon: <Ionicons name="globe-outline" size={26} color="#FFFFFF" />,
+      icon: <Ionicons name="globe-outline" size={24} color="#FFFFFF" />,
       title: "Web and Mobile Access",
-      text: "Users can access the system using a web browser or mobile device.",
+      text: "Residents and responders can use the system on desktop or mobile.",
     },
     {
-      icon: <MaterialIcons name="crisis-alert" size={26} color="#FFFFFF" />,
-      title: "Emergency Request & SOS Button",
-      text: "Residents can send emergency requests quickly with basic details.",
+      icon: <MaterialIcons name="crisis-alert" size={24} color="#FFFFFF" />,
+      title: "Emergency Request",
+      text: "Residents can quickly send emergency requests when urgent help is needed.",
     },
     {
-      icon: <FontAwesome5 name="ambulance" size={22} color="#FFFFFF" />,
+      icon: <FontAwesome5 name="ambulance" size={20} color="#FFFFFF" />,
       title: "Vehicle Assignment",
-      text: "Available vehicles are assigned to requests by barangay dispatchers or the system.",
+      text: "Available vehicles can be matched to active requests.",
     },
     {
-      icon: <Ionicons name="warning-outline" size={26} color="#FFFFFF" />,
+      icon: <Ionicons name="warning-outline" size={24} color="#FFFFFF" />,
       title: "Disaster Response Mode",
-      text: "Supports evacuation and emergency transport during disasters.",
+      text: "Supports evacuation and emergency transport during disaster response.",
     },
     {
-      icon: <MaterialCommunityIcons name="chart-donut" size={24} color="#FFFFFF" />,
+      icon: <MaterialCommunityIcons name="chart-donut" size={22} color="#FFFFFF" />,
       title: "Reports and Analytics",
-      text: "View transport activity and response patterns in a clean reporting area.",
+      text: "View reports and response activity in one place.",
     },
     {
-      icon: <MaterialCommunityIcons name="view-dashboard-outline" size={24} color="#FFFFFF" />,
-      title: "Multi-User Dashboard",
-      text: "Separate dashboards for residents, drivers, dispatchers, and city administrators.",
-    },
-    {
-      icon: <MaterialCommunityIcons name="alarm-light-outline" size={24} color="#FFFFFF" />,
-      title: "Emergency Priority System",
-      text: "Requests are classified as critical, urgent, or non-urgent for proper handling.",
+      icon: <MaterialCommunityIcons name="view-dashboard-outline" size={22} color="#FFFFFF" />,
+      title: "Role-Based Dashboards",
+      text: "Separate dashboards are available for each user role.",
     },
   ];
 
   const steps = [
-    { number: "1", label: "Tap SOS" },
-    { number: "2", label: "Select Priority" },
-    { number: "3", label: "Share Location" },
-    { number: "4", label: "Get Help" },
+    { number: "1", label: "Open SakayNa" },
+    { number: "2", label: "Send Request" },
+    { number: "3", label: "Dispatch Team" },
+    { number: "4", label: "Track Response" },
   ];
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <View style={styles.topBar}>
-        <View style={styles.topActions}>
-          <TouchableOpacity style={styles.topButton} onPress={() => router.push("/signup")}>
-            <Text style={styles.topButtonText}>Register</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.topButton} onPress={() => router.push("/login")}>
-            <Text style={styles.topButtonText}>Log In</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.heroWrap}>
+        <View style={styles.heroGlowLeft} />
+        <View style={styles.heroGlowRight} />
 
-      <View style={styles.navBar}>
-        <View style={styles.brandWrap}>
-          <View style={styles.logoMark}>
-            <Text style={styles.logoMarkText}>S</Text>
+        <View style={[styles.topBar, compact && styles.topBarCompact]}>
+          <View style={styles.brandWrap}>
+            <View style={styles.logoMark}>
+              <Text style={styles.logoMarkText}>S</Text>
+            </View>
+            <View>
+              <Text style={[styles.brandText, narrow && styles.brandTextNarrow]}>SakayNa</Text>
+              <Text style={styles.brandSubtext}>Emergency transport coordination for Toledo City</Text>
+            </View>
           </View>
-          <Text style={styles.brandText}>SakayNa</Text>
-        </View>
 
-        <View style={styles.navLinks}>
-          <TouchableOpacity onPress={() => {}}>
-            <Text style={styles.navLink}>About Us</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => {}}>
-            <Text style={styles.navLink}>Contact</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => {}}>
-            <Text style={styles.navLink}>Support</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.heroSection}>
-        <View style={styles.heroPatternLeft}>
-          <View style={[styles.patternBar, { height: 272 }]} />
-          <View style={[styles.patternBar, { height: 204 }]} />
-          <View style={[styles.patternBar, { height: 273 }]} />
-          <View style={[styles.patternBar, { height: 182 }]} />
-        </View>
-
-        <View style={styles.heroPatternRight}>
-          <View style={[styles.patternBar, { height: 160 }]} />
-          <View style={[styles.patternBar, { height: 208 }]} />
-          <View style={[styles.patternBar, { height: 104 }]} />
-        </View>
-
-        <View style={styles.heroTextBlock}>
-          <Text style={styles.heroTitle}>SAFE. FAST.</Text>
-          <Text style={styles.heroTitle}>CONNECTED.</Text>
-          <Text style={styles.heroSubtitle}>
-            An integrated emergency transport and response management system for Toledo City. Connecting residents,
-            drivers, and city officials to save lives and improve mobility.
-          </Text>
-
-          <View style={styles.heroButtons}>
-            <TouchableOpacity style={styles.downloadButton} onPress={() => {}}>
-              <Text style={styles.downloadButtonText}>Download</Text>
+          <View style={[styles.topActions, narrow && styles.topActionsNarrow]}>
+            <TouchableOpacity style={styles.topButtonSecondary} onPress={() => router.push("/login")}>
+              <Text style={styles.topButtonSecondaryText}>Log In</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.getStartedButton} onPress={() => router.push("/signup")}>
-              <Text style={styles.getStartedButtonText}>Get started</Text>
+            <TouchableOpacity style={styles.topButtonPrimary} onPress={() => router.push("/signup")}>
+              <Text style={styles.topButtonPrimaryText}>Create Account</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.heroCard}>
-          <View style={styles.heroLogoMark}>
-            <Text style={styles.heroLogoMarkText}>S</Text>
+        <View style={[styles.heroSection, compact && styles.heroSectionCompact]}>
+          <View style={styles.heroTextBlock}>
+            <Text style={styles.eyebrow}>Emergency Response System</Text>
+            <Text style={[styles.heroTitle, compact && styles.heroTitleCompact, narrow && styles.heroTitleNarrow]}>
+              SAFE. FAST.
+              {"\n"}
+              CONNECTED.
+            </Text>
+            <Text style={[styles.heroSubtitle, compact && styles.heroSubtitleCompact]}>
+              An integrated emergency transport and response management system for Toledo City. Connecting residents,
+              drivers, and city officials in one clean platform.
+            </Text>
+
+            <View style={[styles.heroButtons, narrow && styles.heroButtonsNarrow]}>
+              <TouchableOpacity style={styles.getStartedButton} onPress={() => router.push("/signup")}>
+                <Text style={styles.getStartedButtonText}>Get Started</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.outlineButton} onPress={() => router.push("/login")}>
+                <Text style={styles.outlineButtonText}>Open Login</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.metricsRow, narrow && styles.metricsRowNarrow]}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>4</Text>
+                <Text style={styles.metricLabel}>User roles</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>24/7</Text>
+                <Text style={styles.metricLabel}>Emergency access</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricValue}>1</Text>
+                <Text style={styles.metricLabel}>Shared system</Text>
+              </View>
+            </View>
           </View>
-          <Text style={styles.heroCardBrand}>SakayNa</Text>
+
+          <View style={[styles.heroCard, compact && styles.heroCardCompact]}>
+            <View style={styles.heroLogoMark}>
+              <Text style={styles.heroLogoMarkText}>S</Text>
+            </View>
+            <Text style={styles.heroCardBrand}>SakayNa</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.featuresSection}>
-        <Text style={styles.featuresHeading}>POWERFUL FEATURES</Text>
-        <Text style={styles.featuresSubheading}>Everything you need for coordinated emergency response</Text>
+      <View style={styles.sectionShell}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionEyebrow}>Features</Text>
+          <Text style={[styles.sectionTitle, narrow && styles.sectionTitleNarrow]}>Powerful Features</Text>
+        </View>
 
         <View style={styles.featureGrid}>
           {features.map((feature) => (
@@ -139,9 +139,11 @@ export default function Index() {
         </View>
       </View>
 
-      <View style={styles.howSection}>
-        <Text style={styles.howTitle}>HOW IT WORKS</Text>
-        <Text style={styles.howSubtitle}>Simple steps to get emergency help</Text>
+      <View style={[styles.sectionShell, styles.stepsShell]}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionEyebrow}>Workflow</Text>
+          <Text style={[styles.sectionTitle, narrow && styles.sectionTitleNarrow]}>How It Works</Text>
+        </View>
 
         <View style={styles.stepsRow}>
           {steps.map((step) => (
@@ -178,9 +180,8 @@ export default function Index() {
             <Text style={styles.footerLink}>Emergency Hotline: 911</Text>
           </View>
         </View>
-
         <View style={styles.footerDivider} />
-        <Text style={styles.footerCopy}>@ 2026 SakayNa. All rights reserved.</Text>
+        <Text style={styles.footerCopy}>2026 SakayNa. All rights reserved.</Text>
       </View>
     </ScrollView>
   );
@@ -189,312 +190,386 @@ export default function Index() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F6F7F3",
   },
   content: {
-    paddingBottom: 0,
+    paddingBottom: 28,
+  },
+  heroWrap: {
+    overflow: "hidden",
+    backgroundColor: "#0F6B4F",
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 28,
+  },
+  heroGlowLeft: {
+    position: "absolute",
+    top: -80,
+    left: -40,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "rgba(120, 220, 180, 0.18)",
+  },
+  heroGlowRight: {
+    position: "absolute",
+    right: -90,
+    bottom: -70,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
   },
   topBar: {
-    backgroundColor: "#61756C",
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    alignItems: "flex-end",
-  },
-  topActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  topButton: {
-    minWidth: 110,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 4,
-    backgroundColor: "#F2F0EE",
-    alignItems: "center",
-  },
-  topButtonText: {
-    color: "#3B5F52",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  navBar: {
+    width: "100%",
+    maxWidth: 1180,
+    alignSelf: "center",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: "#FFFFFF",
+    gap: 16,
+    paddingBottom: 22,
+  },
+  topBarCompact: {
+    flexWrap: "wrap",
   },
   brandWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
   logoMark: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#446A5F",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#F1FFF7",
     alignItems: "center",
     justifyContent: "center",
   },
   logoMarkText: {
     fontSize: 28,
     fontWeight: "900",
-    color: "#FFFFFF",
+    color: "#0F6B4F",
     fontStyle: "italic",
   },
   brandText: {
-    fontSize: 24,
-    fontWeight: "900",
-    color: "#202020",
-    fontStyle: "italic",
-  },
-  navLinks: {
-    flexDirection: "row",
-    gap: 32,
-  },
-  navLink: {
-    color: "#406455",
-    fontSize: 15,
-    fontWeight: "600",
-    textDecorationLine: "underline",
-  },
-  heroSection: {
-    minHeight: 430,
-    paddingHorizontal: 54,
-    paddingVertical: 48,
-    backgroundColor: "#0B9860",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    overflow: "hidden",
-  },
-  heroPatternLeft: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    flexDirection: "row",
-    gap: 28,
-  },
-  heroPatternRight: {
-    position: "absolute",
-    right: 86,
-    bottom: 0,
-    flexDirection: "row",
-    gap: 26,
-  },
-  patternBar: {
-    width: 54,
-    backgroundColor: "rgba(47,95,79,0.92)",
-  },
-  heroTextBlock: {
-    width: "52%",
-    zIndex: 1,
-  },
-  heroTitle: {
-    fontSize: 48,
+    fontSize: 28,
     fontWeight: "900",
     color: "#FFFFFF",
     fontStyle: "italic",
-    lineHeight: 50,
+  },
+  brandTextNarrow: {
+    fontSize: 24,
+  },
+  brandSubtext: {
+    marginTop: 2,
+    fontSize: 13,
+    color: "#D9F3E7",
+  },
+  topActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  topActionsNarrow: {
+    width: "100%",
+    flexWrap: "wrap",
+  },
+  topButtonPrimary: {
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: "#F7FFF9",
+  },
+  topButtonPrimaryText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F6B4F",
+  },
+  topButtonSecondary: {
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  topButtonSecondaryText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  heroSection: {
+    width: "100%",
+    maxWidth: 1180,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 20,
+  },
+  heroSectionCompact: {
+    flexWrap: "wrap",
+  },
+  heroTextBlock: {
+    flex: 1.2,
+    minWidth: 280,
+    paddingVertical: 8,
+  },
+  eyebrow: {
+    alignSelf: "flex-start",
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    color: "#E5FFF2",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  heroTitle: {
+    marginTop: 16,
+    fontSize: 54,
+    lineHeight: 58,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  heroTitleCompact: {
+    fontSize: 44,
+    lineHeight: 48,
+  },
+  heroTitleNarrow: {
+    fontSize: 34,
+    lineHeight: 38,
   },
   heroSubtitle: {
-    marginTop: 26,
-    maxWidth: 520,
+    marginTop: 18,
+    maxWidth: 640,
+    fontSize: 18,
+    lineHeight: 28,
+    color: "#D8F5E9",
+  },
+  heroSubtitleCompact: {
     fontSize: 16,
-    lineHeight: 22,
-    color: "#F7FFFB",
-    fontStyle: "italic",
+    lineHeight: 25,
   },
   heroButtons: {
     flexDirection: "row",
     gap: 12,
     marginTop: 26,
   },
-  downloadButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 4,
-    backgroundColor: "#F4F2EF",
-  },
-  downloadButtonText: {
-    color: "#3B5F52",
-    fontSize: 15,
-    fontWeight: "700",
+  heroButtonsNarrow: {
+    flexWrap: "wrap",
   },
   getStartedButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
+    paddingVertical: 15,
+    paddingHorizontal: 22,
+    borderRadius: 16,
+    backgroundColor: "#F7FFF9",
   },
   getStartedButtonText: {
-    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
+    color: "#0F6B4F",
+  },
+  outlineButton: {
+    paddingVertical: 15,
+    paddingHorizontal: 22,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  outlineButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  metricsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 28,
+  },
+  metricsRowNarrow: {
+    gap: 10,
+  },
+  metricCard: {
+    minWidth: 120,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  metricValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  metricLabel: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#D9F3E7",
   },
   heroCard: {
-    width: 280,
-    height: 274,
-    borderRadius: 22,
+    flex: 0.9,
+    minWidth: 280,
+    minHeight: 300,
+    padding: 22,
+    borderRadius: 24,
     backgroundColor: "#F7F6F4",
+    borderWidth: 1,
+    borderColor: "#DAECE3",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000000",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-    zIndex: 1,
+  },
+  heroCardCompact: {
+    width: "100%",
   },
   heroLogoMark: {
-    width: 124,
-    height: 124,
-    borderRadius: 62,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#45695C",
   },
   heroLogoMarkText: {
-    fontSize: 82,
+    fontSize: 88,
     fontWeight: "900",
     color: "#FFFFFF",
     fontStyle: "italic",
   },
   heroCardBrand: {
     marginTop: 18,
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "900",
     color: "#304D42",
     fontStyle: "italic",
   },
-  featuresSection: {
-    paddingHorizontal: 28,
-    paddingTop: 40,
-    paddingBottom: 44,
-    backgroundColor: "#E5E1DB",
+  sectionShell: {
+    width: "100%",
+    maxWidth: 1180,
+    alignSelf: "center",
+    paddingHorizontal: 18,
+    paddingTop: 28,
   },
-  featuresHeading: {
-    fontSize: 58,
-    fontWeight: "900",
-    color: "#06774B",
-    textAlign: "center",
+  sectionHeader: {
+    marginBottom: 18,
   },
-  featuresSubheading: {
-    marginTop: 2,
-    fontSize: 18,
-    color: "#06774B",
-    textAlign: "center",
+  sectionEyebrow: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    color: "#4E6A5F",
+  },
+  sectionTitle: {
+    marginTop: 8,
+    fontSize: 38,
+    lineHeight: 42,
+    fontWeight: "800",
+    color: "#142A22",
+  },
+  sectionTitleNarrow: {
+    fontSize: 30,
+    lineHeight: 34,
   },
   featureGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 22,
-    marginTop: 22,
+    gap: 16,
   },
   featureCard: {
-    width: 294,
-    minHeight: 190,
-    padding: 18,
-    borderRadius: 14,
+    flexGrow: 1,
+    flexBasis: 280,
+    padding: 20,
+    borderRadius: 22,
     backgroundColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOpacity: 0.16,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#E0E9E3",
   },
   featureIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 4,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#06774B",
+    backgroundColor: "#0F8A5B",
   },
   featureTitle: {
-    marginTop: 22,
+    marginTop: 18,
     fontSize: 22,
-    lineHeight: 28,
     fontWeight: "800",
-    color: "#06774B",
+    color: "#16352B",
   },
   featureText: {
     marginTop: 10,
-    fontSize: 14,
-    lineHeight: 18,
-    color: "#0D6A4A",
+    fontSize: 15,
+    lineHeight: 23,
+    color: "#567267",
   },
-  howSection: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 42,
-    backgroundColor: "#FFFFFF",
-  },
-  howTitle: {
-    fontSize: 58,
-    fontWeight: "900",
-    color: "#050505",
-    textAlign: "center",
-  },
-  howSubtitle: {
-    marginTop: -2,
-    fontSize: 16,
-    textAlign: "center",
-    color: "#252525",
+  stepsShell: {
+    paddingBottom: 8,
   },
   stepsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-evenly",
-    marginTop: 34,
-    gap: 18,
+    gap: 16,
   },
   stepItem: {
+    flexGrow: 1,
+    flexBasis: 220,
+    padding: 20,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E0E9E3",
     alignItems: "center",
-    width: 170,
   },
   stepCircle: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#06774B",
+    backgroundColor: "#0F6B4F",
   },
   stepNumber: {
-    fontSize: 46,
-    fontWeight: "900",
+    fontSize: 28,
+    fontWeight: "800",
     color: "#FFFFFF",
   },
   stepLabel: {
-    marginTop: 12,
+    marginTop: 14,
     fontSize: 18,
-    color: "#111111",
+    fontWeight: "700",
+    color: "#1E352D",
+    textAlign: "center",
   },
   footer: {
-    paddingHorizontal: 48,
-    paddingTop: 34,
+    marginTop: 28,
+    width: "100%",
+    backgroundColor: "#122030",
+    paddingHorizontal: 28,
+    paddingTop: 36,
     paddingBottom: 22,
-    backgroundColor: "#0F1C2C",
   },
   footerGrid: {
+    width: "100%",
+    maxWidth: 1180,
+    alignSelf: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 42,
+    gap: 36,
   },
   footerColumnWide: {
-    width: 210,
+    width: 240,
   },
   footerColumn: {
-    width: 120,
+    width: 160,
   },
   footerBrand: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#FFFFFF",
   },
   footerHeading: {
@@ -503,25 +578,28 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   footerText: {
-    marginTop: 18,
+    marginTop: 22,
     fontSize: 14,
-    lineHeight: 20,
-    color: "#B9C1CC",
+    lineHeight: 22,
+    color: "#B7C0CC",
   },
   footerLink: {
     marginTop: 10,
     fontSize: 14,
-    color: "#B9C1CC",
+    color: "#B7C0CC",
   },
   footerDivider: {
-    marginTop: 42,
+    width: "100%",
+    maxWidth: 1180,
+    alignSelf: "center",
+    marginTop: 34,
     height: 1,
-    backgroundColor: "#B9C1CC",
+    backgroundColor: "#5F6B78",
   },
   footerCopy: {
     marginTop: 18,
-    color: "#C1C8D1",
+    fontSize: 13,
+    color: "#C5CCD5",
     textAlign: "center",
-    fontSize: 14,
   },
 });

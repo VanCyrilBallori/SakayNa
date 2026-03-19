@@ -4,19 +4,25 @@ import { FontAwesome } from "@expo/vector-icons";
 export default function AppBrandHeader({ role = "Resident", name = "James Bond", onLogoutPress = () => {} }) {
   const { width } = useWindowDimensions();
   const compact = width < 900;
+  const narrow = width < 480;
 
   return (
-    <View style={[styles.header, compact && styles.headerCompact]}>
+    <View style={[styles.header, compact && styles.headerCompact, narrow && styles.headerNarrow]}>
       <View style={styles.brandWrap}>
         <View style={[styles.logoBadge, compact && styles.logoBadgeCompact]}>
           <Text style={[styles.logoText, compact && styles.logoTextCompact]}>S</Text>
         </View>
-        <Text style={[styles.brandText, compact && styles.brandTextCompact]}>SakayNa</Text>
+        <View>
+          <Text style={[styles.brandText, compact && styles.brandTextCompact]}>SakayNa</Text>
+          <Text style={[styles.brandSubtext, compact && styles.brandSubtextCompact]}>Emergency transport platform</Text>
+        </View>
       </View>
 
-      <View style={[styles.rightWrap, compact && styles.rightWrapCompact]}>
-        <View style={styles.userWrap}>
-          <FontAwesome name="user" size={compact ? 24 : 30} color="#101010" />
+      <View style={[styles.rightWrap, compact && styles.rightWrapCompact, narrow && styles.rightWrapNarrow]}>
+        <View style={[styles.userWrap, narrow && styles.userWrapNarrow]}>
+          <View style={styles.userIconWrap}>
+            <FontAwesome name="user" size={compact ? 20 : 24} color="#0F6B4F" />
+          </View>
           <View>
             <Text style={[styles.userName, compact && styles.userNameCompact]}>{name}</Text>
             <Text style={[styles.userRole, compact && styles.userRoleCompact]}>{role}</Text>
@@ -48,6 +54,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexWrap: "wrap",
+  },
+  headerNarrow: {
+    gap: 14,
   },
   brandWrap: {
     flexDirection: "row",
@@ -85,6 +94,14 @@ const styles = StyleSheet.create({
   brandTextCompact: {
     fontSize: 22,
   },
+  brandSubtext: {
+    marginTop: 2,
+    fontSize: 13,
+    color: "#688277",
+  },
+  brandSubtextCompact: {
+    fontSize: 12,
+  },
   rightWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -94,10 +111,26 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "space-between",
   },
+  rightWrapNarrow: {
+    flexDirection: "column",
+    alignItems: "stretch",
+  },
   userWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    flex: 1,
+  },
+  userWrapNarrow: {
+    width: "100%",
+  },
+  userIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#EAF4EF",
+    alignItems: "center",
+    justifyContent: "center",
   },
   userName: {
     fontSize: 24,
