@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import BrandLogo from "./BrandLogo";
 
 export default function RoleHome({ role, heading, summary, primaryCard, secondaryCard, highlights }) {
   const router = useRouter();
@@ -9,7 +10,7 @@ export default function RoleHome({ role, heading, summary, primaryCard, secondar
       <View style={styles.hero}>
         <View style={styles.heroTop}>
           <View>
-            <Text style={styles.brand}>SakayNa</Text>
+            <BrandLogo variant="main" height={40} />
             <Text style={styles.roleBadge}>{role} Portal</Text>
           </View>
 
@@ -68,11 +69,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-  },
-  brand: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#F4FFF8",
   },
   roleBadge: {
     marginTop: 8,

@@ -4,6 +4,7 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
+import BrandLogo from "../components/BrandLogo";
 import { auth, db } from "../firebase";
 import { getRoleRoute, ROLE_OPTIONS } from "../lib/roles";
 import { saveLocalUserProfile } from "../lib/session";
@@ -74,7 +75,7 @@ export default function Signup() {
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={[styles.card, isCompact && styles.cardCompact]}>
-          <Text style={[styles.brand, isCompact && styles.brandCompact]}>SakayNa</Text>
+          <BrandLogo variant="main" height={isCompact ? 34 : 40} style={styles.brandLogo} />
           <Text style={[styles.title, isCompact && styles.titleCompact]}>Create Account</Text>
 
           <TextInput
@@ -188,15 +189,8 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 16,
   },
-  brand: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#008F5B",
+  brandLogo: {
     marginBottom: 18,
-  },
-  brandCompact: {
-    fontSize: 28,
-    marginBottom: 14,
   },
   title: {
     fontSize: 30,

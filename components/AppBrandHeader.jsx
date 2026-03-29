@@ -1,5 +1,6 @@
 import { useWindowDimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
+import BrandLogo from "./BrandLogo";
 
 export default function AppBrandHeader({ role = "Resident", name = "James Bond", onLogoutPress = () => {} }) {
   const { width } = useWindowDimensions();
@@ -9,13 +10,7 @@ export default function AppBrandHeader({ role = "Resident", name = "James Bond",
   return (
     <View style={[styles.header, compact && styles.headerCompact, narrow && styles.headerNarrow]}>
       <View style={styles.brandWrap}>
-        <View style={[styles.logoBadge, compact && styles.logoBadgeCompact]}>
-          <Text style={[styles.logoText, compact && styles.logoTextCompact]}>S</Text>
-        </View>
-        <View>
-          <Text style={[styles.brandText, compact && styles.brandTextCompact]}>SakayNa</Text>
-          <Text style={[styles.brandSubtext, compact && styles.brandSubtextCompact]}>Emergency transport platform</Text>
-        </View>
+        <BrandLogo variant="main" height={compact ? 28 : 34} />
       </View>
 
       <View style={[styles.rightWrap, compact && styles.rightWrapCompact, narrow && styles.rightWrapNarrow]}>
@@ -61,46 +56,6 @@ const styles = StyleSheet.create({
   brandWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  logoBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#496B5F",
-  },
-  logoBadgeCompact: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-  },
-  logoText: {
-    fontSize: 30,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    fontStyle: "italic",
-  },
-  logoTextCompact: {
-    fontSize: 24,
-  },
-  brandText: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#111111",
-    fontStyle: "italic",
-  },
-  brandTextCompact: {
-    fontSize: 22,
-  },
-  brandSubtext: {
-    marginTop: 2,
-    fontSize: 13,
-    color: "#688277",
-  },
-  brandSubtextCompact: {
-    fontSize: 12,
   },
   rightWrap: {
     flexDirection: "row",

@@ -1,4 +1,5 @@
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import BrandLogo from "./BrandLogo";
 
 export default function AuthShell({ eyebrow, title, subtitle, children, asideTitle, asideText, stats }) {
   const { width } = useWindowDimensions();
@@ -13,7 +14,7 @@ export default function AuthShell({ eyebrow, title, subtitle, children, asideTit
       <ScrollView contentContainerStyle={[styles.container, compact && styles.containerCompact]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={[styles.layout, compact && styles.layoutCompact]}>
           <View style={[styles.leftPanel, compact && styles.leftPanelCompact]}>
-            <Text style={[styles.brand, narrow && styles.brandNarrow]}>SakayNa</Text>
+            <BrandLogo variant="main" height={narrow ? 34 : 42} />
             <Text style={styles.eyebrow}>{eyebrow}</Text>
             <Text style={[styles.title, compact && styles.titleCompact, narrow && styles.titleNarrow]}>{title}</Text>
             <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>{subtitle}</Text>
@@ -93,14 +94,6 @@ const styles = StyleSheet.create({
   leftPanelCompact: {
     width: "100%",
     minHeight: 0,
-  },
-  brand: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#008F5B",
-  },
-  brandNarrow: {
-    fontSize: 28,
   },
   eyebrow: {
     marginTop: 28,

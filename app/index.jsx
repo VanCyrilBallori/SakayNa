@@ -1,6 +1,7 @@
-import { useRouter } from "expo-router";
 import { FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import BrandLogo from "../components/BrandLogo";
 
 export default function Index() {
   const router = useRouter();
@@ -56,13 +57,7 @@ export default function Index() {
 
         <View style={[styles.topBar, compact && styles.topBarCompact]}>
           <View style={styles.brandWrap}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoMarkText}>S</Text>
-            </View>
-            <View>
-              <Text style={[styles.brandText, narrow && styles.brandTextNarrow]}>SakayNa</Text>
-              <Text style={styles.brandSubtext}>Emergency transport coordination for Toledo City</Text>
-            </View>
+            <BrandLogo variant="main" height={narrow ? 42 : 50} />
           </View>
 
           <View style={[styles.topActions, narrow && styles.topActionsNarrow]}>
@@ -114,10 +109,9 @@ export default function Index() {
           </View>
 
           <View style={[styles.heroCard, compact && styles.heroCardCompact]}>
-            <View style={styles.heroLogoMark}>
-              <Text style={styles.heroLogoMarkText}>S</Text>
+            <View style={styles.heroLogoFrame}>
+              <BrandLogo variant="secondary" width={compact ? 158 : 188} />
             </View>
-            <Text style={styles.heroCardBrand}>SakayNa</Text>
           </View>
         </View>
       </View>
@@ -193,13 +187,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6F7F3",
   },
   content: {
-    paddingBottom: 28,
+    paddingBottom: 0,
   },
   heroWrap: {
     overflow: "hidden",
     backgroundColor: "#0F6B4F",
-    paddingHorizontal: 18,
-    paddingTop: 18,
+    paddingHorizontal: 0,
+    paddingTop: 0,
     paddingBottom: 28,
   },
   heroGlowLeft: {
@@ -222,13 +216,15 @@ const styles = StyleSheet.create({
   },
   topBar: {
     width: "100%",
-    maxWidth: 1180,
-    alignSelf: "center",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    paddingBottom: 22,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#D9E7E0",
   },
   topBarCompact: {
     flexWrap: "wrap",
@@ -236,35 +232,7 @@ const styles = StyleSheet.create({
   brandWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  logoMark: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#F1FFF7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoMarkText: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#0F6B4F",
-    fontStyle: "italic",
-  },
-  brandText: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    fontStyle: "italic",
-  },
-  brandTextNarrow: {
-    fontSize: 24,
-  },
-  brandSubtext: {
-    marginTop: 2,
-    fontSize: 13,
-    color: "#D9F3E7",
+    minHeight: 34,
   },
   topActions: {
     flexDirection: "row",
@@ -276,27 +244,27 @@ const styles = StyleSheet.create({
   },
   topButtonPrimary: {
     paddingVertical: 13,
-    paddingHorizontal: 18,
+    paddingHorizontal: 22,
     borderRadius: 14,
-    backgroundColor: "#F7FFF9",
+    backgroundColor: "#F5F2F0",
   },
   topButtonPrimaryText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#0F6B4F",
+    color: "#47685D",
   },
   topButtonSecondary: {
     paddingVertical: 13,
-    paddingHorizontal: 18,
+    paddingHorizontal: 22,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.35)",
-    backgroundColor: "rgba(255,255,255,0.08)",
+    borderColor: "#D6DDD9",
+    backgroundColor: "#FFFFFF",
   },
   topButtonSecondaryText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#47685D",
   },
   heroSection: {
     width: "100%",
@@ -305,6 +273,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "stretch",
     gap: 20,
+    paddingHorizontal: 18,
+    marginTop: 18,
   },
   heroSectionCompact: {
     flexWrap: "wrap",
@@ -312,7 +282,7 @@ const styles = StyleSheet.create({
   heroTextBlock: {
     flex: 1.2,
     minWidth: 280,
-    paddingVertical: 8,
+    paddingVertical: 18,
   },
   eyebrow: {
     alignSelf: "flex-start",
@@ -424,26 +394,16 @@ const styles = StyleSheet.create({
   heroCardCompact: {
     width: "100%",
   },
-  heroLogoMark: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+  heroLogoFrame: {
+    width: 182,
+    height: 182,
+    borderRadius: 91,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#45695C",
+    backgroundColor: "#E8F2ED",
   },
-  heroLogoMarkText: {
-    fontSize: 88,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    fontStyle: "italic",
-  },
-  heroCardBrand: {
+  heroCardBrandLogo: {
     marginTop: 18,
-    fontSize: 30,
-    fontWeight: "900",
-    color: "#304D42",
-    fontStyle: "italic",
   },
   sectionShell: {
     width: "100%",
@@ -551,7 +511,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#122030",
     paddingHorizontal: 28,
     paddingTop: 36,
-    paddingBottom: 22,
+    paddingBottom: 40,
   },
   footerGrid: {
     width: "100%",
