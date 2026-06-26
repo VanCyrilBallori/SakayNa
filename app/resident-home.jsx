@@ -1,5 +1,5 @@
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
@@ -40,18 +40,18 @@ export default function ResidentHome() {
   };
 
   const handleQuickAction = (type) => {
-    if (type === "sos") {
-      setSosOpen(true);
+    if (type === "emergency-call") {
+      setResidentStatus({
+        title: "Emergency Call Ready",
+        description: "Use the emergency hotline area when you need to call for immediate help.",
+        meta: "Emergency contacts ready | Toledo City",
+        tag: "Emergency",
+      });
       return;
     }
 
     if (type === "transport") {
-      setResidentStatus({
-        title: "Transport Request Created",
-        description: "Your booking request has been prepared and is waiting for dispatcher review.",
-        meta: "Transport queued | Brgy. Talavera",
-        tag: "Pending",
-      });
+      setSosOpen(true);
       return;
     }
 
@@ -65,7 +65,7 @@ export default function ResidentHome() {
 
   const handleSendSos = () => {
     setResidentStatus({
-      title: "Emergency SOS Sent",
+      title: "Emergency Transport Request Sent",
       description: `${emergencyType === "Select Type" ? "Emergency" : emergencyType} request sent for ${carType === "Select Type" ? "available vehicle" : carType}.`,
       meta: `${pickupLocation === "Select Where" ? "Pickup location pending" : pickupLocation} | Waiting for responders`,
       tag: "Emergency",
@@ -105,19 +105,19 @@ export default function ResidentHome() {
         <View style={styles.cardsGrid}>
           <View style={[styles.featureCard, styles.sosCard]}>
             <MaterialCommunityIcons name="alarm-light-outline" size={compact ? 34 : 38} color="#C70000" />
-            <Text style={styles.cardTitle}>Emergency SOS</Text>
-            <Text style={styles.cardSubtitle}>Send a high-priority alert quickly when immediate help is needed.</Text>
-            <TouchableOpacity style={styles.sosButton} onPress={() => handleQuickAction("sos")}>
-              <Text style={styles.cardButtonText}>Send SOS</Text>
+            <Text style={styles.cardTitle}>Call Emergency Help</Text>
+            <Text style={styles.cardSubtitle}>Keep emergency calling access visible for situations that need immediate contact.</Text>
+            <TouchableOpacity style={styles.sosButton} onPress={() => handleQuickAction("emergency-call")}>
+              <Text style={styles.cardButtonText}>Open Emergency Call</Text>
             </TouchableOpacity>
           </View>
 
           <View style={[styles.featureCard, styles.bookingCard]}>
             <Feather name="clipboard" size={compact ? 30 : 34} color="#D88400" />
             <Text style={styles.cardTitle}>Transport Request</Text>
-            <Text style={styles.cardSubtitle}>Book a ride, review request details, and keep your transport history in one place.</Text>
+            <Text style={styles.cardSubtitle}>Choose emergency details, vehicle type, and pickup location before sending the request.</Text>
             <TouchableOpacity style={styles.bookingButton} onPress={() => handleQuickAction("transport")}>
-              <Text style={styles.cardButtonText}>Request Transport</Text>
+              <Text style={styles.cardButtonText}>Open Request Options</Text>
             </TouchableOpacity>
           </View>
 
@@ -158,20 +158,6 @@ export default function ResidentHome() {
               </View>
             </View>
           </View>
-
-          <View style={styles.sideSummary}>
-            <View style={styles.summaryCard}>
-              <Ionicons name="time-outline" size={24} color="#0F8A5B" />
-              <Text style={styles.summaryTitle}>Fast request view</Text>
-              <Text style={styles.summaryText}>Important status info stays visible without crowding the screen.</Text>
-            </View>
-
-            <View style={styles.summaryCard}>
-              <Ionicons name="phone-portrait-outline" size={24} color="#0F8A5B" />
-              <Text style={styles.summaryTitle}>Android-friendly spacing</Text>
-              <Text style={styles.summaryText}>Cards now wrap naturally instead of forcing a desktop layout into a phone width.</Text>
-            </View>
-          </View>
         </View>
         </View>
       </ScrollView>
@@ -183,8 +169,8 @@ export default function ResidentHome() {
               <Text style={styles.modalCloseText}>X</Text>
             </TouchableOpacity>
 
-            <Text style={styles.modalTitle}>Emergency SOS</Text>
-            <Text style={styles.modalSubtitle}>Send emergency request to nearest responders</Text>
+            <Text style={styles.modalTitle}>Transport Request Options</Text>
+            <Text style={styles.modalSubtitle}>Send emergency transport request to nearest responders</Text>
 
             <Text style={styles.modalLabel}>Emergency Type</Text>
             <TouchableOpacity style={styles.selectField} onPress={() => setEmergencyType((current) => cycleOption(current, emergencyTypes, "Select Type"))}>

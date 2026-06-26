@@ -91,21 +91,6 @@ export default function Index() {
                 <Text style={styles.outlineButtonText}>Open Login</Text>
               </TouchableOpacity>
             </View>
-
-            <View style={[styles.metricsRow, narrow && styles.metricsRowNarrow]}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>4</Text>
-                <Text style={styles.metricLabel}>User roles</Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>24/7</Text>
-                <Text style={styles.metricLabel}>Emergency access</Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>1</Text>
-                <Text style={styles.metricLabel}>Shared system</Text>
-              </View>
-            </View>
           </View>
 
           <View style={[styles.heroCard, compact && styles.heroCardCompact]}>
