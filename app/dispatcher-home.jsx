@@ -1,6 +1,6 @@
 import { Feather, FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { addDoc, collection, onSnapshot, query, serverTimestamp, where } from "firebase/firestore";
+import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
@@ -76,6 +76,7 @@ export default function DispatcherHome() {
   const [requestToAssign, setRequestToAssign] = useState(null);
   const [assignmentMessage, setAssignmentMessage] = useState("");
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
+  const [incomingCall, setIncomingCall] = useState(null);
 
   const visibleRequests = useMemo(
     () =>
@@ -132,6 +133,24 @@ export default function DispatcherHome() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    const callsQuery = query(collection(db, "callSessions"), where("targetRole", "==", "Dispatcher"), where("status", "==", "ringing"));
+    const unsubscribe = onSnapshot(
+      callsQuery,
+      (snapshot) => {
+        const calls = snapshot.docs.map((callDoc) => ({
+          id: callDoc.id,
+          ...callDoc.data(),
+        }));
+
+        setIncomingCall(calls[0] ?? null);
+      },
+      (error) => console.log("Incoming call listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, []);
+
   const driverSummary = useMemo(() => {
     if (!selectedDriver) {
       return "No registered driver selected";
@@ -176,6 +195,40 @@ export default function DispatcherHome() {
     } catch (error) {
       console.log("Assign request failed:", error);
       setAssignmentMessage("Assignment failed. Please check Firestore permissions.");
+    }
+  };
+
+  const answerIncomingCall = async () => {
+    if (!incomingCall) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "callSessions", incomingCall.id), {
+        dispatcherId: authUser?.uid ?? "",
+        dispatcherName: displayName,
+        status: "connected",
+        updatedAt: serverTimestamp(),
+      });
+      setIncomingCall(null);
+    } catch (error) {
+      console.log("Answer emergency call failed:", error);
+    }
+  };
+
+  const declineIncomingCall = async () => {
+    if (!incomingCall) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "callSessions", incomingCall.id), {
+        status: "declined",
+        updatedAt: serverTimestamp(),
+      });
+      setIncomingCall(null);
+    } catch (error) {
+      console.log("Decline emergency call failed:", error);
     }
   };
 
@@ -336,6 +389,24 @@ export default function DispatcherHome() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={Boolean(incomingCall)} transparent animationType="fade" onRequestClose={declineIncomingCall}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, compact && styles.modalCardCompact]}>
+            <Text style={styles.modalTitle}>Incoming Emergency Call</Text>
+            <Text style={styles.modalSubtitle}>{incomingCall?.residentName || "Resident"} is calling the dispatcher station.</Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalButton, styles.declineButton]} onPress={declineIncomingCall}>
+                <Text style={styles.declineButtonText}>Decline</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalButton, styles.answerButton]} onPress={answerIncomingCall}>
+                <Text style={styles.answerButtonText}>Answer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -446,4 +517,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   assignButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
+  modalActions: { flexDirection: "row", gap: 12, marginTop: 22 },
+  modalButton: {
+    flex: 1,
+    minHeight: 54,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  declineButton: { backgroundColor: "#D9D9D9" },
+  answerButton: { backgroundColor: "#06774B" },
+  declineButtonText: { fontSize: 16, fontWeight: "800", color: "#111111" },
+  answerButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
 });

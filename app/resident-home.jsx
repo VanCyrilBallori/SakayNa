@@ -1,17 +1,38 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { addDoc, collection, doc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Dropdown } from "react-native-element-dropdown";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import { db } from "../firebase";
 import { useCurrentUserProfile } from "../lib/session";
+
+const emergencyTypeOptions = [
+  { label: "Medical", value: "Medical" },
+  { label: "Accident", value: "Accident" },
+  { label: "Fire", value: "Fire" },
+];
+
+const vehicleTypeOptions = [
+  { label: "Ambulance", value: "Ambulance" },
+  { label: "Barangay Van", value: "Barangay Van" },
+  { label: "Rescue Vehicle", value: "Rescue Vehicle" },
+];
+
+const pickupLocationOptions = [
+  { label: "Poblacion, Toledo City", value: "Poblacion, Toledo City" },
+  { label: "Sangi, Toledo City", value: "Sangi, Toledo City" },
+  { label: "Talavera, Toledo City", value: "Talavera, Toledo City" },
+];
 
 export default function ResidentHome() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 900;
   const narrow = width < 520;
-  const { displayName } = useCurrentUserProfile();
+  const { authUser, displayName } = useCurrentUserProfile();
   const [activityFilter, setActivityFilter] = useState("Latest");
   const [residentStatus, setResidentStatus] = useState({
     title: "Clinic Visit",
@@ -21,32 +42,99 @@ export default function ResidentHome() {
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
-  const [emergencyType, setEmergencyType] = useState("Select Type");
-  const [carType, setCarType] = useState("Select Type");
-  const [pickupLocation, setPickupLocation] = useState("Select Where");
+  const [emergencyType, setEmergencyType] = useState("");
+  const [vehicleType, setVehicleType] = useState("");
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [callOpen, setCallOpen] = useState(false);
+  const [callSessionId, setCallSessionId] = useState("");
+  const [callStatus, setCallStatus] = useState("idle");
+  const [callDispatcherName, setCallDispatcherName] = useState("");
 
-  const emergencyTypes = ["Medical", "Accident", "Fire"];
-  const carTypes = ["Ambulance", "Barangay Van", "Rescue Vehicle"];
-  const pickupLocations = ["Poblacion, Toledo City", "Sangi, Toledo City", "Talavera, Toledo City"];
-
-  const cycleOption = (currentValue, values, fallback) => {
-    const currentIndex = values.indexOf(currentValue);
-
-    if (currentIndex === -1) {
-      return values[0] ?? fallback;
+  useEffect(() => {
+    if (!callSessionId) {
+      return undefined;
     }
 
-    return values[(currentIndex + 1) % values.length];
+    const unsubscribe = onSnapshot(
+      doc(db, "callSessions", callSessionId),
+      (snapshot) => {
+        const callData = snapshot.data();
+        setCallStatus(callData?.status ?? "ended");
+        setCallDispatcherName(callData?.dispatcherName ?? "");
+      },
+      (error) => console.log("Emergency call listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, [callSessionId]);
+
+  const startEmergencyCall = async () => {
+    if (!authUser?.uid) {
+      setResidentStatus({
+        title: "Login Required",
+        description: "Please log in before starting an emergency call.",
+        meta: "Emergency call not started",
+        tag: "Action Needed",
+      });
+      return;
+    }
+
+    try {
+      setCallOpen(true);
+      setCallStatus("ringing");
+      const callDoc = await addDoc(collection(db, "callSessions"), {
+        residentId: authUser.uid,
+        residentName: displayName,
+        dispatcherId: "",
+        dispatcherName: "",
+        targetRole: "Dispatcher",
+        status: "ringing",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setCallSessionId(callDoc.id);
+      setResidentStatus({
+        title: "Calling Dispatcher",
+        description: "Emergency call request sent to the dispatcher station.",
+        meta: "In-app call ringing | Waiting for dispatcher",
+        tag: "Emergency",
+      });
+    } catch (error) {
+      console.log("Emergency call failed:", error);
+      setCallOpen(false);
+      setCallStatus("idle");
+      setResidentStatus({
+        title: "Emergency Call Failed",
+        description: "The in-app call could not start. Please check Firestore permissions.",
+        meta: "Call not connected",
+        tag: "Error",
+      });
+    }
+  };
+
+  const endEmergencyCall = async () => {
+    const nextStatus = callStatus === "connected" ? "ended" : "cancelled";
+
+    if (callSessionId) {
+      try {
+        await updateDoc(doc(db, "callSessions", callSessionId), {
+          status: nextStatus,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (error) {
+        console.log("Emergency call end warning:", error);
+      }
+    }
+
+    setCallOpen(false);
+    setCallSessionId("");
+    setCallStatus("idle");
   };
 
   const handleQuickAction = (type) => {
     if (type === "emergency-call") {
-      setResidentStatus({
-        title: "Emergency Call Ready",
-        description: "Use the emergency hotline area when you need to call for immediate help.",
-        meta: "Emergency contacts ready | Toledo City",
-        tag: "Emergency",
-      });
+      startEmergencyCall();
       return;
     }
 
@@ -66,8 +154,8 @@ export default function ResidentHome() {
   const handleSendSos = () => {
     setResidentStatus({
       title: "Emergency Transport Request Sent",
-      description: `${emergencyType === "Select Type" ? "Emergency" : emergencyType} request sent for ${carType === "Select Type" ? "available vehicle" : carType}.`,
-      meta: `${pickupLocation === "Select Where" ? "Pickup location pending" : pickupLocation} | Waiting for responders`,
+      description: `${emergencyType || "Emergency"} request sent for ${vehicleType || "available vehicle"}.`,
+      meta: `${pickupLocation || "Pickup location pending"} | Waiting for responders`,
       tag: "Emergency",
     });
     setSosOpen(false);
@@ -173,25 +261,43 @@ export default function ResidentHome() {
             <Text style={styles.modalSubtitle}>Send emergency transport request to nearest responders</Text>
 
             <Text style={styles.modalLabel}>Emergency Type</Text>
-            <TouchableOpacity style={styles.selectField} onPress={() => setEmergencyType((current) => cycleOption(current, emergencyTypes, "Select Type"))}>
-              <Text style={styles.selectFieldText}>{emergencyType}</Text>
-              <Text style={styles.selectFieldArrow}>^</Text>
-            </TouchableOpacity>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.dropdownPlaceholder}
+              selectedTextStyle={styles.dropdownSelectedText}
+              data={emergencyTypeOptions}
+              labelField="label"
+              valueField="value"
+              placeholder="Select emergency type"
+              value={emergencyType}
+              onChange={(item) => setEmergencyType(item.value)}
+            />
 
-            <Text style={styles.modalLabel}>Choose a Car Type</Text>
-            <TouchableOpacity style={styles.selectField} onPress={() => setCarType((current) => cycleOption(current, carTypes, "Select Type"))}>
-              <Text style={styles.selectFieldText}>{carType}</Text>
-              <Text style={styles.selectFieldArrow}>^</Text>
-            </TouchableOpacity>
+            <Text style={styles.modalLabel}>Vehicle Type</Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.dropdownPlaceholder}
+              selectedTextStyle={styles.dropdownSelectedText}
+              data={vehicleTypeOptions}
+              labelField="label"
+              valueField="value"
+              placeholder="Select vehicle type"
+              value={vehicleType}
+              onChange={(item) => setVehicleType(item.value)}
+            />
 
-            <Text style={styles.modalLabel}>Pick up Location</Text>
-            <TouchableOpacity
-              style={styles.selectField}
-              onPress={() => setPickupLocation((current) => cycleOption(current, pickupLocations, "Select Where"))}
-            >
-              <Text style={styles.selectFieldText}>{pickupLocation}</Text>
-              <Text style={styles.selectFieldArrow}>^</Text>
-            </TouchableOpacity>
+            <Text style={styles.modalLabel}>Pickup Location</Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.dropdownPlaceholder}
+              selectedTextStyle={styles.dropdownSelectedText}
+              data={pickupLocationOptions}
+              labelField="label"
+              valueField="value"
+              placeholder="Select pickup location"
+              value={pickupLocation}
+              onChange={(item) => setPickupLocation(item.value)}
+            />
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setSosOpen(false)}>
@@ -201,6 +307,26 @@ export default function ResidentHome() {
                 <Text style={styles.sendButtonText}>Send</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={callOpen} transparent animationType="fade" onRequestClose={endEmergencyCall}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.callCard, compact && styles.modalCardCompact]}>
+            <MaterialCommunityIcons name="phone-in-talk-outline" size={52} color="#CF0000" />
+            <Text style={styles.callTitle}>
+              {callStatus === "connected" ? "Connected to Dispatcher" : callStatus === "ringing" ? "Calling Dispatcher" : "Emergency Call"}
+            </Text>
+            <Text style={styles.callSubtitle}>
+              {callStatus === "connected"
+                ? `${callDispatcherName || "Dispatcher"} is connected to this in-app emergency call.`
+                : "Waiting for the dispatcher station to answer."}
+            </Text>
+
+            <TouchableOpacity style={styles.endCallButton} onPress={endEmergencyCall}>
+              <Text style={styles.endCallButtonText}>{callStatus === "connected" ? "End Call" : "Cancel Call"}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -399,25 +525,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#111111",
   },
-  selectField: {
+  dropdown: {
     marginTop: 10,
     minHeight: 72,
     borderRadius: 18,
     backgroundColor: "#D9D9D9",
     paddingHorizontal: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
-  selectFieldText: {
-    flex: 1,
+  dropdownPlaceholder: {
+    fontSize: 18,
+    color: "#696969",
+  },
+  dropdownSelectedText: {
     fontSize: 18,
     color: "#222222",
-  },
-  selectFieldArrow: {
-    fontSize: 28,
-    color: "#6C6C6C",
-    transform: [{ rotate: "180deg" }],
   },
   modalActions: {
     flexDirection: "row",
@@ -446,6 +567,42 @@ const styles = StyleSheet.create({
   sendButtonText: {
     fontSize: 18,
     fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  callCard: {
+    width: "100%",
+    maxWidth: 440,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 28,
+    padding: 24,
+    alignItems: "center",
+  },
+  callTitle: {
+    marginTop: 14,
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#111111",
+    textAlign: "center",
+  },
+  callSubtitle: {
+    marginTop: 8,
+    fontSize: 15,
+    lineHeight: 23,
+    color: "#4A5C55",
+    textAlign: "center",
+  },
+  endCallButton: {
+    width: "100%",
+    marginTop: 24,
+    minHeight: 58,
+    borderRadius: 18,
+    backgroundColor: "#CF0000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  endCallButtonText: {
+    fontSize: 17,
+    fontWeight: "800",
     color: "#FFFFFF",
   },
 });
