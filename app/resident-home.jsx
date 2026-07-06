@@ -13,18 +13,63 @@ const emergencyTypeOptions = [
   { label: "Medical", value: "Medical" },
   { label: "Accident", value: "Accident" },
   { label: "Fire", value: "Fire" },
+  { label: "Rescue", value: "Rescue" },
+  { label: "Traffic", value: "Traffic" },
+  { label: "Disaster", value: "Disaster" },
 ];
 
 const vehicleTypeOptions = [
   { label: "Ambulance", value: "Ambulance" },
   { label: "Barangay Van", value: "Barangay Van" },
   { label: "Rescue Vehicle", value: "Rescue Vehicle" },
+  { label: "SUV", value: "SUV" },
+  { label: "Pickup Truck", value: "Pickup Truck" },
+  { label: "Sedan", value: "Sedan" },
+  { label: "Hatchback", value: "Hatchback" },
+  { label: "Cargo Van", value: "Cargo Van" },
+  { label: "Passenger Van", value: "Passenger Van" },
+  { label: "Flatbed Trailer", value: "Flatbed Trailer" },
 ];
 
 const pickupLocationOptions = [
+  { label: "Awihao, Toledo City", value: "Awihao, Toledo City" },
+  { label: "Bagakay, Toledo City", value: "Bagakay, Toledo City" },
+  { label: "Bato, Toledo City", value: "Bato, Toledo City" },
+  { label: "Biga, Toledo City", value: "Biga, Toledo City" },
+  { label: "Bulongan, Toledo City", value: "Bulongan, Toledo City" },
+  { label: "Bunga, Toledo City", value: "Bunga, Toledo City" },
+  { label: "Cabitoonan, Toledo City", value: "Cabitoonan, Toledo City" },
+  { label: "Calongcalong, Toledo City", value: "Calongcalong, Toledo City" },
+  { label: "Cambang-ug, Toledo City", value: "Cambang-ug, Toledo City" },
+  { label: "Camp 8, Toledo City", value: "Camp 8, Toledo City" },
+  { label: "Canlumampao, Toledo City", value: "Canlumampao, Toledo City" },
+  { label: "Cantabaco, Toledo City", value: "Cantabaco, Toledo City" },
+  { label: "Capitan Claudio, Toledo City", value: "Capitan Claudio, Toledo City" },
+  { label: "Carmen, Toledo City", value: "Carmen, Toledo City" },
+  { label: "Daanglungsod, Toledo City", value: "Daanglungsod, Toledo City" },
+  { label: "Don Andres Soriano (Lutopan), Toledo City", value: "Don Andres Soriano (Lutopan), Toledo City" },
+  { label: "Dumlog, Toledo City", value: "Dumlog, Toledo City" },
+  { label: "Gen. Climaco (Malubog), Toledo City", value: "Gen. Climaco (Malubog), Toledo City" },
+  { label: "Ibo, Toledo City", value: "Ibo, Toledo City" },
+  { label: "Ilihan, Toledo City", value: "Ilihan, Toledo City" },
+  { label: "Juan Climaco, Sr. (Magdugo), Toledo City", value: "Juan Climaco, Sr. (Magdugo), Toledo City" },
+  { label: "Landahan, Toledo City", value: "Landahan, Toledo City" },
+  { label: "Loay, Toledo City", value: "Loay, Toledo City" },
+  { label: "Luray II, Toledo City", value: "Luray II, Toledo City" },
+  { label: "Matab-ang, Toledo City", value: "Matab-ang, Toledo City" },
+  { label: "Media Once, Toledo City", value: "Media Once, Toledo City" },
+  { label: "Pangamihan, Toledo City", value: "Pangamihan, Toledo City" },
   { label: "Poblacion, Toledo City", value: "Poblacion, Toledo City" },
+  { label: "Poog, Toledo City", value: "Poog, Toledo City" },
+  { label: "Putingbato, Toledo City", value: "Putingbato, Toledo City" },
+  { label: "Sagay, Toledo City", value: "Sagay, Toledo City" },
+  { label: "Sam-ang, Toledo City", value: "Sam-ang, Toledo City" },
   { label: "Sangi, Toledo City", value: "Sangi, Toledo City" },
+  { label: "Santo Nino (Mainggit), Toledo City", value: "Santo Nino (Mainggit), Toledo City" },
+  { label: "Subayon, Toledo City", value: "Subayon, Toledo City" },
   { label: "Talavera, Toledo City", value: "Talavera, Toledo City" },
+  { label: "Tubod, Toledo City", value: "Tubod, Toledo City" },
+  { label: "Tungkay, Toledo City", value: "Tungkay, Toledo City" },
 ];
 
 export default function ResidentHome() {
@@ -151,14 +196,54 @@ export default function ResidentHome() {
     });
   };
 
-  const handleSendSos = () => {
-    setResidentStatus({
-      title: "Emergency Transport Request Sent",
-      description: `${emergencyType || "Emergency"} request sent for ${vehicleType || "available vehicle"}.`,
-      meta: `${pickupLocation || "Pickup location pending"} | Waiting for responders`,
-      tag: "Emergency",
-    });
-    setSosOpen(false);
+  const handleSendSos = async () => {
+    if (!authUser?.uid) {
+      setResidentStatus({
+        title: "Login Required",
+        description: "Please log in before sending a transport request.",
+        meta: "Transport request not sent",
+        tag: "Action Needed",
+      });
+      return;
+    }
+
+    const requestTitle = emergencyType || "Emergency";
+    const requestedVehicle = vehicleType || "Available Vehicle";
+    const requestedPickup = pickupLocation || "Pickup location pending";
+
+    try {
+      await addDoc(collection(db, "transportRequests"), {
+        residentId: authUser.uid,
+        residentName: displayName,
+        level: emergencyType ? "Emergency" : "Pending",
+        status: "Pending",
+        title: requestTitle,
+        emergencyType: requestTitle,
+        vehicle: requestedVehicle,
+        barangay: requestedPickup,
+        pickupLocation: requestedPickup,
+        destination: "Nearest available response center",
+        summary: `${requestTitle} transport request from ${requestedPickup}.`,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setResidentStatus({
+        title: "Emergency Transport Request Sent",
+        description: `${requestTitle} request sent for ${requestedVehicle}.`,
+        meta: `${requestedPickup} | Waiting for dispatcher`,
+        tag: "Pending",
+      });
+      setSosOpen(false);
+    } catch (error) {
+      console.log("Transport request failed:", error);
+      setResidentStatus({
+        title: "Transport Request Failed",
+        description: "The request could not be sent. Please check Firestore permissions.",
+        meta: "Request not queued",
+        tag: "Error",
+      });
+    }
   };
 
   return (
@@ -263,6 +348,7 @@ export default function ResidentHome() {
             <Text style={styles.modalLabel}>Emergency Type</Text>
             <Dropdown
               style={styles.dropdown}
+              maxHeight={260}
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownSelectedText}
               data={emergencyTypeOptions}
@@ -276,6 +362,7 @@ export default function ResidentHome() {
             <Text style={styles.modalLabel}>Vehicle Type</Text>
             <Dropdown
               style={styles.dropdown}
+              maxHeight={260}
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownSelectedText}
               data={vehicleTypeOptions}
@@ -289,6 +376,9 @@ export default function ResidentHome() {
             <Text style={styles.modalLabel}>Pickup Location</Text>
             <Dropdown
               style={styles.dropdown}
+              maxHeight={260}
+              search
+              searchPlaceholder="Search barangay..."
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownSelectedText}
               data={pickupLocationOptions}

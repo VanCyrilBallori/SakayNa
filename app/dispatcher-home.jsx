@@ -8,67 +8,25 @@ import AppBrandHeader from "../components/AppBrandHeader";
 import { db } from "../firebase";
 import { useCurrentUserProfile } from "../lib/session";
 
-const requests = [
-  {
-    id: "medical-001",
-    level: "Emergency",
-    status: "Assigned",
-    title: "Medical",
-    vehicle: "Ambulance",
-    barangay: "Brgy. Talavera",
-    pickupLocation: "Barangay Health Center",
-    destination: "Toledo Poblacion Health Center",
-    summary: "Medical response request already assigned to a responder.",
-    color: "#F6D0D0",
-    chip: "#C53A3A",
-  },
-  {
-    id: "asthma-001",
-    level: "Urgent",
-    status: "Assigned",
-    title: "Asthma Attack",
-    vehicle: "Ambulance",
-    barangay: "Brgy. Talavera",
-    pickupLocation: "Talavera Barangay Hall",
-    destination: "Toledo City Hospital",
-    summary: "Asthma response request already assigned to a responder.",
-    color: "#F5EFCE",
-    chip: "#989400",
-  },
-  {
-    id: "accident-001",
-    level: "Urgent",
-    status: "Pending",
-    title: "Accident",
-    vehicle: "Rescue Vehicle",
-    barangay: "Brgy. Talavera",
-    pickupLocation: "Talavera Road Crossing",
-    destination: "Toledo City Hospital",
-    summary: "Accident transport request waiting for an available driver assignment.",
-    color: "#F5EFCE",
-    chip: "#989400",
-  },
-  {
-    id: "transfer-001",
-    level: "Non-Urgent",
-    status: "Pending",
-    title: "Patient Transfer",
-    vehicle: "Barangay Van",
-    barangay: "Brgy. Talavera",
-    pickupLocation: "Barangay Health Center",
-    destination: "Toledo Poblacion Health Center",
-    summary: "Patient transfer request waiting for an available driver assignment.",
-    color: "#D1E6DD",
-    chip: "#06774B",
-  },
-];
+const getRequestStyle = (level) => {
+  if (level === "Emergency") {
+    return { color: "#F6D0D0", chip: "#C53A3A" };
+  }
+
+  if (level === "Urgent") {
+    return { color: "#F5EFCE", chip: "#989400" };
+  }
+
+  return { color: "#D1E6DD", chip: "#06774B" };
+};
 
 export default function DispatcherHome() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 1100;
   const { authUser, displayName } = useCurrentUserProfile();
-  const [selectedRequest, setSelectedRequest] = useState(requests[0]);
+  const [requests, setRequests] = useState([]);
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [drivers, setDrivers] = useState([]);
   const [mapStatus, setMapStatus] = useState("Ready");
@@ -78,15 +36,49 @@ export default function DispatcherHome() {
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
   const [incomingCall, setIncomingCall] = useState(null);
 
-  const visibleRequests = useMemo(
-    () =>
-      requests.map((request) => ({
-        ...request,
-        status: assignedRequestIds.includes(request.id) ? "Assigned" : request.status,
-      })),
-    [assignedRequestIds]
-  );
+  const visibleRequests = useMemo(() => requests.filter((request) => !assignedRequestIds.includes(request.id)), [assignedRequestIds, requests]);
   const pendingRequests = useMemo(() => visibleRequests.filter((request) => request.status === "Pending"), [visibleRequests]);
+
+  useEffect(() => {
+    const requestsQuery = query(collection(db, "transportRequests"), where("status", "==", "Pending"));
+    const unsubscribe = onSnapshot(
+      requestsQuery,
+      (snapshot) => {
+        const nextRequests = snapshot.docs.map((requestDoc) => {
+          const data = requestDoc.data();
+          const requestStyle = getRequestStyle(data.level);
+
+          return {
+            id: requestDoc.id,
+            level: data.level ?? "Emergency",
+            status: data.status ?? "Pending",
+            title: data.title ?? data.emergencyType ?? "Transport Request",
+            vehicle: data.vehicle ?? "Available Vehicle",
+            barangay: data.barangay ?? data.pickupLocation ?? "Pickup location pending",
+            pickupLocation: data.pickupLocation ?? data.barangay ?? "Pickup location pending",
+            destination: data.destination ?? "Nearest available response center",
+            summary: data.summary ?? "Resident transport request waiting for dispatcher assignment.",
+            residentId: data.residentId ?? "",
+            residentName: data.residentName ?? "Resident",
+            color: requestStyle.color,
+            chip: requestStyle.chip,
+          };
+        });
+
+        setRequests(nextRequests);
+        setSelectedRequest((current) => {
+          if (current && nextRequests.some((request) => request.id === current.id)) {
+            return current;
+          }
+
+          return nextRequests[0] ?? null;
+        });
+      },
+      (error) => console.log("Transport requests listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const driversQuery = query(collection(db, "users"), where("role", "==", "Driver"));
@@ -187,6 +179,12 @@ export default function DispatcherHome() {
         status: "Assigned",
         createdAt: serverTimestamp(),
       });
+      await updateDoc(doc(db, "transportRequests", requestToAssign.id), {
+        status: "Assigned",
+        assignedDriverId: selectedDriver.id,
+        assignedDriverName: selectedDriver.name,
+        updatedAt: serverTimestamp(),
+      });
 
       setSelectedRequest({ ...requestToAssign, status: "Assigned" });
       setAssignmentMessage(`${requestToAssign.title} assigned to ${selectedDriver.name}.`);
@@ -253,32 +251,41 @@ export default function DispatcherHome() {
           <View style={styles.mainGrid}>
             <View style={styles.leftPanel}>
               <Text style={styles.panelLabel}>Latest queue</Text>
-              {visibleRequests.map((request) => (
-                <TouchableOpacity
-                  key={request.id}
-                  style={[
-                    styles.requestCard,
-                    { backgroundColor: request.color },
-                    selectedRequest.id === request.id && styles.requestCardActive,
-                  ]}
-                  onPress={() => setSelectedRequest(request)}
-                >
-                  <View style={styles.requestTop}>
-                    <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
-                      <Text style={styles.requestChipText}>{request.level}</Text>
+              {visibleRequests.length ? (
+                visibleRequests.map((request) => (
+                  <TouchableOpacity
+                    key={request.id}
+                    style={[
+                      styles.requestCard,
+                      { backgroundColor: request.color },
+                      selectedRequest?.id === request.id && styles.requestCardActive,
+                    ]}
+                    onPress={() => setSelectedRequest(request)}
+                  >
+                    <View style={styles.requestTop}>
+                      <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
+                        <Text style={styles.requestChipText}>{request.level}</Text>
+                      </View>
+                      <Text style={styles.requestStatus}>{request.status}</Text>
                     </View>
-                    <Text style={styles.requestStatus}>{request.status}</Text>
-                  </View>
-                  <Text style={styles.requestTitle}>{request.title}</Text>
-                  <Text style={styles.requestMeta}>2026/03/19 | {request.vehicle} | {request.barangay}</Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={styles.requestTitle}>{request.title}</Text>
+                    <Text style={styles.requestMeta}>{request.vehicle} | {request.barangay}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyRequestsCard}>
+                  <Text style={styles.emptyRequestsTitle}>Inbox empty</Text>
+                  <Text style={styles.emptyRequestsText}>Resident transport requests will appear here when submitted.</Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.mapPanel}>
               <View style={styles.mapToolbar}>
                 <View style={styles.mapToolbarCopy}>
-                  <Text style={styles.mapToolbarTitle}>{selectedRequest.title} | {selectedRequest.status}</Text>
+                  <Text style={styles.mapToolbarTitle}>
+                    {selectedRequest ? `${selectedRequest.title} | ${selectedRequest.status}` : "No Pending Request"}
+                  </Text>
                   <Text style={styles.mapToolbarSubtext}>{driverSummary}</Text>
                 </View>
                 <TouchableOpacity
@@ -459,6 +466,9 @@ const styles = StyleSheet.create({
   statusPillAvailable: { backgroundColor: "#E5FFF2" },
   statusPillUnavailable: { backgroundColor: "#F0E8E8" },
   statusPillText: { fontSize: 12, fontWeight: "700", color: "#26433A" },
+  emptyRequestsCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
+  emptyRequestsTitle: { fontSize: 16, fontWeight: "800", color: "#24342E" },
+  emptyRequestsText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#66776F" },
   emptyDriversCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
   emptyDriversTitle: { fontSize: 16, fontWeight: "800", color: "#24342E" },
   emptyDriversText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#66776F" },
