@@ -18,9 +18,17 @@ const emergencyTypeOptions = [
   { label: "Disaster", value: "Disaster" },
 ];
 
+const priorityByEmergencyType = {
+  Disaster: "Emergency",
+  Fire: "Emergency",
+  Rescue: "Emergency",
+  Accident: "Urgent",
+  Medical: "Urgent",
+  Traffic: "Non-Urgent",
+};
+
 const vehicleTypeOptions = [
   { label: "Ambulance", value: "Ambulance" },
-  { label: "Barangay Van", value: "Barangay Van" },
   { label: "Rescue Vehicle", value: "Rescue Vehicle" },
   { label: "SUV", value: "SUV" },
   { label: "Pickup Truck", value: "Pickup Truck" },
@@ -90,6 +98,7 @@ export default function ResidentHome() {
   const [emergencyType, setEmergencyType] = useState("");
   const [vehicleType, setVehicleType] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
+  const [callConfirmOpen, setCallConfirmOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [callSessionId, setCallSessionId] = useState("");
   const [callStatus, setCallStatus] = useState("idle");
@@ -179,7 +188,7 @@ export default function ResidentHome() {
 
   const handleQuickAction = (type) => {
     if (type === "emergency-call") {
-      startEmergencyCall();
+      setCallConfirmOpen(true);
       return;
     }
 
@@ -208,6 +217,7 @@ export default function ResidentHome() {
     }
 
     const requestTitle = emergencyType || "Emergency";
+    const priorityLevel = priorityByEmergencyType[emergencyType] ?? "Emergency";
     const requestedVehicle = vehicleType || "Available Vehicle";
     const requestedPickup = pickupLocation || "Pickup location pending";
 
@@ -215,7 +225,8 @@ export default function ResidentHome() {
       await addDoc(collection(db, "transportRequests"), {
         residentId: authUser.uid,
         residentName: displayName,
-        level: emergencyType ? "Emergency" : "Pending",
+        level: priorityLevel,
+        priorityLevel,
         status: "Pending",
         title: requestTitle,
         emergencyType: requestTitle,
@@ -232,7 +243,7 @@ export default function ResidentHome() {
         title: "Emergency Transport Request Sent",
         description: `${requestTitle} request sent for ${requestedVehicle}.`,
         meta: `${requestedPickup} | Waiting for dispatcher`,
-        tag: "Pending",
+        tag: priorityLevel,
       });
       setSosOpen(false);
     } catch (error) {
@@ -395,6 +406,31 @@ export default function ResidentHome() {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalButton, styles.sendButton]} onPress={handleSendSos}>
                 <Text style={styles.sendButtonText}>Send</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.callCard, compact && styles.modalCardCompact]}>
+            <MaterialCommunityIcons name="phone-alert-outline" size={52} color="#CF0000" />
+            <Text style={styles.callTitle}>Call Emergency Help?</Text>
+            <Text style={styles.callSubtitle}>Are you sure you want to call Emergency Help?</Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.callConfirmButton]}
+                onPress={() => {
+                  setCallConfirmOpen(false);
+                  startEmergencyCall();
+                }}
+              >
+                <Text style={styles.callConfirmButtonText}>Call</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -649,12 +685,20 @@ const styles = StyleSheet.create({
   sendButton: {
     backgroundColor: "#06774B",
   },
+  callConfirmButton: {
+    backgroundColor: "#CF0000",
+  },
   cancelButtonText: {
     fontSize: 18,
     fontWeight: "700",
     color: "#111111",
   },
   sendButtonText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  callConfirmButtonText: {
     fontSize: 18,
     fontWeight: "700",
     color: "#FFFFFF",

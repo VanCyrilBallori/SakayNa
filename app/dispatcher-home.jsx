@@ -50,9 +50,10 @@ export default function DispatcherHome() {
 
           return {
             id: requestDoc.id,
-            level: data.level ?? "Emergency",
+            level: data.priorityLevel ?? data.level ?? "Emergency",
             status: data.status ?? "Pending",
             title: data.title ?? data.emergencyType ?? "Transport Request",
+            emergencyType: data.emergencyType ?? data.title ?? "Transport Request",
             vehicle: data.vehicle ?? "Available Vehicle",
             barangay: data.barangay ?? data.pickupLocation ?? "Pickup location pending",
             pickupLocation: data.pickupLocation ?? data.barangay ?? "Pickup location pending",
@@ -268,8 +269,8 @@ export default function DispatcherHome() {
                       </View>
                       <Text style={styles.requestStatus}>{request.status}</Text>
                     </View>
-                    <Text style={styles.requestTitle}>{request.title}</Text>
-                    <Text style={styles.requestMeta}>{request.vehicle} | {request.barangay}</Text>
+                    <Text style={styles.requestTitle}>{request.level}</Text>
+                    <Text style={styles.requestMeta}>{request.emergencyType} | {request.vehicle} | {request.barangay}</Text>
                   </TouchableOpacity>
                 ))
               ) : (
@@ -284,9 +285,11 @@ export default function DispatcherHome() {
               <View style={styles.mapToolbar}>
                 <View style={styles.mapToolbarCopy}>
                   <Text style={styles.mapToolbarTitle}>
-                    {selectedRequest ? `${selectedRequest.title} | ${selectedRequest.status}` : "No Pending Request"}
+                    {selectedRequest ? `${selectedRequest.level} | ${selectedRequest.status}` : "No Pending Request"}
                   </Text>
-                  <Text style={styles.mapToolbarSubtext}>{driverSummary}</Text>
+                  <Text style={styles.mapToolbarSubtext}>
+                    {selectedRequest ? `${selectedRequest.emergencyType} | ${driverSummary}` : driverSummary}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.mapAction}
@@ -375,8 +378,8 @@ export default function DispatcherHome() {
                       <Text style={styles.requestChipText}>{request.level}</Text>
                     </View>
                     <View style={styles.modalRequestCopy}>
-                      <Text style={styles.modalRequestTitle}>{request.title}</Text>
-                      <Text style={styles.modalRequestMeta}>{request.vehicle} | {request.barangay}</Text>
+                      <Text style={styles.modalRequestTitle}>{request.emergencyType}</Text>
+                      <Text style={styles.modalRequestMeta}>{request.level} | {request.vehicle} | {request.barangay}</Text>
                     </View>
                   </TouchableOpacity>
                 ))
