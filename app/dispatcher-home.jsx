@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import LeafletMap from "../components/LeafletMap";
 import { db } from "../firebase";
 import { useCurrentUserProfile } from "../lib/session";
 
@@ -301,13 +302,7 @@ export default function DispatcherHome() {
               </View>
 
               <View style={styles.mapPlaceholder}>
-                <View style={styles.mapCrossWrap}>
-                  <Text style={styles.mapCross}>+</Text>
-                </View>
-                <Text style={styles.mapPlaceholderTitle}>Blank map canvas</Text>
-                <Text style={styles.mapPlaceholderText}>
-                  Select an available registered driver to assign a pending request into their Patient Transfer inbox.
-                </Text>
+                <LeafletMap title="Dispatcher Toledo City Map" markerLabel="Toledo City, Cebu" />
                 {assignmentMessage ? <Text style={styles.assignmentMessage}>{assignmentMessage}</Text> : null}
               </View>
             </View>
@@ -449,7 +444,7 @@ const styles = StyleSheet.create({
   mapToolbarSubtext: { marginTop: 4, fontSize: 13, lineHeight: 20, color: "#60716B" },
   mapAction: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: "#06774B" },
   mapActionText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
-  mapPlaceholder: { minHeight: 680, alignItems: "center", justifyContent: "center", paddingHorizontal: 28, paddingVertical: 36, backgroundColor: "#F7F9F8" },
+  mapPlaceholder: { minHeight: 680, alignItems: "stretch", justifyContent: "flex-start", backgroundColor: "#F7F9F8" },
   mapCrossWrap: { width: 92, height: 92, borderRadius: 46, borderWidth: 2, borderColor: "#CDD6D2", alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   mapCross: { fontSize: 58, lineHeight: 58, color: "#A4B0AA" },
   mapPlaceholderTitle: { marginTop: 18, fontSize: 26, fontWeight: "800", color: "#2D3934", textAlign: "center" },

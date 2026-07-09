@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import LeafletMap from "../components/LeafletMap";
 import { db } from "../firebase";
 import { useCurrentUserProfile } from "../lib/session";
 
@@ -155,9 +156,7 @@ export default function DriverHome() {
                   </View>
 
                   <View style={styles.mapBlankState}>
-                    <MaterialCommunityIcons name="map-outline" size={56} color="#90A0AA" />
-                    <Text style={styles.mapBlankTitle}>Route preview</Text>
-                    <Text style={styles.mapBlankText}>The assigned request from the dispatcher appears here like a received inbox message.</Text>
+                    <LeafletMap title="Driver Route Preview Map" markerLabel="Toledo City route preview" />
                   </View>
                 </View>
               </View>
@@ -230,7 +229,7 @@ const styles = StyleSheet.create({
   mapCardTitle: { fontSize: 18, fontWeight: "700", color: "#2E3C37" },
   mapHeaderButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "#EFF4F2" },
   mapHeaderButtonText: { fontSize: 13, fontWeight: "700", color: "#496B5F" },
-  mapBlankState: { minHeight: 280, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, paddingVertical: 28 },
+  mapBlankState: { minHeight: 280, alignItems: "stretch", justifyContent: "flex-start" },
   mapBlankTitle: { marginTop: 14, fontSize: 24, fontWeight: "800", color: "#2F3B46", textAlign: "center" },
   mapBlankText: { marginTop: 10, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
   emptyInbox: { marginTop: 20, minHeight: 300, borderRadius: 20, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", padding: 24 },
