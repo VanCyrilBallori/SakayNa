@@ -3,9 +3,11 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Dropdown } from "react-native-element-dropdown";
 
 import BrandLogo from "../components/BrandLogo";
 import { auth, db } from "../firebase";
+import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import { getRoleRoute, ROLE_OPTIONS } from "../lib/roles";
 import { saveLocalUserProfile } from "../lib/session";
 
@@ -111,12 +113,19 @@ export default function Signup() {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
           />
-          <TextInput
-            style={[styles.input, isCompact && styles.inputCompact]}
-            placeholder="Barangay"
-            placeholderTextColor="#8B8B8B"
+          <Dropdown
+            style={[styles.dropdown, isCompact && styles.dropdownCompact]}
+            maxHeight={220}
+            search
+            searchPlaceholder="Search barangay..."
+            placeholderStyle={styles.dropdownPlaceholder}
+            selectedTextStyle={styles.dropdownSelectedText}
+            data={TOLEDO_BARANGAY_OPTIONS}
+            labelField="label"
+            valueField="value"
+            placeholder="Select barangay"
             value={barangay}
-            onChangeText={setBarangay}
+            onChange={(item) => setBarangay(item.value)}
           />
           <TextInput
             style={[styles.input, isCompact && styles.inputCompact]}
@@ -217,6 +226,26 @@ const styles = StyleSheet.create({
   inputCompact: {
     paddingVertical: 12,
     fontSize: 14,
+  },
+  dropdown: {
+    marginBottom: 12,
+    minHeight: 72,
+    borderRadius: 18,
+    backgroundColor: "#D9D9D9",
+    paddingHorizontal: 18,
+  },
+  dropdownCompact: {
+    minHeight: 58,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+  },
+  dropdownPlaceholder: {
+    fontSize: 18,
+    color: "#696969",
+  },
+  dropdownSelectedText: {
+    fontSize: 18,
+    color: "#222222",
   },
   roleLabel: {
     marginTop: 4,

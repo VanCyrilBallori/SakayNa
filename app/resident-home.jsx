@@ -7,6 +7,7 @@ import { Dropdown } from "react-native-element-dropdown";
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import { db } from "../firebase";
+import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import { useCurrentUserProfile } from "../lib/session";
 
 const emergencyTypeOptions = [
@@ -37,47 +38,6 @@ const vehicleTypeOptions = [
   { label: "Cargo Van", value: "Cargo Van" },
   { label: "Passenger Van", value: "Passenger Van" },
   { label: "Flatbed Trailer", value: "Flatbed Trailer" },
-];
-
-const pickupLocationOptions = [
-  { label: "Awihao, Toledo City", value: "Awihao, Toledo City" },
-  { label: "Bagakay, Toledo City", value: "Bagakay, Toledo City" },
-  { label: "Bato, Toledo City", value: "Bato, Toledo City" },
-  { label: "Biga, Toledo City", value: "Biga, Toledo City" },
-  { label: "Bulongan, Toledo City", value: "Bulongan, Toledo City" },
-  { label: "Bunga, Toledo City", value: "Bunga, Toledo City" },
-  { label: "Cabitoonan, Toledo City", value: "Cabitoonan, Toledo City" },
-  { label: "Calongcalong, Toledo City", value: "Calongcalong, Toledo City" },
-  { label: "Cambang-ug, Toledo City", value: "Cambang-ug, Toledo City" },
-  { label: "Camp 8, Toledo City", value: "Camp 8, Toledo City" },
-  { label: "Canlumampao, Toledo City", value: "Canlumampao, Toledo City" },
-  { label: "Cantabaco, Toledo City", value: "Cantabaco, Toledo City" },
-  { label: "Capitan Claudio, Toledo City", value: "Capitan Claudio, Toledo City" },
-  { label: "Carmen, Toledo City", value: "Carmen, Toledo City" },
-  { label: "Daanglungsod, Toledo City", value: "Daanglungsod, Toledo City" },
-  { label: "Don Andres Soriano (Lutopan), Toledo City", value: "Don Andres Soriano (Lutopan), Toledo City" },
-  { label: "Dumlog, Toledo City", value: "Dumlog, Toledo City" },
-  { label: "Gen. Climaco (Malubog), Toledo City", value: "Gen. Climaco (Malubog), Toledo City" },
-  { label: "Ibo, Toledo City", value: "Ibo, Toledo City" },
-  { label: "Ilihan, Toledo City", value: "Ilihan, Toledo City" },
-  { label: "Juan Climaco, Sr. (Magdugo), Toledo City", value: "Juan Climaco, Sr. (Magdugo), Toledo City" },
-  { label: "Landahan, Toledo City", value: "Landahan, Toledo City" },
-  { label: "Loay, Toledo City", value: "Loay, Toledo City" },
-  { label: "Luray II, Toledo City", value: "Luray II, Toledo City" },
-  { label: "Matab-ang, Toledo City", value: "Matab-ang, Toledo City" },
-  { label: "Media Once, Toledo City", value: "Media Once, Toledo City" },
-  { label: "Pangamihan, Toledo City", value: "Pangamihan, Toledo City" },
-  { label: "Poblacion, Toledo City", value: "Poblacion, Toledo City" },
-  { label: "Poog, Toledo City", value: "Poog, Toledo City" },
-  { label: "Putingbato, Toledo City", value: "Putingbato, Toledo City" },
-  { label: "Sagay, Toledo City", value: "Sagay, Toledo City" },
-  { label: "Sam-ang, Toledo City", value: "Sam-ang, Toledo City" },
-  { label: "Sangi, Toledo City", value: "Sangi, Toledo City" },
-  { label: "Santo Nino (Mainggit), Toledo City", value: "Santo Nino (Mainggit), Toledo City" },
-  { label: "Subayon, Toledo City", value: "Subayon, Toledo City" },
-  { label: "Talavera, Toledo City", value: "Talavera, Toledo City" },
-  { label: "Tubod, Toledo City", value: "Tubod, Toledo City" },
-  { label: "Tungkay, Toledo City", value: "Tungkay, Toledo City" },
 ];
 
 export default function ResidentHome() {
@@ -359,7 +319,7 @@ export default function ResidentHome() {
             <Text style={styles.modalLabel}>Emergency Type</Text>
             <Dropdown
               style={styles.dropdown}
-              maxHeight={260}
+              maxHeight={220}
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownSelectedText}
               data={emergencyTypeOptions}
@@ -373,7 +333,7 @@ export default function ResidentHome() {
             <Text style={styles.modalLabel}>Vehicle Type</Text>
             <Dropdown
               style={styles.dropdown}
-              maxHeight={260}
+              maxHeight={220}
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownSelectedText}
               data={vehicleTypeOptions}
@@ -387,12 +347,12 @@ export default function ResidentHome() {
             <Text style={styles.modalLabel}>Pickup Location</Text>
             <Dropdown
               style={styles.dropdown}
-              maxHeight={260}
+              maxHeight={220}
               search
               searchPlaceholder="Search barangay..."
               placeholderStyle={styles.dropdownPlaceholder}
               selectedTextStyle={styles.dropdownSelectedText}
-              data={pickupLocationOptions}
+              data={TOLEDO_BARANGAY_OPTIONS}
               labelField="label"
               valueField="value"
               placeholder="Select pickup location"
@@ -605,36 +565,37 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.28)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: 14,
   },
   modalCard: {
     width: "100%",
-    maxWidth: 700,
+    maxWidth: 640,
+    maxHeight: "92%",
     backgroundColor: "#FFFFFF",
-    borderRadius: 28,
-    padding: 24,
-  },
-  modalCardCompact: {
     borderRadius: 22,
     padding: 18,
   },
+  modalCardCompact: {
+    borderRadius: 18,
+    padding: 14,
+  },
   modalClose: {
     alignSelf: "flex-end",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#F51D1D",
     alignItems: "center",
     justifyContent: "center",
   },
   modalCloseText: {
     color: "#FFFFFF",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
   },
   modalTitle: {
-    marginTop: 8,
-    fontSize: 34,
+    marginTop: 2,
+    fontSize: 28,
     fontWeight: "800",
     textAlign: "center",
     color: "#111111",
@@ -646,36 +607,36 @@ const styles = StyleSheet.create({
     color: "#333333",
   },
   modalLabel: {
-    marginTop: 22,
-    fontSize: 17,
+    marginTop: 14,
+    fontSize: 15,
     fontWeight: "700",
     color: "#111111",
   },
   dropdown: {
-    marginTop: 10,
-    minHeight: 72,
-    borderRadius: 18,
+    marginTop: 7,
+    minHeight: 54,
+    borderRadius: 14,
     backgroundColor: "#D9D9D9",
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
   },
   dropdownPlaceholder: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#696969",
   },
   dropdownSelectedText: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#222222",
   },
   modalActions: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 16,
-    marginTop: 28,
+    gap: 12,
+    marginTop: 18,
   },
   modalButton: {
     flex: 1,
-    minHeight: 64,
-    borderRadius: 20,
+    minHeight: 54,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -689,12 +650,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#CF0000",
   },
   cancelButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#111111",
   },
   sendButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#FFFFFF",
   },

@@ -35,10 +35,28 @@ export default function DispatcherHome() {
   const [requestToAssign, setRequestToAssign] = useState(null);
   const [assignmentMessage, setAssignmentMessage] = useState("");
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
+  const [activeAssignments, setActiveAssignments] = useState([]);
   const [incomingCall, setIncomingCall] = useState(null);
 
   const visibleRequests = useMemo(() => requests.filter((request) => !assignedRequestIds.includes(request.id)), [assignedRequestIds, requests]);
   const pendingRequests = useMemo(() => visibleRequests.filter((request) => request.status === "Pending"), [visibleRequests]);
+  const driversWithAssignments = useMemo(
+    () =>
+      drivers.map((driver) => {
+        const activeAssignment = activeAssignments.find((assignment) => assignment.driverId === driver.id);
+
+        return {
+          ...driver,
+          activeAssignment,
+          dispatchStatus: activeAssignment?.status ?? driver.availability,
+        };
+      }),
+    [activeAssignments, drivers]
+  );
+  const selectedDriverWithAssignment = useMemo(
+    () => driversWithAssignments.find((driver) => driver.id === selectedDriver?.id) ?? selectedDriver,
+    [driversWithAssignments, selectedDriver]
+  );
 
   useEffect(() => {
     const requestsQuery = query(collection(db, "transportRequests"), where("status", "==", "Pending"));
@@ -115,11 +133,23 @@ export default function DispatcherHome() {
   }, []);
 
   useEffect(() => {
-    const assignmentsQuery = query(collection(db, "driverAssignments"), where("status", "==", "Assigned"));
+    const assignmentsQuery = collection(db, "driverAssignments");
     const unsubscribe = onSnapshot(
       assignmentsQuery,
       (snapshot) => {
-        setAssignedRequestIds(snapshot.docs.map((assignmentDoc) => assignmentDoc.data().requestId).filter(Boolean));
+        const assignments = snapshot.docs.map((assignmentDoc) => ({
+          id: assignmentDoc.id,
+          ...assignmentDoc.data(),
+        }));
+        const nextActiveAssignments = assignments.filter((assignment) => ["Assigned", "In Progress"].includes(assignment.status));
+        const latestDriverUpdate = assignments.find((assignment) => ["In Progress", "Completed", "Declined"].includes(assignment.status));
+
+        setActiveAssignments(nextActiveAssignments);
+        setAssignedRequestIds(assignments.filter((assignment) => ["Assigned", "In Progress", "Completed"].includes(assignment.status)).map((assignment) => assignment.requestId).filter(Boolean));
+
+        if (latestDriverUpdate) {
+          setAssignmentMessage(`${latestDriverUpdate.driverName || "Driver"} marked ${latestDriverUpdate.request?.title || "mission"} as ${latestDriverUpdate.status}.`);
+        }
       },
       (error) => console.log("Assignments listener warning:", error)
     );
@@ -146,17 +176,22 @@ export default function DispatcherHome() {
   }, []);
 
   const driverSummary = useMemo(() => {
-    if (!selectedDriver) {
+    if (!selectedDriverWithAssignment) {
       return "No registered driver selected";
     }
 
-    return `${selectedDriver.name} | ${selectedDriver.availability}`;
-  }, [selectedDriver]);
+    return `${selectedDriverWithAssignment.name} | ${selectedDriverWithAssignment.dispatchStatus ?? selectedDriverWithAssignment.availability}`;
+  }, [selectedDriverWithAssignment]);
 
   const openAssignModal = (driver) => {
     setSelectedDriver(driver);
     setRequestToAssign(null);
     setAssignmentMessage("");
+
+    if (driver.activeAssignment) {
+      setAssignmentMessage(`${driver.name} is handling ${driver.activeAssignment.request?.title || "an assigned mission"} (${driver.activeAssignment.status}).`);
+      return;
+    }
 
     if (driver.availability !== "Available") {
       return;
@@ -251,7 +286,7 @@ export default function DispatcherHome() {
           </View>
 
           <View style={styles.mainGrid}>
-            <View style={styles.leftPanel}>
+            <View style={[styles.leftPanel, compact && styles.sidePanelCompact]}>
               <Text style={styles.panelLabel}>Latest queue</Text>
               {visibleRequests.length ? (
                 visibleRequests.map((request) => (
@@ -282,7 +317,7 @@ export default function DispatcherHome() {
               )}
             </View>
 
-            <View style={styles.mapPanel}>
+            <View style={[styles.mapPanel, compact && styles.mapPanelCompact]}>
               <View style={styles.mapToolbar}>
                 <View style={styles.mapToolbarCopy}>
                   <Text style={styles.mapToolbarTitle}>
@@ -307,15 +342,16 @@ export default function DispatcherHome() {
               </View>
             </View>
 
-            <View style={styles.rightPanel}>
+            <View style={[styles.rightPanel, compact && styles.sidePanelCompact]}>
               <Text style={styles.panelLabel}>Driver availability</Text>
-              {drivers.length ? (
-                drivers.map((driver) => (
+              {driversWithAssignments.length ? (
+                driversWithAssignments.map((driver) => (
                   <TouchableOpacity
                     key={driver.id}
                     style={[
                       styles.driverCard,
-                      driver.availability === "Unavailable" && styles.driverCardUnavailable,
+                      driver.dispatchStatus !== "Available" && styles.driverCardUnavailable,
+                      driver.activeAssignment?.status === "In Progress" && styles.driverCardInProgress,
                       selectedDriver?.id === driver.id && styles.driverCardActive,
                     ]}
                     onPress={() => openAssignModal(driver)}
@@ -330,10 +366,16 @@ export default function DispatcherHome() {
                           <Text style={styles.driverPlace}>{driver.barangay}</Text>
                         </View>
                       </View>
-                      <View style={[styles.statusPill, driver.availability === "Available" ? styles.statusPillAvailable : styles.statusPillUnavailable]}>
-                        <Text style={styles.statusPillText}>{driver.availability}</Text>
+                      <View style={[styles.statusPill, driver.dispatchStatus === "Available" ? styles.statusPillAvailable : styles.statusPillUnavailable]}>
+                        <Text style={styles.statusPillText}>{driver.dispatchStatus}</Text>
                       </View>
                     </View>
+                    {driver.activeAssignment ? (
+                      <View style={styles.driverMission}>
+                        <Text style={styles.driverMissionLabel}>Handling</Text>
+                        <Text style={styles.driverMissionText}>{driver.activeAssignment.request?.title || driver.activeAssignment.request?.emergencyType || "Assigned mission"}</Text>
+                      </View>
+                    ) : null}
                   </TouchableOpacity>
                 ))
               ) : (
@@ -419,15 +461,16 @@ export default function DispatcherHome() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#F5F7F6" },
   content: { paddingBottom: 24 },
-  container: { width: "100%", maxWidth: 1320, alignSelf: "center", padding: 24, gap: 18 },
+  container: { width: "100%", maxWidth: 1480, alignSelf: "center", padding: 24, gap: 18 },
   containerCompact: { padding: 16, gap: 14 },
   sectionLabels: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end" },
-  sectionLabelLeft: { width: 170, alignItems: "flex-start" },
-  sectionLabelMap: { flex: 2.3, minWidth: 420, alignItems: "center" },
-  sectionLabelRight: { width: 170, alignItems: "flex-start" },
+  sectionLabelLeft: { flexBasis: 220, maxWidth: 280, flexGrow: 1, alignItems: "flex-start" },
+  sectionLabelMap: { flex: 4, minWidth: 300, alignItems: "center" },
+  sectionLabelRight: { flexBasis: 220, maxWidth: 280, flexGrow: 1, alignItems: "flex-start" },
   sectionLabelText: { fontSize: 24, fontWeight: "800", color: "#06774B" },
   mainGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "stretch" },
-  leftPanel: { width: 170, flexGrow: 1, padding: 14, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
+  leftPanel: { flexBasis: 220, maxWidth: 280, flexGrow: 1, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
+  sidePanelCompact: { flexBasis: "100%", maxWidth: "100%" },
   panelLabel: { fontSize: 16, fontWeight: "700", color: "#496B5F" },
   requestCard: { borderRadius: 18, padding: 16 },
   requestCardActive: { borderWidth: 2, borderColor: "#06774B" },
@@ -437,22 +480,24 @@ const styles = StyleSheet.create({
   requestStatus: { fontSize: 13, fontWeight: "700", color: "#344640" },
   requestTitle: { marginTop: 10, fontSize: 18, fontWeight: "800", color: "#111111" },
   requestMeta: { marginTop: 10, fontSize: 12, lineHeight: 17, color: "#465752" },
-  mapPanel: { flex: 2.3, minWidth: 420, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D6DFDB", overflow: "hidden" },
+  mapPanel: { flex: 4, minWidth: 360, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D6DFDB", overflow: "hidden" },
+  mapPanelCompact: { flexBasis: "100%", minWidth: 0 },
   mapToolbar: { paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#E5ECE8", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
   mapToolbarCopy: { flex: 1, minWidth: 220 },
   mapToolbarTitle: { fontSize: 20, fontWeight: "800", color: "#1F2E29" },
   mapToolbarSubtext: { marginTop: 4, fontSize: 13, lineHeight: 20, color: "#60716B" },
   mapAction: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: "#06774B" },
   mapActionText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
-  mapPlaceholder: { minHeight: 680, alignItems: "stretch", justifyContent: "flex-start", backgroundColor: "#F7F9F8" },
+  mapPlaceholder: { minHeight: 560, aspectRatio: 1.18, alignItems: "stretch", justifyContent: "flex-start", backgroundColor: "#F7F9F8" },
   mapCrossWrap: { width: 92, height: 92, borderRadius: 46, borderWidth: 2, borderColor: "#CDD6D2", alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   mapCross: { fontSize: 58, lineHeight: 58, color: "#A4B0AA" },
   mapPlaceholderTitle: { marginTop: 18, fontSize: 26, fontWeight: "800", color: "#2D3934", textAlign: "center" },
   mapPlaceholderText: { marginTop: 12, maxWidth: 520, fontSize: 16, lineHeight: 24, color: "#61716B", textAlign: "center" },
   assignmentMessage: { marginTop: 16, fontSize: 15, fontWeight: "800", color: "#06774B", textAlign: "center" },
-  rightPanel: { width: 170, flexGrow: 1, padding: 14, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
+  rightPanel: { flexBasis: 220, maxWidth: 280, flexGrow: 1, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
   driverCard: { padding: 14, borderRadius: 18, backgroundColor: "#06774B" },
   driverCardUnavailable: { backgroundColor: "#68756D" },
+  driverCardInProgress: { backgroundColor: "#0B5F8F" },
   driverCardActive: { borderWidth: 2, borderColor: "#DFF5EA" },
   driverTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" },
   driverIdentity: { flexDirection: "row", gap: 10, alignItems: "center", flex: 1, minWidth: 180 },
@@ -460,6 +505,9 @@ const styles = StyleSheet.create({
   driverCopy: { flex: 1 },
   driverName: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
   driverPlace: { marginTop: 2, fontSize: 12, color: "#DDEEE7" },
+  driverMission: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.24)" },
+  driverMissionLabel: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", color: "#DDEEE7" },
+  driverMissionText: { marginTop: 3, fontSize: 13, lineHeight: 18, fontWeight: "700", color: "#FFFFFF" },
   statusPill: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
   statusPillAvailable: { backgroundColor: "#E5FFF2" },
   statusPillUnavailable: { backgroundColor: "#F0E8E8" },
