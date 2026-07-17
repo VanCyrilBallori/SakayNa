@@ -8,8 +8,9 @@ import { Dropdown } from "react-native-element-dropdown";
 import BrandLogo from "../components/BrandLogo";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
-import { getRoleRoute, ROLE_OPTIONS } from "../lib/roles";
 import { saveLocalUserProfile } from "../lib/session";
+
+const RESIDENT_ROLE = "Resident";
 
 export default function Signup() {
   const router = useRouter();
@@ -21,14 +22,13 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [barangay, setBarangay] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [role, setRole] = useState("Resident");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignup = async () => {
     setErrorMessage("");
 
-    if (!fullName || !email || !password || !confirmPassword || !barangay || !phoneNumber || !role) {
+    if (!fullName || !email || !password || !confirmPassword || !barangay || !phoneNumber) {
       setErrorMessage("Please complete all signup fields.");
       return;
     }
@@ -48,7 +48,9 @@ export default function Signup() {
         fullName: fullName.trim(),
         barangay: barangay.trim(),
         phoneNumber: phoneNumber.trim(),
-        role,
+        phone: phoneNumber.trim(),
+        role: RESIDENT_ROLE,
+        accountStatus: "Active",
       });
 
       try {
@@ -57,14 +59,16 @@ export default function Signup() {
           email: email.trim().toLowerCase(),
           barangay: barangay.trim(),
           phoneNumber: phoneNumber.trim(),
-          role,
+          phone: phoneNumber.trim(),
+          role: RESIDENT_ROLE,
+          accountStatus: "Active",
           createdAt: serverTimestamp(),
         });
       } catch (firestoreError) {
         console.log("Profile save warning:", firestoreError);
       }
 
-      router.replace(getRoleRoute(role));
+      router.replace("/resident-home");
     } catch (error) {
       console.log("Signup failed:", error);
       setErrorMessage(error.message);
@@ -136,23 +140,6 @@ export default function Signup() {
             onChangeText={setPhoneNumber}
           />
 
-          <Text style={styles.roleLabel}>Select Role</Text>
-          <View style={[styles.roleGrid, isCompact && styles.roleGridCompact]}>
-            {ROLE_OPTIONS.map((option) => {
-              const active = role === option;
-
-              return (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.roleChip, isCompact && styles.roleChipCompact, active && styles.roleChipActive]}
-                  onPress={() => setRole(option)}
-                >
-                  <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>{option}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
           <TouchableOpacity style={[styles.button, isCompact && styles.buttonCompact]} onPress={handleSignup} disabled={isSubmitting}>
@@ -161,6 +148,10 @@ export default function Signup() {
 
           <TouchableOpacity onPress={() => router.push("/login")}>
             <Text style={styles.linkText}>Already have an account? Log In</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.homeButton} onPress={() => router.replace("/")}>
+            <Text style={styles.homeButtonText}>Back Home</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -247,45 +238,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#222222",
   },
-  roleLabel: {
-    marginTop: 4,
-    marginBottom: 10,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333333",
-  },
-  roleGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 14,
-  },
-  roleGridCompact: {
-    gap: 8,
-  },
-  roleChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: "#D7D7D7",
-    borderRadius: 20,
-    backgroundColor: "#F7F7F7",
-  },
-  roleChipCompact: {
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-  },
-  roleChipActive: {
-    backgroundColor: "#008F5B",
-    borderColor: "#008F5B",
-  },
-  roleChipText: {
-    color: "#333333",
-    fontWeight: "600",
-  },
-  roleChipTextActive: {
-    color: "#FFFFFF",
-  },
   errorText: {
     marginBottom: 12,
     color: "#C62828",
@@ -312,5 +264,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: "600",
     alignSelf: "center",
+  },
+  homeButton: {
+    width: "100%",
+    marginTop: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#EAF2EE",
+    alignItems: "center",
+  },
+  homeButtonText: {
+    color: "#0F6B4F",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

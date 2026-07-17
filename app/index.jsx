@@ -152,7 +152,9 @@ export default function Index() {
             <Text style={styles.footerHeading}>Company</Text>
             <Text style={styles.footerLink}>About</Text>
             <Text style={styles.footerLink}>Blog</Text>
-            <Text style={styles.footerLink}>Careers</Text>
+            <TouchableOpacity onPress={() => router.push("/apply-to-drive")}>
+              <Text style={styles.footerLink}>Jobs</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.footerColumn}>
             <Text style={styles.footerHeading}>Emergency</Text>
@@ -160,7 +162,7 @@ export default function Index() {
           </View>
         </View>
         <View style={styles.footerDivider} />
-        <Text style={styles.footerCopy}>2026 SakayNa. All rights reserved.</Text>
+        <Text style={styles.footerCopy}>© 2026 SakayNa. All rights reserved.</Text>
       </View>
     </ScrollView>
   );

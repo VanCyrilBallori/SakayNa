@@ -7,7 +7,6 @@ const firebaseConfig = {
   apiKey: "AIzaSyD5hG_pYOQ3l493HtB0FTAcP-ipJig6O04",
   authDomain: "sakayna-571e8.firebaseapp.com",
   projectId: "sakayna-571e8",
-  storageBucket: "sakayna-571e8.firebasestorage.app",
   messagingSenderId: "374713501645",
   appId: "1:374713501645:web:752bbcefd21409739ba684",
   measurementId: "G-144B4L3TD8",

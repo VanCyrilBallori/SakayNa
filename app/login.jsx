@@ -9,6 +9,14 @@ import { auth, db } from "../firebase";
 import { getRoleRoute } from "../lib/roles";
 import { getLocalUserProfile, saveLocalUserProfile } from "../lib/session";
 
+const getPostLoginRoute = (profile) => {
+  if (profile?.role === "Driver" && profile?.accountStatus !== "Approved") {
+    return "/driver-status";
+  }
+
+  return getRoleRoute(profile?.role);
+};
+
 export default function Login() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -44,10 +52,11 @@ export default function Login() {
             email: userCredential.user.email ?? email,
             fullName: userData.fullName ?? "",
             barangay: userData.barangay ?? "",
-            phoneNumber: userData.phoneNumber ?? "",
+            phoneNumber: userData.phoneNumber ?? userData.phone ?? "",
             role: userData.role ?? "Resident",
+            accountStatus: userData.accountStatus ?? "",
           });
-          router.replace(getRoleRoute(userData.role));
+          router.replace(getPostLoginRoute(userData));
           return;
         }
       } catch (firestoreError) {
@@ -55,7 +64,7 @@ export default function Login() {
       }
 
       if (cachedProfile?.role) {
-        router.replace(getRoleRoute(cachedProfile.role));
+        router.replace(getPostLoginRoute(cachedProfile));
         return;
       }
 
@@ -68,7 +77,7 @@ export default function Login() {
       });
 
       if (cachedProfile?.role && error.message?.includes("Missing or insufficient permissions")) {
-        router.replace(getRoleRoute(cachedProfile.role));
+        router.replace(getPostLoginRoute(cachedProfile));
         return;
       }
 
@@ -112,6 +121,10 @@ export default function Login() {
 
           <TouchableOpacity onPress={() => router.push("/signup")}>
             <Text style={styles.linkText}>No account yet? Create Account</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.homeButton} onPress={() => router.replace("/")}>
+            <Text style={styles.homeButtonText}>Back Home</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -204,5 +217,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: "600",
     alignSelf: "center",
+  },
+  homeButton: {
+    width: "100%",
+    marginTop: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#EAF2EE",
+    alignItems: "center",
+  },
+  homeButtonText: {
+    color: "#0F6B4F",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

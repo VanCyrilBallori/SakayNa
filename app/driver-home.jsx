@@ -1,8 +1,8 @@
 import { Entypo, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { AppState, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, AppState, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import LeafletMap from "../components/LeafletMap";
@@ -14,12 +14,38 @@ export default function DriverHome() {
   const { width } = useWindowDimensions();
   const compact = width < 980;
   const { authUser, displayName, profile } = useCurrentUserProfile();
+  const [accessStatus, setAccessStatus] = useState("checking");
   const [availability, setAvailability] = useState("Unavailable");
   const [assignedTransfer, setAssignedTransfer] = useState(null);
   const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
     if (!authUser?.uid) {
+      router.replace("/login");
+      return undefined;
+    }
+
+    getDoc(doc(db, "users", authUser.uid))
+      .then((snapshot) => {
+        const data = snapshot.data();
+
+        if (data?.role === "Driver" && data?.accountStatus === "Approved") {
+          setAccessStatus("approved");
+          return;
+        }
+
+        router.replace("/driver-status");
+      })
+      .catch((error) => {
+        console.log("Driver access check warning:", error);
+        router.replace("/driver-status");
+      });
+
+    return undefined;
+  }, [authUser?.uid, router]);
+
+  useEffect(() => {
+    if (!authUser?.uid || accessStatus !== "approved") {
       return undefined;
     }
 
@@ -99,10 +125,10 @@ export default function DriverHome() {
 
       markUnavailable();
     };
-  }, [authUser?.uid, authUser?.email, displayName, profile?.email, profile?.fullName]);
+  }, [accessStatus, authUser?.uid, authUser?.email, displayName, profile?.email, profile?.fullName]);
 
   useEffect(() => {
-    if (!authUser?.uid) {
+    if (!authUser?.uid || accessStatus !== "approved") {
       setAssignedTransfer(null);
       return undefined;
     }
@@ -124,7 +150,7 @@ export default function DriverHome() {
     );
 
     return unsubscribe;
-  }, [authUser?.uid]);
+  }, [accessStatus, authUser?.uid]);
 
   const updateMissionStatus = async (nextStatus) => {
     if (!assignedTransfer?.id) {
@@ -176,6 +202,15 @@ export default function DriverHome() {
 
   const request = assignedTransfer?.request;
   const missionStatus = assignedTransfer?.status ?? "Assigned";
+
+  if (accessStatus !== "approved") {
+    return (
+      <View style={styles.accessPage}>
+        <ActivityIndicator color="#06774B" />
+        <Text style={styles.accessText}>Checking driver access...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -307,6 +342,8 @@ export default function DriverHome() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#F5F7F6" },
+  accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
+  accessText: { fontSize: 15, fontWeight: "800", color: "#335E50", textAlign: "center" },
   content: { paddingBottom: 24 },
   container: { width: "100%", maxWidth: 1280, alignSelf: "center", padding: 24, gap: 18 },
   containerCompact: { padding: 16, gap: 16 },

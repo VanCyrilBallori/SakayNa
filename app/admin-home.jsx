@@ -1,81 +1,272 @@
 import { useRouter } from "expo-router";
 import { Feather, FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { collection, doc, getDoc, onSnapshot, serverTimestamp, writeBatch } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import { auth, db } from "../firebase";
 import { useCurrentUserProfile } from "../lib/session";
 
 const sideLinks = ["City Dashboard", "Residents", "Drivers", "Dispatchers", "Vehicles"];
 const dayLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
-const residentRecords = [
-  { name: "John Doe", email: "John.Doe@gmail.com", phone: "0917-123-4567", barangay: "Poblacion, Toledo City", status: "Pending" },
-  { name: "Jane Doe", email: "Jane.Doe@gmail.com", phone: "0918-123-7654", barangay: "Sangi, Toledo City", status: "Pending" },
-  { name: "Richard Roe", email: "Richard.Roe@gmail.com", phone: "0919-123-5467", barangay: "Talavera, Toledo City", status: "Pending" },
-];
-const driverRecords = [
-  { name: "James Martin", vehicle: "Ambulance", license: "Verified", priority: "Critical", feedback: "5 stars", status: "Active" },
-  { name: "Andrew Corbin", vehicle: "Car", license: "Verified", priority: "Non-urgent", feedback: "3 stars", status: "Active" },
-  { name: "Oliver Gavin", vehicle: "Barangay Van", license: "Verified", priority: "Urgent", feedback: "4 stars", status: "Inactive" },
-];
-const dispatcherRecords = [
-  { name: "Saige Fuentes", barangay: "Daanlungsod", account: "Verified", shift: "Offshift", status: "Active" },
-  { name: "Jasper Reed", barangay: "Sangi", account: "Verified", shift: "Onshift", status: "Active" },
-  { name: "Elena Stein", barangay: "Talavera", account: "Verified", shift: "Offshift", status: "Inactive" },
-];
+const ADMIN_ROLE = "Admin";
 const vehicleRecords = [
   { name: "Toyota HiAce Van", type: "van" },
   { name: "Ambulance", type: "ambulance" },
 ];
+
+const formatDate = (value) => {
+  const date = typeof value?.toDate === "function" ? value.toDate() : value ? new Date(value) : null;
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return "Not available";
+  }
+
+  return date.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const getVehicleDetails = (application) => {
+  const details = [application.vehicleYear, application.vehicleMake, application.vehicleModel].filter(Boolean).join(" ");
+  return details || "Not provided";
+};
+
+const getUserVehicleDetails = (user) => {
+  const details = [user.vehicleYear, user.vehicleMake, user.vehicleModel].filter(Boolean).join(" ");
+  return details || "Not provided";
+};
+
+const getUserPhone = (user) => user.phone ?? user.phoneNumber ?? "Not provided";
+
+const getProfilePhoto = (record) => record.profilePhoto || record.photoURL || record.avatarUrl || "";
 
 export default function AdminHome() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 1080;
   const { displayName } = useCurrentUserProfile();
+  const [adminAccessStatus, setAdminAccessStatus] = useState("checking");
   const [selectedSection, setSelectedSection] = useState("City Dashboard");
   const [searchValue, setSearchValue] = useState("");
   const [rangeLabel, setRangeLabel] = useState("Week");
-  const [assignedDriver, setAssignedDriver] = useState("");
-  const [viewedDispatcher, setViewedDispatcher] = useState("");
   const [viewedVehicle, setViewedVehicle] = useState("");
+  const [users, setUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState("");
+  const [driverApplications, setDriverApplications] = useState([]);
+  const [pendingApplications, setPendingApplications] = useState([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(true);
+  const [applicationsError, setApplicationsError] = useState("");
+  const [updatingApplicationId, setUpdatingApplicationId] = useState("");
+  const [applicationsMessage, setApplicationsMessage] = useState("");
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setAdminAccessStatus("unauthorized");
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const role = userDoc.exists() ? userDoc.data()?.role : "";
+
+        if (role === ADMIN_ROLE) {
+          setAdminAccessStatus("authorized");
+          return;
+        }
+
+        setAdminAccessStatus("unauthorized");
+        router.replace("/login");
+      } catch (error) {
+        console.log("Admin role check failed:", error);
+        setAdminAccessStatus("unauthorized");
+        router.replace("/login");
+      }
+    });
+
+    return unsubscribe;
+  }, [router]);
+
+  useEffect(() => {
+    if (adminAccessStatus !== "authorized") {
+      return undefined;
+    }
+
+    const unsubscribe = onSnapshot(
+      collection(db, "Driver_Applications"),
+      (snapshot) => {
+        const nextApplications = snapshot.docs
+          .map((applicationDoc) => ({
+            id: applicationDoc.id,
+            ...applicationDoc.data(),
+          }))
+          .sort((first, second) => {
+            const firstDate = first.createdAt?.toMillis?.() ?? 0;
+            const secondDate = second.createdAt?.toMillis?.() ?? 0;
+            return secondDate - firstDate;
+          });
+
+        setDriverApplications(nextApplications);
+        setPendingApplications(nextApplications.filter((application) => application.status === "Pending"));
+        setIsLoadingApplications(false);
+        setApplicationsError("");
+      },
+      (error) => {
+        console.log("Driver applications listener warning:", error);
+        setApplicationsError("Driver applications could not be loaded. Please check Firestore permissions.");
+        setIsLoadingApplications(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [adminAccessStatus]);
+
+  useEffect(() => {
+    if (adminAccessStatus !== "authorized") {
+      return undefined;
+    }
+
+    const unsubscribe = onSnapshot(
+      collection(db, "users"),
+      (snapshot) => {
+        const nextUsers = snapshot.docs.map((userDoc) => ({
+          id: userDoc.id,
+          ...userDoc.data(),
+        }));
+
+        setUsers(nextUsers);
+        setIsLoadingUsers(false);
+        setUsersError("");
+      },
+      (error) => {
+        console.log("Users listener warning:", error);
+        setUsersError("Users could not be loaded. Please check Firestore permissions.");
+        setIsLoadingUsers(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [adminAccessStatus]);
+
+  const residentUsers = useMemo(() => users.filter((user) => user.role === "Resident"), [users]);
+  const driverUsers = useMemo(() => users.filter((user) => user.role === "Driver"), [users]);
+  const dispatcherUsers = useMemo(() => users.filter((user) => user.role === "Dispatcher"), [users]);
 
   const filteredResidents = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
-    return residentRecords.filter((item) => {
+
+    return residentUsers.filter((item) => {
       if (!query) {
         return true;
       }
 
       return (
-        item.name.toLowerCase().includes(query) ||
-        item.email.toLowerCase().includes(query) ||
-        item.barangay.toLowerCase().includes(query)
+        item.fullName?.toLowerCase().includes(query) ||
+        item.email?.toLowerCase().includes(query) ||
+        getUserPhone(item).toLowerCase().includes(query)
       );
     });
-  }, [searchValue]);
+  }, [residentUsers, searchValue]);
 
   const filteredDrivers = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-    return driverRecords.filter((item) => {
-      if (!query) {
+    const searchQuery = searchValue.trim().toLowerCase();
+
+    return driverUsers.filter((item) => {
+      if (!searchQuery) {
         return true;
       }
 
-      return item.name.toLowerCase().includes(query) || item.vehicle.toLowerCase().includes(query) || item.status.toLowerCase().includes(query);
+      return (
+        item.fullName?.toLowerCase().includes(searchQuery) ||
+        item.email?.toLowerCase().includes(searchQuery) ||
+        getUserPhone(item).toLowerCase().includes(searchQuery) ||
+        item.accountStatus?.toLowerCase().includes(searchQuery) ||
+        getUserVehicleDetails(item).toLowerCase().includes(searchQuery)
+      );
     });
-  }, [searchValue]);
+  }, [driverUsers, searchValue]);
+
+  const getDriverVehicleDetails = (driver) => {
+    const driverApplication = driverApplications.find((application) => application.driverUid === driver.uid || application.driverUid === driver.id);
+    return getUserVehicleDetails(driver) !== "Not provided" ? getUserVehicleDetails(driver) : getVehicleDetails(driverApplication ?? {});
+  };
 
   const filteredDispatchers = useMemo(() => {
+    const searchQuery = searchValue.trim().toLowerCase();
+
+    return dispatcherUsers.filter((item) => {
+      if (!searchQuery) {
+        return true;
+      }
+
+      return item.fullName?.toLowerCase().includes(searchQuery) || item.email?.toLowerCase().includes(searchQuery);
+    });
+  }, [dispatcherUsers, searchValue]);
+
+  const filteredApplications = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
-    return dispatcherRecords.filter((item) => {
+
+    return pendingApplications.filter((item) => {
       if (!query) {
         return true;
       }
 
-      return item.name.toLowerCase().includes(query) || item.barangay.toLowerCase().includes(query) || item.status.toLowerCase().includes(query);
+      return (
+        item.fullName?.toLowerCase().includes(query) ||
+        item.email?.toLowerCase().includes(query) ||
+        item.phone?.toLowerCase().includes(query) ||
+        item.licenseNumber?.toLowerCase().includes(query) ||
+        getVehicleDetails(item).toLowerCase().includes(query)
+      );
     });
-  }, [searchValue]);
+  }, [pendingApplications, searchValue]);
+
+  const updateApplicationStatus = async (application, status) => {
+    if (adminAccessStatus !== "authorized") {
+      setApplicationsError("Only admins can update driver applications.");
+      return;
+    }
+
+    if (!application?.driverUid) {
+      setApplicationsError("This application is missing the driver's Authentication UID.");
+      return;
+    }
+
+    setApplicationsError("");
+    setApplicationsMessage("");
+    setUpdatingApplicationId(application.id);
+
+    try {
+      const batch = writeBatch(db);
+      const statusTimestamp = status === "Approved" ? { approvedAt: serverTimestamp() } : { rejectedAt: serverTimestamp() };
+
+      batch.update(doc(db, "Driver_Applications", application.id), {
+        status,
+        ...statusTimestamp,
+      });
+
+      batch.update(doc(db, "users", application.driverUid), {
+        accountStatus: status,
+        ...statusTimestamp,
+      });
+
+      await batch.commit();
+      setApplicationsMessage(`Application ${status.toLowerCase()} successfully.`);
+    } catch (error) {
+      console.log("Driver application status update failed:", error);
+      setApplicationsError("Application status could not be updated. Please check Firestore permissions.");
+    } finally {
+      setUpdatingApplicationId("");
+    }
+  };
 
   const filteredVehicles = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -87,6 +278,7 @@ export default function AdminHome() {
       return item.name.toLowerCase().includes(query);
     });
   }, [searchValue]);
+
 
   const renderDashboard = () => (
     <>
@@ -126,57 +318,180 @@ export default function AdminHome() {
       </View>
 
       <View style={styles.tableCard}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, styles.nameCol]}>Name</Text>
-          <Text style={[styles.tableHeaderCell, styles.emailCol]}>Email Adress</Text>
-          <Text style={[styles.tableHeaderCell, styles.phoneCol]}>Phone No.</Text>
-          <Text style={[styles.tableHeaderCell, styles.barangayCol]}>Brgy</Text>
-          <Text style={[styles.tableHeaderCell, styles.statusCol]}>Status</Text>
-        </View>
-
-        {filteredResidents.map((resident) => (
-          <View key={resident.email} style={styles.tableRow}>
-            <Text style={[styles.tableCellStrong, styles.nameCol]}>{resident.name}</Text>
-            <Text style={[styles.tableCell, styles.emailCol]}>{resident.email}</Text>
-            <Text style={[styles.tableCell, styles.phoneCol]}>{resident.phone}</Text>
-            <Text style={[styles.tableCell, styles.barangayCol]}>{resident.barangay}</Text>
-            <Text style={[styles.tableCell, styles.statusCol]}>{resident.status}</Text>
+        {isLoadingUsers ? (
+          <View style={styles.tableState}>
+            <ActivityIndicator color="#0B8E59" />
+            <Text style={styles.tableStateText}>Loading residents...</Text>
           </View>
-        ))}
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator>
+            <View style={styles.usersTable}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, styles.photoCol]}>Profile Photo</Text>
+                <Text style={[styles.tableHeaderCell, styles.nameCol]}>Full Name</Text>
+                <Text style={[styles.tableHeaderCell, styles.emailCol]}>Email</Text>
+                <Text style={[styles.tableHeaderCell, styles.phoneCol]}>Phone</Text>
+                <Text style={[styles.tableHeaderCell, styles.statusCol]}>Status</Text>
+                <Text style={[styles.tableHeaderCell, styles.dateAppliedCol]}>Registration Date</Text>
+              </View>
+
+              {filteredResidents.length ? (
+                filteredResidents.map((resident) => (
+                  <View key={resident.id} style={styles.tableRow}>
+                    <View style={[styles.tableCell, styles.photoCol]}>
+                      {getProfilePhoto(resident) ? <Image source={{ uri: getProfilePhoto(resident) }} style={styles.avatarImage} /> : <FontAwesome name="user" size={24} color="#66776F" />}
+                    </View>
+                    <Text style={[styles.tableCellStrong, styles.nameCol]}>{resident.fullName || "Not provided"}</Text>
+                    <Text style={[styles.tableCell, styles.emailCol]}>{resident.email || "Not provided"}</Text>
+                    <Text style={[styles.tableCell, styles.phoneCol]}>{getUserPhone(resident)}</Text>
+                    <Text style={[styles.tableCell, styles.statusCol]}>{resident.accountStatus || "Active"}</Text>
+                    <Text style={[styles.tableCell, styles.dateAppliedCol]}>{formatDate(resident.createdAt)}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.tableState}>
+                  <Text style={styles.tableStateTitle}>No Residents Found</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
       </View>
+      {usersError ? <Text style={styles.errorText}>{usersError}</Text> : null}
     </>
   );
 
   const renderDrivers = () => (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Drivers Management</Text>
+        <Text style={styles.sectionHeaderText}>Pending Driver Applications</Text>
       </View>
 
-      <View style={styles.cardsRow}>
-        {filteredDrivers.map((driver) => (
-          <View key={driver.name} style={styles.managementCard}>
-            <View style={styles.avatarCircle}>
-              <FontAwesome name="user" size={68} color="#000000" />
-            </View>
-            <Text style={styles.managementName}>{driver.name}</Text>
-
-            <View style={styles.detailsCard}>
-              <Text style={styles.detailLine}>Last Assigned Vehicle : {driver.vehicle}</Text>
-              <Text style={styles.detailLine}>License : {driver.license}</Text>
-              <Text style={styles.detailLine}>Last Trip Priority : {driver.priority}</Text>
-              <Text style={styles.detailLine}>Feedback: {driver.feedback}</Text>
-              <Text style={styles.detailLine}>Status: {driver.status}</Text>
-            </View>
-
-            <TouchableOpacity style={styles.viewButton} onPress={() => setAssignedDriver(driver.name)}>
-              <Text style={styles.viewButtonText}>Assign Vehicle</Text>
-            </TouchableOpacity>
+      <View style={styles.tableCard}>
+        {isLoadingApplications ? (
+          <View style={styles.tableState}>
+            <ActivityIndicator color="#0B8E59" />
+            <Text style={styles.tableStateText}>Loading pending applications...</Text>
           </View>
-        ))}
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator>
+            <View style={styles.applicationsTable}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, styles.photoCol]}>Applicant Photo</Text>
+                <Text style={[styles.tableHeaderCell, styles.applicantCol]}>Applicant Name</Text>
+                <Text style={[styles.tableHeaderCell, styles.emailCol]}>Email</Text>
+                <Text style={[styles.tableHeaderCell, styles.phoneCol]}>Phone</Text>
+                <Text style={[styles.tableHeaderCell, styles.licenseCol]}>License Number</Text>
+                <Text style={[styles.tableHeaderCell, styles.vehicleDetailsCol]}>Vehicle</Text>
+                <Text style={[styles.tableHeaderCell, styles.documentCol]}>Uploaded Document</Text>
+                <Text style={[styles.tableHeaderCell, styles.dateAppliedCol]}>Date Applied</Text>
+                <Text style={[styles.tableHeaderCell, styles.actionsCol]}>Actions</Text>
+              </View>
+
+              {filteredApplications.length ? (
+                filteredApplications.map((application) => {
+                  const isUpdating = updatingApplicationId === application.id;
+
+                  return (
+                    <View key={application.id} style={styles.tableRow}>
+                      <View style={[styles.tableCell, styles.photoCol]}>
+                        <FontAwesome name="user" size={24} color="#66776F" />
+                      </View>
+                      <Text style={[styles.tableCellStrong, styles.applicantCol]}>{application.fullName || "Not provided"}</Text>
+                      <Text style={[styles.tableCell, styles.emailCol]}>{application.email || "Not provided"}</Text>
+                      <Text style={[styles.tableCell, styles.phoneCol]}>{application.phone || "Not provided"}</Text>
+                      <Text style={[styles.tableCell, styles.licenseCol]}>{application.licenseNumber || "Not provided"}</Text>
+                      <Text style={[styles.tableCell, styles.vehicleDetailsCol]}>{getVehicleDetails(application)}</Text>
+                      <View style={[styles.tableCell, styles.documentCol]}>
+                        {application.uploaded_document ? (
+                          <TouchableOpacity onPress={() => setPreviewImageUrl(application.uploaded_document)}>
+                            <Image source={{ uri: application.uploaded_document }} style={styles.documentImage} />
+                          </TouchableOpacity>
+                        ) : (
+                          <Text style={styles.tableMutedText}>No image</Text>
+                        )}
+                      </View>
+                      <Text style={[styles.tableCell, styles.dateAppliedCol]}>{formatDate(application.createdAt)}</Text>
+                      <View style={[styles.tableCell, styles.actionsCol, styles.actionsCell]}>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.approveButton, isUpdating && styles.actionButtonDisabled]}
+                          onPress={() => updateApplicationStatus(application, "Approved")}
+                          disabled={isUpdating}
+                        >
+                          <Text style={styles.actionButtonText}>{isUpdating ? "Saving..." : "Approve"}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.rejectButton, isUpdating && styles.actionButtonDisabled]}
+                          onPress={() => updateApplicationStatus(application, "Rejected")}
+                          disabled={isUpdating}
+                        >
+                          <Text style={styles.actionButtonText}>Reject</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.tableState}>
+                  <Text style={styles.tableStateTitle}>No pending applications</Text>
+                  <Text style={styles.tableStateText}>New driver applications will appear here for review.</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
       </View>
 
-      {assignedDriver ? <Text style={styles.feedbackText}>Vehicle assignment opened for {assignedDriver}.</Text> : null}
+      {applicationsError ? <Text style={styles.errorText}>{applicationsError}</Text> : null}
+      {applicationsMessage ? <Text style={styles.feedbackText}>{applicationsMessage}</Text> : null}
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionHeaderText}>Driver Accounts</Text>
+      </View>
+
+      <View style={styles.tableCard}>
+        {isLoadingUsers ? (
+          <View style={styles.tableState}>
+            <ActivityIndicator color="#0B8E59" />
+            <Text style={styles.tableStateText}>Loading drivers...</Text>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator>
+            <View style={styles.usersTable}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, styles.photoCol]}>Profile Photo</Text>
+                <Text style={[styles.tableHeaderCell, styles.nameCol]}>Full Name</Text>
+                <Text style={[styles.tableHeaderCell, styles.emailCol]}>Email</Text>
+                <Text style={[styles.tableHeaderCell, styles.phoneCol]}>Phone</Text>
+                <Text style={[styles.tableHeaderCell, styles.statusCol]}>Account Status</Text>
+                <Text style={[styles.tableHeaderCell, styles.dateAppliedCol]}>Approved Date</Text>
+                <Text style={[styles.tableHeaderCell, styles.vehicleDetailsCol]}>Vehicle</Text>
+              </View>
+
+              {filteredDrivers.length ? (
+                filteredDrivers.map((driver) => (
+                  <View key={driver.id} style={styles.tableRow}>
+                    <View style={[styles.tableCell, styles.photoCol]}>
+                      {getProfilePhoto(driver) ? <Image source={{ uri: getProfilePhoto(driver) }} style={styles.avatarImage} /> : <FontAwesome name="user" size={24} color="#66776F" />}
+                    </View>
+                    <Text style={[styles.tableCellStrong, styles.nameCol]}>{driver.fullName || "Not provided"}</Text>
+                    <Text style={[styles.tableCell, styles.emailCol]}>{driver.email || "Not provided"}</Text>
+                    <Text style={[styles.tableCell, styles.phoneCol]}>{getUserPhone(driver)}</Text>
+                    <Text style={[styles.tableCell, styles.statusCol]}>{driver.accountStatus || "Pending"}</Text>
+                    <Text style={[styles.tableCell, styles.dateAppliedCol]}>{formatDate(driver.approvedAt)}</Text>
+                    <Text style={[styles.tableCell, styles.vehicleDetailsCol]}>{getDriverVehicleDetails(driver)}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.tableState}>
+                  <Text style={styles.tableStateTitle}>No Drivers Found</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
+      </View>
+      {usersError ? <Text style={styles.errorText}>{usersError}</Text> : null}
     </>
   );
 
@@ -186,29 +501,46 @@ export default function AdminHome() {
         <Text style={styles.sectionHeaderText}>Dispatchers</Text>
       </View>
 
-      <View style={styles.cardsRow}>
-        {filteredDispatchers.map((dispatcher) => (
-          <View key={dispatcher.name} style={styles.managementCard}>
-            <View style={styles.avatarCircle}>
-              <FontAwesome name="user" size={68} color="#000000" />
-            </View>
-            <Text style={styles.managementName}>{dispatcher.name}</Text>
-
-            <View style={styles.detailsCard}>
-              <Text style={styles.detailLine}>Assigned Brgy : {dispatcher.barangay}</Text>
-              <Text style={styles.detailLine}>Account : {dispatcher.account}</Text>
-              <Text style={styles.detailLine}>Shift : {dispatcher.shift}</Text>
-              <Text style={styles.detailLine}>Status: {dispatcher.status}</Text>
-            </View>
-
-            <TouchableOpacity style={styles.viewButton} onPress={() => setViewedDispatcher(dispatcher.name)}>
-              <Text style={styles.viewButtonText}>View</Text>
-            </TouchableOpacity>
+      <View style={styles.tableCard}>
+        {isLoadingUsers ? (
+          <View style={styles.tableState}>
+            <ActivityIndicator color="#0B8E59" />
+            <Text style={styles.tableStateText}>Loading dispatchers...</Text>
           </View>
-        ))}
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator>
+            <View style={styles.usersTable}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderCell, styles.photoCol]}>Profile</Text>
+                <Text style={[styles.tableHeaderCell, styles.nameCol]}>Name</Text>
+                <Text style={[styles.tableHeaderCell, styles.emailCol]}>Email</Text>
+                <Text style={[styles.tableHeaderCell, styles.statusCol]}>Status</Text>
+                <Text style={[styles.tableHeaderCell, styles.dateAppliedCol]}>Created Date</Text>
+              </View>
+
+              {filteredDispatchers.length ? (
+                filteredDispatchers.map((dispatcher) => (
+                  <View key={dispatcher.id} style={styles.tableRow}>
+                    <View style={[styles.tableCell, styles.photoCol]}>
+                      {getProfilePhoto(dispatcher) ? <Image source={{ uri: getProfilePhoto(dispatcher) }} style={styles.avatarImage} /> : <FontAwesome name="user" size={24} color="#66776F" />}
+                    </View>
+                    <Text style={[styles.tableCellStrong, styles.nameCol]}>{dispatcher.fullName || "Not provided"}</Text>
+                    <Text style={[styles.tableCell, styles.emailCol]}>{dispatcher.email || "Not provided"}</Text>
+                    <Text style={[styles.tableCell, styles.statusCol]}>{dispatcher.accountStatus || "Active"}</Text>
+                    <Text style={[styles.tableCell, styles.dateAppliedCol]}>{formatDate(dispatcher.createdAt)}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.tableState}>
+                  <Text style={styles.tableStateTitle}>No Dispatchers Found</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        )}
       </View>
 
-      {viewedDispatcher ? <Text style={styles.feedbackText}>Viewing dispatcher profile for {viewedDispatcher}.</Text> : null}
+      {usersError ? <Text style={styles.errorText}>{usersError}</Text> : null}
     </>
   );
 
@@ -260,6 +592,15 @@ export default function AdminHome() {
     return renderDashboard();
   };
 
+  if (adminAccessStatus !== "authorized") {
+    return (
+      <View style={styles.accessPage}>
+        <ActivityIndicator color="#0B8E59" />
+        <Text style={styles.accessText}>Checking admin access...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <AppBrandHeader role="Admin" name={displayName} onLogoutPress={() => router.replace("/")} />
@@ -306,12 +647,22 @@ export default function AdminHome() {
           </View>
         </View>
       </View>
+      <Modal visible={Boolean(previewImageUrl)} transparent animationType="fade" onRequestClose={() => setPreviewImageUrl("")}>
+        <View style={styles.imageModalOverlay}>
+          <TouchableOpacity style={styles.imageModalCloseArea} onPress={() => setPreviewImageUrl("")}>
+            <Image source={{ uri: previewImageUrl }} style={styles.imageModalPreview} resizeMode="contain" />
+            <Text style={styles.imageModalCloseText}>Tap anywhere to close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#F5F7F6" },
+  accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
+  accessText: { fontSize: 15, fontWeight: "800", color: "#335E50", textAlign: "center" },
   content: { paddingBottom: 24 },
   container: { width: "100%", maxWidth: 1460, alignSelf: "center", padding: 24 },
   containerCompact: { padding: 16 },
@@ -376,11 +727,48 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#1B1B1B" },
   tableCell: { paddingVertical: 14, paddingHorizontal: 10, fontSize: 13, color: "#1F1F1F", borderRightWidth: 1, borderRightColor: "#1B1B1B" },
   tableCellStrong: { paddingVertical: 14, paddingHorizontal: 10, fontSize: 13, fontWeight: "700", color: "#1F1F1F", borderRightWidth: 1, borderRightColor: "#1B1B1B" },
+  photoCol: { width: 130, alignItems: "center", justifyContent: "center" },
   nameCol: { width: 170 },
+  applicantCol: { width: 190 },
   emailCol: { width: 250 },
   phoneCol: { width: 180 },
+  licenseCol: { width: 180 },
+  vehicleDetailsCol: { width: 220 },
+  documentCol: { width: 180 },
+  dateAppliedCol: { width: 150 },
+  actionsCol: { width: 210, borderRightWidth: 0 },
   barangayCol: { flex: 1, minWidth: 260 },
   statusCol: { width: 140, borderRightWidth: 0 },
+  applicationsTable: { minWidth: 1690 },
+  usersTable: { minWidth: 1020 },
+  tableState: { padding: 24, alignItems: "center", justifyContent: "center", gap: 8 },
+  tableStateTitle: { fontSize: 16, fontWeight: "800", color: "#17382E" },
+  tableStateText: { fontSize: 14, lineHeight: 20, color: "#5C7269", textAlign: "center" },
+  tableMutedText: { fontSize: 12, color: "#66776F" },
+  avatarImage: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#EAF2EE" },
+  documentImage: { width: 86, height: 58, borderRadius: 8, backgroundColor: "#EAF2EE" },
+  documentButton: {
+    minHeight: 34,
+    borderRadius: 8,
+    backgroundColor: "#EAF2EE",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  documentButtonText: { fontSize: 12, fontWeight: "800", color: "#06774B" },
+  actionsCell: { flexDirection: "row", gap: 8, alignItems: "center" },
+  actionButton: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  approveButton: { backgroundColor: "#06774B" },
+  rejectButton: { backgroundColor: "#B42318" },
+  actionButtonDisabled: { backgroundColor: "#78968A" },
+  actionButtonText: { fontSize: 12, fontWeight: "800", color: "#FFFFFF" },
   cardsRow: { flexDirection: "row", flexWrap: "wrap", gap: 18 },
   managementCard: {
     flexGrow: 1,
@@ -435,6 +823,70 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#111111",
   },
+  staffPanel: {
+    padding: 22,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#D7E2DC",
+    gap: 20,
+  },
+  staffIntro: { flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "center" },
+  staffIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#EAF2EE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  staffIntroCopy: { flex: 1, minWidth: 240 },
+  staffTitle: { fontSize: 24, fontWeight: "900", color: "#17382E" },
+  staffDescription: { marginTop: 6, fontSize: 15, lineHeight: 22, color: "#5C7269" },
+  inviteForm: { flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-end" },
+  inviteField: { flexGrow: 1, flexBasis: 260, gap: 8 },
+  inputLabel: { fontSize: 13, fontWeight: "800", color: "#335E50" },
+  inviteInput: {
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: "#D3DED8",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: "#111111",
+    backgroundColor: "#FAFCFB",
+  },
+  roleOptions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  roleOption: {
+    minHeight: 54,
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D3DED8",
+    backgroundColor: "#FAFCFB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  roleOptionActive: { backgroundColor: "#06774B", borderColor: "#06774B" },
+  roleOptionText: { fontSize: 15, fontWeight: "800", color: "#335E50" },
+  roleOptionTextActive: { color: "#FFFFFF" },
+  inviteButton: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    backgroundColor: "#06774B",
+  },
+  inviteButtonDisabled: { backgroundColor: "#78968A" },
+  inviteButtonText: { fontSize: 15, fontWeight: "900", color: "#FFFFFF" },
+  imageModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", alignItems: "center", justifyContent: "center", padding: 20 },
+  imageModalCloseArea: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
+  imageModalPreview: { width: "100%", height: "84%" },
+  imageModalCloseText: { marginTop: 12, fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
   vehicleRow: { flexDirection: "row", flexWrap: "wrap", gap: 18 },
   vehicleCard: {
     flexGrow: 1,
@@ -479,5 +931,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#335E50",
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#B42318",
   },
 });
