@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useState } from "react";
@@ -23,6 +24,7 @@ export default function Login() {
   const isCompact = width < 420;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -89,6 +91,15 @@ export default function Login() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Back to home"
+        style={[styles.backButton, isCompact && styles.backButtonCompact]}
+        onPress={() => router.replace("/")}
+      >
+        <Feather name="arrow-left" size={20} color="#0F6B4F" />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={[styles.card, isCompact && styles.cardCompact]}>
           <BrandLogo variant="main" height={isCompact ? 34 : 40} style={styles.brandLogo} />
@@ -104,14 +115,24 @@ export default function Login() {
             value={email}
             onChangeText={setEmail}
           />
-          <TextInput
-            style={[styles.input, isCompact && styles.inputCompact]}
-            placeholder="Password"
-            placeholderTextColor="#8B8B8B"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+          <View style={styles.passwordWrap}>
+            <TextInput
+              style={[styles.passwordInput, isCompact && styles.inputCompact]}
+              placeholder="Password"
+              placeholderTextColor="#8B8B8B"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              style={styles.eyeButton}
+              onPress={() => setShowPassword((current) => !current)}
+            >
+              <Feather name={showPassword ? "eye-off" : "eye"} size={20} color="#6F6F6F" />
+            </TouchableOpacity>
+          </View>
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
@@ -121,10 +142,6 @@ export default function Login() {
 
           <TouchableOpacity onPress={() => router.push("/signup")}>
             <Text style={styles.linkText}>No account yet? Create Account</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.homeButton} onPress={() => router.replace("/")}>
-            <Text style={styles.homeButtonText}>Back Home</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -136,6 +153,29 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: "#F3F0EB",
+  },
+  backButton: {
+    position: "absolute",
+    top: 24,
+    right: 20,
+    zIndex: 2,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderWidth: 1,
+    borderColor: "#DDE5E0",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  backButtonCompact: {
+    top: 18,
+    right: 16,
   },
   content: {
     flexGrow: 1,
@@ -191,6 +231,31 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
   },
+  passwordWrap: {
+    width: "100%",
+    minHeight: 50,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D7D7D7",
+    borderRadius: 12,
+    backgroundColor: "#FCFCFC",
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingLeft: 14,
+    paddingRight: 8,
+    fontSize: 15,
+    color: "#111111",
+  },
+  eyeButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   errorText: {
     marginBottom: 12,
     color: "#C62828",
@@ -217,18 +282,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: "600",
     alignSelf: "center",
-  },
-  homeButton: {
-    width: "100%",
-    marginTop: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#EAF2EE",
-    alignItems: "center",
-  },
-  homeButtonText: {
-    color: "#0F6B4F",
-    fontSize: 15,
-    fontWeight: "700",
   },
 });

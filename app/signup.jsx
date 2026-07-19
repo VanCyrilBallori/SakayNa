@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
@@ -20,6 +21,8 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [barangay, setBarangay] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -79,6 +82,15 @@ export default function Signup() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Back to home"
+        style={[styles.backButton, isCompact && styles.backButtonCompact]}
+        onPress={() => router.replace("/")}
+      >
+        <Feather name="arrow-left" size={20} color="#0F6B4F" />
+      </TouchableOpacity>
+
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={[styles.card, isCompact && styles.cardCompact]}>
           <BrandLogo variant="main" height={isCompact ? 34 : 40} style={styles.brandLogo} />
@@ -101,29 +113,51 @@ export default function Signup() {
             value={email}
             onChangeText={setEmail}
           />
-          <TextInput
-            style={[styles.input, isCompact && styles.inputCompact]}
-            placeholder="Password"
-            placeholderTextColor="#8B8B8B"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TextInput
-            style={[styles.input, isCompact && styles.inputCompact]}
-            placeholder="Confirm Password"
-            placeholderTextColor="#8B8B8B"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
+          <View style={styles.passwordWrap}>
+            <TextInput
+              style={[styles.passwordInput, isCompact && styles.inputCompact]}
+              placeholder="Password"
+              placeholderTextColor="#8B8B8B"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+              style={styles.eyeButton}
+              onPress={() => setShowPassword((current) => !current)}
+            >
+              <Feather name={showPassword ? "eye-off" : "eye"} size={20} color="#6F6F6F" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.passwordWrap}>
+            <TextInput
+              style={[styles.passwordInput, isCompact && styles.inputCompact]}
+              placeholder="Confirm Password"
+              placeholderTextColor="#8B8B8B"
+              secureTextEntry={!showConfirmPassword}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              style={styles.eyeButton}
+              onPress={() => setShowConfirmPassword((current) => !current)}
+            >
+              <Feather name={showConfirmPassword ? "eye-off" : "eye"} size={20} color="#6F6F6F" />
+            </TouchableOpacity>
+          </View>
           <Dropdown
-            style={[styles.dropdown, isCompact && styles.dropdownCompact]}
+            style={[styles.dropdown, isCompact && styles.inputCompact]}
+            containerStyle={styles.dropdownContainer}
             maxHeight={220}
             search
             searchPlaceholder="Search barangay..."
             placeholderStyle={styles.dropdownPlaceholder}
             selectedTextStyle={styles.dropdownSelectedText}
+            itemTextStyle={styles.dropdownItemText}
             data={TOLEDO_BARANGAY_OPTIONS}
             labelField="label"
             valueField="value"
@@ -149,10 +183,6 @@ export default function Signup() {
           <TouchableOpacity onPress={() => router.push("/login")}>
             <Text style={styles.linkText}>Already have an account? Log In</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.homeButton} onPress={() => router.replace("/")}>
-            <Text style={styles.homeButtonText}>Back Home</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -163,6 +193,29 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: "#F3F0EB",
+  },
+  backButton: {
+    position: "absolute",
+    top: 24,
+    right: 20,
+    zIndex: 2,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderWidth: 1,
+    borderColor: "#DDE5E0",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  backButtonCompact: {
+    top: 18,
+    right: 16,
   },
   content: {
     flexGrow: 1,
@@ -218,25 +271,58 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
   },
-  dropdown: {
+  passwordWrap: {
+    width: "100%",
+    minHeight: 50,
     marginBottom: 12,
-    minHeight: 72,
-    borderRadius: 18,
-    backgroundColor: "#D9D9D9",
-    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#D7D7D7",
+    borderRadius: 12,
+    backgroundColor: "#FCFCFC",
   },
-  dropdownCompact: {
-    minHeight: 58,
-    borderRadius: 14,
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingLeft: 14,
+    paddingRight: 8,
+    fontSize: 15,
+    color: "#111111",
+  },
+  eyeButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropdown: {
+    width: "100%",
+    minHeight: 50,
     paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#D7D7D7",
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: "#FCFCFC",
+  },
+  dropdownContainer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D7D7D7",
+    backgroundColor: "#FFFFFF",
   },
   dropdownPlaceholder: {
-    fontSize: 18,
-    color: "#696969",
+    fontSize: 15,
+    color: "#8B8B8B",
   },
   dropdownSelectedText: {
-    fontSize: 18,
-    color: "#222222",
+    fontSize: 15,
+    color: "#111111",
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: "#111111",
   },
   errorText: {
     marginBottom: 12,
@@ -264,18 +350,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: "600",
     alignSelf: "center",
-  },
-  homeButton: {
-    width: "100%",
-    marginTop: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#EAF2EE",
-    alignItems: "center",
-  },
-  homeButtonText: {
-    color: "#0F6B4F",
-    fontSize: 15,
-    fontWeight: "700",
   },
 });
