@@ -1,0 +1,208 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDocPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function userDocumentExists() {
+      return signedIn() && exists(userDocPath(request.auth.uid));
+    }
+
+    function userData() {
+      return get(userDocPath(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return userData().role;
+    }
+
+    function isAdmin() {
+      return userDocumentExists() && userRole() == "Admin";
+    }
+
+    function isDispatcher() {
+      return userDocumentExists() && userRole() == "Dispatcher";
+    }
+
+    function isDriver() {
+      return userDocumentExists() && userRole() == "Driver";
+    }
+
+    function isApprovedDriver() {
+      return isDriver() && userData().accountStatus == "Approved";
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || isDispatcher() || (signedIn() && request.auth.uid == userId);
+
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && (
+          (
+            request.resource.data.role == "Resident"
+            && (
+              !request.resource.data.keys().hasAny(["accountStatus"])
+              || request.resource.data.accountStatus == "Active"
+            )
+          )
+          ||
+          (
+            request.resource.data.role == "Driver"
+            && request.resource.data.accountStatus == "Pending"
+          )
+        );
+
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && request.auth.uid == userId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.accountStatus == resource.data.accountStatus
+          && (
+            !("approvalStatus" in resource.data)
+            || request.resource.data.approvalStatus == resource.data.approvalStatus
+          )
+          && (
+            !("useOwnVehicle" in resource.data)
+            || request.resource.data.useOwnVehicle == resource.data.useOwnVehicle
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /transportRequests/{requestId} {
+      allow create: if signedIn()
+        && request.resource.data.residentId == request.auth.uid
+        && request.resource.data.status == "Pending";
+
+      allow read: if isAdmin()
+        || isDispatcher()
+        || (signedIn() && resource.data.residentId == request.auth.uid)
+        || (isApprovedDriver() && resource.data.assignedDriverId == request.auth.uid);
+
+      allow update: if isAdmin()
+        || isDispatcher()
+        || (
+          signedIn()
+          && resource.data.residentId == request.auth.uid
+          && request.resource.data.residentId == resource.data.residentId
+        )
+        || (
+          isApprovedDriver()
+          && resource.data.assignedDriverId == request.auth.uid
+          && request.resource.data.assignedDriverId == resource.data.assignedDriverId
+          && request.resource.data.residentId == resource.data.residentId
+        );
+
+      allow delete: if isAdmin() || isDispatcher();
+    }
+
+    match /driverAssignments/{assignmentId} {
+      allow read: if isAdmin()
+        || isDispatcher()
+        || (signedIn() && resource.data.driverId == request.auth.uid);
+
+      allow create: if isAdmin() || isDispatcher();
+
+      allow update: if isAdmin()
+        || isDispatcher()
+        || (
+          isApprovedDriver()
+          && resource.data.driverId == request.auth.uid
+          && request.resource.data.driverId == resource.data.driverId
+          && request.resource.data.requestId == resource.data.requestId
+        );
+
+      allow delete: if isAdmin() || isDispatcher();
+    }
+
+    match /callSessions/{callId} {
+      allow create: if signedIn()
+        && request.resource.data.residentId == request.auth.uid
+        && request.resource.data.targetRole == "Dispatcher"
+        && request.resource.data.status == "ringing";
+
+      allow read: if isAdmin()
+        || isDispatcher()
+        || (signedIn() && resource.data.residentId == request.auth.uid);
+
+      allow update: if isAdmin()
+        || isDispatcher()
+        || (
+          signedIn()
+          && resource.data.residentId == request.auth.uid
+          && request.resource.data.residentId == resource.data.residentId
+        );
+
+      allow delete: if isAdmin() || isDispatcher();
+    }
+
+    match /Driver_Applications/{applicationId} {
+      allow create: if signedIn()
+        && request.resource.data.driverUid == request.auth.uid
+        && request.resource.data.status == "Pending";
+
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.driverUid == request.auth.uid);
+
+      allow update: if isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if isAdmin() || isDispatcher() || isApprovedDriver();
+
+      allow create, delete: if isAdmin();
+
+      allow update: if isAdmin()
+        || isDispatcher()
+        || (
+          isApprovedDriver()
+          && (
+            resource.data.ownerUid == request.auth.uid
+            || resource.data.assignedDriverId == request.auth.uid
+          )
+        );
+    }
+
+    match /driverSchedules/{scheduleId} {
+      allow read: if isAdmin()
+        || isDispatcher()
+        || (signedIn() && resource.data.driverUid == request.auth.uid);
+
+      allow create: if isAdmin()
+        || isDispatcher()
+        || (
+          isApprovedDriver()
+          && request.resource.data.driverUid == request.auth.uid
+        );
+
+      allow update: if isAdmin()
+        || isDispatcher()
+        || (
+          isApprovedDriver()
+          && resource.data.driverUid == request.auth.uid
+          && request.resource.data.driverUid == resource.data.driverUid
+        );
+
+      allow delete: if isAdmin()
+        || isDispatcher()
+        || (
+          isApprovedDriver()
+          && resource.data.driverUid == request.auth.uid
+        );
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

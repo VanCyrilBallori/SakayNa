@@ -1,4 +1,4 @@
-import { FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import BrandLogo from "../components/BrandLogo";
@@ -11,32 +11,32 @@ export default function Index() {
 
   const features = [
     {
-      icon: <Ionicons name="globe-outline" size={24} color="#FFFFFF" />,
+      icon: <FontAwesome name="globe" size={24} color="#FFFFFF" />,
       title: "Web and Mobile Access",
       text: "Residents and responders can use the system on desktop or mobile.",
     },
     {
-      icon: <MaterialIcons name="crisis-alert" size={24} color="#FFFFFF" />,
+      icon: <FontAwesome name="warning" size={24} color="#FFFFFF" />,
       title: "Emergency Request",
       text: "Residents can quickly send emergency requests when urgent help is needed.",
     },
     {
-      icon: <FontAwesome5 name="ambulance" size={20} color="#FFFFFF" />,
+      icon: <FontAwesome name="ambulance" size={20} color="#FFFFFF" />,
       title: "Vehicle Assignment",
       text: "Available vehicles can be matched to active requests.",
     },
     {
-      icon: <Ionicons name="warning-outline" size={24} color="#FFFFFF" />,
+      icon: <FontAwesome name="exclamation-triangle" size={24} color="#FFFFFF" />,
       title: "Disaster Response Mode",
       text: "Supports evacuation and emergency transport during disaster response.",
     },
     {
-      icon: <MaterialCommunityIcons name="chart-donut" size={22} color="#FFFFFF" />,
+      icon: <FontAwesome name="pie-chart" size={22} color="#FFFFFF" />,
       title: "Reports and Analytics",
       text: "View reports and response activity in one place.",
     },
     {
-      icon: <MaterialCommunityIcons name="view-dashboard-outline" size={22} color="#FFFFFF" />,
+      icon: <FontAwesome name="dashboard" size={22} color="#FFFFFF" />,
       title: "Role-Based Dashboards",
       text: "Separate dashboards are available for each user role.",
     },

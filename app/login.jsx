@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Feather } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useState } from "react";
@@ -97,7 +97,7 @@ export default function Login() {
         style={[styles.backButton, isCompact && styles.backButtonCompact]}
         onPress={() => router.replace("/")}
       >
-        <Feather name="arrow-left" size={20} color="#0F6B4F" />
+        <FontAwesome name="arrow-left" size={20} color="#0F6B4F" />
       </TouchableOpacity>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -130,7 +130,7 @@ export default function Login() {
               style={styles.eyeButton}
               onPress={() => setShowPassword((current) => !current)}
             >
-              <Feather name={showPassword ? "eye-off" : "eye"} size={20} color="#6F6F6F" />
+              <FontAwesome name={showPassword ? "eye-slash" : "eye"} size={20} color="#6F6F6F" />
             </TouchableOpacity>
           </View>
 

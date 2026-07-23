@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
@@ -29,14 +29,11 @@ const patientConditionOptions = [
 
 const vehicleTypeOptions = [
   { label: "Ambulance", value: "Ambulance" },
-  { label: "Rescue Vehicle", value: "Rescue Vehicle" },
   { label: "SUV", value: "SUV" },
   { label: "Pickup Truck", value: "Pickup Truck" },
   { label: "Sedan", value: "Sedan" },
-  { label: "Hatchback", value: "Hatchback" },
   { label: "Cargo Van", value: "Cargo Van" },
   { label: "Passenger Van", value: "Passenger Van" },
-  { label: "Flatbed Trailer", value: "Flatbed Trailer" },
 ];
 
 const priorityByEmergencyType = {
@@ -295,6 +292,7 @@ export default function ResidentHome() {
       await addDoc(collection(db, "transportRequests"), {
         residentId: authUser.uid,
         residentName: displayName,
+        requestType: "Emergency Request",
         level: priorityLevel,
         priorityLevel,
         status: "Pending",
@@ -334,8 +332,8 @@ export default function ResidentHome() {
 
   const menuItems = [
     { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
-    { key: "history", label: "History", icon: "clock", action: () => {} },
-    { key: "settings", label: "Settings", icon: "settings", action: () => {} },
+    { key: "history", label: "History", icon: "clock-o", action: () => {} },
+    { key: "settings", label: "Settings", icon: "cog", action: () => {} },
   ];
 
   return (
@@ -372,7 +370,7 @@ export default function ResidentHome() {
 
           <View style={styles.cardsGrid}>
             <View style={[styles.featureCard, { backgroundColor: theme.emergencyCard }]}>
-              <MaterialCommunityIcons name="alarm-light-outline" size={compact ? 32 : 38} color="#C70000" />
+              <FontAwesome name="warning" size={compact ? 32 : 38} color="#C70000" />
               <Text style={[styles.cardTitle, { color: theme.text }]}>Emergency</Text>
               <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Call the dispatcher immediately for urgent help and emergency coordination.</Text>
               <TouchableOpacity style={styles.sosButton} onPress={() => handleQuickAction("emergency-call")}>
@@ -381,7 +379,7 @@ export default function ResidentHome() {
             </View>
 
             <View style={[styles.featureCard, { backgroundColor: theme.transportCard }]}>
-              <Feather name="clipboard" size={compact ? 28 : 34} color="#D88400" />
+              <FontAwesome name="clipboard" size={compact ? 28 : 34} color="#D88400" />
               <Text style={[styles.cardTitle, { color: theme.text }]}>Transport Request</Text>
               <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Send your emergency type, vehicle type, pickup barangay, and exact location details.</Text>
               <TouchableOpacity style={styles.bookingButton} onPress={() => handleQuickAction("transport")}>
@@ -390,7 +388,7 @@ export default function ResidentHome() {
             </View>
 
             <View style={[styles.featureCard, { backgroundColor: theme.statusCard }]}>
-              <MaterialCommunityIcons name="map-marker-radius-outline" size={compact ? 32 : 38} color="#06774B" />
+              <FontAwesome name="map-marker" size={compact ? 32 : 38} color="#06774B" />
               <Text style={[styles.cardTitle, { color: theme.text }]}>Current Ride Status</Text>
               <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Check your latest request progress and see when a driver has been assigned.</Text>
               <TouchableOpacity style={styles.statusButton} onPress={() => handleQuickAction("status")}>
@@ -559,7 +557,7 @@ export default function ResidentHome() {
       <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <MaterialCommunityIcons name="phone-alert-outline" size={52} color="#CF0000" />
+            <FontAwesome name="phone" size={52} color="#CF0000" />
             <Text style={[styles.callTitle, { color: theme.text }]}>Call Emergency Help?</Text>
             <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Are you sure you want to call Emergency Help?</Text>
 
@@ -584,7 +582,7 @@ export default function ResidentHome() {
       <Modal visible={callOpen} transparent animationType="fade" onRequestClose={endEmergencyCall}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <MaterialCommunityIcons name="phone-in-talk-outline" size={52} color="#CF0000" />
+            <FontAwesome name="phone" size={52} color="#CF0000" />
             <Text style={[styles.callTitle, { color: theme.text }]}>
               {callStatus === "connected" ? "Connected to Dispatcher" : callStatus === "ringing" ? "Calling Dispatcher" : "Emergency Call"}
             </Text>
@@ -616,7 +614,7 @@ export default function ResidentHome() {
               {menuItems.map((item) => (
                 <TouchableOpacity key={item.key} style={styles.menuItem} onPress={item.action}>
                   <View style={styles.menuItemLeft}>
-                    <Feather name={item.icon} size={18} color={theme.mutedText} />
+                    <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
                     <Text style={[styles.menuItemText, { color: theme.text }]}>{item.label}</Text>
                   </View>
                   {item.key === "profile" ? null : <Text style={[styles.menuItemSoon, { color: theme.secondaryText }]}>Soon</Text>}
@@ -625,7 +623,7 @@ export default function ResidentHome() {
 
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
-                  <Feather name={theme.mode === "Dark" ? "moon" : "sun"} size={18} color={theme.mutedText} />
+                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
                   <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
                 </View>
                 <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
@@ -638,7 +636,7 @@ export default function ResidentHome() {
               style={styles.logoutMenuButton}
               onPress={() => {
                 setProfileMenuOpen(false);
-                router.replace("/");
+                router.replace("/login");
               }}
             >
               <Text style={styles.logoutMenuButtonText}>Log Out</Text>

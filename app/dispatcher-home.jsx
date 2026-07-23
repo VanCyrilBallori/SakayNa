@@ -1,12 +1,18 @@
-import { Feather, FontAwesome } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import LeafletMap from "../components/LeafletMap";
 import { db } from "../firebase";
+import {
+  DRIVER_SCHEDULE_COLLECTION,
+  formatScheduleWindow,
+  getDateFromValue,
+  getDriverAvailabilityState,
+} from "../lib/driverScheduling";
 import { useCurrentUserProfile } from "../lib/session";
 
 const getRequestStyle = (level) => {
@@ -30,13 +36,15 @@ export default function DispatcherHome() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [drivers, setDrivers] = useState([]);
-  const [mapStatus, setMapStatus] = useState("Ready");
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [requestToAssign, setRequestToAssign] = useState(null);
   const [assignmentMessage, setAssignmentMessage] = useState("");
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
   const [activeAssignments, setActiveAssignments] = useState([]);
   const [incomingCall, setIncomingCall] = useState(null);
+  const [vehicles, setVehicles] = useState([]);
+  const [selectedVehicleId, setSelectedVehicleId] = useState("");
+  const [driverSchedules, setDriverSchedules] = useState([]);
 
   const visibleRequests = useMemo(() => requests.filter((request) => !assignedRequestIds.includes(request.id)), [assignedRequestIds, requests]);
   const pendingRequests = useMemo(() => visibleRequests.filter((request) => request.status === "Pending"), [visibleRequests]);
@@ -56,6 +64,124 @@ export default function DispatcherHome() {
   const selectedDriverWithAssignment = useMemo(
     () => driversWithAssignments.find((driver) => driver.id === selectedDriver?.id) ?? selectedDriver,
     [driversWithAssignments, selectedDriver]
+  );
+  const occupiedVehicleIds = useMemo(
+    () =>
+      activeAssignments
+        .filter((assignment) => ["Assigned", "In Progress"].includes(assignment.status))
+        .map((assignment) => assignment.vehicleId)
+        .filter(Boolean),
+    [activeAssignments]
+  );
+  const selectedDriverUsesOwnVehicle = useMemo(
+    () =>
+      selectedDriver?.useOwnVehicle === true ||
+      vehicles.some((vehicle) => (vehicle.ownerType || "City/Barangay Vehicle") === "Driver-Owned Vehicle" && vehicle.ownerUid === selectedDriver?.id),
+    [selectedDriver?.id, selectedDriver?.useOwnVehicle, vehicles]
+  );
+  const selectedDriverActiveSchedule = useMemo(
+    () => driverSchedules.find((schedule) =>
+      schedule.driverUid === selectedDriver?.id &&
+      ["Available", "Claimed", "On Duty"].includes(schedule.status) &&
+      (getDateFromValue(schedule.startAt)?.getTime() ?? 0) <= Date.now() &&
+      (getDateFromValue(schedule.endAt)?.getTime() ?? 0) >= Date.now()
+    ) ?? null,
+    [driverSchedules, selectedDriver?.id]
+  );
+  const assignableVehicles = useMemo(() => {
+    if (!selectedDriver?.id) {
+      return [];
+    }
+
+    return vehicles.filter((vehicle) => {
+      const ownerType = vehicle.ownerType || "City/Barangay Vehicle";
+      const isDriverOwned = ownerType === "Driver-Owned Vehicle";
+      const matchesDriver = isDriverOwned ? vehicle.ownerUid === selectedDriver.id : !selectedDriverUsesOwnVehicle;
+      const isOccupied = occupiedVehicleIds.includes(vehicle.id);
+      const currentStatus = vehicle.status || "Available";
+
+      if (!matchesDriver || isOccupied) {
+        return false;
+      }
+
+      if (selectedDriverUsesOwnVehicle !== isDriverOwned) {
+        return false;
+      }
+
+      if (isDriverOwned) {
+        return ["Available", "Assigned", "In Use"].includes(currentStatus) || Boolean(selectedDriverActiveSchedule);
+      }
+
+      return ["Available", "Assigned"].includes(currentStatus);
+    });
+  }, [occupiedVehicleIds, selectedDriver?.id, selectedDriverActiveSchedule, selectedDriverUsesOwnVehicle, vehicles]);
+  const selectedVehicle = useMemo(
+    () => assignableVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ?? null,
+    [assignableVehicles, selectedVehicleId]
+  );
+  const resolvedVehicle = useMemo(() => {
+    if (!requestToAssign) {
+      return null;
+    }
+
+    if (selectedVehicle) {
+      return selectedVehicle;
+    }
+
+    return assignableVehicles[0] ?? null;
+  }, [assignableVehicles, requestToAssign, selectedVehicle]);
+  const schedulesByDriver = useMemo(
+    () =>
+      driverSchedules.reduce((accumulator, schedule) => {
+        const driverId = schedule.driverUid;
+
+        if (!driverId) {
+          return accumulator;
+        }
+
+        accumulator[driverId] = [...(accumulator[driverId] ?? []), schedule].sort(
+          (first, second) => (getDateFromValue(first.startAt)?.getTime() ?? 0) - (getDateFromValue(second.startAt)?.getTime() ?? 0)
+        );
+        return accumulator;
+      }, {}),
+    [driverSchedules]
+  );
+  const dispatcherAvailabilityRows = useMemo(
+    () =>
+      driversWithAssignments.map((driver) => {
+        const driverSchedulesForUser = schedulesByDriver[driver.id] ?? [];
+        const activeSchedule = driverSchedulesForUser.find(
+          (schedule) =>
+            ["Available", "Claimed", "On Duty"].includes(schedule.status) &&
+            (getDateFromValue(schedule.startAt)?.getTime() ?? 0) <= Date.now() &&
+            (getDateFromValue(schedule.endAt)?.getTime() ?? 0) >= Date.now()
+        );
+        const nextSchedule = driverSchedulesForUser.find(
+          (schedule) =>
+            ["Available", "Claimed", "On Duty"].includes(schedule.status) &&
+            (getDateFromValue(schedule.startAt)?.getTime() ?? 0) > Date.now()
+        );
+        const linkedVehicle = vehicles.find(
+          (vehicle) =>
+            vehicle.ownerUid === driver.id ||
+            vehicle.assignedDriverId === driver.id
+        );
+
+        return {
+          ...driver,
+          approvalStatus: driver.accountStatus ?? "Pending",
+          presence: driver.presence ?? "Offline",
+          activeSchedule,
+          nextSchedule,
+          linkedVehicle,
+          availabilityState: getDriverAvailabilityState({
+            driver,
+            schedules: driverSchedulesForUser,
+            activeAssignment: driver.activeAssignment,
+          }),
+        };
+      }),
+    [driversWithAssignments, schedulesByDriver, vehicles]
   );
 
   useEffect(() => {
@@ -114,6 +240,9 @@ export default function DispatcherHome() {
             email: data.email ?? "",
             barangay: data.barangay ?? "No barangay set",
             availability: data.availability ?? "Unavailable",
+            presence: data.presence ?? "Offline",
+            accountStatus: data.accountStatus ?? "Pending",
+            useOwnVehicle: data.useOwnVehicle === true,
           };
         });
 
@@ -158,6 +287,35 @@ export default function DispatcherHome() {
   }, []);
 
   useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "vehicles"),
+      (snapshot) => {
+        setVehicles(
+          snapshot.docs.map((vehicleDoc) => ({
+            id: vehicleDoc.id,
+            ...vehicleDoc.data(),
+          }))
+        );
+      },
+      (error) => console.log("Vehicles listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, DRIVER_SCHEDULE_COLLECTION),
+      (snapshot) => {
+        setDriverSchedules(snapshot.docs.map((scheduleDoc) => ({ id: scheduleDoc.id, ...scheduleDoc.data() })));
+      },
+      (error) => console.log("Driver schedules listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     const callsQuery = query(collection(db, "callSessions"), where("targetRole", "==", "Dispatcher"), where("status", "==", "ringing"));
     const unsubscribe = onSnapshot(
       callsQuery,
@@ -186,6 +344,7 @@ export default function DispatcherHome() {
   const openAssignModal = (driver) => {
     setSelectedDriver(driver);
     setRequestToAssign(null);
+    setSelectedVehicleId("");
     setAssignmentMessage("");
 
     if (driver.activeAssignment) {
@@ -193,7 +352,8 @@ export default function DispatcherHome() {
       return;
     }
 
-    if (driver.availability !== "Available") {
+    if (!["Online Now", "Scheduled Now"].includes(driver.availabilityState)) {
+      setAssignmentMessage(`${driver.name} is not inside an active availability window yet.`);
       return;
     }
 
@@ -202,35 +362,75 @@ export default function DispatcherHome() {
 
   const handleAssignRequest = async () => {
     if (!selectedDriver || !requestToAssign) {
+      setAssignmentMessage("Select a pending request before assigning.");
+      return;
+    }
+
+    if (!resolvedVehicle) {
+      setAssignmentMessage(
+        selectedDriverUsesOwnVehicle
+          ? "This driver needs an approved personal vehicle record before dispatch can assign the request."
+          : "No available city or barangay vehicle could be matched to this driver right now."
+      );
       return;
     }
 
     try {
-      await addDoc(collection(db, "driverAssignments"), {
+      const batch = writeBatch(db);
+      const assignmentRef = doc(collection(db, "driverAssignments"));
+
+      batch.set(assignmentRef, {
         driverId: selectedDriver.id,
         driverName: selectedDriver.name,
         dispatcherId: authUser?.uid ?? "",
         dispatcherName: displayName,
         requestId: requestToAssign.id,
         request: requestToAssign,
+        vehicleId: resolvedVehicle.id,
+        vehicleName: resolvedVehicle.name,
+        vehiclePlateNumber: resolvedVehicle.plateNumber || "",
         status: "Assigned",
         createdAt: serverTimestamp(),
+        assignedAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, "transportRequests", requestToAssign.id), {
+
+      batch.update(doc(db, "transportRequests", requestToAssign.id), {
         status: "Assigned",
         assignedDriverId: selectedDriver.id,
         assignedDriverName: selectedDriver.name,
+        assignedVehicleId: resolvedVehicle.id,
+        assignedVehicleName: resolvedVehicle.name,
+        vehicleId: resolvedVehicle.id,
+        vehicle: resolvedVehicle.name,
+        vehiclePlateNumber: resolvedVehicle.plateNumber || "",
+        assignedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      batch.update(doc(db, "vehicles", resolvedVehicle.id), {
+        status: "Assigned",
+        assignedDriverId: selectedDriver.id,
+        assignedRequestId: requestToAssign.id,
         updatedAt: serverTimestamp(),
       });
 
-      setSelectedRequest({ ...requestToAssign, status: "Assigned" });
-      setAssignmentMessage(`${requestToAssign.title} assigned to ${selectedDriver.name}.`);
+      await batch.commit();
+
+      setSelectedRequest({ ...requestToAssign, status: "Assigned", vehicle: resolvedVehicle.name });
+      setAssignmentMessage(`${requestToAssign.title} assigned to ${selectedDriver.name} with ${resolvedVehicle.name}.`);
       setAssignModalOpen(false);
       setRequestToAssign(null);
+      setSelectedVehicleId("");
     } catch (error) {
       console.log("Assign request failed:", error);
       setAssignmentMessage("Assignment failed. Please check Firestore permissions.");
     }
+  };
+
+  const handleCancelAssignModal = () => {
+    setAssignModalOpen(false);
+    setRequestToAssign(null);
+    setSelectedVehicleId("");
+    setAssignmentMessage("");
   };
 
   const answerIncomingCall = async () => {
@@ -270,7 +470,7 @@ export default function DispatcherHome() {
   return (
     <>
       <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <AppBrandHeader role="Dispatcher" name={displayName} onLogoutPress={() => router.replace("/")} />
+        <AppBrandHeader role="Dispatcher" name={displayName} onLogoutPress={() => router.replace("/login")} />
 
         <View style={[styles.container, compact && styles.containerCompact]}>
           <View style={styles.sectionLabels}>
@@ -290,7 +490,7 @@ export default function DispatcherHome() {
               <Text style={styles.panelLabel}>Latest queue</Text>
               {visibleRequests.length ? (
                 visibleRequests.map((request) => (
-                  <TouchableOpacity
+                    <TouchableOpacity
                     key={request.id}
                     style={[
                       styles.requestCard,
@@ -327,13 +527,6 @@ export default function DispatcherHome() {
                     {selectedRequest ? `${selectedRequest.emergencyType} | ${driverSummary}` : driverSummary}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.mapAction}
-                  onPress={() => setMapStatus((current) => (current === "Ready" ? "Refreshing" : "Ready"))}
-                >
-                  <Feather name="refresh-cw" size={16} color="#FFFFFF" />
-                  <Text style={styles.mapActionText}>{mapStatus}</Text>
-                </TouchableOpacity>
               </View>
 
               <View style={styles.mapPlaceholder}>
@@ -344,14 +537,14 @@ export default function DispatcherHome() {
 
             <View style={[styles.rightPanel, compact && styles.sidePanelCompact]}>
               <Text style={styles.panelLabel}>Driver availability</Text>
-              {driversWithAssignments.length ? (
-                driversWithAssignments.map((driver) => (
+              {dispatcherAvailabilityRows.length ? (
+                dispatcherAvailabilityRows.map((driver) => (
                   <TouchableOpacity
                     key={driver.id}
                     style={[
                       styles.driverCard,
-                      driver.dispatchStatus !== "Available" && styles.driverCardUnavailable,
-                      driver.activeAssignment?.status === "In Progress" && styles.driverCardInProgress,
+                      !["Online Now", "Scheduled Now", "Scheduled Later"].includes(driver.availabilityState) && styles.driverCardUnavailable,
+                      ["Busy", "On Duty"].includes(driver.availabilityState) && styles.driverCardInProgress,
                       selectedDriver?.id === driver.id && styles.driverCardActive,
                     ]}
                     onPress={() => openAssignModal(driver)}
@@ -366,10 +559,17 @@ export default function DispatcherHome() {
                           <Text style={styles.driverPlace}>{driver.barangay}</Text>
                         </View>
                       </View>
-                      <View style={[styles.statusPill, driver.dispatchStatus === "Available" ? styles.statusPillAvailable : styles.statusPillUnavailable]}>
-                        <Text style={styles.statusPillText}>{driver.dispatchStatus}</Text>
+                      <View style={[styles.statusPill, ["Online Now", "Scheduled Now", "Scheduled Later"].includes(driver.availabilityState) ? styles.statusPillAvailable : styles.statusPillUnavailable]}>
+                        <Text style={styles.statusPillText}>{driver.availabilityState}</Text>
                       </View>
                     </View>
+                    <Text style={styles.driverMetaLine}>Approval: {driver.approvalStatus}</Text>
+                    <Text style={styles.driverMetaLine}>Presence: {driver.presence}</Text>
+                    <Text style={styles.driverMetaLine}>Schedule: {driver.activeSchedule ? formatScheduleWindow(driver.activeSchedule) : driver.nextSchedule ? `Later - ${formatScheduleWindow(driver.nextSchedule)}` : "No schedule"}</Text>
+                    <Text style={styles.driverMetaLine}>
+                      Tags: {driver.activeSchedule?.scheduleTags?.length ? driver.activeSchedule.scheduleTags.join(", ") : driver.nextSchedule?.scheduleTags?.length ? driver.nextSchedule.scheduleTags.join(", ") : "None"}
+                    </Text>
+                    <Text style={styles.driverMetaLine}>Vehicle: {driver.linkedVehicle?.name || "No linked vehicle"}</Text>
                     {driver.activeAssignment ? (
                       <View style={styles.driverMission}>
                         <Text style={styles.driverMissionLabel}>Handling</Text>
@@ -386,6 +586,7 @@ export default function DispatcherHome() {
               )}
             </View>
           </View>
+
         </View>
       </ScrollView>
 
@@ -397,7 +598,7 @@ export default function DispatcherHome() {
                 <Text style={styles.modalTitle}>Assign Request</Text>
                 <Text style={styles.modalSubtitle}>{selectedDriver?.name} is available</Text>
               </View>
-              <TouchableOpacity style={styles.modalClose} onPress={() => setAssignModalOpen(false)}>
+              <TouchableOpacity style={styles.modalClose} onPress={handleCancelAssignModal}>
                 <Text style={styles.modalCloseText}>X</Text>
               </TouchableOpacity>
             </View>
@@ -428,10 +629,62 @@ export default function DispatcherHome() {
               )}
             </View>
 
+            <Text style={styles.modalLabel}>Available vehicles</Text>
+            <View style={styles.modalRequestList}>
+              {assignableVehicles.length ? (
+                assignableVehicles.map((vehicle) => (
+                  <TouchableOpacity
+                    key={vehicle.id}
+                    style={[styles.modalRequestCard, selectedVehicleId === vehicle.id && styles.modalRequestCardActive]}
+                    onPress={() => setSelectedVehicleId(vehicle.id)}
+                  >
+                    <View style={[styles.requestChip, { backgroundColor: "#06774B" }]}>
+                      <Text style={styles.requestChipText}>{vehicle.ownerType === "Driver-Owned Vehicle" ? "Driver" : "City"}</Text>
+                    </View>
+                    <View style={styles.modalRequestCopy}>
+                      <Text style={styles.modalRequestTitle}>{vehicle.name || "Registered Vehicle"}</Text>
+                      <Text style={styles.modalRequestMeta}>
+                        {vehicle.type || "Vehicle"} | {vehicle.plateNumber || "No plate"} | {vehicle.status || "Available"}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.modalEmptyState}>
+                  <Text style={styles.modalEmptyTitle}>No assignable vehicles</Text>
+                  <Text style={styles.modalEmptyText}>
+                    {selectedDriverUsesOwnVehicle
+                      ? "This driver uses a personal vehicle, but no approved driver-owned vehicle is available yet."
+                      : "No city or barangay vehicles are available for this driver right now."}
+                  </Text>
+                </View>
+              )}
+            </View>
+
             {requestToAssign ? (
-              <TouchableOpacity style={styles.assignButton} onPress={handleAssignRequest}>
-                <Text style={styles.assignButtonText}>Assign</Text>
-              </TouchableOpacity>
+              <>
+                <View style={styles.assignmentSummaryCard}>
+                  <Text style={styles.assignmentSummaryTitle}>Assignment Ready</Text>
+                  <Text style={styles.assignmentSummaryText}>Request: {requestToAssign.emergencyType}</Text>
+                  <Text style={styles.assignmentSummaryText}>Driver: {selectedDriver?.name || "No driver selected"}</Text>
+                  <Text style={styles.assignmentSummaryText}>
+                    Vehicle: {resolvedVehicle?.name || (selectedDriverUsesOwnVehicle ? "No approved personal vehicle found" : "No city/barangay vehicle available")}
+                  </Text>
+                </View>
+
+                <View style={styles.assignmentActionRow}>
+                  <TouchableOpacity style={[styles.assignmentActionButton, styles.assignmentCancelButton]} onPress={handleCancelAssignModal}>
+                    <Text style={styles.assignmentCancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.assignmentActionButton, styles.assignButton, !resolvedVehicle && styles.actionButtonDisabled]}
+                    onPress={handleAssignRequest}
+                    disabled={!resolvedVehicle}
+                  >
+                    <Text style={styles.assignButtonText}>Assign</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             ) : null}
           </View>
         </View>
@@ -508,6 +761,7 @@ const styles = StyleSheet.create({
   driverMission: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.24)" },
   driverMissionLabel: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", color: "#DDEEE7" },
   driverMissionText: { marginTop: 3, fontSize: 13, lineHeight: 18, fontWeight: "700", color: "#FFFFFF" },
+  driverMetaLine: { marginTop: 8, fontSize: 12, lineHeight: 18, color: "#E6F3ED" },
   statusPill: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
   statusPillAvailable: { backgroundColor: "#E5FFF2" },
   statusPillUnavailable: { backgroundColor: "#F0E8E8" },
@@ -518,6 +772,7 @@ const styles = StyleSheet.create({
   emptyDriversCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
   emptyDriversTitle: { fontSize: 16, fontWeight: "800", color: "#24342E" },
   emptyDriversText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#66776F" },
+  actionButtonDisabled: { opacity: 0.65 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.28)",
@@ -564,13 +819,15 @@ const styles = StyleSheet.create({
   modalEmptyState: { padding: 18, borderRadius: 16, backgroundColor: "#F0F4F2", borderWidth: 1, borderColor: "#DCE5E0" },
   modalEmptyTitle: { fontSize: 17, fontWeight: "800", color: "#24342E" },
   modalEmptyText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#66776F" },
+  assignmentSummaryCard: { marginTop: 18, padding: 16, borderRadius: 16, backgroundColor: "#F7FAF8", borderWidth: 1, borderColor: "#DCE5E0" },
+  assignmentSummaryTitle: { fontSize: 16, fontWeight: "800", color: "#24342E" },
+  assignmentSummaryText: { marginTop: 6, fontSize: 14, lineHeight: 20, color: "#60716B" },
+  assignmentActionRow: { flexDirection: "row", gap: 12, marginTop: 18 },
+  assignmentActionButton: { flex: 1, minHeight: 56, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  assignmentCancelButton: { backgroundColor: "#E1E7E4" },
+  assignmentCancelButtonText: { fontSize: 17, fontWeight: "800", color: "#1F2E29" },
   assignButton: {
-    marginTop: 18,
-    minHeight: 56,
-    borderRadius: 16,
     backgroundColor: "#06774B",
-    alignItems: "center",
-    justifyContent: "center",
   },
   assignButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 22 },

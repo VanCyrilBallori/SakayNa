@@ -1,9 +1,31 @@
-import { Feather, FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
+import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, writeBatch } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  writeBatch,
+} from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
 import { auth, db } from "../firebase";
@@ -12,14 +34,15 @@ import { useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
 const ADMIN_ROLE = "Admin";
-const sideLinks = ["Overview", "Verifications", "Requests", "Users", "Vehicles"];
-const userRoleFilters = ["All", "Resident", "Driver", "Dispatcher", "Admin", "Pending"];
+const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
+const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
+const sideLinks = ["Overview", "Staff Management", "Requests", "Users", "Vehicles"];
+const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
-const dayLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
-const vehicleRecords = [
-  { name: "Toyota HiAce Van", type: "van" },
-  { name: "Ambulance", type: "ambulance" },
-];
+const requestTypeFilters = ["All", "Emergency Requests", "Community Transport Requests"];
+const accountStatusOptions = ["Active", "Approved", "Pending", "Rejected", "Deactivated"];
+const vehicleStatusOptions = ["Available", "Assigned", "In Use", "Inactive"];
+const cityVehicleOwnerOptions = [CITY_VEHICLE_OWNER];
 
 const getDateFromValue = (value) => {
   if (!value) {
@@ -33,6 +56,8 @@ const getDateFromValue = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 };
+
+const getTimestampMillis = (value) => getDateFromValue(value)?.getTime() ?? null;
 
 const formatDate = (value) => {
   const date = getDateFromValue(value);
@@ -52,10 +77,11 @@ const formatDateTime = (value) => {
   const date = getDateFromValue(value);
 
   if (!date) {
-    return "Waiting";
+    return "Not available";
   }
 
-  return date.toLocaleString(undefined, {
+  return date.toLocaleString("en-PH", {
+    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -63,19 +89,260 @@ const formatDateTime = (value) => {
   });
 };
 
-const getVehicleDetails = (application) => {
-  const details = [application.vehicleYear, application.vehicleMake, application.vehicleModel].filter(Boolean).join(" ");
-  return details || "Not provided";
+const normalizeRole = (role = "") => role.toLowerCase();
+const getUserPhone = (user) => user.phoneNumber || user.phone || "Not provided";
+const getUserName = (user) => user.fullName || user.displayName || user.email || "Registered User";
+const getUserAddress = (user) => user.address || user.pickupDetails || "Not provided";
+const getApprovalStatus = (user) => user.accountStatus || user.approvalStatus || user.status || "Active";
+const getProfilePhoto = (record) => record.profilePhoto || record.photoURL || record.avatarUrl || "";
+const applicationUsesOwnVehicle = (application) =>
+  application?.useOwnVehicle === true ||
+  Boolean(application?.vehicleMake || application?.vehicleModel || application?.plateNumber || application?.uploaded_document);
+
+const getVehicleNameFromApplication = (application) => {
+  if (!applicationUsesOwnVehicle(application)) {
+    return "No personal vehicle submitted";
+  }
+
+  const parts = [application.vehicleYear, application.vehicleMake, application.vehicleModel].filter(Boolean);
+  return parts.join(" ") || "Driver-Owned Vehicle";
 };
 
-const getUserPhone = (user) => user.phone ?? user.phoneNumber ?? "Not provided";
-const getProfilePhoto = (record) => record.profilePhoto || record.photoURL || record.avatarUrl || "";
-const normalizeRole = (role = "") => role.toLowerCase();
-const getUserName = (user) => user.fullName || user.displayName || user.email || "Registered User";
-const getApprovalStatus = (user) => user.accountStatus || user.approvalStatus || user.status || "Active";
-const getSaturdayFirstIndex = (date) => {
-  const day = date.getDay();
-  return day === 6 ? 0 : day + 1;
+const getRequestTypeLabel = (request) => {
+  const rawType = `${request.requestType || request.type || request.transportType || ""}`.toLowerCase();
+
+  if (rawType.includes("community")) {
+    return "Community Transport Request";
+  }
+
+  if (rawType.includes("emergency")) {
+    return "Emergency Request";
+  }
+
+  if (request.emergencyType || request.level || request.priorityLevel) {
+    return "Emergency Request";
+  }
+
+  return "Community Transport Request";
+};
+
+const getRequestVehicleLabel = (request) =>
+  request.assignedVehicleName || request.vehicle || request.vehicleType || "Not assigned";
+
+const getRequestPriority = (request) => request.priorityLevel || request.level || "Normal";
+
+const getDurationLabel = (milliseconds) => {
+  if (typeof milliseconds !== "number" || Number.isNaN(milliseconds)) {
+    return "Not enough data";
+  }
+
+  if (milliseconds < 60_000) {
+    return `${Math.max(1, Math.round(milliseconds / 1000))} sec`;
+  }
+
+  const minutes = Math.round(milliseconds / 60_000);
+
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
+};
+
+const getAverageDuration = (requests, endFieldNames) => {
+  const durations = requests
+    .map((request) => {
+      const createdAt = getTimestampMillis(request.createdAt);
+      const endingField = endFieldNames.find((fieldName) => request[fieldName]);
+      const endedAt = endingField ? getTimestampMillis(request[endingField]) : null;
+
+      if (!createdAt || !endedAt || endedAt < createdAt) {
+        return null;
+      }
+
+      return endedAt - createdAt;
+    })
+    .filter((value) => typeof value === "number");
+
+  if (!durations.length) {
+    return null;
+  }
+
+  return durations.reduce((sum, value) => sum + value, 0) / durations.length;
+};
+
+const getRangeStart = (rangeLabel, now) => {
+  const start = new Date(now);
+
+  if (rangeLabel === "Month") {
+    start.setDate(start.getDate() - 27);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
+  if (rangeLabel === "Year") {
+    start.setMonth(start.getMonth() - 11, 1);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+
+  start.setDate(start.getDate() - 6);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+const buildActivityBuckets = (rangeLabel, requests) => {
+  const now = new Date();
+  const start = getRangeStart(rangeLabel, now);
+
+  if (rangeLabel === "Year") {
+    const buckets = Array.from({ length: 12 }, (_, index) => {
+      const date = new Date(start);
+      date.setMonth(start.getMonth() + index, 1);
+      date.setHours(0, 0, 0, 0);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      return {
+        key,
+        label: date.toLocaleDateString("en-PH", { month: "short" }),
+        start: date,
+        end: new Date(date.getFullYear(), date.getMonth() + 1, 1),
+        value: 0,
+      };
+    });
+
+    requests.forEach((request) => {
+      const createdAt = getDateFromValue(request.createdAt);
+
+      if (!createdAt || createdAt < start) {
+        return;
+      }
+
+      const key = `${createdAt.getFullYear()}-${createdAt.getMonth()}`;
+      const bucket = buckets.find((item) => item.key === key);
+
+      if (bucket) {
+        bucket.value += 1;
+      }
+    });
+
+    return buckets;
+  }
+
+  if (rangeLabel === "Month") {
+    const buckets = Array.from({ length: 4 }, (_, index) => {
+      const bucketStart = new Date(start);
+      bucketStart.setDate(start.getDate() + index * 7);
+      bucketStart.setHours(0, 0, 0, 0);
+      const bucketEnd = new Date(bucketStart);
+      bucketEnd.setDate(bucketStart.getDate() + 7);
+
+      return {
+        key: bucketStart.toISOString(),
+        label: bucketStart.toLocaleDateString("en-PH", { month: "short", day: "numeric" }),
+        start: bucketStart,
+        end: bucketEnd,
+        value: 0,
+      };
+    });
+
+    requests.forEach((request) => {
+      const createdAt = getDateFromValue(request.createdAt);
+
+      if (!createdAt || createdAt < start) {
+        return;
+      }
+
+      const bucket = buckets.find((item) => createdAt >= item.start && createdAt < item.end);
+
+      if (bucket) {
+        bucket.value += 1;
+      }
+    });
+
+    return buckets;
+  }
+
+  const buckets = Array.from({ length: 7 }, (_, index) => {
+    const bucketDate = new Date(start);
+    bucketDate.setDate(start.getDate() + index);
+    bucketDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(bucketDate);
+    nextDay.setDate(bucketDate.getDate() + 1);
+
+    return {
+      key: bucketDate.toISOString(),
+      label: bucketDate.toLocaleDateString("en-PH", { weekday: "short" }),
+      start: bucketDate,
+      end: nextDay,
+      value: 0,
+    };
+  });
+
+  requests.forEach((request) => {
+    const createdAt = getDateFromValue(request.createdAt);
+
+    if (!createdAt || createdAt < start) {
+      return;
+    }
+
+    const bucket = buckets.find((item) => createdAt >= item.start && createdAt < item.end);
+
+    if (bucket) {
+      bucket.value += 1;
+    }
+  });
+
+  return buckets;
+};
+
+const getVehicleDerivedStatus = (vehicle, activeAssignments, usersById) => {
+  const activeAssignment = activeAssignments.find(
+    (assignment) =>
+      assignment.vehicleId === vehicle.id &&
+      ["Assigned", "In Progress"].includes(assignment.status)
+  );
+
+  if (activeAssignment?.status === "In Progress") {
+    return "In Use";
+  }
+
+  if (activeAssignment?.status === "Assigned") {
+    return "Assigned";
+  }
+
+  if ((vehicle.ownerType || CITY_VEHICLE_OWNER) === DRIVER_VEHICLE_OWNER) {
+    const ownerProfile = usersById[vehicle.ownerUid];
+    const isApproved = ownerProfile?.accountStatus === "Approved";
+    const availability = ownerProfile?.availability || "Unavailable";
+
+    if (!isApproved || availability !== "Available") {
+      return "Inactive";
+    }
+  }
+
+  return vehicle.status || "Available";
+};
+
+const emptyUserForm = {
+  id: "",
+  fullName: "",
+  phoneNumber: "",
+  barangay: "",
+  address: "",
+  accountStatus: "Active",
+};
+
+const emptyVehicleForm = {
+  id: "",
+  name: "",
+  type: "",
+  plateNumber: "",
+  ownerType: CITY_VEHICLE_OWNER,
+  ownerUid: "",
+  driverName: "",
+  status: "Available",
 };
 
 export default function AdminHome() {
@@ -85,26 +352,51 @@ export default function AdminHome() {
   const narrow = width < 560;
   const { authUser, displayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
+
   const [adminAccessStatus, setAdminAccessStatus] = useState("checking");
   const [selectedSection, setSelectedSection] = useState("Overview");
   const [searchValue, setSearchValue] = useState("");
   const [rangeLabel, setRangeLabel] = useState("Week");
-  const [userRoleFilter, setUserRoleFilter] = useState("All");
   const [requestStatusFilter, setRequestStatusFilter] = useState("All");
+  const [requestTypeFilter, setRequestTypeFilter] = useState("All");
+  const [userRoleView, setUserRoleView] = useState("All");
+
   const [users, setUsers] = useState([]);
   const [driverApplications, setDriverApplications] = useState([]);
   const [transportRequests, setTransportRequests] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [driverAssignments, setDriverAssignments] = useState([]);
+
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+  const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
+
   const [usersError, setUsersError] = useState("");
   const [applicationsError, setApplicationsError] = useState("");
-  const [applicationsMessage, setApplicationsMessage] = useState("");
+  const [requestsError, setRequestsError] = useState("");
+  const [vehiclesError, setVehiclesError] = useState("");
+  const [staffMessage, setStaffMessage] = useState("");
+  const [userMessage, setUserMessage] = useState("");
+  const [vehicleMessage, setVehicleMessage] = useState("");
   const [updatingApplicationId, setUpdatingApplicationId] = useState("");
+  const [syncingVehicles, setSyncingVehicles] = useState(false);
+
   const [selectedRequestRecord, setSelectedRequestRecord] = useState(null);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
-  const [viewedVehicle, setViewedVehicle] = useState("");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+
+  const [editingUser, setEditingUser] = useState(null);
+  const [userForm, setUserForm] = useState(emptyUserForm);
+  const [savingUser, setSavingUser] = useState(false);
+  const [confirmingUserDelete, setConfirmingUserDelete] = useState(null);
+  const [confirmingUserDeactivate, setConfirmingUserDeactivate] = useState(null);
+
+  const [vehicleEditorOpen, setVehicleEditorOpen] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm);
+  const [savingVehicle, setSavingVehicle] = useState(false);
+  const [confirmingVehicleDelete, setConfirmingVehicleDelete] = useState(null);
 
   const initials = useMemo(() => {
     const words = displayName.split(" ").filter(Boolean);
@@ -164,11 +456,7 @@ export default function AdminHome() {
       (snapshot) => {
         const nextApplications = snapshot.docs
           .map((applicationDoc) => ({ id: applicationDoc.id, ...applicationDoc.data() }))
-          .sort((first, second) => {
-            const firstTime = first.createdAt?.toMillis?.() ?? 0;
-            const secondTime = second.createdAt?.toMillis?.() ?? 0;
-            return secondTime - firstTime;
-          });
+          .sort((first, second) => (getTimestampMillis(second.createdAt) ?? 0) - (getTimestampMillis(first.createdAt) ?? 0));
 
         setDriverApplications(nextApplications);
         setApplicationsError("");
@@ -186,124 +474,266 @@ export default function AdminHome() {
       (snapshot) => {
         const nextRequests = snapshot.docs
           .map((requestDoc) => ({ id: requestDoc.id, ...requestDoc.data() }))
-          .sort((first, second) => {
-            const firstTime = first.createdAt?.toMillis?.() ?? 0;
-            const secondTime = second.createdAt?.toMillis?.() ?? 0;
-            return secondTime - firstTime;
-          });
+          .sort((first, second) => (getTimestampMillis(second.createdAt) ?? 0) - (getTimestampMillis(first.createdAt) ?? 0));
 
         setTransportRequests(nextRequests);
+        setRequestsError("");
+        setIsLoadingRequests(false);
       },
-      (error) => console.log("Transport requests listener warning:", error)
+      (error) => {
+        console.log("Transport requests listener warning:", error);
+        setRequestsError("Transport requests could not be loaded. Please check Firestore permissions.");
+        setIsLoadingRequests(false);
+      }
+    );
+
+    const unsubscribeVehicles = onSnapshot(
+      collection(db, "vehicles"),
+      (snapshot) => {
+        const nextVehicles = snapshot.docs
+          .map((vehicleDoc) => ({ id: vehicleDoc.id, ...vehicleDoc.data() }))
+          .sort((first, second) => (getTimestampMillis(second.createdAt) ?? 0) - (getTimestampMillis(first.createdAt) ?? 0));
+
+        setVehicles(nextVehicles);
+        setVehiclesError("");
+        setIsLoadingVehicles(false);
+      },
+      (error) => {
+        console.log("Vehicles listener warning:", error);
+        setVehiclesError("Vehicles could not be loaded. Please check Firestore permissions.");
+        setIsLoadingVehicles(false);
+      }
+    );
+
+    const unsubscribeAssignments = onSnapshot(
+      collection(db, "driverAssignments"),
+      (snapshot) => {
+        setDriverAssignments(snapshot.docs.map((assignmentDoc) => ({ id: assignmentDoc.id, ...assignmentDoc.data() })));
+      },
+      (error) => console.log("Driver assignments listener warning:", error)
     );
 
     return () => {
       unsubscribeUsers();
       unsubscribeApplications();
       unsubscribeRequests();
+      unsubscribeVehicles();
+      unsubscribeAssignments();
     };
   }, [adminAccessStatus]);
+
+  const usersById = useMemo(
+    () =>
+      users.reduce((accumulator, user) => {
+        accumulator[user.id] = user;
+        return accumulator;
+      }, {}),
+    [users]
+  );
 
   const pendingApplications = useMemo(
     () => driverApplications.filter((application) => application.status === "Pending"),
     [driverApplications]
   );
 
-  const pendingStaffUsers = useMemo(
-    () =>
-      users.filter((user) => {
-        const role = normalizeRole(user.role);
-        const status = getApprovalStatus(user).toLowerCase();
-        return role !== "resident" && status === "pending";
-      }),
+  const dispatcherAccounts = useMemo(
+    () => users.filter((user) => normalizeRole(user.role) === "dispatcher"),
     [users]
   );
+
+  const activeAssignments = useMemo(
+    () => driverAssignments.filter((assignment) => ["Assigned", "In Progress"].includes(assignment.status)),
+    [driverAssignments]
+  );
+
+  const requestsWithDerivedFields = useMemo(
+    () =>
+      transportRequests.map((request) => ({
+        ...request,
+        requestTypeLabel: getRequestTypeLabel(request),
+        vehicleLabel: getRequestVehicleLabel(request),
+        priorityLabel: getRequestPriority(request),
+      })),
+    [transportRequests]
+  );
+
+  const filteredRequests = useMemo(() => {
+    const query = searchValue.trim().toLowerCase();
+
+    return requestsWithDerivedFields.filter((request) => {
+      const requestStatus = request.status || "Pending";
+      const requestTypeLabel = request.requestTypeLabel;
+      const matchesStatus = requestStatusFilter === "All" || requestStatus === requestStatusFilter;
+      const matchesType =
+        requestTypeFilter === "All" ||
+        (requestTypeFilter === "Emergency Requests" && requestTypeLabel === "Emergency Request") ||
+        (requestTypeFilter === "Community Transport Requests" && requestTypeLabel === "Community Transport Request");
+      const matchesSearch =
+        !query ||
+        request.id.toLowerCase().includes(query) ||
+        (request.residentName || "").toLowerCase().includes(query) ||
+        requestTypeLabel.toLowerCase().includes(query) ||
+        (request.emergencyType || "").toLowerCase().includes(query) ||
+        (request.pickupLocation || "").toLowerCase().includes(query) ||
+        (request.destination || "").toLowerCase().includes(query) ||
+        request.vehicleLabel.toLowerCase().includes(query) ||
+        (request.assignedDriverName || "").toLowerCase().includes(query);
+
+      return matchesStatus && matchesType && matchesSearch;
+    });
+  }, [requestStatusFilter, requestTypeFilter, requestsWithDerivedFields, searchValue]);
 
   const filteredUsers = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
 
     return users.filter((user) => {
       const role = user.role || "";
-      const status = getApprovalStatus(user);
-      const matchesRole =
-        userRoleFilter === "All" ||
-        role === userRoleFilter ||
-        (userRoleFilter === "Pending" && status.toLowerCase() === "pending");
+      const matchesRole = userRoleView === "All" || role === userRoleView;
       const matchesSearch =
         !query ||
         getUserName(user).toLowerCase().includes(query) ||
         (user.email || "").toLowerCase().includes(query) ||
+        getUserPhone(user).toLowerCase().includes(query) ||
         (user.barangay || "").toLowerCase().includes(query) ||
-        role.toLowerCase().includes(query);
+        (user.address || "").toLowerCase().includes(query);
 
       return matchesRole && matchesSearch;
     });
-  }, [searchValue, userRoleFilter, users]);
+  }, [searchValue, userRoleView, users]);
 
-  const filteredRequests = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-
-    return transportRequests.filter((request) => {
-      const requestStatus = request.status || "Pending";
-      const matchesStatus = requestStatusFilter === "All" || requestStatus === requestStatusFilter;
-      const matchesSearch =
-        !query ||
-        (request.residentName || "").toLowerCase().includes(query) ||
-        (request.emergencyType || "").toLowerCase().includes(query) ||
-        (request.pickupLocation || "").toLowerCase().includes(query) ||
-        (request.vehicle || request.vehicleType || "").toLowerCase().includes(query);
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [requestStatusFilter, searchValue, transportRequests]);
+  const vehiclesWithDerivedStatus = useMemo(
+    () =>
+      vehicles.map((vehicle) => ({
+        ...vehicle,
+        derivedStatus: getVehicleDerivedStatus(vehicle, activeAssignments, usersById),
+      })),
+    [activeAssignments, usersById, vehicles]
+  );
 
   const filteredVehicles = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
-    return vehicleRecords.filter((item) => !query || item.name.toLowerCase().includes(query));
-  }, [searchValue]);
 
-  const weeklyActivity = useMemo(() => {
-    const values = Array(dayLabels.length).fill(0);
-    const records = [
-      ...users.map((item) => item.createdAt),
-      ...driverApplications.map((item) => item.createdAt),
-      ...transportRequests.map((item) => item.createdAt),
-    ];
-
-    records.forEach((value) => {
-      const date = getDateFromValue(value);
-
-      if (date) {
-        values[getSaturdayFirstIndex(date)] += 1;
+    return vehiclesWithDerivedStatus.filter((vehicle) => {
+      if (!query) {
+        return true;
       }
+
+      return [
+        vehicle.name,
+        vehicle.type,
+        vehicle.plateNumber,
+        vehicle.ownerType,
+        vehicle.driverName,
+        vehicle.ownerUid,
+      ]
+        .filter(Boolean)
+        .some((value) => `${value}`.toLowerCase().includes(query));
     });
+  }, [searchValue, vehiclesWithDerivedStatus]);
 
-    return values;
-  }, [driverApplications, transportRequests, users]);
+  const totalEmergencyRequests = useMemo(
+    () => requestsWithDerivedFields.filter((request) => request.requestTypeLabel === "Emergency Request").length,
+    [requestsWithDerivedFields]
+  );
 
-  const maxActivity = Math.max(...weeklyActivity, 1);
-  const overviewMetrics = [
-    { label: "Residents", value: users.filter((user) => normalizeRole(user.role) === "resident").length },
-    { label: "Drivers", value: users.filter((user) => normalizeRole(user.role) === "driver").length },
-    { label: "Dispatchers", value: users.filter((user) => normalizeRole(user.role) === "dispatcher").length },
-    { label: "Pending Requests", value: transportRequests.filter((request) => request.status === "Pending").length },
-  ];
+  const totalCommunityRequests = useMemo(
+    () => requestsWithDerivedFields.filter((request) => request.requestTypeLabel === "Community Transport Request").length,
+    [requestsWithDerivedFields]
+  );
 
-  const notifications = [
-    `${pendingApplications.length} driver ${pendingApplications.length === 1 ? "application" : "applications"} waiting for review.`,
-    `${pendingStaffUsers.length} staff ${pendingStaffUsers.length === 1 ? "account" : "accounts"} pending approval.`,
-    `${transportRequests.filter((request) => request.status === "Pending").length} transport requests are still pending.`,
+  const activeRequestsCount = useMemo(
+    () =>
+      requestsWithDerivedFields.filter((request) => !["Completed", "Cancelled"].includes(request.status || "Pending")).length,
+    [requestsWithDerivedFields]
+  );
+
+  const completedRequestsCount = useMemo(
+    () => requestsWithDerivedFields.filter((request) => request.status === "Completed").length,
+    [requestsWithDerivedFields]
+  );
+
+  const cancelledRequestsCount = useMemo(
+    () => requestsWithDerivedFields.filter((request) => request.status === "Cancelled").length,
+    [requestsWithDerivedFields]
+  );
+
+  const totalRegisteredDrivers = useMemo(
+    () => users.filter((user) => normalizeRole(user.role) === "driver").length,
+    [users]
+  );
+
+  const availableDrivers = useMemo(
+    () =>
+      users.filter(
+        (user) =>
+          normalizeRole(user.role) === "driver" &&
+          user.accountStatus === "Approved" &&
+          user.availability === "Available"
+      ).length,
+    [users]
+  );
+
+  const averageDispatchTime = useMemo(
+    () => getAverageDuration(requestsWithDerivedFields, ["assignedAt"]),
+    [requestsWithDerivedFields]
+  );
+
+  const averageResponseTime = useMemo(
+    () => getAverageDuration(requestsWithDerivedFields, ["acceptedAt", "completedAt"]),
+    [requestsWithDerivedFields]
+  );
+
+  const overviewCards = [
+    { label: "Total Emergency Requests", value: totalEmergencyRequests },
+    { label: "Total Community Transport Requests", value: totalCommunityRequests },
+    { label: "Active Requests", value: activeRequestsCount },
+    { label: "Completed Requests", value: completedRequestsCount },
+    { label: "Cancelled Requests", value: cancelledRequestsCount },
+    { label: "Total Registered Drivers", value: totalRegisteredDrivers },
+    { label: "Available Drivers", value: availableDrivers },
+    { label: "Total Registered Vehicles", value: vehicles.length },
+    { label: "Average Response Time", value: getDurationLabel(averageResponseTime) },
+    { label: "Average Dispatch Time", value: getDurationLabel(averageDispatchTime) },
   ];
 
   const requestStatusStats = requestStatusFilters
     .filter((status) => status !== "All")
-    .map((status) => ({ label: status, value: transportRequests.filter((request) => (request.status || "Pending") === status).length }));
+    .map((status) => ({
+      label: status,
+      value: requestsWithDerivedFields.filter((request) => (request.status || "Pending") === status).length,
+    }));
+
+  const activityBuckets = useMemo(
+    () => buildActivityBuckets(rangeLabel, requestsWithDerivedFields),
+    [rangeLabel, requestsWithDerivedFields]
+  );
+  const maxActivity = Math.max(...activityBuckets.map((bucket) => bucket.value), 1);
+
+  const notifications = [
+    `${pendingApplications.length} driver ${pendingApplications.length === 1 ? "application" : "applications"} waiting for review.`,
+    `${dispatcherAccounts.length} dispatcher ${dispatcherAccounts.length === 1 ? "account" : "accounts"} currently registered.`,
+    `${activeRequestsCount} request${activeRequestsCount === 1 ? "" : "s"} still active in the system.`,
+  ];
 
   const menuItems = [
-    { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
-    { key: "history", label: "History", icon: "clock", action: () => {} },
-    { key: "settings", label: "Settings", icon: "settings", action: () => {} },
+    {
+      key: "profile",
+      label: "Profile",
+      icon: "user",
+      action: () => {
+        setProfileMenuOpen(false);
+        setProfileEditorOpen(true);
+      },
+    },
+    { key: "history", label: "History", icon: "clock-o", action: () => {} },
+    { key: "settings", label: "Settings", icon: "cog", action: () => {} },
   ];
+
+  const clearSectionMessages = () => {
+    setStaffMessage("");
+    setUserMessage("");
+    setVehicleMessage("");
+  };
 
   const updateApplicationStatus = async (application, status) => {
     if (adminAccessStatus !== "authorized") {
@@ -317,12 +747,22 @@ export default function AdminHome() {
     }
 
     setApplicationsError("");
-    setApplicationsMessage("");
+    setStaffMessage("");
     setUpdatingApplicationId(application.id);
 
     try {
       const batch = writeBatch(db);
       const statusTimestamp = status === "Approved" ? { approvedAt: serverTimestamp() } : { rejectedAt: serverTimestamp() };
+      const ownerProfile = usersById[application.driverUid];
+      const activeAssignment = activeAssignments.find((assignment) => assignment.driverId === application.driverUid);
+      const nextVehicleStatus =
+        status === "Approved"
+          ? activeAssignment
+            ? activeAssignment.status === "In Progress"
+              ? "In Use"
+              : "Assigned"
+            : "Available"
+          : "Inactive";
 
       batch.update(doc(db, "Driver_Applications", application.id), {
         status,
@@ -331,11 +771,40 @@ export default function AdminHome() {
 
       batch.update(doc(db, "users", application.driverUid), {
         accountStatus: status,
+        useOwnVehicle: applicationUsesOwnVehicle(application),
+        updatedAt: serverTimestamp(),
         ...statusTimestamp,
       });
 
+      if (status === "Approved" && applicationUsesOwnVehicle(application)) {
+        batch.set(
+          doc(db, "vehicles", `driver-${application.driverUid}`),
+          {
+            name: getVehicleNameFromApplication(application),
+            type: application.bodyType || application.vehicleModel || "Driver Vehicle",
+            plateNumber: application.plateNumber || "",
+            ownerType: DRIVER_VEHICLE_OWNER,
+            ownerUid: application.driverUid,
+            driverName: application.fullName || ownerProfile?.fullName || "Approved Driver",
+            color: application.color || "",
+            mvFileNumber: application.mvFileNumber || "",
+            status: nextVehicleStatus,
+            sourceApplicationId: application.id,
+            applicationStatus: status,
+            bodyType: application.bodyType || "",
+            vehicleMake: application.vehicleMake || "",
+            vehicleModel: application.vehicleModel || "",
+            vehicleYear: application.vehicleYear || "",
+            useOwnVehicle: true,
+            createdAt: application.createdAt || serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
       await batch.commit();
-      setApplicationsMessage(`Application ${status.toLowerCase()} successfully.`);
+      setStaffMessage(`Application ${status.toLowerCase()} successfully.`);
     } catch (error) {
       console.log("Driver application status update failed:", error);
       setApplicationsError("Application status could not be updated. Please check Firestore permissions.");
@@ -344,20 +813,231 @@ export default function AdminHome() {
     }
   };
 
-  const updateStaffStatus = async (user, status) => {
+  const syncApprovedDriverVehicles = async () => {
+    setVehiclesError("");
+    setVehicleMessage("");
+    setSyncingVehicles(true);
+
+    try {
+      const approvedApplications = driverApplications.filter((application) => application.status === "Approved" && applicationUsesOwnVehicle(application));
+      const batch = writeBatch(db);
+
+      approvedApplications.forEach((application) => {
+        const ownerProfile = usersById[application.driverUid];
+        const activeAssignment = activeAssignments.find((assignment) => assignment.driverId === application.driverUid);
+        const nextStatus = activeAssignment
+          ? activeAssignment.status === "In Progress"
+            ? "In Use"
+            : "Assigned"
+          : "Available";
+
+        batch.set(
+          doc(db, "vehicles", `driver-${application.driverUid}`),
+          {
+            name: getVehicleNameFromApplication(application),
+            type: application.bodyType || application.vehicleModel || "Driver Vehicle",
+            plateNumber: application.plateNumber || "",
+            ownerType: DRIVER_VEHICLE_OWNER,
+            ownerUid: application.driverUid,
+            driverName: application.fullName || ownerProfile?.fullName || "Approved Driver",
+            color: application.color || "",
+            mvFileNumber: application.mvFileNumber || "",
+            status: nextStatus,
+            sourceApplicationId: application.id,
+            applicationStatus: "Approved",
+            bodyType: application.bodyType || "",
+            vehicleMake: application.vehicleMake || "",
+            vehicleModel: application.vehicleModel || "",
+            vehicleYear: application.vehicleYear || "",
+            useOwnVehicle: true,
+            createdAt: application.createdAt || serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      });
+
+      await batch.commit();
+      setVehicleMessage(
+        approvedApplications.length
+          ? "Driver-owned vehicle records synced from approved applications."
+          : "No approved personal-vehicle applications were available to sync."
+      );
+    } catch (error) {
+      console.log("Driver vehicle sync failed:", error);
+      setVehiclesError("Approved driver vehicles could not be synced. Please check Firestore permissions.");
+    } finally {
+      setSyncingVehicles(false);
+    }
+  };
+
+  const openUserEditor = (user) => {
+    clearSectionMessages();
+    setEditingUser(user);
+    setUserForm({
+      id: user.id,
+      fullName: getUserName(user),
+      phoneNumber: user.phoneNumber || user.phone || "",
+      barangay: user.barangay || "",
+      address: user.address || "",
+      accountStatus: getApprovalStatus(user),
+    });
+  };
+
+  const saveUserChanges = async () => {
+    if (!editingUser?.id) {
+      return;
+    }
+
+    setSavingUser(true);
+    setUsersError("");
+    setUserMessage("");
+
+    try {
+      await updateDoc(doc(db, "users", editingUser.id), {
+        phoneNumber: userForm.phoneNumber.trim(),
+        phone: userForm.phoneNumber.trim(),
+        barangay: userForm.barangay.trim(),
+        address: userForm.address.trim(),
+        accountStatus: userForm.accountStatus,
+        updatedAt: serverTimestamp(),
+      });
+
+      setUserMessage("User account updated successfully.");
+      setEditingUser(null);
+      setUserForm(emptyUserForm);
+    } catch (error) {
+      console.log("User update failed:", error);
+      setUsersError("User account could not be updated. Please check Firestore permissions.");
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const deactivateUser = async (user) => {
     if (!user?.id) {
       return;
     }
 
+    setSavingUser(true);
+    setUsersError("");
+    setUserMessage("");
+
     try {
       await updateDoc(doc(db, "users", user.id), {
-        accountStatus: status,
+        accountStatus: "Deactivated",
+        ...(normalizeRole(user.role) === "driver" ? { availability: "Unavailable" } : {}),
         updatedAt: serverTimestamp(),
-        ...(status === "Approved" ? { approvedAt: serverTimestamp() } : { rejectedAt: serverTimestamp() }),
       });
+
+      setUserMessage(`${getUserName(user)} was deactivated.`);
+      setConfirmingUserDeactivate(null);
     } catch (error) {
-      console.log("Staff approval update failed:", error);
-      setApplicationsError("Staff account status could not be updated. Please check Firestore permissions.");
+      console.log("User deactivation failed:", error);
+      setUsersError("The account could not be deactivated. Please check Firestore permissions.");
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const deleteUserRecord = async (user) => {
+    if (!user?.id) {
+      return;
+    }
+
+    setSavingUser(true);
+    setUsersError("");
+    setUserMessage("");
+
+    try {
+      await deleteDoc(doc(db, "users", user.id));
+      setUserMessage(`${getUserName(user)} was removed from the users collection.`);
+      setConfirmingUserDelete(null);
+    } catch (error) {
+      console.log("User delete failed:", error);
+      setUsersError("The user record could not be deleted. Please check Firestore permissions.");
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const openVehicleEditor = (vehicle = null) => {
+    clearSectionMessages();
+    setVehicleForm(
+      vehicle
+        ? {
+            id: vehicle.id,
+            name: vehicle.name || "",
+            type: vehicle.type || "",
+            plateNumber: vehicle.plateNumber || "",
+            ownerType: vehicle.ownerType || CITY_VEHICLE_OWNER,
+            ownerUid: vehicle.ownerUid || "",
+            driverName: vehicle.driverName || "",
+            status: vehicle.derivedStatus || vehicle.status || "Available",
+          }
+        : emptyVehicleForm
+    );
+    setVehicleEditorOpen(true);
+  };
+
+  const saveVehicle = async () => {
+    if (!vehicleForm.name.trim() || !vehicleForm.type.trim()) {
+      setVehiclesError("Vehicle name and type are required.");
+      return;
+    }
+
+    setSavingVehicle(true);
+    setVehiclesError("");
+    setVehicleMessage("");
+
+    try {
+      const vehicleId = vehicleForm.id || `vehicle-${Date.now()}`;
+      const payload = {
+        name: vehicleForm.name.trim(),
+        type: vehicleForm.type.trim(),
+        plateNumber: vehicleForm.plateNumber.trim().toUpperCase(),
+        ownerType: vehicleForm.ownerType,
+        ownerUid: vehicleForm.ownerUid || "",
+        driverName: vehicleForm.driverName.trim(),
+        status: vehicleForm.status,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (!vehicleForm.id) {
+        payload.createdAt = serverTimestamp();
+      }
+
+      await setDoc(doc(db, "vehicles", vehicleId), payload, { merge: true });
+
+      setVehicleMessage(vehicleForm.id ? "Vehicle updated successfully." : "Vehicle added successfully.");
+      setVehicleEditorOpen(false);
+      setVehicleForm(emptyVehicleForm);
+    } catch (error) {
+      console.log("Vehicle save failed:", error);
+      setVehiclesError("Vehicle details could not be saved. Please check Firestore permissions.");
+    } finally {
+      setSavingVehicle(false);
+    }
+  };
+
+  const deleteVehicleRecord = async (vehicle) => {
+    if (!vehicle?.id) {
+      return;
+    }
+
+    setSavingVehicle(true);
+    setVehiclesError("");
+    setVehicleMessage("");
+
+    try {
+      await deleteDoc(doc(db, "vehicles", vehicle.id));
+      setVehicleMessage(`${vehicle.name || "Vehicle"} was deleted.`);
+      setConfirmingVehicleDelete(null);
+    } catch (error) {
+      console.log("Vehicle delete failed:", error);
+      setVehiclesError("Vehicle record could not be deleted. Please check Firestore permissions.");
+    } finally {
+      setSavingVehicle(false);
     }
   };
 
@@ -369,16 +1049,18 @@ export default function AdminHome() {
 
       <View style={[styles.notificationPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <View style={styles.notificationHeader}>
-          <Feather name="bell" size={18} color="#06774B" />
-          <Text style={[styles.notificationTitle, { color: theme.text }]}>Admin Summary</Text>
+          <FontAwesome name="bell" size={18} color="#06774B" />
+          <Text style={[styles.notificationTitle, { color: theme.text }]}>Live Firestore Summary</Text>
         </View>
         {notifications.map((note) => (
-          <Text key={note} style={[styles.notificationText, { color: theme.mutedText }]}>{note}</Text>
+          <Text key={note} style={[styles.notificationText, { color: theme.mutedText }]}>
+            {note}
+          </Text>
         ))}
       </View>
 
       <View style={styles.metricsGrid}>
-        {overviewMetrics.map((metric) => (
+        {overviewCards.map((metric) => (
           <View key={metric.label} style={[styles.metricCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.metricLabel, { color: theme.secondaryText }]}>{metric.label}</Text>
             <Text style={[styles.metricValue, { color: theme.text }]}>{metric.value}</Text>
@@ -389,30 +1071,30 @@ export default function AdminHome() {
       <View style={[styles.chartCard, { backgroundColor: theme.softSurface, borderColor: theme.softSurfaceBorder }]}>
         <View style={styles.chartHeader}>
           <View>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Weekly Activity</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.mutedText }]}>Accounts, requests, and applications received this week.</Text>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Request Activity</Text>
+            <Text style={[styles.chartSubtitle, { color: theme.mutedText }]}>Actual transport request submissions from Firestore.</Text>
           </View>
           <TouchableOpacity
             style={[styles.rangeButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => setRangeLabel((current) => (current === "Week" ? "Month" : current === "Month" ? "Year" : "Week"))}
+            onPress={() =>
+              setRangeLabel((current) => (current === "Week" ? "Month" : current === "Month" ? "Year" : "Week"))
+            }
           >
             <Text style={[styles.rangeButtonText, { color: theme.text }]}>{rangeLabel}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.barRow}>
-          {weeklyActivity.map((value, index) => {
-            const ratio = maxActivity ? value / maxActivity : 0;
+          {activityBuckets.map((bucket) => {
+            const ratio = maxActivity ? bucket.value / maxActivity : 0;
 
             return (
-              <View key={dayLabels[index]} style={styles.barItem}>
-                <Text style={[styles.barValue, { color: theme.text }]}>{value}</Text>
+              <View key={bucket.key} style={styles.barItem}>
+                <Text style={[styles.barValue, { color: theme.text }]}>{bucket.value}</Text>
                 <View style={[styles.barTrack, { backgroundColor: theme.surface }]}>
-                  <View style={[styles.bar, { height: Math.max(16, 132 * ratio), backgroundColor: index === 2 ? "#06774B" : "#08A967" }]} />
+                  <View style={[styles.bar, { height: Math.max(16, 132 * ratio), backgroundColor: "#08A967" }]} />
                 </View>
-                <Text style={[index === 2 ? styles.dayTextActive : styles.dayText, { color: index === 2 ? "#FFFFFF" : theme.text, backgroundColor: index === 2 ? "#06774B" : "transparent" }]}>
-                  {dayLabels[index]}
-                </Text>
+                <Text style={[styles.dayText, { color: theme.text }]}>{bucket.label}</Text>
               </View>
             );
           })}
@@ -429,32 +1111,21 @@ export default function AdminHome() {
             </View>
           ))}
         </View>
-
-        <View style={[styles.statsPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.statsPanelTitle, { color: theme.text }]}>Quick Counts</Text>
-          <View style={styles.quickStatsGrid}>
-            <View style={[styles.quickStatCard, { backgroundColor: theme.emergencyCard }]}>
-              <Text style={[styles.quickStatValue, { color: theme.text }]}>{pendingApplications.length}</Text>
-              <Text style={[styles.quickStatLabel, { color: theme.mutedText }]}>Driver Verifications</Text>
-            </View>
-            <View style={[styles.quickStatCard, { backgroundColor: theme.transportCard }]}>
-              <Text style={[styles.quickStatValue, { color: theme.text }]}>{pendingStaffUsers.length}</Text>
-              <Text style={[styles.quickStatLabel, { color: theme.mutedText }]}>Pending Staff</Text>
-            </View>
-            <View style={[styles.quickStatCard, { backgroundColor: theme.statusCard }]}>
-              <Text style={[styles.quickStatValue, { color: theme.text }]}>{vehicleRecords.length}</Text>
-              <Text style={[styles.quickStatLabel, { color: theme.mutedText }]}>Vehicles</Text>
-            </View>
-          </View>
-        </View>
       </View>
     </>
   );
 
-  const renderVerifications = () => (
+  const renderStaffManagement = () => (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Verifications</Text>
+        <Text style={styles.sectionHeaderText}>Staff Management</Text>
+      </View>
+
+      <View style={[styles.infoPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.infoPanelTitle, { color: theme.text }]}>Create Dispatcher/Admin Accounts</Text>
+        <Text style={[styles.infoPanelText, { color: theme.mutedText }]}>
+          Staff accounts are not created automatically from this Admin dashboard because the approved project flow must not rely on Cloud Functions or insecure client-side role creation.
+        </Text>
       </View>
 
       <View style={styles.verificationSection}>
@@ -462,7 +1133,7 @@ export default function AdminHome() {
         {isLoadingApplications ? (
           <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <ActivityIndicator color="#06774B" />
-            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading pending driver applications...</Text>
+            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading driver applications...</Text>
           </View>
         ) : pendingApplications.length ? (
           <View style={styles.verificationGrid}>
@@ -488,13 +1159,32 @@ export default function AdminHome() {
 
                   <Text style={[styles.verifyDetail, { color: theme.text }]}>Phone: {application.phone || "Not provided"}</Text>
                   <Text style={[styles.verifyDetail, { color: theme.text }]}>License: {application.licenseNumber || "Not provided"}</Text>
-                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Vehicle: {getVehicleDetails(application)}</Text>
+                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Vehicle Option: {applicationUsesOwnVehicle(application) ? "Driver-owned vehicle" : "Needs city/barangay vehicle"}</Text>
+                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Plate: {application.plateNumber || "Not provided"}</Text>
+                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Vehicle: {getVehicleNameFromApplication(application)}</Text>
+                  {applicationUsesOwnVehicle(application) ? (
+                    <>
+                      <Text style={[styles.verifyDetail, { color: theme.text }]}>Body Type: {application.bodyType || "Not provided"}</Text>
+                      <Text style={[styles.verifyDetail, { color: theme.text }]}>Color: {application.color || "Not provided"}</Text>
+                      <Text style={[styles.verifyDetail, { color: theme.text }]}>MV File Number: {application.mvFileNumber || "Not provided"}</Text>
+                    </>
+                  ) : null}
                   <Text style={[styles.verifyDetail, { color: theme.mutedText }]}>Applied: {formatDate(application.createdAt)}</Text>
 
                   {application.uploaded_document ? (
                     <TouchableOpacity style={styles.documentPreviewWrap} onPress={() => setPreviewImageUrl(application.uploaded_document)}>
                       <Image source={{ uri: application.uploaded_document }} style={styles.documentImage} />
                     </TouchableOpacity>
+                  ) : null}
+
+                  {application.vehiclePhotoUrls?.length ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.documentGallery}>
+                      {application.vehiclePhotoUrls.map((photoUrl, index) => (
+                        <TouchableOpacity key={`${application.id}-vehicle-photo-${index + 1}`} style={styles.documentPreviewWrap} onPress={() => setPreviewImageUrl(photoUrl)}>
+                          <Image source={{ uri: photoUrl }} style={styles.documentImage} />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   ) : null}
 
                   <View style={styles.verifyActions}>
@@ -520,65 +1210,79 @@ export default function AdminHome() {
         ) : (
           <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No pending driver applications</Text>
-            <Text style={[styles.emptyText, { color: theme.mutedText }]}>New driver applications will appear here for review.</Text>
+            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Approved and rejected applications remain stored in Firestore for records.</Text>
           </View>
         )}
       </View>
 
       <View style={styles.verificationSection}>
-        <Text style={[styles.subsectionTitle, { color: theme.text }]}>Pending Staff Accounts</Text>
-        {pendingStaffUsers.length ? (
-          <View style={styles.verificationGrid}>
-            {pendingStaffUsers.map((user) => (
-              <View key={user.id} style={[styles.verificationCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <View style={styles.verificationTop}>
-                  <View style={styles.verifyIdentity}>
-                    <View style={[styles.verifyAvatar, { backgroundColor: theme.avatarBg }]}>
-                      <FontAwesome name="user" size={22} color={theme.avatarText} />
+        <Text style={[styles.subsectionTitle, { color: theme.text }]}>Dispatcher Accounts</Text>
+        {dispatcherAccounts.length ? (
+          <View style={styles.usersGrid}>
+            {dispatcherAccounts.map((user) => (
+              <View key={user.id} style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <View style={styles.userCardTop}>
+                  <View style={styles.userIdentity}>
+                    <View style={[styles.userAvatar, { backgroundColor: theme.avatarBg }]}>
+                      {getProfilePhoto(user) ? (
+                        <Image source={{ uri: getProfilePhoto(user) }} style={styles.avatarImage} />
+                      ) : (
+                        <FontAwesome name="user" size={22} color={theme.avatarText} />
+                      )}
                     </View>
-                    <View style={styles.verifyIdentityCopy}>
-                      <Text style={[styles.verifyName, { color: theme.text }]}>{getUserName(user)}</Text>
-                      <Text style={[styles.verifyMeta, { color: theme.mutedText }]}>{user.role || "No role"}</Text>
+                    <View style={styles.userIdentityCopy}>
+                      <Text style={[styles.userName, { color: theme.text }]}>{getUserName(user)}</Text>
+                      <Text style={[styles.userRole, { color: theme.mutedText }]}>Dispatcher</Text>
                     </View>
                   </View>
-                  <View style={styles.pendingPill}>
-                    <Text style={styles.pendingPillText}>Pending</Text>
+                  <View style={[styles.userStatusPill, { backgroundColor: "#DDF2E6" }]}>
+                    <Text style={styles.userStatusText}>{getApprovalStatus(user)}</Text>
                   </View>
                 </View>
 
-                <Text style={[styles.verifyDetail, { color: theme.text }]}>Email: {user.email || "Not provided"}</Text>
-                <Text style={[styles.verifyDetail, { color: theme.text }]}>Phone: {getUserPhone(user)}</Text>
-                <Text style={[styles.verifyDetail, { color: theme.text }]}>Barangay: {user.barangay || "Not provided"}</Text>
-                <Text style={[styles.verifyDetail, { color: theme.mutedText }]}>Created: {formatDate(user.createdAt)}</Text>
-
-                <View style={styles.verifyActions}>
-                  <TouchableOpacity style={[styles.verifyButton, styles.rejectButton]} onPress={() => updateStaffStatus(user, "Rejected")}>
-                    <Text style={styles.verifyButtonText}>Reject</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.verifyButton, styles.approveButton]} onPress={() => updateStaffStatus(user, "Approved")}>
-                    <Text style={styles.verifyButtonText}>Approve</Text>
-                  </TouchableOpacity>
-                </View>
+                <Text style={[styles.userLine, { color: theme.text }]}>Email: {user.email || "Not provided"}</Text>
+                <Text style={[styles.userLine, { color: theme.text }]}>Phone: {getUserPhone(user)}</Text>
+                <Text style={[styles.userLine, { color: theme.text }]}>Status: {getApprovalStatus(user)}</Text>
+                <Text style={[styles.userLine, { color: theme.mutedText }]}>Registered: {formatDate(user.createdAt)}</Text>
               </View>
             ))}
           </View>
         ) : (
           <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No pending dispatcher or staff accounts</Text>
-            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Assigned staff accounts waiting for approval will show here.</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>No dispatcher accounts found</Text>
+            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Dispatcher accounts from the `users` collection will appear here.</Text>
           </View>
         )}
       </View>
 
       {applicationsError ? <Text style={styles.errorText}>{applicationsError}</Text> : null}
-      {applicationsMessage ? <Text style={styles.feedbackText}>{applicationsMessage}</Text> : null}
+      {staffMessage ? <Text style={styles.feedbackText}>{staffMessage}</Text> : null}
     </>
   );
 
   const renderRequests = () => (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Requests</Text>
+        <Text style={styles.sectionHeaderText}>Request History</Text>
+      </View>
+
+      <View style={styles.filterRow}>
+        {requestTypeFilters.map((type) => {
+          const active = requestTypeFilter === type;
+
+          return (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.filterChip,
+                { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
+              ]}
+              onPress={() => setRequestTypeFilter(type)}
+            >
+              <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{type}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <View style={styles.filterRow}>
@@ -600,7 +1304,12 @@ export default function AdminHome() {
         })}
       </View>
 
-      {filteredRequests.length ? (
+      {isLoadingRequests ? (
+        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <ActivityIndicator color="#06774B" />
+          <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading request history...</Text>
+        </View>
+      ) : filteredRequests.length ? (
         <View style={styles.requestGrid}>
           {filteredRequests.map((request) => (
             <TouchableOpacity
@@ -609,16 +1318,22 @@ export default function AdminHome() {
               onPress={() => setSelectedRequestRecord(request)}
             >
               <View style={styles.requestCardTop}>
-                <View style={[styles.requestLevelPill, { backgroundColor: request.level === "Emergency" ? "#FAD9D9" : request.level === "Urgent" ? "#FFF1CB" : "#DDF2E6" }]}>
-                  <Text style={styles.requestLevelText}>{request.level || request.priorityLevel || "Pending"}</Text>
+                <View style={[styles.requestLevelPill, { backgroundColor: request.requestTypeLabel === "Emergency Request" ? "#FAD9D9" : "#DDF2E6" }]}>
+                  <Text style={styles.requestLevelText}>{request.requestTypeLabel}</Text>
                 </View>
                 <Text style={[styles.requestStatusText, { color: theme.mutedText }]}>{request.status || "Pending"}</Text>
               </View>
 
-              <Text style={[styles.requestTitle, { color: theme.text }]}>{request.emergencyType || request.title || "Transport Request"}</Text>
+              <Text style={[styles.requestTitle, { color: theme.text }]}>{request.id}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Resident: {request.residentName || "Resident"}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Vehicle: {request.vehicle || request.vehicleType || "Available vehicle"}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Pickup: {request.pickupLocation || request.barangay || "Pickup pending"}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Emergency Type: {request.emergencyType || "Not specified"}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Pickup: {request.pickupLocation || request.barangay || "Not available"}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Destination: {request.destination || "Not available"}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Assigned Driver: {request.assignedDriverName || "Unassigned"}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Vehicle: {request.vehicleLabel}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Priority: {request.priorityLabel}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Submitted: {formatDateTime(request.createdAt)}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Completed: {formatDateTime(request.completedAt)}</Text>
 
               <TouchableOpacity style={styles.requestViewButton} onPress={() => setSelectedRequestRecord(request)}>
                 <Text style={styles.requestViewButtonText}>View Details</Text>
@@ -628,8 +1343,8 @@ export default function AdminHome() {
         </View>
       ) : (
         <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No request records found yet.</Text>
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>Transport requests will appear here once residents submit them.</Text>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No request records match the active filters.</Text>
+          <Text style={[styles.emptyText, { color: theme.mutedText }]}>{requestsError || "Transport requests will appear here once residents submit them."}</Text>
         </View>
       )}
     </>
@@ -638,12 +1353,12 @@ export default function AdminHome() {
   const renderUsers = () => (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Users</Text>
+        <Text style={styles.sectionHeaderText}>User Management</Text>
       </View>
 
       <View style={styles.filterRow}>
-        {userRoleFilters.map((role) => {
-          const active = userRoleFilter === role;
+        {userRoleViews.map((role) => {
+          const active = userRoleView === role;
 
           return (
             <TouchableOpacity
@@ -652,7 +1367,7 @@ export default function AdminHome() {
                 styles.filterChip,
                 { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
               ]}
-              onPress={() => setUserRoleFilter(role)}
+              onPress={() => setUserRoleView(role)}
             >
               <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{role}</Text>
             </TouchableOpacity>
@@ -672,14 +1387,18 @@ export default function AdminHome() {
               <View style={styles.userCardTop}>
                 <View style={styles.userIdentity}>
                   <View style={[styles.userAvatar, { backgroundColor: theme.avatarBg }]}>
-                    {getProfilePhoto(user) ? <Image source={{ uri: getProfilePhoto(user) }} style={styles.avatarImage} /> : <FontAwesome name="user" size={22} color={theme.avatarText} />}
+                    {getProfilePhoto(user) ? (
+                      <Image source={{ uri: getProfilePhoto(user) }} style={styles.avatarImage} />
+                    ) : (
+                      <FontAwesome name="user" size={22} color={theme.avatarText} />
+                    )}
                   </View>
                   <View style={styles.userIdentityCopy}>
                     <Text style={[styles.userName, { color: theme.text }]}>{getUserName(user)}</Text>
                     <Text style={[styles.userRole, { color: theme.mutedText }]}>{user.role || "No role"}</Text>
                   </View>
                 </View>
-                <View style={[styles.userStatusPill, { backgroundColor: getApprovalStatus(user).toLowerCase() === "approved" ? "#DDF2E6" : "#FFF1CB" }]}>
+                <View style={[styles.userStatusPill, { backgroundColor: getApprovalStatus(user) === "Deactivated" ? "#F0E8E8" : "#DDF2E6" }]}>
                   <Text style={styles.userStatusText}>{getApprovalStatus(user)}</Text>
                 </View>
               </View>
@@ -687,51 +1406,116 @@ export default function AdminHome() {
               <Text style={[styles.userLine, { color: theme.text }]}>Email: {user.email || "Not provided"}</Text>
               <Text style={[styles.userLine, { color: theme.text }]}>Phone: {getUserPhone(user)}</Text>
               <Text style={[styles.userLine, { color: theme.text }]}>Barangay: {user.barangay || "Not provided"}</Text>
+              <Text style={[styles.userLine, { color: theme.text }]}>Address: {getUserAddress(user)}</Text>
               <Text style={[styles.userLine, { color: theme.mutedText }]}>Created: {formatDate(user.createdAt)}</Text>
+
+              <View style={styles.userActions}>
+                <TouchableOpacity style={[styles.smallActionButton, styles.editButton]} onPress={() => openUserEditor(user)}>
+                  <Text style={styles.smallActionButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.smallActionButton, styles.deactivateButton]}
+                  onPress={() => setConfirmingUserDeactivate(user)}
+                >
+                  <Text style={styles.smallActionButtonText}>Deactivate</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.smallActionButton, styles.deleteButton]} onPress={() => setConfirmingUserDelete(user)}>
+                  <Text style={styles.smallActionButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </View>
       ) : (
         <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No users match the selected filter.</Text>
-          {usersError ? <Text style={[styles.emptyText, { color: theme.mutedText }]}>{usersError}</Text> : null}
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No users match the selected view.</Text>
+          <Text style={[styles.emptyText, { color: theme.mutedText }]}>{usersError || "Try a different role view or search term."}</Text>
         </View>
       )}
+
+      {usersError ? <Text style={styles.errorText}>{usersError}</Text> : null}
+      {userMessage ? <Text style={styles.feedbackText}>{userMessage}</Text> : null}
     </>
   );
 
   const renderVehicles = () => (
     <>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Vehicles</Text>
+        <Text style={styles.sectionHeaderText}>Vehicle Management</Text>
       </View>
 
-      <View style={styles.vehicleRow}>
-        {filteredVehicles.map((vehicle) => (
-          <View key={vehicle.name} style={[styles.vehicleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.vehicleTitle, { color: theme.text }]}>{vehicle.name}</Text>
-            <Text style={[styles.vehicleMeta, { color: theme.mutedText }]}>{vehicle.type === "ambulance" ? "Emergency vehicle" : "Transport vehicle"}</Text>
-            <View style={[styles.vehicleImageWrap, { backgroundColor: theme.softSurface }]}>
-              {vehicle.type === "ambulance" ? (
-                <FontAwesome name="ambulance" size={120} color="#FFFFFF" />
-              ) : (
-                <MaterialCommunityIcons name="van-passenger" size={130} color="#FFFFFF" />
-              )}
+      <View style={styles.vehicleToolbar}>
+        <TouchableOpacity style={styles.primaryActionButton} onPress={() => openVehicleEditor()}>
+          <Text style={styles.primaryActionButtonText}>Add City/Barangay Vehicle</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.secondaryActionButton, syncingVehicles && styles.actionButtonDisabled]}
+          onPress={syncApprovedDriverVehicles}
+          disabled={syncingVehicles}
+        >
+          <Text style={styles.secondaryActionButtonText}>{syncingVehicles ? "Syncing..." : "Sync Driver-Owned Vehicles"}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {isLoadingVehicles ? (
+        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <ActivityIndicator color="#06774B" />
+          <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading vehicle records...</Text>
+        </View>
+      ) : filteredVehicles.length ? (
+        <View style={styles.vehicleRow}>
+          {filteredVehicles.map((vehicle) => (
+            <View key={vehicle.id} style={[styles.vehicleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View style={styles.vehicleHeader}>
+                <View style={styles.vehicleHeaderCopy}>
+                  <Text style={[styles.vehicleTitle, { color: theme.text }]}>{vehicle.name || "Unnamed vehicle"}</Text>
+                  <Text style={[styles.vehicleMeta, { color: theme.mutedText }]}>
+                    {vehicle.type || "Vehicle"} | {vehicle.plateNumber || "No plate number"}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.userStatusPill,
+                    { backgroundColor: vehicle.derivedStatus === "Inactive" ? "#F0E8E8" : "#DDF2E6" },
+                  ]}
+                >
+                  <Text style={styles.userStatusText}>{vehicle.derivedStatus}</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.userLine, { color: theme.text }]}>Owner Type: {vehicle.ownerType || CITY_VEHICLE_OWNER}</Text>
+              <Text style={[styles.userLine, { color: theme.text }]}>Driver: {vehicle.driverName || "Not linked"}</Text>
+              <Text style={[styles.userLine, { color: theme.text }]}>Owner UID: {vehicle.ownerUid || "Not linked"}</Text>
+              <Text style={[styles.userLine, { color: theme.mutedText }]}>Created: {formatDate(vehicle.createdAt)}</Text>
+
+              <View style={styles.userActions}>
+                <TouchableOpacity style={[styles.smallActionButton, styles.editButton]} onPress={() => openVehicleEditor(vehicle)}>
+                  <Text style={styles.smallActionButtonText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.smallActionButton, styles.deleteButton]} onPress={() => setConfirmingVehicleDelete(vehicle)}>
+                  <Text style={styles.smallActionButtonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <TouchableOpacity style={styles.vehicleButton} onPress={() => setViewedVehicle(vehicle.name)}>
-              <Text style={styles.vehicleButtonText}>View</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      ) : (
+        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>No vehicle records found.</Text>
+          <Text style={[styles.emptyText, { color: theme.mutedText }]}>
+            {vehiclesError || "Add a city/barangay vehicle or sync approved driver-owned vehicles to populate this section."}
+          </Text>
+        </View>
+      )}
 
-      {viewedVehicle ? <Text style={styles.feedbackText}>Viewing vehicle record for {viewedVehicle}.</Text> : null}
+      {vehiclesError ? <Text style={styles.errorText}>{vehiclesError}</Text> : null}
+      {vehicleMessage ? <Text style={styles.feedbackText}>{vehicleMessage}</Text> : null}
     </>
   );
 
   const renderSectionContent = () => {
-    if (selectedSection === "Verifications") {
-      return renderVerifications();
+    if (selectedSection === "Staff Management") {
+      return renderStaffManagement();
     }
 
     if (selectedSection === "Requests") {
@@ -777,7 +1561,7 @@ export default function AdminHome() {
           <View style={[styles.layoutRow, compact && styles.layoutRowCompact]}>
             <View style={[styles.sidebar, compact && styles.sidebarCompact, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <Text style={[styles.sidebarTitle, { color: theme.text }]}>Admin Tools</Text>
-              <Text style={[styles.sidebarSubtitle, { color: theme.mutedText }]}>Core controls from the main system, arranged in the cleaner reference layout.</Text>
+              <Text style={[styles.sidebarSubtitle, { color: theme.mutedText }]}>Live controls backed by `users`, `transportRequests`, `Driver_Applications`, `driverAssignments`, and `vehicles`.</Text>
 
               {sideLinks.map((label) => {
                 const active = selectedSection === label;
@@ -797,10 +1581,10 @@ export default function AdminHome() {
             <View style={styles.mainArea}>
               <View style={styles.topControls}>
                 <View style={[styles.searchBar, { backgroundColor: theme.softSurface, borderColor: theme.softSurfaceBorder }]}>
-                  <Feather name="search" size={20} color="#335E50" />
+                  <FontAwesome name="search" size={20} color="#335E50" />
                   <TextInput
                     style={[styles.searchInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-                    placeholder="Search admin data..."
+                    placeholder="Search current admin section..."
                     placeholderTextColor={theme.subtleText}
                     value={searchValue}
                     onChangeText={setSearchValue}
@@ -812,7 +1596,7 @@ export default function AdminHome() {
                   onPress={() => setRangeLabel((current) => (current === "Week" ? "Month" : current === "Month" ? "Year" : "Week"))}
                 >
                   <Text style={[styles.filterButtonText, { color: theme.text }]}>{rangeLabel}</Text>
-                  <Feather name="chevron-down" size={18} color="#111111" />
+                  <FontAwesome name="chevron-down" size={18} color="#111111" />
                 </TouchableOpacity>
               </View>
 
@@ -827,26 +1611,257 @@ export default function AdminHome() {
           <ScrollView style={[styles.modalCard, { backgroundColor: theme.surface, borderColor: theme.border }]} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.modalHeaderRow}>
               <View>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>{selectedRequestRecord?.emergencyType || "Request Details"}</Text>
-                <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>{selectedRequestRecord?.status || "Pending"} transport request.</Text>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>{selectedRequestRecord?.id || "Request Details"}</Text>
+                <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>{selectedRequestRecord?.status || "Pending"} request record.</Text>
               </View>
               <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedRequestRecord(null)}>
-                <Feather name="x" size={20} color="#111111" />
+                <FontAwesome name="close" size={20} color="#111111" />
               </TouchableOpacity>
             </View>
 
             <View style={[styles.detailBox, { backgroundColor: theme.surfaceMuted }]}>
               <Text style={[styles.detailLine, { color: theme.text }]}>Resident: {selectedRequestRecord?.residentName || "Resident"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Priority: {selectedRequestRecord?.priorityLevel || selectedRequestRecord?.level || "Normal"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Pickup: {selectedRequestRecord?.pickupLocation || selectedRequestRecord?.barangay || "Pickup pending"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Exact pickup: {selectedRequestRecord?.pickupDetails || "No exact pickup details saved"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Condition: {selectedRequestRecord?.patientCondition || "Not specified"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Request Type: {selectedRequestRecord?.requestTypeLabel || "Not available"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Emergency Type: {selectedRequestRecord?.emergencyType || "Not specified"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Pickup: {selectedRequestRecord?.pickupLocation || selectedRequestRecord?.barangay || "Not available"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Destination: {selectedRequestRecord?.destination || "Not available"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Assigned Driver: {selectedRequestRecord?.assignedDriverName || "Unassigned"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Vehicle: {selectedRequestRecord?.vehicleLabel || "Not assigned"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Priority: {selectedRequestRecord?.priorityLabel || "Normal"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Status: {selectedRequestRecord?.status || "Pending"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Date Submitted: {formatDateTime(selectedRequestRecord?.createdAt)}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Date Assigned: {formatDateTime(selectedRequestRecord?.assignedAt)}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Date Accepted: {formatDateTime(selectedRequestRecord?.acceptedAt)}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Date Completed: {formatDateTime(selectedRequestRecord?.completedAt)}</Text>
               {selectedRequestRecord?.additionalNotes ? <Text style={[styles.detailLine, { color: theme.text }]}>Notes: {selectedRequestRecord.additionalNotes}</Text> : null}
-              <Text style={[styles.detailLine, { color: theme.text }]}>Vehicle: {selectedRequestRecord?.vehicle || selectedRequestRecord?.vehicleType || "Vehicle pending"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Driver: {selectedRequestRecord?.assignedDriverName || "Unassigned"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Created: {formatDateTime(selectedRequestRecord?.createdAt)}</Text>
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(editingUser)} transparent animationType="fade" onRequestClose={() => setEditingUser(null)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setEditingUser(null)}>
+              <Text style={styles.modalCloseCircleText}>X</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Account</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
+              Update phone, barangay, address, and account status. Passwords are not editable from this client.
+            </Text>
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
+            <TextInput
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              value={userForm.fullName}
+              editable={false}
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Phone number"
+              placeholderTextColor={theme.subtleText}
+              value={userForm.phoneNumber}
+              onChangeText={(value) => setUserForm((current) => ({ ...current, phoneNumber: value }))}
+              keyboardType="phone-pad"
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Barangay"
+              placeholderTextColor={theme.subtleText}
+              value={userForm.barangay}
+              onChangeText={(value) => setUserForm((current) => ({ ...current, barangay: value }))}
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Address"
+              placeholderTextColor={theme.subtleText}
+              value={userForm.address}
+              onChangeText={(value) => setUserForm((current) => ({ ...current, address: value }))}
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Account Status</Text>
+            <View style={styles.filterRow}>
+              {accountStatusOptions.map((status) => {
+                const active = userForm.accountStatus === status;
+
+                return (
+                  <TouchableOpacity
+                    key={status}
+                    style={[
+                      styles.filterChip,
+                      { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
+                    ]}
+                    onPress={() => setUserForm((current) => ({ ...current, accountStatus: status }))}
+                  >
+                    <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{status}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity style={[styles.primarySaveButton, savingUser && styles.actionButtonDisabled]} onPress={saveUserChanges} disabled={savingUser}>
+              <Text style={styles.primarySaveButtonText}>{savingUser ? "Saving..." : "Save Changes"}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={vehicleEditorOpen} transparent animationType="fade" onRequestClose={() => setVehicleEditorOpen(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setVehicleEditorOpen(false)}>
+              <Text style={styles.modalCloseCircleText}>X</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{vehicleForm.id ? "Edit Vehicle" : "Add Vehicle"}</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Vehicle records are stored in the `vehicles` collection and used by dispatch and admin monitoring.</Text>
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Name</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Vehicle name"
+              placeholderTextColor={theme.subtleText}
+              value={vehicleForm.name}
+              onChangeText={(value) => setVehicleForm((current) => ({ ...current, name: value }))}
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Type</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Ambulance, Van, SUV..."
+              placeholderTextColor={theme.subtleText}
+              value={vehicleForm.type}
+              onChangeText={(value) => setVehicleForm((current) => ({ ...current, type: value }))}
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Plate Number</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Plate number"
+              placeholderTextColor={theme.subtleText}
+              value={vehicleForm.plateNumber}
+              onChangeText={(value) => setVehicleForm((current) => ({ ...current, plateNumber: value.toUpperCase() }))}
+              autoCapitalize="characters"
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Owner Type</Text>
+            <View style={styles.filterRow}>
+              {(vehicleForm.ownerType === DRIVER_VEHICLE_OWNER ? [DRIVER_VEHICLE_OWNER] : cityVehicleOwnerOptions).map((ownerType) => {
+                const active = vehicleForm.ownerType === ownerType;
+
+                return (
+                  <TouchableOpacity
+                    key={ownerType}
+                    style={[
+                      styles.filterChip,
+                      { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
+                    ]}
+                    onPress={() => setVehicleForm((current) => ({ ...current, ownerType }))}
+                  >
+                    <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{ownerType}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Driver Name</Text>
+            <TextInput
+              style={[styles.profileInput, vehicleForm.ownerType === DRIVER_VEHICLE_OWNER && styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Optional driver name"
+              placeholderTextColor={theme.subtleText}
+              value={vehicleForm.driverName}
+              onChangeText={(value) => setVehicleForm((current) => ({ ...current, driverName: value }))}
+              editable={vehicleForm.ownerType !== DRIVER_VEHICLE_OWNER}
+            />
+
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Status</Text>
+            <View style={styles.filterRow}>
+              {vehicleStatusOptions.map((status) => {
+                const active = vehicleForm.status === status;
+
+                return (
+                  <TouchableOpacity
+                    key={status}
+                    style={[
+                      styles.filterChip,
+                      { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
+                    ]}
+                    onPress={() => setVehicleForm((current) => ({ ...current, status }))}
+                  >
+                    <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{status}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity style={[styles.primarySaveButton, savingVehicle && styles.actionButtonDisabled]} onPress={saveVehicle} disabled={savingVehicle}>
+              <Text style={styles.primarySaveButtonText}>{savingVehicle ? "Saving..." : vehicleForm.id ? "Save Vehicle" : "Add Vehicle"}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(confirmingUserDelete)} transparent animationType="fade" onRequestClose={() => setConfirmingUserDelete(null)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.confirmCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Delete User Record</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
+              Remove {confirmingUserDelete ? getUserName(confirmingUserDelete) : "this user"} from the `users` collection? This does not change the Firebase Authentication password.
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={[styles.secondaryActionButton, styles.confirmButton]} onPress={() => setConfirmingUserDelete(null)}>
+                <Text style={styles.secondaryActionButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryActionButton, styles.confirmButton, savingUser && styles.actionButtonDisabled]} onPress={() => deleteUserRecord(confirmingUserDelete)} disabled={savingUser}>
+                <Text style={styles.primaryActionButtonText}>{savingUser ? "Deleting..." : "Delete Record"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(confirmingUserDeactivate)} transparent animationType="fade" onRequestClose={() => setConfirmingUserDeactivate(null)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.confirmCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Deactivate Account</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
+              Mark {confirmingUserDeactivate ? getUserName(confirmingUserDeactivate) : "this user"} as deactivated?
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={[styles.secondaryActionButton, styles.confirmButton]} onPress={() => setConfirmingUserDeactivate(null)}>
+                <Text style={styles.secondaryActionButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryActionButton, styles.confirmButton, savingUser && styles.actionButtonDisabled]} onPress={() => deactivateUser(confirmingUserDeactivate)} disabled={savingUser}>
+                <Text style={styles.primaryActionButtonText}>{savingUser ? "Saving..." : "Deactivate"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(confirmingVehicleDelete)} transparent animationType="fade" onRequestClose={() => setConfirmingVehicleDelete(null)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.confirmCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Delete Vehicle Record</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
+              Delete {confirmingVehicleDelete?.name || "this vehicle"} from the `vehicles` collection?
+            </Text>
+            <View style={styles.confirmActions}>
+              <TouchableOpacity style={[styles.secondaryActionButton, styles.confirmButton]} onPress={() => setConfirmingVehicleDelete(null)}>
+                <Text style={styles.secondaryActionButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryActionButton, styles.confirmButton, savingVehicle && styles.actionButtonDisabled]} onPress={() => deleteVehicleRecord(confirmingVehicleDelete)} disabled={savingVehicle}>
+                <Text style={styles.primaryActionButtonText}>{savingVehicle ? "Deleting..." : "Delete Vehicle"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
 
@@ -865,7 +1880,7 @@ export default function AdminHome() {
               {menuItems.map((item) => (
                 <TouchableOpacity key={item.key} style={styles.menuItem} onPress={item.action}>
                   <View style={styles.menuItemLeft}>
-                    <Feather name={item.icon} size={18} color={theme.mutedText} />
+                    <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
                     <Text style={[styles.menuItemText, { color: theme.text }]}>{item.label}</Text>
                   </View>
                   {item.key === "profile" ? null : <Text style={[styles.menuItemSoon, { color: theme.secondaryText }]}>Soon</Text>}
@@ -874,7 +1889,7 @@ export default function AdminHome() {
 
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
-                  <Feather name={theme.mode === "Dark" ? "moon" : "sun"} size={18} color={theme.mutedText} />
+                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
                   <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
                 </View>
                 <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
@@ -887,7 +1902,7 @@ export default function AdminHome() {
               style={styles.logoutMenuButton}
               onPress={() => {
                 setProfileMenuOpen(false);
-                router.replace("/");
+                router.replace("/login");
               }}
             >
               <Text style={styles.logoutMenuButtonText}>Log Out</Text>
@@ -904,36 +1919,28 @@ export default function AdminHome() {
             </TouchableOpacity>
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>Profile</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>You can prepare your profile details here. Save/edit functions are not connected yet.</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>This profile sheet remains view-only for the admin session.</Text>
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Full name"
-              placeholderTextColor={theme.subtleText}
-              defaultValue={profile?.fullName || displayName}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              value={profile?.fullName || displayName}
+              editable={false}
             />
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Phone number"
-              placeholderTextColor={theme.subtleText}
-              defaultValue={profile?.phoneNumber || ""}
-              keyboardType="phone-pad"
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              value={profile?.phoneNumber || ""}
+              editable={false}
             />
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Barangay"
-              placeholderTextColor={theme.subtleText}
-              defaultValue={profile?.barangay || TOLEDO_BARANGAY_OPTIONS[0]?.label || ""}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              value={profile?.barangay || TOLEDO_BARANGAY_OPTIONS[0]?.label || ""}
+              editable={false}
             />
-
-            <TouchableOpacity style={[styles.disabledSaveButton, { backgroundColor: theme.disabledButtonBg }]} activeOpacity={1}>
-              <Text style={[styles.disabledSaveButtonText, { color: theme.disabledButtonText }]}>Save Changes Soon</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1077,17 +2084,12 @@ const styles = StyleSheet.create({
   barTrack: { width: 34, height: 142, borderRadius: 12, justifyContent: "flex-end", alignItems: "center", padding: 4 },
   bar: { width: "100%", borderRadius: 10 },
   dayText: { marginTop: 10, fontSize: 11, fontWeight: "800", paddingVertical: 4, paddingHorizontal: 6, borderRadius: 999 },
-  dayTextActive: { marginTop: 10, fontSize: 11, fontWeight: "800", paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 12 },
   statsPanel: { flexGrow: 1, flexBasis: 260, padding: 18, borderRadius: 16, borderWidth: 1 },
   statsPanelTitle: { fontSize: 16, fontWeight: "900", marginBottom: 12 },
   statLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "rgba(127,127,127,0.18)" },
   statLineLabel: { flex: 1, fontSize: 13, fontWeight: "700" },
   statLineValue: { fontSize: 15, fontWeight: "900" },
-  quickStatsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  quickStatCard: { flexGrow: 1, flexBasis: 120, padding: 14, borderRadius: 12 },
-  quickStatValue: { fontSize: 24, fontWeight: "900" },
-  quickStatLabel: { marginTop: 4, fontSize: 12, fontWeight: "700" },
   verificationSection: { marginTop: 14 },
   subsectionTitle: { fontSize: 18, fontWeight: "900" },
   verificationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 14 },
@@ -1107,18 +2109,19 @@ const styles = StyleSheet.create({
   approveButton: { backgroundColor: "#06774B" },
   verifyButtonText: { fontSize: 14, fontWeight: "900", color: "#FFFFFF" },
   actionButtonDisabled: { opacity: 0.65 },
+  documentGallery: { paddingRight: 8, gap: 10 },
   documentPreviewWrap: { marginTop: 14, alignSelf: "flex-start" },
   documentImage: { width: 104, height: 70, borderRadius: 10, backgroundColor: "#EAF2EE" },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 12 },
   filterChip: { paddingVertical: 9, paddingHorizontal: 13, borderRadius: 999, borderWidth: 1 },
   filterChipText: { fontSize: 13, fontWeight: "800" },
   requestGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 6 },
-  requestCard: { flexGrow: 1, flexBasis: 280, padding: 18, borderRadius: 14, borderWidth: 1 },
+  requestCard: { flexGrow: 1, flexBasis: 320, padding: 18, borderRadius: 14, borderWidth: 1 },
   requestCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
   requestLevelPill: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 999 },
   requestLevelText: { fontSize: 12, fontWeight: "900", color: "#111111" },
   requestStatusText: { fontSize: 12, fontWeight: "800" },
-  requestTitle: { marginTop: 14, fontSize: 20, fontWeight: "900" },
+  requestTitle: { marginTop: 14, fontSize: 18, fontWeight: "900" },
   requestMeta: { marginTop: 7, fontSize: 13, lineHeight: 19 },
   requestViewButton: { marginTop: 16, minHeight: 42, borderRadius: 12, backgroundColor: "#06774B", alignItems: "center", justifyContent: "center" },
   requestViewButtonText: { fontSize: 14, fontWeight: "900", color: "#FFFFFF" },
@@ -1134,16 +2137,29 @@ const styles = StyleSheet.create({
   userStatusPill: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 999 },
   userStatusText: { fontSize: 12, fontWeight: "900", color: "#111111" },
   userLine: { marginTop: 9, fontSize: 14, lineHeight: 21 },
+  userActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
+  smallActionButton: { minHeight: 38, paddingHorizontal: 12, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  editButton: { backgroundColor: "#06774B" },
+  deactivateButton: { backgroundColor: "#A86900" },
+  deleteButton: { backgroundColor: "#C62828" },
+  smallActionButtonText: { fontSize: 13, fontWeight: "900", color: "#FFFFFF" },
+  vehicleToolbar: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
+  primaryActionButton: { minHeight: 46, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#06774B", alignItems: "center", justifyContent: "center" },
+  primaryActionButtonText: { fontSize: 14, fontWeight: "900", color: "#FFFFFF" },
+  secondaryActionButton: { minHeight: 46, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#DDEAE4", alignItems: "center", justifyContent: "center" },
+  secondaryActionButtonText: { fontSize: 14, fontWeight: "800", color: "#214238" },
   vehicleRow: { flexDirection: "row", flexWrap: "wrap", gap: 18, marginTop: 14 },
   vehicleCard: { flexGrow: 1, flexBasis: 320, maxWidth: 420, padding: 18, borderRadius: 16, borderWidth: 1 },
-  vehicleTitle: { fontSize: 24, fontWeight: "900", textAlign: "center" },
-  vehicleMeta: { marginTop: 8, fontSize: 14, fontWeight: "800", textAlign: "center" },
-  vehicleImageWrap: { width: "100%", minHeight: 170, marginTop: 18, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  vehicleButton: { width: "58%", marginTop: 18, paddingVertical: 16, borderRadius: 999, backgroundColor: "#06774B", alignItems: "center", alignSelf: "center" },
-  vehicleButtonText: { fontSize: 18, fontWeight: "800", color: "#FFFFFF" },
+  vehicleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  vehicleHeaderCopy: { flex: 1 },
+  vehicleTitle: { fontSize: 22, fontWeight: "900" },
+  vehicleMeta: { marginTop: 8, fontSize: 14, fontWeight: "800" },
   emptyState: { marginTop: 14, padding: 18, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center", gap: 8 },
   emptyTitle: { fontSize: 16, fontWeight: "800", textAlign: "center" },
   emptyText: { marginTop: 2, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  infoPanel: { marginTop: 12, padding: 16, borderRadius: 16, borderWidth: 1, gap: 8 },
+  infoPanelTitle: { fontSize: 16, fontWeight: "900" },
+  infoPanelText: { fontSize: 13, lineHeight: 20, fontWeight: "700" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.32)", alignItems: "center", justifyContent: "center", padding: 12 },
   modalCard: { width: "100%", maxWidth: 560, maxHeight: "92%", borderRadius: 18, borderWidth: 1 },
   modalScrollContent: { padding: 20, gap: 12 },
@@ -1185,8 +2201,12 @@ const styles = StyleSheet.create({
   modalCloseCircleText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
   profileFieldLabel: { marginTop: 22, fontSize: 15, fontWeight: "700" },
   profileInput: { marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, backgroundColor: "#FCFCFC", fontSize: 15, color: "#111111" },
-  disabledSaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#CFD8D3" },
-  disabledSaveButtonText: { fontSize: 15, fontWeight: "800", color: "#466157" },
+  readOnlyInput: { opacity: 0.78 },
+  primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
+  primarySaveButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
+  confirmCard: { width: "100%", maxWidth: 520, borderRadius: 20, borderWidth: 1, padding: 22 },
+  confirmActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 22 },
+  confirmButton: { flex: 1, minWidth: 180 },
   imageModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", alignItems: "center", justifyContent: "center", padding: 20 },
   imageModalCloseArea: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
   imageModalPreview: { width: "100%", height: "84%" },
