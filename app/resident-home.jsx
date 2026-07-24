@@ -1,48 +1,43 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
 import BrandLogo from "../components/BrandLogo";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
-import { useCurrentUserProfile } from "../lib/session";
+import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
-const emergencyTypeOptions = [
-  { label: "Medical", value: "Medical" },
-  { label: "Accident", value: "Accident" },
-  { label: "Fire", value: "Fire" },
-  { label: "Rescue", value: "Rescue" },
-  { label: "Traffic", value: "Traffic" },
-  { label: "Disaster", value: "Disaster" },
+const serviceTypeOptions = [
+  { label: "Medical Transport", value: "Medical Transport" },
+  { label: "Non-Emergency Medical Transport (NEMT)", value: "Non-Emergency Medical Transport (NEMT)" },
+  { label: "Accessible / Wheelchair Van", value: "Accessible / Wheelchair Van" },
+  { label: "Assisted Care Ride", value: "Assisted Care Ride" },
+  { label: "Special Event / Wedding Charter", value: "Special Event / Wedding Charter" },
+  { label: "Memorial / Funeral Procession", value: "Memorial / Funeral Procession" },
+  { label: "Hourly / As-Directed Rental", value: "Hourly / As-Directed Rental" },
 ];
 
-const patientConditionOptions = [
-  { label: "Can walk", value: "Can walk" },
-  { label: "Needs assistance", value: "Needs assistance" },
-  { label: "Needs stretcher", value: "Needs stretcher" },
-  { label: "Critical / urgent", value: "Critical / urgent" },
+const passengerCapacityOptions = [
+  { label: "2 passengers", value: "2 passengers" },
+  { label: "4 passengers", value: "4 passengers" },
+  { label: "6 passengers", value: "6 passengers" },
+  { label: "8 passengers", value: "8 passengers" },
+  { label: "10+ passengers", value: "10+ passengers" },
 ];
 
-const vehicleTypeOptions = [
-  { label: "Ambulance", value: "Ambulance" },
-  { label: "SUV", value: "SUV" },
-  { label: "Pickup Truck", value: "Pickup Truck" },
-  { label: "Sedan", value: "Sedan" },
-  { label: "Cargo Van", value: "Cargo Van" },
-  { label: "Passenger Van", value: "Passenger Van" },
-];
-
-const priorityByEmergencyType = {
-  Disaster: "Emergency",
-  Fire: "Emergency",
-  Rescue: "Emergency",
-  Accident: "Urgent",
-  Medical: "Urgent",
-  Traffic: "Non-Urgent",
+const priorityByServiceType = {
+  "Medical Transport": "Urgent",
+  "Non-Emergency Medical Transport (NEMT)": "Non-Urgent",
+  "Accessible / Wheelchair Van": "Non-Urgent",
+  "Assisted Care Ride": "Non-Urgent",
+  "Special Event / Wedding Charter": "Planned",
+  "Memorial / Funeral Procession": "Planned",
+  "Hourly / As-Directed Rental": "Planned",
 };
 
 const getStatusTone = (value) => {
@@ -54,7 +49,7 @@ const getStatusTone = (value) => {
     return styles.tagDanger;
   }
 
-  if (["Pending", "Urgent", "Emergency"].includes(value)) {
+  if (["Pending", "Urgent", "Emergency", "Planned"].includes(value)) {
     return styles.tagWarning;
   }
 
@@ -66,7 +61,7 @@ export default function ResidentHome() {
   const { width } = useWindowDimensions();
   const compact = width < 920;
   const narrow = width < 560;
-  const { authUser, displayName, profile } = useCurrentUserProfile();
+  const { authUser, displayName: fallbackDisplayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
   const [residentStatus, setResidentStatus] = useState({
     title: "Current Ride Status",
@@ -75,20 +70,38 @@ export default function ResidentHome() {
     tag: "Tracking",
   });
   const [latestRequest, setLatestRequest] = useState(null);
+  const [requestHistory, setRequestHistory] = useState([]);
+  const [profileOverride, setProfileOverride] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
   const [callConfirmOpen, setCallConfirmOpen] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [callSessionId, setCallSessionId] = useState("");
   const [callStatus, setCallStatus] = useState("idle");
   const [callDispatcherName, setCallDispatcherName] = useState("");
-  const [emergencyType, setEmergencyType] = useState("");
-  const [vehicleType, setVehicleType] = useState("");
+  const [serviceType, setServiceType] = useState("");
+  const [passengerCapacity, setPassengerCapacity] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
   const [pickupDetails, setPickupDetails] = useState("");
-  const [patientCondition, setPatientCondition] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
+  const [settingsForm, setSettingsForm] = useState({
+    fullName: "",
+    phoneNumber: "",
+    email: "",
+  });
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState("");
+  const [settingsMessage, setSettingsMessage] = useState("");
+
+  const activeProfile = profileOverride ?? profile;
+  const displayName = activeProfile?.fullName?.trim() || fallbackDisplayName;
 
   const initials = useMemo(() => {
     const words = displayName.split(" ").filter(Boolean);
@@ -116,6 +129,7 @@ export default function ResidentHome() {
           });
 
         const newestRequest = requests[0] ?? null;
+        setRequestHistory(requests);
         setLatestRequest(newestRequest);
 
         if (!newestRequest) {
@@ -123,7 +137,7 @@ export default function ResidentHome() {
         }
 
         setResidentStatus({
-          title: newestRequest.title || `${newestRequest.emergencyType || "Transport"} Request`,
+          title: newestRequest.title || `${newestRequest.serviceType || newestRequest.emergencyType || "Transport"} Request`,
           description: newestRequest.assignedDriverName
             ? `${newestRequest.status || "Pending"} | Assigned to ${newestRequest.assignedDriverName}`
             : `${newestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
@@ -155,6 +169,35 @@ export default function ResidentHome() {
     return unsubscribe;
   }, [callSessionId]);
 
+  useEffect(() => {
+    if (!settingsOpen) {
+      return;
+    }
+
+    setSettingsError("");
+    setSettingsMessage("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setSettingsForm({
+      fullName: activeProfile?.fullName || displayName,
+      phoneNumber: activeProfile?.phoneNumber || activeProfile?.phone || "",
+      email: activeProfile?.email || authUser?.email || "",
+    });
+  }, [activeProfile?.email, activeProfile?.fullName, activeProfile?.phone, activeProfile?.phoneNumber, authUser?.email, displayName, settingsOpen]);
+
+  useEffect(() => {
+    if (!changePasswordOpen) {
+      return;
+    }
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setSettingsError("");
+    setSettingsMessage("");
+  }, [changePasswordOpen]);
+
   const handleQuickAction = (type) => {
     if (type === "emergency-call") {
       setCallConfirmOpen(true);
@@ -168,7 +211,7 @@ export default function ResidentHome() {
 
     if (latestRequest) {
       setResidentStatus({
-        title: latestRequest.title || `${latestRequest.emergencyType || "Transport"} Request`,
+        title: latestRequest.title || `${latestRequest.serviceType || latestRequest.emergencyType || "Transport"} Request`,
         description: latestRequest.assignedDriverName
           ? `${latestRequest.status || "Pending"} | Assigned to ${latestRequest.assignedDriverName}`
           : `${latestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
@@ -207,10 +250,10 @@ export default function ResidentHome() {
         dispatcherName: "",
         targetRole: "Dispatcher",
         latestRequestId: latestRequest?.id ?? "",
-        emergencyType: latestRequest?.emergencyType ?? emergencyType ?? "",
-        pickupLocation: latestRequest?.pickupLocation ?? pickupLocation ?? profile?.barangay ?? "",
+        emergencyType: latestRequest?.emergencyType ?? latestRequest?.serviceType ?? serviceType ?? "",
+        serviceType: latestRequest?.serviceType ?? latestRequest?.emergencyType ?? serviceType ?? "",
+        pickupLocation: latestRequest?.pickupLocation ?? pickupLocation ?? activeProfile?.barangay ?? "",
         pickupDetails: latestRequest?.pickupDetails ?? pickupDetails.trim(),
-        patientCondition: latestRequest?.patientCondition ?? patientCondition,
         additionalNotes: latestRequest?.additionalNotes ?? additionalNotes.trim(),
         status: "ringing",
         createdAt: serverTimestamp(),
@@ -257,11 +300,10 @@ export default function ResidentHome() {
   };
 
   const resetRequestForm = () => {
-    setEmergencyType("");
-    setVehicleType("");
+    setServiceType("");
+    setPassengerCapacity("");
     setPickupLocation("");
     setPickupDetails("");
-    setPatientCondition("");
     setAdditionalNotes("");
   };
 
@@ -276,17 +318,17 @@ export default function ResidentHome() {
       return;
     }
 
-    if (!emergencyType || !vehicleType || !pickupLocation || !pickupDetails.trim()) {
+    if (!serviceType || !passengerCapacity || !pickupLocation || !pickupDetails.trim()) {
       setResidentStatus({
         title: "Complete Request Details",
-        description: "Please complete emergency type, vehicle type, pickup barangay, and exact pickup details.",
+        description: "Please complete service type, passenger capacity, pickup location, and exact pickup details.",
         meta: "Request not sent",
         tag: "Action Needed",
       });
       return;
     }
 
-    const priorityLevel = priorityByEmergencyType[emergencyType] ?? "Emergency";
+    const priorityLevel = priorityByServiceType[serviceType] ?? "Planned";
 
     try {
       await addDoc(collection(db, "transportRequests"), {
@@ -296,24 +338,25 @@ export default function ResidentHome() {
         level: priorityLevel,
         priorityLevel,
         status: "Pending",
-        title: `${emergencyType} Transport Request`,
-        emergencyType,
-        vehicle: vehicleType,
-        vehicleType,
+        title: `${serviceType} Transport Request`,
+        emergencyType: serviceType,
+        serviceType,
+        vehicle: passengerCapacity,
+        vehicleType: passengerCapacity,
+        passengerCapacity,
         barangay: pickupLocation,
         pickupLocation,
         pickupDetails: pickupDetails.trim(),
-        patientCondition: patientCondition || "Not specified",
         additionalNotes: additionalNotes.trim(),
         destination: "Nearest available response center",
-        summary: `${emergencyType} transport request from ${pickupLocation}.`,
+        summary: `${serviceType} transport request from ${pickupLocation}.`,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
       setResidentStatus({
-        title: "Emergency Transport Request Sent",
-        description: `${emergencyType} request sent for ${vehicleType}.`,
+        title: "Transport Request Sent",
+        description: `${serviceType} request sent for ${passengerCapacity}.`,
         meta: `${pickupLocation} | Waiting for dispatcher`,
         tag: priorityLevel,
       });
@@ -330,10 +373,135 @@ export default function ResidentHome() {
     }
   };
 
+  const formatDateValue = (value) => {
+    if (!value?.toDate) {
+      return "Not available";
+    }
+
+    return value.toDate().toLocaleString();
+  };
+
+  const saveResidentSettings = async () => {
+    if (!authUser?.uid) {
+      setSettingsError("Login is required before updating your settings.");
+      return;
+    }
+
+    if (!settingsForm.fullName.trim() || !settingsForm.phoneNumber.trim() || !settingsForm.email.trim()) {
+      setSettingsError("Username, phone number, and email address are required.");
+      return;
+    }
+
+    setSavingSettings(true);
+    setSettingsError("");
+    setSettingsMessage("");
+
+    try {
+      const currentAuthUser = auth.currentUser ?? authUser;
+      const nextEmail = settingsForm.email.trim().toLowerCase();
+
+      if (nextEmail !== (authUser.email || activeProfile?.email || "").trim().toLowerCase()) {
+        await updateEmail(currentAuthUser, nextEmail);
+      }
+
+      await updateDoc(doc(db, "users", authUser.uid), {
+        fullName: settingsForm.fullName.trim(),
+        phoneNumber: settingsForm.phoneNumber.trim(),
+        phone: settingsForm.phoneNumber.trim(),
+        email: nextEmail,
+        updatedAt: serverTimestamp(),
+      });
+
+      saveLocalUserProfile({
+        uid: authUser.uid,
+        email: nextEmail,
+        fullName: settingsForm.fullName.trim(),
+        barangay: activeProfile?.barangay || "",
+        phoneNumber: settingsForm.phoneNumber.trim(),
+        phone: settingsForm.phoneNumber.trim(),
+        role: activeProfile?.role || "Resident",
+        accountStatus: activeProfile?.accountStatus || "Active",
+      });
+
+      setProfileOverride({
+        ...activeProfile,
+        email: nextEmail,
+        fullName: settingsForm.fullName.trim(),
+        phoneNumber: settingsForm.phoneNumber.trim(),
+        phone: settingsForm.phoneNumber.trim(),
+      });
+
+      setSettingsMessage("Settings updated successfully.");
+      setSettingsOpen(false);
+    } catch (error) {
+      console.log("Resident settings save failed:", error);
+
+      if (error?.code === "auth/requires-recent-login") {
+        setSettingsError("Please log in again before changing your email address.");
+      } else if (error?.code === "auth/invalid-email") {
+        setSettingsError("Please enter a valid email address.");
+      } else if (error?.code === "auth/email-already-in-use") {
+        setSettingsError("That email address is already being used by another account.");
+      } else {
+        setSettingsError("Settings could not be updated. Please check Firestore permissions and your email details.");
+      }
+      return;
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const saveResidentPassword = async () => {
+    if (!authUser?.email) {
+      setSettingsError("This account has no email address available for password update.");
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setSettingsError("Enter your current password, new password, and confirm password.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setSettingsError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setSettingsError("New password and confirm password do not match.");
+      return;
+    }
+
+    setSavingSettings(true);
+    setSettingsError("");
+    setSettingsMessage("");
+
+    try {
+      const currentAuthUser = auth.currentUser ?? authUser;
+      const credential = EmailAuthProvider.credential(authUser.email, currentPassword);
+      await reauthenticateWithCredential(currentAuthUser, credential);
+      await updatePassword(currentAuthUser, newPassword);
+      setSettingsMessage("Password updated successfully.");
+      setChangePasswordOpen(false);
+    } catch (error) {
+      console.log("Resident password update failed:", error);
+
+      if (error?.code === "auth/wrong-password" || error?.code === "auth/invalid-credential") {
+        setSettingsError("Current password is incorrect.");
+      } else if (error?.code === "auth/requires-recent-login") {
+        setSettingsError("Please log in again before changing your password.");
+      } else {
+        setSettingsError("Password could not be updated. Please check your password details.");
+      }
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const menuItems = [
     { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
-    { key: "history", label: "History", icon: "clock-o", action: () => {} },
-    { key: "settings", label: "Settings", icon: "cog", action: () => {} },
+    { key: "history", label: "History", icon: "clock-o", action: () => { setProfileMenuOpen(false); setHistoryOpen(true); } },
+    { key: "settings", label: "Settings", icon: "cog", action: () => { setProfileMenuOpen(false); setSettingsOpen(true); } },
   ];
 
   return (
@@ -381,7 +549,7 @@ export default function ResidentHome() {
             <View style={[styles.featureCard, { backgroundColor: theme.transportCard }]}>
               <FontAwesome name="clipboard" size={compact ? 28 : 34} color="#D88400" />
               <Text style={[styles.cardTitle, { color: theme.text }]}>Transport Request</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Send your emergency type, vehicle type, pickup barangay, and exact location details.</Text>
+              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Send your service type, passenger capacity, pickup location, and exact location details.</Text>
               <TouchableOpacity style={styles.bookingButton} onPress={() => handleQuickAction("transport")}>
                 <Text style={styles.cardButtonText}>Open Request Form</Text>
               </TouchableOpacity>
@@ -415,24 +583,20 @@ export default function ResidentHome() {
             {latestRequest ? (
               <View style={[styles.requestSnapshot, { backgroundColor: theme.surfaceMuted }]}>
                 <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Emergency Type</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.emergencyType || "Not set"}</Text>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Service Type</Text>
+                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.serviceType || latestRequest.emergencyType || "Not set"}</Text>
                 </View>
                 <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Vehicle</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.vehicle || latestRequest.vehicleType || "Not set"}</Text>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Passenger Capacity</Text>
+                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.passengerCapacity || latestRequest.vehicle || latestRequest.vehicleType || "Not set"}</Text>
                 </View>
                 <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Pickup Barangay</Text>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Pickup Location</Text>
                   <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.pickupLocation || "Not set"}</Text>
                 </View>
                 <View style={styles.snapshotRow}>
                   <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Exact Pickup</Text>
                   <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.pickupDetails || "Not provided"}</Text>
-                </View>
-                <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Passenger Condition</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.patientCondition || "Not specified"}</Text>
                 </View>
               </View>
             ) : (
@@ -456,37 +620,37 @@ export default function ResidentHome() {
               <Text style={[styles.modalTitle, { color: theme.text }]}>Transport Request</Text>
               <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Complete the request details so responders can find you faster.</Text>
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Emergency Type</Text>
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Service Type</Text>
               <Dropdown
                 style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
                 containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
                 itemTextStyle={styles.dropdownItemText}
                 placeholderStyle={[styles.dropdownPlaceholder, { color: theme.subtleText }]}
                 selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-                data={emergencyTypeOptions}
+                data={serviceTypeOptions}
                 labelField="label"
                 valueField="value"
-                placeholder="Select emergency type"
-                value={emergencyType}
-                onChange={(item) => setEmergencyType(item.value)}
+                placeholder="Select service type"
+                value={serviceType}
+                onChange={(item) => setServiceType(item.value)}
               />
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Vehicle Type</Text>
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Passenger Capacity</Text>
               <Dropdown
                 style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
                 containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
                 itemTextStyle={styles.dropdownItemText}
                 placeholderStyle={[styles.dropdownPlaceholder, { color: theme.subtleText }]}
                 selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-                data={vehicleTypeOptions}
+                data={passengerCapacityOptions}
                 labelField="label"
                 valueField="value"
-                placeholder="Select vehicle type"
-                value={vehicleType}
-                onChange={(item) => setVehicleType(item.value)}
+                placeholder="Select passenger capacity"
+                value={passengerCapacity}
+                onChange={(item) => setPassengerCapacity(item.value)}
               />
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Pickup Barangay</Text>
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Pickup Location</Text>
               <Dropdown
                 style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
                 containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
@@ -499,7 +663,7 @@ export default function ResidentHome() {
                 data={TOLEDO_BARANGAY_OPTIONS}
                 labelField="label"
                 valueField="value"
-                placeholder="Select pickup barangay"
+                placeholder="Select pickup location"
                 value={pickupLocation}
                 onChange={(item) => setPickupLocation(item.value)}
               />
@@ -513,21 +677,6 @@ export default function ResidentHome() {
                 onChangeText={setPickupDetails}
                 multiline
                 textAlignVertical="top"
-              />
-
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Patient / Passenger Condition</Text>
-              <Dropdown
-                style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
-                containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                itemTextStyle={styles.dropdownItemText}
-                placeholderStyle={[styles.dropdownPlaceholder, { color: theme.subtleText }]}
-                selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-                data={patientConditionOptions}
-                labelField="label"
-                valueField="value"
-                placeholder="Select condition"
-                value={patientCondition}
-                onChange={(item) => setPatientCondition(item.value)}
               />
 
               <Text style={[styles.modalLabel, { color: theme.text }]}>Additional Notes</Text>
@@ -561,12 +710,12 @@ export default function ResidentHome() {
             <Text style={[styles.callTitle, { color: theme.text }]}>Call Emergency Help?</Text>
             <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Are you sure you want to call Emergency Help?</Text>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)}>
+            <View style={styles.callActionRow}>
+              <TouchableOpacity style={[styles.modalButton, styles.callActionButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.callConfirmButton]}
+                style={[styles.modalButton, styles.callActionButton, styles.callConfirmButton]}
                 onPress={() => {
                   setCallConfirmOpen(false);
                   startEmergencyCall();
@@ -607,7 +756,7 @@ export default function ResidentHome() {
                 <Text style={[styles.profileMenuAvatarText, { color: theme.avatarText }]}>{initials}</Text>
               </View>
               <Text style={[styles.profileMenuName, { color: theme.text }]}>{displayName}</Text>
-              <Text style={[styles.profileMenuEmail, { color: theme.secondaryText }]}>{profile?.email || authUser?.email || "Resident account"}</Text>
+              <Text style={[styles.profileMenuEmail, { color: theme.secondaryText }]}>{activeProfile?.email || authUser?.email || "Resident account"}</Text>
             </View>
 
             <View style={styles.profileMenuBody}>
@@ -617,19 +766,8 @@ export default function ResidentHome() {
                     <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
                     <Text style={[styles.menuItemText, { color: theme.text }]}>{item.label}</Text>
                   </View>
-                  {item.key === "profile" ? null : <Text style={[styles.menuItemSoon, { color: theme.secondaryText }]}>Soon</Text>}
                 </TouchableOpacity>
               ))}
-
-              <View style={styles.menuItem}>
-                <View style={styles.menuItemLeft}>
-                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
-                  <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
-                </View>
-                <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
-                  <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             <TouchableOpacity
@@ -653,14 +791,91 @@ export default function ResidentHome() {
             </TouchableOpacity>
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>Profile</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>You can prepare your profile details here. Save/edit functions are not connected yet.</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Resident account details currently saved in your profile.</Text>
 
-            <Text style={[styles.modalLabel, { color: theme.text }]}>Full Name</Text>
+            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Full Name</Text>
+              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{displayName || "Not set"}</Text>
+            </View>
+
+            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Email Address</Text>
+              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.email || authUser?.email || "Not set"}</Text>
+            </View>
+
+            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Phone Number</Text>
+              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.phoneNumber || activeProfile?.phone || "Not set"}</Text>
+            </View>
+
+            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Barangay</Text>
+              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.barangay || "Not set"}</Text>
+            </View>
+
+            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Address</Text>
+              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.address || "Not set"}</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={historyOpen} transparent animationType="fade" onRequestClose={() => setHistoryOpen(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.modalCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+            <TouchableOpacity style={styles.modalClose} onPress={() => setHistoryOpen(false)}>
+              <Text style={styles.modalCloseText}>X</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Request History</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Your previous and current transport requests are recorded here.</Text>
+
+            <ScrollView contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
+              {requestHistory.length ? (
+                requestHistory.map((request) => (
+                  <View key={request.id} style={[styles.historyCard, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
+                    <View style={styles.historyHeader}>
+                      <Text style={[styles.historyTitle, { color: theme.text }]}>{request.serviceType || request.emergencyType || "Transport Request"}</Text>
+                      <View style={[styles.tag, getStatusTone(request.status || request.level || "Pending")]}>
+                        <Text style={[styles.tagText, { color: theme.accentText }]}>{request.status || "Pending"}</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Request ID: {request.id}</Text>
+                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Passenger Capacity: {request.passengerCapacity || request.vehicle || request.vehicleType || "Not set"}</Text>
+                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Pickup Location: {request.pickupLocation || "Not set"}</Text>
+                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Submitted: {formatDateValue(request.createdAt)}</Text>
+                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Completed: {formatDateValue(request.completedAt)}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={[styles.emptyStatusCard, { backgroundColor: theme.emptySurface }]}>
+                  <Text style={[styles.emptyStatusTitle, { color: theme.text }]}>No history yet</Text>
+                  <Text style={[styles.emptyStatusText, { color: theme.secondaryText }]}>Your request history will appear here after you submit transport requests.</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.profileEditorCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+            <TouchableOpacity style={styles.modalClose} onPress={() => setSettingsOpen(false)}>
+              <Text style={styles.modalCloseText}>X</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Update your resident account details, password, and theme mode.</Text>
+
+            <Text style={[styles.modalLabel, { color: theme.text }]}>Username</Text>
             <TextInput
               style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="Full name"
               placeholderTextColor={theme.subtleText}
-              defaultValue={profile?.fullName || displayName}
+              value={settingsForm.fullName}
+              onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
             />
 
             <Text style={[styles.modalLabel, { color: theme.text }]}>Phone Number</Text>
@@ -668,27 +883,106 @@ export default function ResidentHome() {
               style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="Phone number"
               placeholderTextColor={theme.subtleText}
-              defaultValue={profile?.phoneNumber || ""}
+              value={settingsForm.phoneNumber}
+              onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
               keyboardType="phone-pad"
             />
 
-            <Text style={[styles.modalLabel, { color: theme.text }]}>Barangay</Text>
-            <Dropdown
-              style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
-              containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
-              itemTextStyle={styles.dropdownItemText}
-              placeholderStyle={[styles.dropdownPlaceholder, { color: theme.subtleText }]}
-              selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-              data={TOLEDO_BARANGAY_OPTIONS}
-              labelField="label"
-              valueField="value"
-              placeholder="Select barangay"
-              value={profile?.barangay || ""}
-              onChange={() => {}}
+            <Text style={[styles.modalLabel, { color: theme.text }]}>Email Address</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Email address"
+              placeholderTextColor={theme.subtleText}
+              value={settingsForm.email}
+              onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
 
-            <TouchableOpacity style={[styles.disabledSaveButton, { backgroundColor: theme.disabledButtonBg }]} activeOpacity={1}>
-              <Text style={[styles.disabledSaveButtonText, { color: theme.disabledButtonText }]}>Save Changes Soon</Text>
+            <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
+              <View style={styles.menuItemLeft}>
+                <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
+                <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
+              </View>
+              <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
+                <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
+              onPress={() => setChangePasswordOpen(true)}
+            >
+              <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
+            </TouchableOpacity>
+
+            {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
+            {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
+              onPress={saveResidentSettings}
+              disabled={savingSettings}
+            >
+              <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
+                {savingSettings ? "Saving..." : "Save Settings"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.profileEditorCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+            <TouchableOpacity style={styles.modalClose} onPress={() => setChangePasswordOpen(false)}>
+              <Text style={styles.modalCloseText}>X</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
+            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
+
+            <Text style={[styles.modalLabel, { color: theme.text }]}>Current Password</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Enter current password"
+              placeholderTextColor={theme.subtleText}
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+            />
+
+            <Text style={[styles.modalLabel, { color: theme.text }]}>New Password</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Enter new password"
+              placeholderTextColor={theme.subtleText}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+
+            <Text style={[styles.modalLabel, { color: theme.text }]}>Confirm New Password</Text>
+            <TextInput
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              placeholder="Confirm new password"
+              placeholderTextColor={theme.subtleText}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+
+            {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
+            {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
+              onPress={saveResidentPassword}
+              disabled={savingSettings}
+            >
+              <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
+                {savingSettings ? "Saving..." : "Update Password"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1049,12 +1343,26 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 28,
   },
+  callActionRow: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+    marginTop: 28,
+    flexWrap: "wrap",
+  },
   modalButton: {
     flex: 1,
     minHeight: 52,
     borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
+  },
+  callActionButton: {
+    flex: 0,
+    minWidth: 116,
+    paddingHorizontal: 22,
   },
   cancelButton: {
     backgroundColor: "#D9D9D9",
@@ -1224,6 +1532,58 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 22,
   },
+  profileInfoCard: {
+    marginTop: 16,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#F4F7F5",
+  },
+  profileInfoLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#60716B",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  profileInfoValue: {
+    marginTop: 6,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "700",
+    color: "#1C2D27",
+  },
+  historyList: {
+    paddingTop: 18,
+    paddingBottom: 6,
+    gap: 14,
+  },
+  historyCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    gap: 6,
+  },
+  historyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  historyTitle: {
+    flex: 1,
+    minWidth: 180,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "800",
+    color: "#1C2D27",
+  },
+  historyText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#4F655C",
+  },
   profileInput: {
     marginTop: 10,
     minHeight: 50,
@@ -1234,6 +1594,57 @@ const styles = StyleSheet.create({
     backgroundColor: "#FCFCFC",
     fontSize: 15,
     color: "#111111",
+  },
+  settingsThemeRow: {
+    marginTop: 22,
+    minHeight: 56,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  secondaryActionButton: {
+    marginTop: 16,
+    minHeight: 52,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  secondaryActionButtonText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#1C2D27",
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+    color: "#B42318",
+  },
+  feedbackText: {
+    marginTop: 16,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: "700",
+    color: "#06774B",
+  },
+  saveButton: {
+    marginTop: 24,
+    minHeight: 52,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#06774B",
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   disabledSaveButton: {
     marginTop: 28,

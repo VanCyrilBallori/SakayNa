@@ -347,9 +347,16 @@ const emptyVehicleForm = {
 
 export default function AdminHome() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const compact = width < 1080;
   const narrow = width < 560;
+  const adminPanelHeight = useMemo(() => {
+    if (compact) {
+      return null;
+    }
+
+    return Math.max(540, height - 210);
+  }, [compact, height]);
   const { authUser, displayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
 
@@ -1558,27 +1565,35 @@ export default function AdminHome() {
         </View>
 
         <View style={[styles.container, compact && styles.containerCompact]}>
-          <View style={[styles.layoutRow, compact && styles.layoutRowCompact]}>
-            <View style={[styles.sidebar, compact && styles.sidebarCompact, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={[styles.layoutRow, compact && styles.layoutRowCompact, !compact && { minHeight: adminPanelHeight }]}>
+            <View
+              style={[
+                styles.sidebar,
+                compact && styles.sidebarCompact,
+                !compact && { height: adminPanelHeight },
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+            >
               <Text style={[styles.sidebarTitle, { color: theme.text }]}>Admin Tools</Text>
-              <Text style={[styles.sidebarSubtitle, { color: theme.mutedText }]}>Live controls backed by `users`, `transportRequests`, `Driver_Applications`, `driverAssignments`, and `vehicles`.</Text>
 
-              {sideLinks.map((label) => {
-                const active = selectedSection === label;
+              <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
+                {sideLinks.map((label) => {
+                  const active = selectedSection === label;
 
-                return (
-                  <TouchableOpacity
-                    key={label}
-                    style={[styles.sideBlock, active && styles.sideBlockActive, { backgroundColor: active ? "#06774B" : "#EAF4EF" }]}
-                    onPress={() => setSelectedSection(label)}
-                  >
-                    <Text style={[styles.sideBlockText, { color: active ? "#FFFFFF" : "#214238" }]}>{label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+                  return (
+                    <TouchableOpacity
+                      key={label}
+                      style={[styles.sideBlock, active && styles.sideBlockActive, { backgroundColor: active ? "#06774B" : "#EAF4EF" }]}
+                      onPress={() => setSelectedSection(label)}
+                    >
+                      <Text style={[styles.sideBlockText, { color: active ? "#FFFFFF" : "#214238" }]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
 
-            <View style={styles.mainArea}>
+            <View style={[styles.mainArea, !compact && { height: adminPanelHeight }]}>
               <View style={styles.topControls}>
                 <View style={[styles.searchBar, { backgroundColor: theme.softSurface, borderColor: theme.softSurfaceBorder }]}>
                   <FontAwesome name="search" size={20} color="#335E50" />
@@ -1600,7 +1615,13 @@ export default function AdminHome() {
                 </TouchableOpacity>
               </View>
 
-              <View style={[styles.contentPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>{renderSectionContent()}</View>
+              <ScrollView
+                style={[styles.contentPanel, !compact && styles.contentPanelFixed, { backgroundColor: theme.surface, borderColor: theme.border }]}
+                contentContainerStyle={styles.contentPanelScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {renderSectionContent()}
+              </ScrollView>
             </View>
           </View>
         </View>
@@ -2003,17 +2024,21 @@ const styles = StyleSheet.create({
   layoutRowCompact: { flexWrap: "wrap" },
   sidebar: {
     width: 236,
+    flexShrink: 0,
     gap: 10,
     padding: 16,
     borderWidth: 1,
     borderRadius: 18,
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
   },
   sidebarCompact: {
     width: "100%",
+    alignSelf: "stretch",
   },
   sidebarTitle: { fontSize: 20, fontWeight: "900" },
   sidebarSubtitle: { fontSize: 13, lineHeight: 19, marginBottom: 6 },
+  panelScrollArea: { flex: 1 },
+  panelScrollContent: { gap: 10, paddingBottom: 2 },
   sideBlock: {
     minHeight: 48,
     paddingVertical: 12,
@@ -2056,6 +2081,8 @@ const styles = StyleSheet.create({
   },
   filterButtonText: { fontSize: 15, fontWeight: "700" },
   contentPanel: { padding: 14, borderRadius: 18, borderWidth: 1 },
+  contentPanelFixed: { flex: 1, minHeight: 0 },
+  contentPanelScrollContent: { paddingBottom: 2 },
   sectionHeader: { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, backgroundColor: "#3F4542" },
   sectionHeaderText: { fontSize: 22, fontWeight: "900", color: "#FFFFFF" },
   notificationPanel: {

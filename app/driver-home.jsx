@@ -1,12 +1,13 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
 import LeafletMap from "../components/LeafletMap";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import {
   DRIVER_AVAILABILITY_SHIFT,
   DRIVER_SCHEDULE_COLLECTION,
@@ -111,12 +112,19 @@ export default function DriverHome() {
   const [scheduleMessage, setScheduleMessage] = useState("");
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [assignmentHistory, setAssignmentHistory] = useState([]);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [profileForm, setProfileForm] = useState({ fullName: "", phoneNumber: "", barangay: "", address: "" });
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({ fullName: "", phoneNumber: "", barangay: "", address: "", email: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const initials = displayName
     .split(" ")
@@ -253,6 +261,35 @@ export default function DriverHome() {
         setAssignedTransfer(assignments[0] ?? null);
       },
       (error) => console.log("Driver assignment listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, [accessStatus, authUser?.uid]);
+
+  useEffect(() => {
+    if (!authUser?.uid || accessStatus !== "approved") {
+      setAssignmentHistory([]);
+      return undefined;
+    }
+
+    const assignmentsQuery = query(collection(db, "driverAssignments"), where("driverId", "==", authUser.uid));
+    const unsubscribe = onSnapshot(
+      assignmentsQuery,
+      (snapshot) => {
+        const assignments = snapshot.docs
+          .map((assignmentDoc) => ({
+            id: assignmentDoc.id,
+            ...assignmentDoc.data(),
+          }))
+          .sort((first, second) => {
+            const firstTime = first.updatedAt?.toMillis?.() ?? first.createdAt?.toMillis?.() ?? 0;
+            const secondTime = second.updatedAt?.toMillis?.() ?? second.createdAt?.toMillis?.() ?? 0;
+            return secondTime - firstTime;
+          });
+
+        setAssignmentHistory(assignments);
+      },
+      (error) => console.log("Driver assignment history warning:", error)
     );
 
     return unsubscribe;
@@ -561,31 +598,46 @@ export default function DriverHome() {
 
   const menuItems = [
     { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
+    { key: "history", label: "History", icon: "clock-o", action: () => { setProfileMenuOpen(false); setHistoryOpen(true); } },
+    { key: "settings", label: "Settings", icon: "cog", action: () => { setProfileMenuOpen(false); setSettingsOpen(true); } },
   ];
 
   useEffect(() => {
-    if (!profileEditorOpen) {
+    if (!settingsOpen) {
       return;
     }
 
     setProfileError("");
     setProfileMessage("");
-    setProfileForm({
+    setSettingsForm({
       fullName: profile?.fullName || displayName,
       phoneNumber: profile?.phoneNumber || profile?.phone || "",
       barangay: profile?.barangay || "",
       address: profile?.address || "",
+      email: profile?.email || authUser?.email || "",
     });
-  }, [displayName, profile?.address, profile?.barangay, profile?.fullName, profile?.phone, profile?.phoneNumber, profileEditorOpen]);
+  }, [authUser?.email, displayName, profile?.address, profile?.barangay, profile?.email, profile?.fullName, profile?.phone, profile?.phoneNumber, settingsOpen]);
 
-  const saveDriverProfile = async () => {
+  useEffect(() => {
+    if (!changePasswordOpen) {
+      return;
+    }
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setProfileError("");
+    setProfileMessage("");
+  }, [changePasswordOpen]);
+
+  const saveDriverSettings = async () => {
     if (!authUser?.uid) {
       setProfileError("Login is required before updating your profile.");
       return;
     }
 
-    if (!profileForm.fullName.trim() || !profileForm.phoneNumber.trim() || !profileForm.barangay.trim()) {
-      setProfileError("Full name, phone number, and barangay are required.");
+    if (!settingsForm.fullName.trim() || !settingsForm.phoneNumber.trim() || !settingsForm.barangay.trim() || !settingsForm.email.trim()) {
+      setProfileError("Full name, phone number, barangay, and email are required.");
       return;
     }
 
@@ -594,34 +646,106 @@ export default function DriverHome() {
     setProfileMessage("");
 
     try {
+      const currentAuthUser = auth.currentUser ?? authUser;
+      const nextEmail = settingsForm.email.trim().toLowerCase();
+
+      if (nextEmail !== (authUser.email || profile?.email || "").trim().toLowerCase()) {
+        await updateEmail(currentAuthUser, nextEmail);
+      }
+
       await updateDoc(doc(db, "users", authUser.uid), {
-        fullName: profileForm.fullName.trim(),
-        phoneNumber: profileForm.phoneNumber.trim(),
-        phone: profileForm.phoneNumber.trim(),
-        barangay: profileForm.barangay.trim(),
-        address: profileForm.address.trim(),
+        fullName: settingsForm.fullName.trim(),
+        phoneNumber: settingsForm.phoneNumber.trim(),
+        phone: settingsForm.phoneNumber.trim(),
+        barangay: settingsForm.barangay.trim(),
+        address: settingsForm.address.trim(),
+        email: nextEmail,
         updatedAt: serverTimestamp(),
       });
 
       saveLocalUserProfile({
         uid: authUser.uid,
-        email: authUser.email || profile?.email || "",
-        fullName: profileForm.fullName.trim(),
-        barangay: profileForm.barangay.trim(),
-        phoneNumber: profileForm.phoneNumber.trim(),
-        phone: profileForm.phoneNumber.trim(),
+        email: nextEmail,
+        fullName: settingsForm.fullName.trim(),
+        barangay: settingsForm.barangay.trim(),
+        phoneNumber: settingsForm.phoneNumber.trim(),
+        phone: settingsForm.phoneNumber.trim(),
         role: "Driver",
         accountStatus: "Approved",
       });
 
-      setProfileMessage("Profile updated successfully.");
-      setProfileEditorOpen(false);
+      setProfileMessage("Settings updated successfully.");
+      setSettingsOpen(false);
     } catch (error) {
-      console.log("Driver profile save failed:", error);
-      setProfileError("Profile could not be updated. Please check Firestore permissions.");
+      console.log("Driver settings save failed:", error);
+
+      if (error?.code === "auth/requires-recent-login") {
+        setProfileError("Please log in again before changing your email address.");
+      } else if (error?.code === "auth/invalid-email") {
+        setProfileError("Please enter a valid email address.");
+      } else if (error?.code === "auth/email-already-in-use") {
+        setProfileError("That email address is already being used by another account.");
+      } else {
+        setProfileError("Settings could not be updated. Please check Firestore permissions and your email details.");
+      }
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  const saveDriverPassword = async () => {
+    if (!authUser?.email) {
+      setProfileError("This account has no email address available for password update.");
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setProfileError("Enter your current password, new password, and confirm password.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setProfileError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setProfileError("New password and confirm password do not match.");
+      return;
+    }
+
+    setSavingProfile(true);
+    setProfileError("");
+    setProfileMessage("");
+
+    try {
+      const currentAuthUser = auth.currentUser ?? authUser;
+      const credential = EmailAuthProvider.credential(authUser.email, currentPassword);
+      await reauthenticateWithCredential(currentAuthUser, credential);
+      await updatePassword(currentAuthUser, newPassword);
+      setProfileMessage("Password updated successfully.");
+      setChangePasswordOpen(false);
+    } catch (error) {
+      console.log("Driver password update failed:", error);
+
+      if (error?.code === "auth/wrong-password" || error?.code === "auth/invalid-credential") {
+        setProfileError("Current password is incorrect.");
+      } else if (error?.code === "auth/requires-recent-login") {
+        setProfileError("Please log in again before changing your password.");
+      } else {
+        setProfileError("Password could not be updated. Please check your password details.");
+      }
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const formatDateValue = (value) => {
+    if (!value?.toDate) {
+      return "Not available";
+    }
+
+    return value.toDate().toLocaleString();
   };
 
   if (accessStatus !== "approved") {
@@ -819,21 +943,11 @@ export default function DriverHome() {
                 {menuItems.map((item) => (
                   <TouchableOpacity key={item.key} style={styles.menuItem} onPress={item.action}>
                     <View style={styles.menuItemLeft}>
-                    <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
+                      <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
                       <Text style={[styles.menuItemText, { color: theme.text }]}>{item.label}</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
-
-                <View style={styles.menuItem}>
-                  <View style={styles.menuItemLeft}>
-                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
-                    <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
-                  </View>
-                  <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
-                    <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
 
               <TouchableOpacity
@@ -857,13 +971,93 @@ export default function DriverHome() {
               </TouchableOpacity>
 
               <Text style={[styles.reviewTitle, { color: theme.text }]}>Profile</Text>
-              <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your driver profile details used by dispatch and admin records.</Text>
+              <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Driver account details currently saved in your profile.</Text>
+
+              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Full Name</Text>
+                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.fullName || displayName || "Not set"}</Text>
+              </View>
+
+              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Email Address</Text>
+                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.email || authUser?.email || "Not set"}</Text>
+              </View>
+
+              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Phone Number</Text>
+                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.phoneNumber || profile?.phone || "Not set"}</Text>
+              </View>
+
+              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Barangay</Text>
+                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.barangay || "Not set"}</Text>
+              </View>
+
+              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
+                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Address</Text>
+                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.address || "Not set"}</Text>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={historyOpen} transparent animationType="fade" onRequestClose={() => setHistoryOpen(false)}>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+            <View style={[styles.scheduleModalCard, compact && styles.scheduleModalCardCompact, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <View style={styles.scheduleModalHeader}>
+                <View>
+                  <Text style={[styles.scheduleModalTitle, { color: theme.text }]}>History</Text>
+                  <Text style={[styles.scheduleModalSubtitle, { color: theme.mutedText }]}>Your current and past driver assignments are recorded here.</Text>
+                </View>
+                <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setHistoryOpen(false)}>
+                  <Text style={styles.modalCloseCircleText}>X</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
+                {assignmentHistory.length ? (
+                  assignmentHistory.map((assignment) => (
+                    <View key={assignment.id} style={[styles.historyCard, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
+                      <View style={styles.historyHeader}>
+                        <Text style={[styles.historyTitle, { color: theme.text }]}>{assignment.requestType || assignment.emergencyType || assignment.title || "Transport Request"}</Text>
+                        <View style={styles.badge}>
+                          <Text style={styles.badgeText}>{assignment.status || "Pending"}</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Assignment ID: {assignment.id}</Text>
+                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Resident: {assignment.residentName || "Not available"}</Text>
+                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Pickup: {assignment.pickupLocation || "Not available"}</Text>
+                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Destination: {assignment.destination || "Not available"}</Text>
+                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Vehicle: {assignment.vehicle || assignment.assignedVehicleName || "Not available"}</Text>
+                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Updated: {formatDateValue(assignment.updatedAt || assignment.createdAt)}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.emptyInbox}>
+                    <Text style={[styles.emptyTitle, { color: theme.text }]}>No history yet</Text>
+                    <Text style={[styles.emptyText, { color: theme.mutedText }]}>Your assignment history will appear here after you receive or complete transport tasks.</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+            <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setSettingsOpen(false)}>
+                <Text style={styles.modalCloseCircleText}>X</Text>
+              </TouchableOpacity>
+
+              <Text style={[styles.reviewTitle, { color: theme.text }]}>Settings</Text>
+              <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your driver account details, email, and theme mode.</Text>
 
               <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
               <TextInput
                 style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={profileForm.fullName}
-                onChangeText={(value) => setProfileForm((current) => ({ ...current, fullName: value }))}
+                value={settingsForm.fullName}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
                 placeholder="Full name"
                 placeholderTextColor={theme.subtleText}
               />
@@ -871,18 +1065,29 @@ export default function DriverHome() {
               <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
               <TextInput
                 style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={profileForm.phoneNumber}
-                onChangeText={(value) => setProfileForm((current) => ({ ...current, phoneNumber: value }))}
+                value={settingsForm.phoneNumber}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
                 placeholder="Phone number"
                 placeholderTextColor={theme.subtleText}
                 keyboardType="phone-pad"
               />
 
+              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Email Address</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                value={settingsForm.email}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
+                placeholder="Email address"
+                placeholderTextColor={theme.subtleText}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
               <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
               <TextInput
                 style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={profileForm.barangay}
-                onChangeText={(value) => setProfileForm((current) => ({ ...current, barangay: value }))}
+                value={settingsForm.barangay}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, barangay: value }))}
                 placeholder="Barangay"
                 placeholderTextColor={theme.subtleText}
               />
@@ -890,10 +1095,81 @@ export default function DriverHome() {
               <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
               <TextInput
                 style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={profileForm.address}
-                onChangeText={(value) => setProfileForm((current) => ({ ...current, address: value }))}
+                value={settingsForm.address}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, address: value }))}
                 placeholder="Street or landmark"
                 placeholderTextColor={theme.subtleText}
+              />
+
+              <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
+                <View style={styles.menuItemLeft}>
+                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
+                  <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
+                </View>
+                <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
+                  <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
+                onPress={() => setChangePasswordOpen(true)}
+              >
+                <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
+              </TouchableOpacity>
+
+              {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
+              {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
+
+              <TouchableOpacity
+                style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
+                onPress={saveDriverSettings}
+                disabled={savingProfile}
+              >
+                <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Save Settings"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)}>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+            <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setChangePasswordOpen(false)}>
+                <Text style={styles.modalCloseCircleText}>X</Text>
+              </TouchableOpacity>
+
+              <Text style={[styles.reviewTitle, { color: theme.text }]}>Change Password</Text>
+              <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
+
+              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Current Password</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                placeholder="Enter current password"
+                placeholderTextColor={theme.subtleText}
+                secureTextEntry
+              />
+
+              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>New Password</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder="Enter new password"
+                placeholderTextColor={theme.subtleText}
+                secureTextEntry
+              />
+
+              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Confirm New Password</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm new password"
+                placeholderTextColor={theme.subtleText}
+                secureTextEntry
               />
 
               {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
@@ -901,10 +1177,10 @@ export default function DriverHome() {
 
               <TouchableOpacity
                 style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
-                onPress={saveDriverProfile}
+                onPress={saveDriverPassword}
                 disabled={savingProfile}
               >
-                <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Save Changes"}</Text>
+                <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Update Password"}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1077,8 +1353,19 @@ const styles = StyleSheet.create({
   modalCloseCircle: { alignSelf: "flex-end", width: 42, height: 42, borderRadius: 21, backgroundColor: "#F51D1D", alignItems: "center", justifyContent: "center" },
   modalCloseCircleText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
   profileEditorSubtitle: { marginTop: 8, fontSize: 14, lineHeight: 21 },
+  profileInfoCard: { marginTop: 16, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
+  profileInfoLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4 },
+  profileInfoValue: { marginTop: 6, fontSize: 15, lineHeight: 22, fontWeight: "700" },
   profileFieldLabel: { marginTop: 20, fontSize: 15, fontWeight: "700" },
   profileInput: { marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, fontSize: 15, color: "#111111" },
+  historyList: { paddingTop: 18, paddingBottom: 6, gap: 14 },
+  historyCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 6 },
+  historyHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
+  historyTitle: { flex: 1, minWidth: 180, fontSize: 16, lineHeight: 22, fontWeight: "800" },
+  historyText: { fontSize: 14, lineHeight: 20 },
+  settingsThemeRow: { marginTop: 22, minHeight: 56, borderRadius: 14, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  secondaryActionButton: { marginTop: 16, minHeight: 52, borderRadius: 13, borderWidth: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
+  secondaryActionButtonText: { fontSize: 15, fontWeight: "800" },
   primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
   primarySaveButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
   feedbackText: { marginTop: 16, fontSize: 15, fontWeight: "700", color: "#335E50" },

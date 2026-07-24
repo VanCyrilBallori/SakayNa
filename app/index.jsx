@@ -1,5 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import BrandLogo from "../components/BrandLogo";
 
@@ -8,6 +9,8 @@ export default function Index() {
   const { width } = useWindowDimensions();
   const compact = width < 960;
   const narrow = width < 560;
+  const scrollViewRef = useRef(null);
+  const [featuresSectionY, setFeaturesSectionY] = useState(0);
 
   const features = [
     {
@@ -49,8 +52,15 @@ export default function Index() {
     { number: "4", label: "Track Response" },
   ];
 
+  const scrollToFeatures = () => {
+    scrollViewRef.current?.scrollTo({
+      y: Math.max(featuresSectionY - 24, 0),
+      animated: true,
+    });
+  };
+
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView ref={scrollViewRef} style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.heroWrap}>
         <View style={styles.heroGlowLeft} />
         <View style={styles.heroGlowRight} />
@@ -82,15 +92,6 @@ export default function Index() {
               An integrated emergency transport and response management system for Toledo City. Connecting residents,
               drivers, and city officials in one clean platform.
             </Text>
-
-            <View style={[styles.heroButtons, narrow && styles.heroButtonsNarrow]}>
-              <TouchableOpacity style={styles.getStartedButton} onPress={() => router.push("/signup")}>
-                <Text style={styles.getStartedButtonText}>Get Started</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.outlineButton} onPress={() => router.push("/login")}>
-                <Text style={styles.outlineButtonText}>Open Login</Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
           <View style={[styles.heroCard, compact && styles.heroCardCompact]}>
@@ -101,7 +102,7 @@ export default function Index() {
         </View>
       </View>
 
-      <View style={styles.sectionShell}>
+      <View style={styles.sectionShell} onLayout={(event) => setFeaturesSectionY(event.nativeEvent.layout.y)}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionEyebrow}>Features</Text>
           <Text style={[styles.sectionTitle, narrow && styles.sectionTitleNarrow]}>Powerful Features</Text>
@@ -144,21 +145,19 @@ export default function Index() {
           </View>
           <View style={styles.footerColumn}>
             <Text style={styles.footerHeading}>Product</Text>
-            <Text style={styles.footerLink}>Features</Text>
+            <TouchableOpacity onPress={scrollToFeatures}>
+              <Text style={styles.footerLink}>Features</Text>
+            </TouchableOpacity>
             <Text style={styles.footerLink}>Developers</Text>
             <Text style={styles.footerLink}>Teams</Text>
           </View>
           <View style={styles.footerColumn}>
             <Text style={styles.footerHeading}>Company</Text>
             <Text style={styles.footerLink}>About</Text>
-            <Text style={styles.footerLink}>Blog</Text>
+            <Text style={styles.footerLink}>Terms of Service</Text>
             <TouchableOpacity onPress={() => router.push("/apply-to-drive")}>
               <Text style={styles.footerLink}>Jobs</Text>
             </TouchableOpacity>
-          </View>
-          <View style={styles.footerColumn}>
-            <Text style={styles.footerHeading}>Emergency</Text>
-            <Text style={styles.footerLink}>Emergency Hotline: 911</Text>
           </View>
         </View>
         <View style={styles.footerDivider} />
@@ -308,37 +307,6 @@ const styles = StyleSheet.create({
   heroSubtitleCompact: {
     fontSize: 16,
     lineHeight: 25,
-  },
-  heroButtons: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 26,
-  },
-  heroButtonsNarrow: {
-    flexWrap: "wrap",
-  },
-  getStartedButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 22,
-    borderRadius: 16,
-    backgroundColor: "#F7FFF9",
-  },
-  getStartedButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#0F6B4F",
-  },
-  outlineButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 22,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  outlineButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#FFFFFF",
   },
   metricsRow: {
     flexDirection: "row",
@@ -504,36 +472,44 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 1180,
     alignSelf: "center",
+    justifyContent: "center",
+    alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 36,
   },
   footerColumnWide: {
     width: 240,
+    alignItems: "center",
   },
   footerColumn: {
     width: 160,
+    alignItems: "center",
   },
   footerBrand: {
     fontSize: 18,
     fontWeight: "800",
     color: "#FFFFFF",
+    textAlign: "center",
   },
   footerHeading: {
     fontSize: 14,
     fontWeight: "700",
     color: "#FFFFFF",
+    textAlign: "center",
   },
   footerText: {
     marginTop: 22,
     fontSize: 14,
     lineHeight: 22,
     color: "#B7C0CC",
+    textAlign: "center",
   },
   footerLink: {
     marginTop: 10,
     fontSize: 14,
     color: "#B7C0CC",
+    textAlign: "center",
   },
   footerDivider: {
     width: "100%",
