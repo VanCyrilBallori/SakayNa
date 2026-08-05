@@ -7,6 +7,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, Touch
 import { Dropdown } from "react-native-element-dropdown";
 
 import BrandLogo from "../components/BrandLogo";
+import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
@@ -752,9 +753,7 @@ export default function ResidentHome() {
         <Pressable style={[styles.menuOverlay, { backgroundColor: theme.menuOverlay }]} onPress={() => setProfileMenuOpen(false)}>
           <Pressable style={[styles.profileMenuCard, { backgroundColor: theme.surface, shadowColor: theme.shadow }]} onPress={() => {}}>
             <View style={[styles.profileMenuHeader, { borderBottomColor: theme.border }]}>
-              <View style={[styles.profileMenuAvatar, { backgroundColor: theme.avatarBg }]}>
-                <Text style={[styles.profileMenuAvatarText, { color: theme.avatarText }]}>{initials}</Text>
-              </View>
+              <ProfileAvatar name={displayName} backgroundColor={theme.avatarBg} color={theme.avatarText} />
               <Text style={[styles.profileMenuName, { color: theme.text }]}>{displayName}</Text>
               <Text style={[styles.profileMenuEmail, { color: theme.secondaryText }]}>{activeProfile?.email || authUser?.email || "Resident account"}</Text>
             </View>

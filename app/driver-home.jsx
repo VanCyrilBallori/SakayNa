@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
+import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
 import { auth, db } from "../firebase";
 import {
@@ -100,6 +101,11 @@ export default function DriverHome() {
   const narrow = width < 560;
   const { authUser, displayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
+
+  const initials = useMemo(() => {
+    const words = displayName.split(" ").filter(Boolean);
+    return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "D";
+  }, [displayName]);
   const [accessStatus, setAccessStatus] = useState("checking");
   const [availability, setAvailability] = useState("Unavailable");
   const [assignedTransfer, setAssignedTransfer] = useState(null);
@@ -125,13 +131,6 @@ export default function DriverHome() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  const initials = displayName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join("") || "D";
 
   useEffect(() => {
     if (!authUser?.uid) {
@@ -932,9 +931,7 @@ export default function DriverHome() {
           <Pressable style={[styles.menuOverlay, { backgroundColor: theme.menuOverlay }]} onPress={() => setProfileMenuOpen(false)}>
             <Pressable style={[styles.profileMenuCard, { backgroundColor: theme.surface, shadowColor: theme.shadow }]} onPress={() => {}}>
               <View style={[styles.profileMenuHeader, { borderBottomColor: theme.border }]}>
-                <View style={[styles.profileMenuAvatar, { backgroundColor: theme.avatarBg }]}>
-                  <Text style={[styles.profileMenuAvatarText, { color: theme.avatarText }]}>{initials}</Text>
-                </View>
+                <ProfileAvatar name={displayName} backgroundColor={theme.avatarBg} color={theme.avatarText} />
                 <Text style={[styles.profileMenuName, { color: theme.text }]}>{displayName}</Text>
                 <Text style={[styles.profileMenuEmail, { color: theme.secondaryText }]}>{profile?.email || authUser?.email || "Driver account"}</Text>
               </View>

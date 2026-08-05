@@ -29,6 +29,7 @@ import {
 } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
+import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
@@ -361,6 +362,11 @@ export default function AdminHome() {
   const { authUser, displayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
 
+  const initials = useMemo(() => {
+    const words = displayName.split(" ").filter(Boolean);
+    return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "A";
+  }, [displayName]);
+
   const [adminAccessStatus, setAdminAccessStatus] = useState("checking");
   const [selectedSection, setSelectedSection] = useState("Overview");
   const [searchValue, setSearchValue] = useState("");
@@ -405,11 +411,6 @@ export default function AdminHome() {
   const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm);
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [confirmingVehicleDelete, setConfirmingVehicleDelete] = useState(null);
-
-  const initials = useMemo(() => {
-    const words = displayName.split(" ").filter(Boolean);
-    return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "A";
-  }, [displayName]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -1891,21 +1892,19 @@ export default function AdminHome() {
         <Pressable style={[styles.menuOverlay, { backgroundColor: theme.menuOverlay }]} onPress={() => setProfileMenuOpen(false)}>
           <Pressable style={[styles.profileMenuCard, { backgroundColor: theme.surface, shadowColor: theme.shadow }]} onPress={() => {}}>
             <View style={[styles.profileMenuHeader, { borderBottomColor: theme.border }]}>
-              <View style={[styles.profileMenuAvatar, { backgroundColor: theme.avatarBg }]}>
-                <Text style={[styles.profileMenuAvatarText, { color: theme.avatarText }]}>{initials}</Text>
-              </View>
+              <ProfileAvatar name={displayName} backgroundColor={theme.avatarBg} color={theme.avatarText} />
               <Text style={[styles.profileMenuName, { color: theme.text }]}>{displayName}</Text>
               <Text style={[styles.profileMenuEmail, { color: theme.secondaryText }]}>{profile?.email || authUser?.email || "Admin account"}</Text>
             </View>
 
             <View style={styles.profileMenuBody}>
               {menuItems.map((item) => (
-                <TouchableOpacity key={item.key} style={styles.menuItem} onPress={item.action}>
+                <TouchableOpacity key={item.key} style={[styles.menuItem, item.key !== "profile" && styles.menuItemDisabled]} onPress={item.key === "profile" ? item.action : undefined} disabled={item.key !== "profile"} accessibilityRole="button" accessibilityState={{ disabled: item.key !== "profile" }}>
                   <View style={styles.menuItemLeft}>
                     <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
                     <Text style={[styles.menuItemText, { color: theme.text }]}>{item.label}</Text>
                   </View>
-                  {item.key === "profile" ? null : <Text style={[styles.menuItemSoon, { color: theme.secondaryText }]}>Soon</Text>}
+                  {item.key === "profile" ? null : <Text style={[styles.menuItemSoon, { color: theme.secondaryText }]}>Upcoming</Text>}
                 </TouchableOpacity>
               ))}
 
@@ -2224,6 +2223,7 @@ const styles = StyleSheet.create({
   menuItem: { minHeight: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   menuItemText: { fontSize: 15, fontWeight: "700" },
+  menuItemDisabled: { opacity: 0.58 },
   menuItemSoon: { fontSize: 12, fontWeight: "800" },
   themePill: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999 },
   themePillText: { fontSize: 12, fontWeight: "800" },
