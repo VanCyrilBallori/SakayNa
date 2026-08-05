@@ -1,50 +1,136 @@
-# Welcome to your Expo app 👋
+# SakayNa
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+SakayNa is an Expo and React Native transport coordination application for Toledo City. It supports separate Resident, Driver, Dispatcher, and Admin workflows using Firebase Authentication and Cloud Firestore.
 
-## Get started
+## Technology
 
-1. Install dependencies
+- React Native and Expo Router
+- JavaScript / JSX
+- Firebase Authentication and Cloud Firestore
+- Cloudinary unsigned uploads for driver application documents
 
-   ```bash
-   npm install
-   ```
+## Prerequisites
 
-2. Start the app
+- Node.js 20 LTS or newer
+- npm
+- An Expo-compatible Android/iOS device or emulator for mobile testing
+- A Firebase project with Authentication and Firestore enabled
+- A Cloudinary account and unsigned upload preset when driver document uploads are used
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Installation
 
 ```bash
-npm run reset-project
+npm install
+copy .env.example .env
+npm run start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+For web development, run:
 
-## Learn more
+```bash
+npm run web
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+For validation:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm run lint
+npx expo export --platform web
+```
 
-## Join the community
+## Environment variables
 
-Join our community of developers creating universal apps.
+Create a local `.env` from `.env.example`. The `.env` file is ignored by Git and must never be committed.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Variable | Purpose |
+| --- | --- |
+| `EXPO_PUBLIC_FIREBASE_API_KEY` | Firebase web app API key |
+| `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase authentication domain |
+| `EXPO_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase Storage bucket name |
+| `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Cloud Messaging sender ID |
+| `EXPO_PUBLIC_FIREBASE_APP_ID` | Firebase web app ID |
+| `EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID` | Optional Firebase Analytics measurement ID |
+| `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name for driver uploads |
+| `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Cloudinary unsigned upload preset |
+
+`EXPO_PUBLIC_*` values are bundled into the client app. Do not place Firebase service-account files, private keys, admin credentials, or Cloudinary API secrets in this project.
+
+## Firebase setup
+
+1. Create or select the Firebase project.
+2. Add a Web app and copy its public configuration into `.env`.
+3. Enable Email/Password in Firebase Authentication.
+4. Create a Cloud Firestore database.
+5. Publish the project `firestore.rules` from Firebase Console or Firebase CLI.
+6. Create the initial Admin user and its `users/{uid}` profile through a trusted setup process. Client code must not create privileged Admin or Dispatcher accounts.
+
+## Roles and profiles
+
+Each authenticated user requires a corresponding `users/{uid}` document.
+
+| Role | Required profile state | Primary route |
+| --- | --- | --- |
+| `Resident` | `accountStatus: Active` | `/resident-home` |
+| `Driver` | `accountStatus: Pending`, `Rejected`, or `Approved` | `/driver-status` or `/driver-home` |
+| `Dispatcher` | Staff profile | `/dispatcher-home` |
+| `Admin` | Staff profile | `/admin-home` |
+
+An approved driver must have `role: "Driver"` and `accountStatus: "Approved"` before being assigned to active transport work.
+
+## Firestore collections
+
+| Collection | Purpose |
+| --- | --- |
+| `users` | User profiles, roles, account state, and driver presence |
+| `transportRequests` | Resident transport requests |
+| `driverAssignments` | Dispatcher-to-driver request assignments |
+| `callSessions` | Resident emergency call requests for dispatchers |
+| `Driver_Applications` | Pending driver applications and uploaded document URLs |
+| `vehicles` | City and driver-owned vehicle records |
+| `driverSchedules` | Driver availability and shift schedules |
+
+The centralized names, roles, request statuses, priorities, and account states are in `constants/app.js`.
+
+## Test accounts
+
+Use separate Email/Password accounts in a non-production Firebase project. Create a matching `users/{uid}` document for each account:
+
+| Account | `role` | `accountStatus` | Expected result |
+| --- | --- | --- | --- |
+| Resident test | `Resident` | `Active` | Resident dashboard |
+| Pending Driver test | `Driver` | `Pending` | Driver status page |
+| Approved Driver test | `Driver` | `Approved` | Driver dashboard |
+| Dispatcher test | `Dispatcher` | `Active` | Dispatcher dashboard |
+| Admin test | `Admin` | `Active` | Admin dashboard |
+
+Never share real user passwords in source code, documentation, screenshots, or commits.
+
+## Firestore indexes
+
+The currently observed Firestore queries use single-field filters for requests, drivers, assignments, and calls. Firestore automatically provides single-field indexes by default. No composite index is currently required by the checked queries.
+
+If Firebase reports a missing-index error after a future query change, open the link in the Firebase error, create the suggested composite index, and record it in this section with the collection, fields, and sort direction.
+
+## Firestore rules and deployment
+
+Review and publish `firestore.rules` before testing production-like data. Firebase Console document edits bypass client security rules, so rule testing must be done through the app or the Firebase Emulator Suite.
+
+If Firebase CLI is configured:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+No Firebase CLI configuration is included in this repository yet. Adding `firebase.json`, emulator configuration, and deployment automation is a future phase.
+
+## Deployment checklist
+
+1. Run `npm run lint`.
+2. Run `npx expo export --platform web`.
+3. Confirm `.env` is ignored by Git with `git check-ignore .env`.
+4. Confirm Firebase Authentication Email/Password is enabled.
+5. Publish reviewed Firestore rules.
+6. Test each role with separate non-production accounts.
+7. Verify Cloudinary's upload preset is restricted to the intended upload use case.
+8. Do not deploy any private key, service-account credential, or production user password.

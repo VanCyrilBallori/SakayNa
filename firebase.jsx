@@ -4,13 +4,21 @@ import { getAuth } from "firebase/auth";
 import { getFirestore, initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD5hG_pYOQ3l493HtB0FTAcP-ipJig6O04",
-  authDomain: "sakayna-571e8.firebaseapp.com",
-  projectId: "sakayna-571e8",
-  messagingSenderId: "374713501645",
-  appId: "1:374713501645:web:752bbcefd21409739ba684",
-  measurementId: "G-144B4L3TD8",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+const requiredFirebaseConfig = ["apiKey", "authDomain", "projectId", "messagingSenderId", "appId"];
+const missingFirebaseConfig = requiredFirebaseConfig.filter((key) => !firebaseConfig[key]);
+
+if (missingFirebaseConfig.length) {
+  throw new Error(`Missing Firebase environment variables: ${missingFirebaseConfig.join(", ")}.`);
+}
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
