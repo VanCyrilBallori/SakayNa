@@ -3,13 +3,13 @@ import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
 import BrandLogo from "../components/BrandLogo";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
-import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
+import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
 const serviceTypeOptions = [
@@ -772,9 +772,14 @@ export default function ResidentHome() {
 
             <TouchableOpacity
               style={styles.logoutMenuButton}
-              onPress={() => {
-                setProfileMenuOpen(false);
-                router.replace("/login");
+              onPress={async () => {
+                try {
+                  await logoutCurrentUser();
+                  setProfileMenuOpen(false);
+                  router.replace("/login");
+                } catch (error) {
+                  Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+                }
               }}
             >
               <Text style={styles.logoutMenuButtonText}>Log Out</Text>

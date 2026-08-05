@@ -134,3 +134,14 @@ No Firebase CLI configuration is included in this repository yet. Adding `fireba
 6. Test each role with separate non-production accounts.
 7. Verify Cloudinary's upload preset is restricted to the intended upload use case.
 8. Do not deploy any private key, service-account credential, or production user password.
+## Authentication and email verification
+
+SakayNa verifies dashboard access using both Firebase Authentication and the current `users/{uid}` Firestore profile. Local browser storage is never used as proof of a user's role, approval, or account state.
+
+New Resident and Driver email/password accounts receive a Firebase verification email and are shown the `/verify-email` screen. The screen reloads the Firebase user before checking verification status and supports resend with a 60-second cooldown.
+
+Email verification is not enforced for dashboard access in this phase. This temporary exemption preserves existing Admin, Dispatcher, approved Driver, and demo accounts that may not have verified emails. Before enforcing it later, verify or migrate existing accounts in Firebase Authentication and test each role in a non-production project.
+
+## Phase 2 Firestore rule update
+
+Publish the updated `firestore.rules`. Ordinary users can now update only basic profile and presence fields. They cannot change role, account status, approval fields, vehicle ownership preferences, or other administrative fields. Creating or approving privileged accounts still requires a trusted administrative workflow; client code must not be used to grant Admin or Dispatcher access.

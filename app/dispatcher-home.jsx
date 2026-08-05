@@ -2,7 +2,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import LeafletMap from "../components/LeafletMap";
@@ -13,7 +13,7 @@ import {
   getDateFromValue,
   getDriverAvailabilityState,
 } from "../lib/driverScheduling";
-import { useCurrentUserProfile } from "../lib/session";
+import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 
 const getRequestStyle = (level) => {
   if (level === "Emergency") {
@@ -465,7 +465,14 @@ export default function DispatcherHome() {
   return (
     <>
       <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <AppBrandHeader role="Dispatcher" name={displayName} onLogoutPress={() => router.replace("/login")} />
+        <AppBrandHeader role="Dispatcher" name={displayName} onLogoutPress={async () => {
+          try {
+            await logoutCurrentUser();
+            router.replace("/login");
+          } catch (error) {
+            Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+          }
+        }} />
 
         <View style={[styles.container, compact && styles.containerCompact]}>
           <View style={styles.sectionLabels}>

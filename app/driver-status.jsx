@@ -1,12 +1,11 @@
 import { useRouter } from "expo-router";
-import { signOut } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
-import { auth, db } from "../firebase";
-import { useCurrentUserProfile } from "../lib/session";
+import { db } from "../firebase";
+import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 
 export default function DriverStatus() {
   const router = useRouter();
@@ -48,8 +47,12 @@ export default function DriverStatus() {
   }, [authUser?.uid, router]);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.replace("/login");
+    try {
+      await logoutCurrentUser();
+      router.replace("/login");
+    } catch (error) {
+      Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+    }
   };
 
   const accountStatus = driverProfile?.accountStatus ?? "Pending";

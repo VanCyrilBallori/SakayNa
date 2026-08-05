@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
   Pressable,
@@ -30,7 +31,7 @@ import {
 import BrandLogo from "../components/BrandLogo";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
-import { useCurrentUserProfile } from "../lib/session";
+import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
 const ADMIN_ROLE = "Admin";
@@ -1921,9 +1922,14 @@ export default function AdminHome() {
 
             <TouchableOpacity
               style={styles.logoutMenuButton}
-              onPress={() => {
-                setProfileMenuOpen(false);
-                router.replace("/login");
+              onPress={async () => {
+                try {
+                  await logoutCurrentUser();
+                  setProfileMenuOpen(false);
+                  router.replace("/login");
+                } catch (error) {
+                  Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+                }
               }}
             >
               <Text style={styles.logoutMenuButtonText}>Log Out</Text>

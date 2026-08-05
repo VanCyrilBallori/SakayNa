@@ -62,16 +62,18 @@ service cloud.firestore {
         || (
           signedIn()
           && request.auth.uid == userId
-          && request.resource.data.role == resource.data.role
-          && request.resource.data.accountStatus == resource.data.accountStatus
-          && (
-            !("approvalStatus" in resource.data)
-            || request.resource.data.approvalStatus == resource.data.approvalStatus
-          )
-          && (
-            !("useOwnVehicle" in resource.data)
-            || request.resource.data.useOwnVehicle == resource.data.useOwnVehicle
-          )
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "fullName",
+            "email",
+            "phone",
+            "phoneNumber",
+            "barangay",
+            "address",
+            "availability",
+            "presence",
+            "lastSeenAt",
+            "updatedAt"
+          ])
         );
 
       allow delete: if isAdmin();

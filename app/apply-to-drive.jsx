@@ -1,15 +1,16 @@
 import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
 import BrandLogo from "../components/BrandLogo";
+import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
-import { saveLocalUserProfile } from "../lib/session";
+import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile } from "../lib/session";
 
 const allowedMimeTypes = [
   "image/jpeg",
@@ -238,29 +239,30 @@ export default function ApplyToDrive() {
     setSuccessMessage("");
 
     const validationMessage = validateForm();
-
     if (validationMessage) {
       setErrorMessage(validationMessage);
       return;
     }
 
+    let createdUser = null;
     try {
       setIsSubmitting(true);
 
-      const applicationRef = doc(collection(db, "Driver_Applications"));
+      const applicationRef = doc(collection(db, FIRESTORE_COLLECTIONS.DRIVER_APPLICATIONS));
       const orCrDocumentUrl = requiresVehicleDetails ? await uploadDocumentToCloudinary(orCrAsset, `${applicationRef.id}-orcr`) : "";
       const vehiclePhotoUrls = requiresVehicleDetails ? await uploadMultipleDocumentsToCloudinary(vehiclePhotoAssets, applicationRef.id, "vehicle-photo") : [];
       const userCredential = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
+      createdUser = userCredential.user;
       const driverUid = userCredential.user.uid;
 
-      await setDoc(doc(db, "users", driverUid), {
+      await setDoc(doc(db, FIRESTORE_COLLECTIONS.USERS, driverUid), {
         uid: driverUid,
         fullName: form.fullName.trim(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
         barangay: form.barangay.trim(),
-        role: "Driver",
-        accountStatus: "Pending",
+        role: ROLES.DRIVER,
+        accountStatus: ACCOUNT_STATUSES.PENDING,
         useOwnVehicle: requiresVehicleDetails,
         createdAt: serverTimestamp(),
       });
@@ -285,33 +287,32 @@ export default function ApplyToDrive() {
         uploaded_document: orCrDocumentUrl,
         orCrDocumentUrl,
         vehiclePhotoUrls,
-        status: "Pending",
+        status: ACCOUNT_STATUSES.PENDING,
         createdAt: serverTimestamp(),
       });
 
-      saveLocalUserProfile({
-        uid: driverUid,
-        email: form.email.trim().toLowerCase(),
-        fullName: form.fullName.trim(),
-        barangay: form.barangay.trim(),
-        phoneNumber: form.phone.trim(),
-        role: "Driver",
-        accountStatus: "Pending",
-        useOwnVehicle: requiresVehicleDetails,
+      saveLocalUserProfile({ uid: driverUid, email: form.email.trim().toLowerCase(), fullName: form.fullName.trim() });
+      sendEmailVerification(userCredential.user).catch((verificationError) => {
+        console.log("Email verification send failed:", verificationError);
       });
       setForm(emptyForm);
       setOrCrAsset(null);
       setVehiclePhotoAssets([]);
-      setSuccessMessage("Thank you for applying! Your account is pending admin approval.");
-      router.replace("/driver-status");
+      router.replace("/verify-email");
     } catch (error) {
       console.log("Driver application failed:", error);
-      setErrorMessage(error.message === "Cloudinary is not configured." ? "Cloudinary upload is not configured yet." : error.message || "Application submission failed. Please check your connection, Cloudinary settings, or Firebase permissions.");
+      if (createdUser?.uid === auth.currentUser?.uid) {
+        try {
+          await logoutCurrentUser();
+        } catch (logoutError) {
+          console.log("Driver application cleanup failed:", logoutError);
+        }
+      }
+      setErrorMessage(error.message === "Cloudinary is not configured." ? "Cloudinary upload is not configured yet." : getAuthErrorMessage(error, "Application submission failed. Check your connection and try again."));
     } finally {
       setIsSubmitting(false);
     }
   };
-
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>

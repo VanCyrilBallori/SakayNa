@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
 import LeafletMap from "../components/LeafletMap";
@@ -16,7 +16,7 @@ import {
   getScheduleLifecycleStatus,
   overlapsScheduleWindow,
 } from "../lib/driverScheduling";
-import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
+import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
 const getLocalDateValue = (date = new Date()) =>
@@ -952,9 +952,14 @@ export default function DriverHome() {
 
               <TouchableOpacity
                 style={styles.logoutMenuButton}
-                onPress={() => {
-                  setProfileMenuOpen(false);
-                  router.replace("/login");
+                onPress={async () => {
+                  try {
+                    await logoutCurrentUser();
+                    setProfileMenuOpen(false);
+                    router.replace("/login");
+                  } catch (error) {
+                    Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+                  }
                 }}
               >
                 <Text style={styles.logoutMenuButtonText}>Log Out</Text>

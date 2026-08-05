@@ -1,17 +1,16 @@
 import { useRouter } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
 import BrandLogo from "../components/BrandLogo";
+import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
-import { saveLocalUserProfile } from "../lib/session";
-
-const RESIDENT_ROLE = "Resident";
+import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
 
 export default function Signup() {
   const router = useRouter();
@@ -41,45 +40,41 @@ export default function Signup() {
       return;
     }
 
+    let createdUser = null;
     try {
       setIsSubmitting(true);
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      createdUser = userCredential.user;
 
-      saveLocalUserProfile({
-        uid: userCredential.user.uid,
-        email,
+      await setDoc(doc(db, FIRESTORE_COLLECTIONS.USERS, userCredential.user.uid), {
         fullName: fullName.trim(),
+        email: email.trim().toLowerCase(),
         barangay: barangay.trim(),
         phoneNumber: phoneNumber.trim(),
         phone: phoneNumber.trim(),
-        role: RESIDENT_ROLE,
-        accountStatus: "Active",
+        role: ROLES.RESIDENT,
+        accountStatus: ACCOUNT_STATUSES.ACTIVE,
+        createdAt: serverTimestamp(),
       });
 
-      try {
-        await setDoc(doc(db, "users", userCredential.user.uid), {
-          fullName: fullName.trim(),
-          email: email.trim().toLowerCase(),
-          barangay: barangay.trim(),
-          phoneNumber: phoneNumber.trim(),
-          phone: phoneNumber.trim(),
-          role: RESIDENT_ROLE,
-          accountStatus: "Active",
-          createdAt: serverTimestamp(),
-        });
-      } catch (firestoreError) {
-        console.log("Profile save warning:", firestoreError);
-      }
-
-      router.replace("/resident-home");
+      sendEmailVerification(userCredential.user).catch((verificationError) => {
+        console.log("Email verification send failed:", verificationError);
+      });
+      router.replace("/verify-email");
     } catch (error) {
       console.log("Signup failed:", error);
-      setErrorMessage(error.message);
+      if (createdUser?.uid === auth.currentUser?.uid) {
+        try {
+          await logoutCurrentUser();
+        } catch (logoutError) {
+          console.log("Signup cleanup failed:", logoutError);
+        }
+      }
+      setErrorMessage(getAuthErrorMessage(error, "We could not create your account. Check your connection and try again."));
     } finally {
       setIsSubmitting(false);
     }
   };
-
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
       <TouchableOpacity
