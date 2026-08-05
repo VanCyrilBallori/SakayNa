@@ -79,10 +79,104 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /transportRequests/{requestId} {
-      allow create: if signedIn()
+    function isValidNewResidentRequest() {
+      return request.resource.data.keys().hasOnly([
+        "residentId", "residentName", "reference", "category", "requestType", "status",
+        "residentReportedUrgency", "level", "priorityLevel", "title", "emergencyType",
+        "serviceType", "vehicle", "vehicleType", "passengerCapacity", "passengerName",
+        "contactNumber", "barangay", "pickupLocation", "pickup", "pickupDetails",
+        "destination", "destinationLocation", "summary", "description", "vulnerableGroups",
+        "accessibilityNotes", "additionalNotes", "timeline", "createdAt", "updatedAt"
+      ])
+        && request.resource.data.keys().hasAll([
+          "residentId", "residentName", "reference", "category", "requestType", "status",
+          "serviceType", "passengerCapacity", "passengerName", "contactNumber", "barangay",
+          "pickupLocation", "pickup", "pickupDetails", "destination", "destinationLocation",
+          "description", "timeline", "createdAt", "updatedAt"
+        ])
         && request.resource.data.residentId == request.auth.uid
-        && request.resource.data.status == "Pending";
+        && request.resource.data.status == "Pending"
+        && request.resource.data.category in ["Community Transport Request", "Emergency Request"]
+        && request.resource.data.requestType == request.resource.data.category
+        && request.resource.data.residentReportedUrgency in ["Standard", "Emergency"]
+        && request.resource.data.level in ["Urgent", "Non-Urgent", "Planned"]
+        && request.resource.data.priorityLevel == request.resource.data.level
+        && request.resource.data.reference is string
+        && request.resource.data.reference.size() >= 8
+        && request.resource.data.reference.size() <= 24
+        && request.resource.data.serviceType is string
+        && request.resource.data.serviceType.size() > 0
+        && request.resource.data.serviceType.size() <= 100
+        && request.resource.data.passengerName is string
+        && request.resource.data.passengerName.size() > 0
+        && request.resource.data.passengerName.size() <= 80
+        && request.resource.data.contactNumber is string
+        && request.resource.data.contactNumber.matches('^\\+639[0-9]{9}$')
+        && request.resource.data.barangay is string
+        && request.resource.data.barangay.size() > 0
+        && request.resource.data.barangay.size() <= 80
+        && request.resource.data.pickupLocation is string
+        && request.resource.data.pickupLocation.size() > 0
+        && request.resource.data.pickupLocation.size() <= 180
+        && request.resource.data.pickup is map
+        && request.resource.data.pickup.keys().hasOnly(["latitude", "longitude", "address", "barangay", "source"])
+        && request.resource.data.pickup.address == request.resource.data.pickupLocation
+        && request.resource.data.pickup.source in ["gps", "map", "manual"]
+        && request.resource.data.pickupDetails is string
+        && request.resource.data.pickupDetails.size() > 0
+        && request.resource.data.pickupDetails.size() <= 300
+        && request.resource.data.destination is string
+        && request.resource.data.destination.size() <= 180
+        && request.resource.data.destinationLocation is map
+        && request.resource.data.destinationLocation.keys().hasOnly(["address", "latitude", "longitude", "source"])
+        && request.resource.data.destinationLocation.address == request.resource.data.destination
+        && request.resource.data.destinationLocation.source in ["manual", "nearest-facility"]
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 500
+        && request.resource.data.timeline is map
+        && request.resource.data.timeline.keys().hasOnly(["submitted"])
+        && request.resource.data.timeline.submitted is map
+        && request.resource.data.timeline.submitted.keys().hasOnly(["actorRole", "actorId", "note"])
+        && request.resource.data.timeline.submitted.actorRole == "Resident"
+        && request.resource.data.timeline.submitted.actorId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    function isValidResidentCancellation() {
+      return signedIn()
+        && resource.data.residentId == request.auth.uid
+        && resource.data.status in ["Pending", "Assigned"]
+        && request.resource.data.status == "Cancelled"
+        && request.resource.data.previousStatus == resource.data.status
+        && request.resource.data.cancelledBy == request.auth.uid
+        && request.resource.data.cancellationReason is string
+        && request.resource.data.cancellationReason.size() >= 3
+        && request.resource.data.cancellationReason.size() <= 240
+        && request.resource.data.cancelledAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status", "previousStatus", "cancelledBy", "cancellationReason", "cancelledAt", "updatedAt", "timeline"
+        ])
+        && request.resource.data.timeline is map
+        && request.resource.data.timeline.cancelled is map
+        && request.resource.data.timeline.cancelled.keys().hasOnly(["actorRole", "actorId", "note"])
+        && request.resource.data.timeline.cancelled.actorRole == "Resident"
+        && request.resource.data.timeline.cancelled.actorId == request.auth.uid
+        && request.resource.data.timeline.cancelled.note == request.resource.data.cancellationReason
+        && (
+          (!('timeline' in resource.data) && request.resource.data.timeline.keys().hasOnly(["cancelled"]))
+          || (
+            ('timeline' in resource.data)
+            && request.resource.data.timeline.keys().hasOnly(["submitted", "cancelled"])
+            && request.resource.data.timeline.submitted == resource.data.timeline.submitted
+          )
+        );
+    }
+
+    match /transportRequests/{requestId} {
+      allow create: if signedIn() && isValidNewResidentRequest();
 
       allow read: if isAdmin()
         || isDispatcher()
@@ -91,11 +185,7 @@ service cloud.firestore {
 
       allow update: if isAdmin()
         || isDispatcher()
-        || (
-          signedIn()
-          && resource.data.residentId == request.auth.uid
-          && request.resource.data.residentId == resource.data.residentId
-        )
+        || isValidResidentCancellation()
         || (
           isApprovedDriver()
           && resource.data.assignedDriverId == request.auth.uid
@@ -105,7 +195,6 @@ service cloud.firestore {
 
       allow delete: if isAdmin() || isDispatcher();
     }
-
     match /driverAssignments/{assignmentId} {
       allow read: if isAdmin()
         || isDispatcher()

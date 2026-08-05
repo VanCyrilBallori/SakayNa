@@ -1,47 +1,53 @@
 {
-  "expo": {
-    "name": "sakayna",
-    "slug": "sakayna",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./Photos_/Logo (Secondary).png",
-    "scheme": "sakayna",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./Photos_/Logo (Secondary).png",
-        "monochromeImage": "./Photos_/Logo (Secondary).png"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./Photos_/Logo (Secondary).png"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./Photos_/Logo (Secondary).png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
-  }
+    "expo":  {
+                 "name":  "sakayna",
+                 "slug":  "sakayna",
+                 "version":  "1.0.0",
+                 "orientation":  "portrait",
+                 "icon":  "./Photos_/Logo (Secondary).png",
+                 "scheme":  "sakayna",
+                 "userInterfaceStyle":  "automatic",
+                 "newArchEnabled":  true,
+                 "ios":  {
+                             "supportsTablet":  true
+                         },
+                 "android":  {
+                                 "adaptiveIcon":  {
+                                                      "backgroundColor":  "#FFFFFF",
+                                                      "foregroundImage":  "./Photos_/Logo (Secondary).png",
+                                                      "monochromeImage":  "./Photos_/Logo (Secondary).png"
+                                                  },
+                                 "edgeToEdgeEnabled":  true,
+                                 "predictiveBackGestureEnabled":  false
+                             },
+                 "web":  {
+                             "output":  "static",
+                             "favicon":  "./Photos_/Logo (Secondary).png"
+                         },
+                 "plugins":  [
+                                 "expo-router",
+                                 [
+                                     "expo-splash-screen",
+                                     {
+                                         "image":  "./Photos_/Logo (Secondary).png",
+                                         "imageWidth":  200,
+                                         "resizeMode":  "contain",
+                                         "backgroundColor":  "#ffffff",
+                                         "dark":  {
+                                                      "backgroundColor":  "#000000"
+                                                  }
+                                     }
+                                 ],
+                                 [
+                                     "expo-location",
+                                     {
+                                         "locationWhenInUsePermission":  "Allow SakayNa to use your location to fill a pickup address for a transport request. SakayNa does not track your location in the background."
+                                     }
+                                 ]
+                             ],
+                 "experiments":  {
+                                     "typedRoutes":  true,
+                                     "reactCompiler":  true
+                                 }
+             }
 }

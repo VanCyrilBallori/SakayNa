@@ -1,45 +1,18 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
-import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { addDoc, collection, doc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
-import { Dropdown } from "react-native-element-dropdown";
 
 import BrandLogo from "../components/BrandLogo";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { auth, db } from "../firebase";
-import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
-
-const serviceTypeOptions = [
-  { label: "Medical Transport", value: "Medical Transport" },
-  { label: "Non-Emergency Medical Transport (NEMT)", value: "Non-Emergency Medical Transport (NEMT)" },
-  { label: "Accessible / Wheelchair Van", value: "Accessible / Wheelchair Van" },
-  { label: "Assisted Care Ride", value: "Assisted Care Ride" },
-  { label: "Special Event / Wedding Charter", value: "Special Event / Wedding Charter" },
-  { label: "Memorial / Funeral Procession", value: "Memorial / Funeral Procession" },
-  { label: "Hourly / As-Directed Rental", value: "Hourly / As-Directed Rental" },
-];
-
-const passengerCapacityOptions = [
-  { label: "2 passengers", value: "2 passengers" },
-  { label: "4 passengers", value: "4 passengers" },
-  { label: "6 passengers", value: "6 passengers" },
-  { label: "8 passengers", value: "8 passengers" },
-  { label: "10+ passengers", value: "10+ passengers" },
-];
-
-const priorityByServiceType = {
-  "Medical Transport": "Urgent",
-  "Non-Emergency Medical Transport (NEMT)": "Non-Urgent",
-  "Accessible / Wheelchair Van": "Non-Urgent",
-  "Assisted Care Ride": "Non-Urgent",
-  "Special Event / Wedding Charter": "Planned",
-  "Memorial / Funeral Procession": "Planned",
-  "Hourly / As-Directed Rental": "Planned",
-};
+import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
+import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
+import useResidentRequests from "../features/resident/hooks/useResidentRequests";
 
 const getStatusTone = (value) => {
   if (["Assigned", "In Progress", "Completed"].includes(value)) {
@@ -70,8 +43,8 @@ export default function ResidentHome() {
     meta: "Waiting for your next request",
     tag: "Tracking",
   });
-  const [latestRequest, setLatestRequest] = useState(null);
-  const [requestHistory, setRequestHistory] = useState([]);
+  const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
+  const latestRequest = requestHistory[0] ?? null;
   const [profileOverride, setProfileOverride] = useState(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
@@ -84,11 +57,8 @@ export default function ResidentHome() {
   const [callSessionId, setCallSessionId] = useState("");
   const [callStatus, setCallStatus] = useState("idle");
   const [callDispatcherName, setCallDispatcherName] = useState("");
-  const [serviceType, setServiceType] = useState("");
-  const [passengerCapacity, setPassengerCapacity] = useState("");
-  const [pickupLocation, setPickupLocation] = useState("");
-  const [pickupDetails, setPickupDetails] = useState("");
-  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [startingEmergencyCall, setStartingEmergencyCall] = useState(false);
+  const emergencyCallStartRef = useRef(false);
   const [settingsForm, setSettingsForm] = useState({
     fullName: "",
     phoneNumber: "",
@@ -108,49 +78,6 @@ export default function ResidentHome() {
     const words = displayName.split(" ").filter(Boolean);
     return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "R";
   }, [displayName]);
-
-  useEffect(() => {
-    if (!authUser?.uid) {
-      return undefined;
-    }
-
-    const requestsQuery = query(collection(db, "transportRequests"), where("residentId", "==", authUser.uid));
-    const unsubscribe = onSnapshot(
-      requestsQuery,
-      (snapshot) => {
-        const requests = snapshot.docs
-          .map((requestDoc) => ({
-            id: requestDoc.id,
-            ...requestDoc.data(),
-          }))
-          .sort((first, second) => {
-            const firstTime = first.createdAt?.toMillis?.() ?? 0;
-            const secondTime = second.createdAt?.toMillis?.() ?? 0;
-            return secondTime - firstTime;
-          });
-
-        const newestRequest = requests[0] ?? null;
-        setRequestHistory(requests);
-        setLatestRequest(newestRequest);
-
-        if (!newestRequest) {
-          return;
-        }
-
-        setResidentStatus({
-          title: newestRequest.title || `${newestRequest.serviceType || newestRequest.emergencyType || "Transport"} Request`,
-          description: newestRequest.assignedDriverName
-            ? `${newestRequest.status || "Pending"} | Assigned to ${newestRequest.assignedDriverName}`
-            : `${newestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
-          meta: `${newestRequest.pickupLocation || "Pickup pending"} | ${newestRequest.vehicle || "Vehicle pending"}`,
-          tag: newestRequest.status || newestRequest.level || "Pending",
-        });
-      },
-      (error) => console.log("Resident requests listener warning:", error)
-    );
-
-    return unsubscribe;
-  }, [authUser?.uid]);
 
   useEffect(() => {
     if (!callSessionId) {
@@ -231,6 +158,10 @@ export default function ResidentHome() {
   };
 
   const startEmergencyCall = async () => {
+    if (startingEmergencyCall || emergencyCallStartRef.current) {
+      return;
+    }
+
     if (!authUser?.uid) {
       setResidentStatus({
         title: "Login Required",
@@ -242,6 +173,8 @@ export default function ResidentHome() {
     }
 
     try {
+      emergencyCallStartRef.current = true;
+      setStartingEmergencyCall(true);
       setCallOpen(true);
       setCallStatus("ringing");
       const callDoc = await addDoc(collection(db, "callSessions"), {
@@ -251,11 +184,11 @@ export default function ResidentHome() {
         dispatcherName: "",
         targetRole: "Dispatcher",
         latestRequestId: latestRequest?.id ?? "",
-        emergencyType: latestRequest?.emergencyType ?? latestRequest?.serviceType ?? serviceType ?? "",
-        serviceType: latestRequest?.serviceType ?? latestRequest?.emergencyType ?? serviceType ?? "",
-        pickupLocation: latestRequest?.pickupLocation ?? pickupLocation ?? activeProfile?.barangay ?? "",
-        pickupDetails: latestRequest?.pickupDetails ?? pickupDetails.trim(),
-        additionalNotes: latestRequest?.additionalNotes ?? additionalNotes.trim(),
+        emergencyType: latestRequest?.emergencyType ?? latestRequest?.serviceType ?? "",
+        serviceType: latestRequest?.serviceType ?? latestRequest?.emergencyType ?? "",
+        pickupLocation: latestRequest?.pickupLocation ?? activeProfile?.barangay ?? "",
+        pickupDetails: latestRequest?.pickupDetails ?? "",
+        additionalNotes: latestRequest?.additionalNotes ?? "",
         status: "ringing",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -278,6 +211,8 @@ export default function ResidentHome() {
         meta: "Call not connected",
         tag: "Error",
       });
+    } finally {
+      setStartingEmergencyCall(false);
     }
   };
 
@@ -298,88 +233,6 @@ export default function ResidentHome() {
     setCallOpen(false);
     setCallSessionId("");
     setCallStatus("idle");
-  };
-
-  const resetRequestForm = () => {
-    setServiceType("");
-    setPassengerCapacity("");
-    setPickupLocation("");
-    setPickupDetails("");
-    setAdditionalNotes("");
-  };
-
-  const handleSendSos = async () => {
-    if (!authUser?.uid) {
-      setResidentStatus({
-        title: "Login Required",
-        description: "Please log in before sending a transport request.",
-        meta: "Transport request not sent",
-        tag: "Action Needed",
-      });
-      return;
-    }
-
-    if (!serviceType || !passengerCapacity || !pickupLocation || !pickupDetails.trim()) {
-      setResidentStatus({
-        title: "Complete Request Details",
-        description: "Please complete service type, passenger capacity, pickup location, and exact pickup details.",
-        meta: "Request not sent",
-        tag: "Action Needed",
-      });
-      return;
-    }
-
-    const priorityLevel = priorityByServiceType[serviceType] ?? "Planned";
-
-    try {
-      await addDoc(collection(db, "transportRequests"), {
-        residentId: authUser.uid,
-        residentName: displayName,
-        requestType: "Emergency Request",
-        level: priorityLevel,
-        priorityLevel,
-        status: "Pending",
-        title: `${serviceType} Transport Request`,
-        emergencyType: serviceType,
-        serviceType,
-        vehicle: passengerCapacity,
-        vehicleType: passengerCapacity,
-        passengerCapacity,
-        barangay: pickupLocation,
-        pickupLocation,
-        pickupDetails: pickupDetails.trim(),
-        additionalNotes: additionalNotes.trim(),
-        destination: "Nearest available response center",
-        summary: `${serviceType} transport request from ${pickupLocation}.`,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      setResidentStatus({
-        title: "Transport Request Sent",
-        description: `${serviceType} request sent for ${passengerCapacity}.`,
-        meta: `${pickupLocation} | Waiting for dispatcher`,
-        tag: priorityLevel,
-      });
-      setSosOpen(false);
-      resetRequestForm();
-    } catch (error) {
-      console.log("Transport request failed:", error);
-      setResidentStatus({
-        title: "Transport Request Failed",
-        description: "The request could not be sent. Please check Firestore permissions.",
-        meta: "Request not queued",
-        tag: "Error",
-      });
-    }
-  };
-
-  const formatDateValue = (value) => {
-    if (!value?.toDate) {
-      return "Not available";
-    }
-
-    return value.toDate().toLocaleString();
   };
 
   const saveResidentSettings = async () => {
@@ -499,6 +352,13 @@ export default function ResidentHome() {
     }
   };
 
+  const displayResidentStatus = latestRequest ? {
+    title: latestRequest.title || `${latestRequest.serviceType || latestRequest.emergencyType || "Transport"} Request`,
+    description: latestRequest.assignedDriverName ? `${latestRequest.status || "Pending"} | Assigned to ${latestRequest.assignedDriverName}` : `${latestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
+    meta: `${latestRequest.pickupLocation || "Pickup pending"} | ${latestRequest.vehicle || "Vehicle pending"}`,
+    tag: latestRequest.status || latestRequest.level || "Pending",
+  } : residentStatus;
+
   const menuItems = [
     { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
     { key: "history", label: "History", icon: "clock-o", action: () => { setProfileMenuOpen(false); setHistoryOpen(true); } },
@@ -570,16 +430,16 @@ export default function ResidentHome() {
             <View style={styles.statusPanelHeader}>
               <View>
                 <Text style={[styles.panelEyebrow, { color: theme.secondaryText }]}>Latest Request</Text>
-                <Text style={[styles.panelTitle, { color: theme.text }]}>{residentStatus.title}</Text>
+                <Text style={[styles.panelTitle, { color: theme.text }]}>{displayResidentStatus.title}</Text>
               </View>
 
-              <View style={[styles.tag, getStatusTone(residentStatus.tag)]}>
-                <Text style={[styles.tagText, { color: theme.accentText }]}>{residentStatus.tag}</Text>
+              <View style={[styles.tag, getStatusTone(displayResidentStatus.tag)]}>
+                <Text style={[styles.tagText, { color: theme.accentText }]}>{displayResidentStatus.tag}</Text>
               </View>
             </View>
 
-            <Text style={[styles.statusDescription, { color: theme.mutedText }]}>{residentStatus.description}</Text>
-            <Text style={[styles.statusMeta, { color: theme.secondaryText }]}>{residentStatus.meta}</Text>
+            <Text style={[styles.statusDescription, { color: theme.mutedText }]}>{displayResidentStatus.description}</Text>
+            <Text style={[styles.statusMeta, { color: theme.secondaryText }]}>{displayResidentStatus.meta}</Text>
 
             {latestRequest ? (
               <View style={[styles.requestSnapshot, { backgroundColor: theme.surfaceMuted }]}>
@@ -610,100 +470,14 @@ export default function ResidentHome() {
         </View>
       </ScrollView>
 
-      <Modal visible={sosOpen} transparent animationType="fade" onRequestClose={() => setSosOpen(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.modalCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
-              <TouchableOpacity style={styles.modalClose} onPress={() => setSosOpen(false)}>
-                <Text style={styles.modalCloseText}>X</Text>
-              </TouchableOpacity>
-
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Transport Request</Text>
-              <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Complete the request details so responders can find you faster.</Text>
-
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Service Type</Text>
-              <Dropdown
-                style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
-                containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                itemTextStyle={styles.dropdownItemText}
-                placeholderStyle={[styles.dropdownPlaceholder, { color: theme.subtleText }]}
-                selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-                data={serviceTypeOptions}
-                labelField="label"
-                valueField="value"
-                placeholder="Select service type"
-                value={serviceType}
-                onChange={(item) => setServiceType(item.value)}
-              />
-
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Passenger Capacity</Text>
-              <Dropdown
-                style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
-                containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                itemTextStyle={styles.dropdownItemText}
-                placeholderStyle={[styles.dropdownPlaceholder, { color: theme.subtleText }]}
-                selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-                data={passengerCapacityOptions}
-                labelField="label"
-                valueField="value"
-                placeholder="Select passenger capacity"
-                value={passengerCapacity}
-                onChange={(item) => setPassengerCapacity(item.value)}
-              />
-
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Pickup Location</Text>
-              <Dropdown
-                style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
-                containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                itemTextStyle={styles.dropdownItemText}
-                maxHeight={220}
-                search
-                searchPlaceholder="Search barangay..."
-                placeholderStyle={[styles.dropdownPlaceholder, { color: theme.subtleText }]}
-                selectedTextStyle={[styles.dropdownSelectedText, { color: theme.text }]}
-                data={TOLEDO_BARANGAY_OPTIONS}
-                labelField="label"
-                valueField="value"
-                placeholder="Select pickup location"
-                value={pickupLocation}
-                onChange={(item) => setPickupLocation(item.value)}
-              />
-
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Exact Pickup Details</Text>
-              <TextInput
-                style={[styles.textArea, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                placeholder="Example: Purok 3, near chapel, blue gate beside sari-sari store"
-                placeholderTextColor={theme.subtleText}
-                value={pickupDetails}
-                onChangeText={setPickupDetails}
-                multiline
-                textAlignVertical="top"
-              />
-
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Additional Notes</Text>
-              <TextInput
-                style={[styles.textArea, styles.notesArea, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                placeholder="Optional notes for responders"
-                placeholderTextColor={theme.subtleText}
-                value={additionalNotes}
-                onChangeText={setAdditionalNotes}
-                multiline
-                textAlignVertical="top"
-              />
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setSosOpen(false)}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.modalButton, styles.sendButton]} onPress={handleSendSos}>
-                  <Text style={styles.sendButtonText}>Send</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
+      <ResidentRequestForm
+        visible={sosOpen}
+        onClose={() => setSosOpen(false)}
+        uid={authUser?.uid}
+        residentName={displayName}
+        profile={activeProfile}
+        onCreated={({ reference }) => setResidentStatus({ title: "Transport Request Sent", description: "Your request was sent to dispatch.", meta: `Reference: ${reference}`, tag: "Pending" })}
+      />
       <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
@@ -717,6 +491,7 @@ export default function ResidentHome() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.callActionButton, styles.callConfirmButton]}
+                disabled={startingEmergencyCall}
                 onPress={() => {
                   setCallConfirmOpen(false);
                   startEmergencyCall();
@@ -825,44 +600,14 @@ export default function ResidentHome() {
         </View>
       </Modal>
 
-      <Modal visible={historyOpen} transparent animationType="fade" onRequestClose={() => setHistoryOpen(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.modalCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <TouchableOpacity style={styles.modalClose} onPress={() => setHistoryOpen(false)}>
-              <Text style={styles.modalCloseText}>X</Text>
-            </TouchableOpacity>
-
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Request History</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Your previous and current transport requests are recorded here.</Text>
-
-            <ScrollView contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
-              {requestHistory.length ? (
-                requestHistory.map((request) => (
-                  <View key={request.id} style={[styles.historyCard, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
-                    <View style={styles.historyHeader}>
-                      <Text style={[styles.historyTitle, { color: theme.text }]}>{request.serviceType || request.emergencyType || "Transport Request"}</Text>
-                      <View style={[styles.tag, getStatusTone(request.status || request.level || "Pending")]}>
-                        <Text style={[styles.tagText, { color: theme.accentText }]}>{request.status || "Pending"}</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Request ID: {request.id}</Text>
-                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Passenger Capacity: {request.passengerCapacity || request.vehicle || request.vehicleType || "Not set"}</Text>
-                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Pickup Location: {request.pickupLocation || "Not set"}</Text>
-                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Submitted: {formatDateValue(request.createdAt)}</Text>
-                    <Text style={[styles.historyText, { color: theme.mutedText }]}>Completed: {formatDateValue(request.completedAt)}</Text>
-                  </View>
-                ))
-              ) : (
-                <View style={[styles.emptyStatusCard, { backgroundColor: theme.emptySurface }]}>
-                  <Text style={[styles.emptyStatusTitle, { color: theme.text }]}>No history yet</Text>
-                  <Text style={[styles.emptyStatusText, { color: theme.secondaryText }]}>Your request history will appear here after you submit transport requests.</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
+      <ResidentRequestHistory
+        visible={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        requests={requestHistory}
+        loading={requestHistoryLoading}
+        error={requestHistoryError}
+        uid={authUser?.uid}
+      />
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.profileEditorCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>

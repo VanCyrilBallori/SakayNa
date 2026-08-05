@@ -30,6 +30,16 @@ export const REQUEST_PRIORITIES = Object.freeze({
   PLANNED: "Planned",
 });
 
+export const RESIDENT_REQUEST_CATEGORIES = Object.freeze({
+  COMMUNITY: "Community Transport Request",
+  EMERGENCY: "Emergency Request",
+});
+
+export const RESIDENT_CANCELLABLE_STATUSES = Object.freeze([
+  REQUEST_STATUSES.PENDING,
+  REQUEST_STATUSES.ASSIGNED,
+]);
+
 export const FIRESTORE_COLLECTIONS = Object.freeze({
   USERS: "users",
   TRANSPORT_REQUESTS: "transportRequests",
