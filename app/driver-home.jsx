@@ -1,11 +1,14 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
-import { collection, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
+import DriverMissionActions from "../features/driver/components/DriverMissionActions";
+import { getMissionStatus } from "../features/driver/utils/driverMissionMapper";
+import FeedbackMessage from "../components/ui/FeedbackMessage";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
 import { auth, db } from "../firebase";
@@ -109,6 +112,8 @@ export default function DriverHome() {
   const [accessStatus, setAccessStatus] = useState("checking");
   const [availability, setAvailability] = useState("Unavailable");
   const [assignedTransfer, setAssignedTransfer] = useState(null);
+  const [currentMissionRequest, setCurrentMissionRequest] = useState(null);
+  const [missionMessage, setMissionMessage] = useState({ message: "", tone: "info" });
   const [driverSchedules, setDriverSchedules] = useState([]);
   const [schedulePromptOpen, setSchedulePromptOpen] = useState(false);
   const [hasPromptedSchedule, setHasPromptedSchedule] = useState(false);
@@ -266,6 +271,14 @@ export default function DriverHome() {
   }, [accessStatus, authUser?.uid]);
 
   useEffect(() => {
+    if (!assignedTransfer?.requestId || accessStatus !== "approved") {
+      setCurrentMissionRequest(null);
+      return undefined;
+    }
+    const unsubscribe = onSnapshot(doc(db, "transportRequests", assignedTransfer.requestId), (snapshot) => setCurrentMissionRequest(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null), () => setCurrentMissionRequest(null));
+    return unsubscribe;
+  }, [accessStatus, assignedTransfer?.requestId]);
+  useEffect(() => {
     if (!authUser?.uid || accessStatus !== "approved") {
       setAssignmentHistory([]);
       return undefined;
@@ -301,7 +314,7 @@ export default function DriverHome() {
     }
 
     const unsubscribe = onSnapshot(
-      collection(db, DRIVER_SCHEDULE_COLLECTION),
+      query(collection(db, DRIVER_SCHEDULE_COLLECTION), where("driverUid", "==", authUser.uid)),
       (snapshot) => {
         const schedules = snapshot.docs
           .map((scheduleDoc) => ({
@@ -358,8 +371,8 @@ export default function DriverHome() {
     setHasPromptedSchedule(true);
   }, [accessStatus, hasPromptedSchedule]);
 
-  const request = assignedTransfer?.request;
-  const missionStatus = assignedTransfer?.status ?? "Assigned";
+  const request = currentMissionRequest ?? assignedTransfer?.request;
+  const missionStatus = getMissionStatus(assignedTransfer || {});
 
   const requestMapProps = useMemo(() => {
     if (!request) {
@@ -484,114 +497,6 @@ export default function DriverHome() {
       setScheduleError("Schedule could not be saved. Please check Firestore permissions.");
     } finally {
       setIsSavingSchedule(false);
-    }
-  };
-
-  const updateMissionStatus = async (nextStatus) => {
-    if (!assignedTransfer?.id) {
-      return;
-    }
-
-    const requestId = assignedTransfer.requestId;
-    const vehicleId = assignedTransfer.vehicleId;
-
-    try {
-      await updateDoc(doc(db, "driverAssignments", assignedTransfer.id), {
-        status: nextStatus,
-        ...(nextStatus === "In Progress" ? { acceptedAt: serverTimestamp() } : {}),
-        ...(nextStatus === "Completed" ? { completedAt: serverTimestamp() } : {}),
-        updatedAt: serverTimestamp(),
-      });
-
-      if (requestId) {
-        await updateDoc(doc(db, "transportRequests", requestId), {
-          status: nextStatus,
-          ...(nextStatus === "In Progress" ? { acceptedAt: serverTimestamp() } : {}),
-          ...(nextStatus === "Completed" ? { completedAt: serverTimestamp() } : {}),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      if (vehicleId) {
-        await updateDoc(doc(db, "vehicles", vehicleId), {
-          status: nextStatus === "In Progress" ? "In Use" : nextStatus === "Completed" ? (availability === "Available" ? "Available" : "Inactive") : "Assigned",
-          ...(nextStatus === "Completed"
-            ? {
-                assignedDriverId: deleteField(),
-                assignedRequestId: deleteField(),
-              }
-            : {}),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      const matchingSchedule = driverSchedules.find(
-        (schedule) =>
-          schedule.driverUid === authUser?.uid &&
-          ["Available", "Claimed", "On Duty"].includes(schedule.status) &&
-          (getDateFromValue(schedule.startAt)?.getTime() ?? 0) <= Date.now() &&
-          (getDateFromValue(schedule.endAt)?.getTime() ?? 0) >= Date.now()
-      );
-
-      if (matchingSchedule?.id) {
-        await updateDoc(doc(db, DRIVER_SCHEDULE_COLLECTION, matchingSchedule.id), {
-          status: nextStatus === "Completed" ? "Completed" : "On Duty",
-          updatedAt: serverTimestamp(),
-        });
-      }
-    } catch (error) {
-      console.log("Mission status update failed:", error);
-    }
-  };
-
-  const declineMission = async () => {
-    if (!assignedTransfer?.id) {
-      return;
-    }
-
-    try {
-      await updateDoc(doc(db, "driverAssignments", assignedTransfer.id), {
-        status: "Declined",
-        updatedAt: serverTimestamp(),
-      });
-
-      if (assignedTransfer.requestId) {
-        await updateDoc(doc(db, "transportRequests", assignedTransfer.requestId), {
-          status: "Pending",
-          assignedDriverId: deleteField(),
-          assignedDriverName: deleteField(),
-          assignedVehicleId: deleteField(),
-          assignedVehicleName: deleteField(),
-          vehicleId: deleteField(),
-          vehicle: deleteField(),
-          vehiclePlateNumber: deleteField(),
-          lastDeclinedDriverId: authUser?.uid ?? "",
-          lastDeclinedDriverName: displayName,
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      if (assignedTransfer.vehicleId) {
-        await updateDoc(doc(db, "vehicles", assignedTransfer.vehicleId), {
-          status: availability === "Available" ? "Available" : "Inactive",
-          assignedDriverId: deleteField(),
-          assignedRequestId: deleteField(),
-          updatedAt: serverTimestamp(),
-        });
-      }
-
-      const matchingSchedule = driverSchedules.find(
-        (schedule) => schedule.driverUid === authUser?.uid && ["Claimed", "On Duty"].includes(schedule.status)
-      );
-
-      if (matchingSchedule?.id) {
-        await updateDoc(doc(db, DRIVER_SCHEDULE_COLLECTION, matchingSchedule.id), {
-          status: "Available",
-          updatedAt: serverTimestamp(),
-        });
-      }
-    } catch (error) {
-      console.log("Mission decline failed:", error);
     }
   };
 
@@ -848,25 +753,11 @@ export default function DriverHome() {
                       <LeafletMap {...requestMapProps} />
                     </View>
 
-                    <View style={styles.driverActionRow}>
-                      {missionStatus === "Assigned" ? (
-                        <>
-                          <TouchableOpacity style={[styles.driverActionButton, styles.acceptButton]} onPress={() => updateMissionStatus("In Progress")}>
-                            <Text style={styles.driverActionButtonText}>Accept</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={[styles.driverActionButton, styles.declineButton]} onPress={declineMission}>
-                            <Text style={styles.driverActionButtonText}>Decline</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={[styles.driverActionButton, styles.reviewButton]} onPress={() => setReviewOpen(true)}>
-                            <Text style={styles.driverActionButtonText}>Review</Text>
-                          </TouchableOpacity>
-                        </>
-                      ) : (
-                        <TouchableOpacity style={[styles.driverActionButton, styles.completeButton]} onPress={() => updateMissionStatus("Completed")}>
-                          <Text style={styles.driverActionButtonText}>Complete Job</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <FeedbackMessage message={missionMessage.message} tone={missionMessage.tone} />
+                    <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
+                    <TouchableOpacity style={[styles.driverActionButton, styles.reviewButton]} onPress={() => setReviewOpen(true)}>
+                      <Text style={styles.driverActionButtonText}>Review details</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ) : (

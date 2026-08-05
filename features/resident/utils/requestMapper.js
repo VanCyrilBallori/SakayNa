@@ -45,26 +45,21 @@ export const normalizeResidentRequest = (id, data = {}) => ({
 
 export const getRequestTimeline = (request = {}) => {
   const status = request.status || REQUEST_STATUSES.PENDING;
+  const missionStatus = request.missionStatus || "";
   const events = [
     { key: "submitted", label: "Request submitted", timestamp: request.createdAt, complete: Boolean(request.createdAt) },
     { key: "review", label: "Dispatcher review", timestamp: null, complete: status !== REQUEST_STATUSES.PENDING },
     { key: "assigned", label: "Driver assigned", timestamp: request.assignedAt, complete: Boolean(request.assignedDriverId || request.assignedAt) },
     { key: "accepted", label: "Driver accepted", timestamp: request.acceptedAt, complete: Boolean(request.acceptedAt) },
-    { key: "in-progress", label: "Driver en route / trip in progress", timestamp: request.inProgressAt, complete: status === REQUEST_STATUSES.IN_PROGRESS || status === REQUEST_STATUSES.COMPLETED },
+    { key: "en-route", label: "Driver en route", timestamp: request.enRouteAt, complete: Boolean(request.enRouteAt) || ["Arrived", "Picked Up", "Completed"].includes(missionStatus) },
+    { key: "arrived", label: "Driver arrived", timestamp: request.arrivedAt, complete: Boolean(request.arrivedAt) || ["Picked Up", "Completed"].includes(missionStatus) },
+    { key: "picked-up", label: "Passenger picked up", timestamp: request.pickedUpAt, complete: Boolean(request.pickedUpAt) || missionStatus === "Completed" },
     { key: "completed", label: "Request completed", timestamp: request.completedAt, complete: status === REQUEST_STATUSES.COMPLETED },
   ];
-
-  if (status === REQUEST_STATUSES.CANCELLED) {
-    return [...events.filter((event) => event.key !== "completed"), { key: "cancelled", label: "Request cancelled", timestamp: request.cancelledAt, complete: true, terminal: true }];
-  }
-
-  if (status === "Rejected") {
-    return [...events.filter((event) => event.key !== "completed"), { key: "rejected", label: "Request rejected", timestamp: request.rejectedAt, complete: true, terminal: true }];
-  }
-
+  if (status === REQUEST_STATUSES.CANCELLED) return [...events.filter((event) => event.key !== "completed"), { key: "cancelled", label: "Request cancelled", timestamp: request.cancelledAt, complete: true, terminal: true }];
+  if (status === "Rejected") return [...events.filter((event) => event.key !== "completed"), { key: "rejected", label: "Request rejected", timestamp: request.rejectedAt, complete: true, terminal: true }];
   return events;
 };
-
 export const getPickupCoordinates = (request = {}) => {
   const pickup = request.pickup || {};
   if (typeof pickup.latitude === "number" && typeof pickup.longitude === "number") return [pickup.latitude, pickup.longitude];

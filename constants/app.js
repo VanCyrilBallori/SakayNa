@@ -23,6 +23,16 @@ export const REQUEST_STATUSES = Object.freeze({
   CANCELLED: "Cancelled",
 });
 
+export const MISSION_STATUSES = Object.freeze({
+  ASSIGNED: "Assigned",
+  ACCEPTED: "Accepted",
+  EN_ROUTE: "En Route",
+  ARRIVED: "Arrived",
+  PICKED_UP: "Picked Up",
+  COMPLETED: "Completed",
+  DECLINED: "Declined",
+});
+
 export const REQUEST_PRIORITIES = Object.freeze({
   EMERGENCY: "Emergency",
   URGENT: "Urgent",

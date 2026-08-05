@@ -1,13 +1,8 @@
-{
+﻿{
   "indexes": [
-    {
-      "collectionGroup": "transportRequests",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "residentId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    }
+    { "collectionGroup": "transportRequests", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "residentId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "driverAssignments", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "driverId", "order": "ASCENDING" }, { "fieldPath": "updatedAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "driverSchedules", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "driverUid", "order": "ASCENDING" }, { "fieldPath": "startAt", "order": "DESCENDING" } ] }
   ],
   "fieldOverrides": []
 }

@@ -175,6 +175,37 @@ service cloud.firestore {
         );
     }
 
+    function isDriverMissionRequestUpdate() {
+      return isApprovedDriver()
+        && resource.data.assignedDriverId == request.auth.uid
+        && request.resource.data.assignedDriverId == resource.data.assignedDriverId
+        && request.resource.data.residentId == resource.data.residentId
+        && resource.data.status in ["Assigned", "In Progress"]
+        && request.resource.data.status in ["Pending", "In Progress", "Completed"]
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status", "missionStatus", "acceptedAt", "enRouteAt", "arrivedAt", "pickedUpAt", "completedAt",
+          "updatedAt", "timeline", "lastDeclinedDriverId", "lastDeclineReason", "assignedDriverId",
+          "assignedDriverName", "assignedVehicleId", "assignedVehicleName", "vehicleId", "vehicle",
+          "vehiclePlateNumber"
+        ]);
+    }
+
+    function isDriverMissionAssignmentUpdate() {
+      return isApprovedDriver()
+        && resource.data.driverId == request.auth.uid
+        && request.resource.data.driverId == resource.data.driverId
+        && request.resource.data.requestId == resource.data.requestId
+        && request.resource.data.dispatcherId == resource.data.dispatcherId
+        && request.resource.data.vehicleId == resource.data.vehicleId
+        && resource.data.status in ["Assigned", "In Progress"]
+        && request.resource.data.status in ["In Progress", "Completed", "Declined"]
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status", "missionStatus", "acceptedAt", "acceptedBy", "vehicleChecklistId", "enRouteAt",
+          "arrivedAt", "pickedUpAt", "completedAt", "completionOutcome", "completionNotes",
+          "completionIssues", "declinedAt", "declinedBy", "declineReason", "declineDetails",
+          "previousStatus", "updatedAt"
+        ]);
+    }
     match /transportRequests/{requestId} {
       allow create: if signedIn() && isValidNewResidentRequest();
 
@@ -196,24 +227,23 @@ service cloud.firestore {
       allow delete: if isAdmin() || isDispatcher();
     }
     match /driverAssignments/{assignmentId} {
-      allow read: if isAdmin()
-        || isDispatcher()
-        || (signedIn() && resource.data.driverId == request.auth.uid);
-
+      allow read: if isAdmin() || isDispatcher() || (signedIn() && resource.data.driverId == request.auth.uid);
       allow create: if isAdmin() || isDispatcher();
-
-      allow update: if isAdmin()
-        || isDispatcher()
-        || (
-          isApprovedDriver()
-          && resource.data.driverId == request.auth.uid
-          && request.resource.data.driverId == resource.data.driverId
-          && request.resource.data.requestId == resource.data.requestId
-        );
-
+      allow update: if isAdmin() || isDispatcher() || isDriverMissionAssignmentUpdate();
       allow delete: if isAdmin() || isDispatcher();
     }
 
+    match /vehicleChecklists/{checklistId} {
+      allow read: if isAdmin() || isDispatcher() || (isApprovedDriver() && resource.data.driverId == request.auth.uid);
+      allow create: if isApprovedDriver()
+        && request.resource.data.driverId == request.auth.uid
+        && request.resource.data.ready == true
+        && request.resource.data.vehicleId is string
+        && request.resource.data.assignmentId is string
+        && get(/databases/$(database)/documents/driverAssignments/$(request.resource.data.assignmentId)).data.driverId == request.auth.uid
+        && get(/databases/$(database)/documents/driverAssignments/$(request.resource.data.assignmentId)).data.vehicleId == request.resource.data.vehicleId;
+      allow update, delete: if false;
+    }
     match /callSessions/{callId} {
       allow create: if signedIn()
         && request.resource.data.residentId == request.auth.uid
@@ -250,20 +280,16 @@ service cloud.firestore {
 
     match /vehicles/{vehicleId} {
       allow read: if isAdmin() || isDispatcher() || isApprovedDriver();
-
       allow create, delete: if isAdmin();
-
-      allow update: if isAdmin()
-        || isDispatcher()
+      allow update: if isAdmin() || isDispatcher()
         || (
           isApprovedDriver()
-          && (
-            resource.data.ownerUid == request.auth.uid
-            || resource.data.assignedDriverId == request.auth.uid
-          )
+          && resource.data.assignedDriverId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status", "assignedDriverId", "assignedRequestId", "updatedAt"
+          ])
         );
     }
-
     match /driverSchedules/{scheduleId} {
       allow read: if isAdmin()
         || isDispatcher()
