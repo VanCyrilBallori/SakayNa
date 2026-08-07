@@ -1,10 +1,11 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import LeafletMap from "../components/LeafletMap";
 import { db } from "../firebase";
 import {
@@ -38,7 +39,7 @@ export default function DispatcherHome() {
 
     return Math.max(520, Math.min(width - 640, 760));
   }, [compact, width]);
-  const { authUser, displayName } = useCurrentUserProfile();
+  const { authUser, displayName, profile } = useCurrentUserProfile();
   const [requests, setRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedDriver, setSelectedDriver] = useState(null);
@@ -241,6 +242,9 @@ export default function DispatcherHome() {
             id: driverDoc.id,
             name: data.fullName || data.email || "Driver",
             email: data.email ?? "",
+            publicDisplayName: data.publicDisplayName ?? "",
+            publicPhone: data.publicPhone ?? "",
+            operationalPhone: data.operationalPhone ?? "",
             barangay: data.barangay ?? "No barangay set",
             availability: data.availability ?? "Unavailable",
             presence: data.presence ?? "Offline",
@@ -265,7 +269,7 @@ export default function DispatcherHome() {
   }, []);
 
   useEffect(() => {
-    const assignmentsQuery = collection(db, "driverAssignments");
+    const assignmentsQuery = query(collection(db, "driverAssignments"), where("status", "in", ["Assigned", "In Progress"]));
     const unsubscribe = onSnapshot(
       assignmentsQuery,
       (snapshot) => {
@@ -356,60 +360,19 @@ export default function DispatcherHome() {
   };
 
   const handleAssignRequest = async () => {
-    if (!selectedDriver || !requestToAssign) {
-      setAssignmentMessage("Select a pending request before assigning.");
-      return;
-    }
-
-    if (!resolvedVehicle) {
-      setAssignmentMessage(
-        selectedDriverUsesOwnVehicle
-          ? "This driver needs an approved personal vehicle record before dispatch can assign the request."
-          : "No available city or barangay vehicle could be matched to this driver right now."
-      );
+    if (!selectedDriver || !requestToAssign || !resolvedVehicle || !authUser?.uid) {
+      setAssignmentMessage("Choose a valid request, driver, and vehicle before assigning.");
       return;
     }
 
     try {
-      const batch = writeBatch(db);
-      const assignmentRef = doc(collection(db, "driverAssignments"));
-
-      batch.set(assignmentRef, {
-        driverId: selectedDriver.id,
-        driverName: selectedDriver.name,
-        dispatcherId: authUser?.uid ?? "",
-        dispatcherName: displayName,
+      await assignDispatcherRequest({
         requestId: requestToAssign.id,
-        request: requestToAssign,
-        vehicleId: resolvedVehicle.id,
-        vehicleName: resolvedVehicle.name,
-        vehiclePlateNumber: resolvedVehicle.plateNumber || "",
-        status: "Assigned",
-        createdAt: serverTimestamp(),
-        assignedAt: serverTimestamp(),
+        driver: selectedDriver,
+        vehicle: resolvedVehicle,
+        dispatcher: { uid: authUser.uid, name: displayName, officePhone: profile?.officePhone || profile?.operationalPhone || "" },
+        priority: requestToAssign.dispatcherConfirmedPriority || requestToAssign.level || "",
       });
-
-      batch.update(doc(db, "transportRequests", requestToAssign.id), {
-        status: "Assigned",
-        assignedDriverId: selectedDriver.id,
-        assignedDriverName: selectedDriver.name,
-        assignedVehicleId: resolvedVehicle.id,
-        assignedVehicleName: resolvedVehicle.name,
-        vehicleId: resolvedVehicle.id,
-        vehicle: resolvedVehicle.name,
-        vehiclePlateNumber: resolvedVehicle.plateNumber || "",
-        assignedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      batch.update(doc(db, "vehicles", resolvedVehicle.id), {
-        status: "Assigned",
-        assignedDriverId: selectedDriver.id,
-        assignedRequestId: requestToAssign.id,
-        updatedAt: serverTimestamp(),
-      });
-
-      await batch.commit();
-
       setSelectedRequest({ ...requestToAssign, status: "Assigned", vehicle: resolvedVehicle.name });
       setAssignmentMessage(`${requestToAssign.title} assigned to ${selectedDriver.name} with ${resolvedVehicle.name}.`);
       setAssignModalOpen(false);
@@ -417,10 +380,9 @@ export default function DispatcherHome() {
       setSelectedVehicleId("");
     } catch (error) {
       console.log("Assign request failed:", error);
-      setAssignmentMessage("Assignment failed. Please check Firestore permissions.");
+      setAssignmentMessage(error?.message || "Assignment could not be completed. Refresh the request and try again.");
     }
   };
-
   const handleCancelAssignModal = () => {
     setAssignModalOpen(false);
     setRequestToAssign(null);
@@ -534,7 +496,7 @@ export default function DispatcherHome() {
               ]}
             >
               <View style={styles.mapPlaceholder}>
-                <LeafletMap title="Dispatcher Toledo City Map" markerLabel="Toledo City, Cebu" />
+                <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} />
               </View>
             </View>
 
