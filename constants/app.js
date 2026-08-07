@@ -12,6 +12,8 @@ export const ACCOUNT_STATUSES = Object.freeze({
   APPROVED: "Approved",
   PENDING: "Pending",
   REJECTED: "Rejected",
+  SUSPENDED: "Suspended",
+  DISABLED: "Disabled",
   DEACTIVATED: "Deactivated",
 });
 
@@ -58,4 +60,26 @@ export const FIRESTORE_COLLECTIONS = Object.freeze({
   DRIVER_APPLICATIONS: "Driver_Applications",
   VEHICLES: "vehicles",
   DRIVER_SCHEDULES: "driverSchedules",
+  VEHICLE_MAINTENANCE: "vehicleMaintenance",
+  ACTIVITY_LOGS: "activityLogs",
+  STAFF_INVITATIONS: "staffInvitations",
+  DELETION_REQUESTS: "deletionRequests",
+  SYSTEM_SETTINGS: "systemSettings",
 });
+
+export const VEHICLE_MAINTENANCE_STATUSES = Object.freeze({
+  REPORTED: "Reported",
+  SCHEDULED: "Scheduled",
+  IN_PROGRESS: "In Progress",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+});
+
+export const ADMIN_PERMISSION_OPTIONS = Object.freeze([
+  "manage-users",
+  "review-driver-applications",
+  "manage-dispatcher-scopes",
+  "manage-vehicles",
+  "view-reports",
+  "manage-settings",
+]);

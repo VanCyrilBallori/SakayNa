@@ -58,7 +58,7 @@ service cloud.firestore {
           )
         );
 
-      allow update: if isAdmin()
+      allow update: if (isAdmin() && request.auth.uid != userId)
         || (
           signedIn()
           && request.auth.uid == userId
@@ -76,7 +76,7 @@ service cloud.firestore {
           ])
         );
 
-      allow delete: if isAdmin();
+      allow delete: if false;
     }
 
     function isValidNewResidentRequest() {
@@ -273,14 +273,15 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (signedIn() && resource.data.driverUid == request.auth.uid);
 
-      allow update: if isAdmin();
+      allow update: if isAdmin() && resource.data.driverUid != request.auth.uid;
 
-      allow delete: if isAdmin();
+      allow delete: if false;
     }
 
     match /vehicles/{vehicleId} {
       allow read: if isAdmin() || isDispatcher() || isApprovedDriver();
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin();
+      allow delete: if false;
       allow update: if isAdmin() || isDispatcher()
         || (
           isApprovedDriver()
@@ -318,6 +319,44 @@ service cloud.firestore {
         );
     }
 
+    match /staffInvitations/{invitationId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.intendedRole == "Dispatcher"
+        && request.resource.data.status == "Pending Invitation"
+        && request.resource.data.email is string;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /deletionRequests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.status == "Pending backend processing"
+        && request.resource.data.targetUserId is string;
+      allow update, delete: if false;
+    }
+
+    match /vehicleMaintenance/{maintenanceId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.actorRole == "Admin"
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /systemSettings/{settingId} {
+      allow read, create, update: if isAdmin();
+      allow delete: if false;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

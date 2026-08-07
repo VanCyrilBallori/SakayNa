@@ -3,10 +3,11 @@ import { useRouter } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
+  limit,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -29,6 +30,7 @@ import {
 } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
+import AdminOperationsPanel from "../features/admin/components/AdminOperationsPanel";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
@@ -38,7 +40,7 @@ import { useTheme } from "../lib/theme";
 const ADMIN_ROLE = "Admin";
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
-const sideLinks = ["Overview", "Staff Management", "Requests", "Users", "Vehicles"];
+const sideLinks = ["Overview", "Operations", "Staff Management", "Requests", "Users", "Vehicles"];
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
 const requestTypeFilters = ["All", "Emergency Requests", "Community Transport Requests"];
@@ -447,7 +449,7 @@ export default function AdminHome() {
     }
 
     const unsubscribeUsers = onSnapshot(
-      collection(db, "users"),
+      query(collection(db, "users"), limit(200)),
       (snapshot) => {
         setUsers(snapshot.docs.map((userDoc) => ({ id: userDoc.id, ...userDoc.data() })));
         setUsersError("");
@@ -461,7 +463,7 @@ export default function AdminHome() {
     );
 
     const unsubscribeApplications = onSnapshot(
-      collection(db, "Driver_Applications"),
+      query(collection(db, "Driver_Applications"), limit(200)),
       (snapshot) => {
         const nextApplications = snapshot.docs
           .map((applicationDoc) => ({ id: applicationDoc.id, ...applicationDoc.data() }))
@@ -479,7 +481,7 @@ export default function AdminHome() {
     );
 
     const unsubscribeRequests = onSnapshot(
-      collection(db, "transportRequests"),
+      query(collection(db, "transportRequests"), limit(200)),
       (snapshot) => {
         const nextRequests = snapshot.docs
           .map((requestDoc) => ({ id: requestDoc.id, ...requestDoc.data() }))
@@ -497,7 +499,7 @@ export default function AdminHome() {
     );
 
     const unsubscribeVehicles = onSnapshot(
-      collection(db, "vehicles"),
+      query(collection(db, "vehicles"), limit(200)),
       (snapshot) => {
         const nextVehicles = snapshot.docs
           .map((vehicleDoc) => ({ id: vehicleDoc.id, ...vehicleDoc.data() }))
@@ -515,7 +517,7 @@ export default function AdminHome() {
     );
 
     const unsubscribeAssignments = onSnapshot(
-      collection(db, "driverAssignments"),
+      query(collection(db, "driverAssignments"), limit(200)),
       (snapshot) => {
         setDriverAssignments(snapshot.docs.map((assignmentDoc) => ({ id: assignmentDoc.id, ...assignmentDoc.data() })));
       },
@@ -908,7 +910,6 @@ export default function AdminHome() {
         phone: userForm.phoneNumber.trim(),
         barangay: userForm.barangay.trim(),
         address: userForm.address.trim(),
-        accountStatus: userForm.accountStatus,
         updatedAt: serverTimestamp(),
       });
 
@@ -954,20 +955,8 @@ export default function AdminHome() {
       return;
     }
 
-    setSavingUser(true);
-    setUsersError("");
-    setUserMessage("");
-
-    try {
-      await deleteDoc(doc(db, "users", user.id));
-      setUserMessage(`${getUserName(user)} was removed from the users collection.`);
-      setConfirmingUserDelete(null);
-    } catch (error) {
-      console.log("User delete failed:", error);
-      setUsersError("The user record could not be deleted. Please check Firestore permissions.");
-    } finally {
-      setSavingUser(false);
-    }
+    setConfirmingUserDelete(null);
+    setUsersError("Direct profile deletion is disabled because it can orphan Firebase Authentication accounts. Use Operations to create a pending backend deletion request.");
   };
 
   const openVehicleEditor = (vehicle = null) => {
@@ -1039,12 +1028,17 @@ export default function AdminHome() {
     setVehicleMessage("");
 
     try {
-      await deleteDoc(doc(db, "vehicles", vehicle.id));
-      setVehicleMessage(`${vehicle.name || "Vehicle"} was deleted.`);
+      await updateDoc(doc(db, "vehicles", vehicle.id), {
+        status: "Archived",
+        archivedAt: serverTimestamp(),
+        archivedBy: authUser?.uid || "",
+        updatedAt: serverTimestamp(),
+      });
+      setVehicleMessage(`${vehicle.name || "Vehicle"} was archived. Historical assignments were preserved.`);
       setConfirmingVehicleDelete(null);
     } catch (error) {
-      console.log("Vehicle delete failed:", error);
-      setVehiclesError("Vehicle record could not be deleted. Please check Firestore permissions.");
+      console.log("Vehicle archive failed:", error);
+      setVehiclesError("The vehicle could not be archived. Please check Firestore permissions.");
     } finally {
       setSavingVehicle(false);
     }
@@ -1424,12 +1418,12 @@ export default function AdminHome() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.smallActionButton, styles.deactivateButton]}
-                  onPress={() => setConfirmingUserDeactivate(user)}
+                  onPress={() => setSelectedSection("Operations")}
                 >
-                  <Text style={styles.smallActionButtonText}>Deactivate</Text>
+                  <Text style={styles.smallActionButtonText}>Manage lifecycle</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.smallActionButton, styles.deleteButton]} onPress={() => setConfirmingUserDelete(user)}>
-                  <Text style={styles.smallActionButtonText}>Delete</Text>
+                <TouchableOpacity style={[styles.smallActionButton, styles.editButton]} onPress={() => setSelectedSection("Operations")}>
+                  <Text style={styles.smallActionButtonText}>Manage lifecycle</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1523,6 +1517,10 @@ export default function AdminHome() {
   );
 
   const renderSectionContent = () => {
+    if (selectedSection === "Operations") {
+      return <AdminOperationsPanel users={users} applications={driverApplications} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} theme={theme} />;
+    }
+
     if (selectedSection === "Staff Management") {
       return renderStaffManagement();
     }
@@ -1709,7 +1707,7 @@ export default function AdminHome() {
               onChangeText={(value) => setUserForm((current) => ({ ...current, address: value }))}
             />
 
-            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Account Status</Text>
+            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Account Status (managed in Operations)</Text>
             <View style={styles.filterRow}>
               {accountStatusOptions.map((status) => {
                 const active = userForm.accountStatus === status;
@@ -1721,7 +1719,7 @@ export default function AdminHome() {
                       styles.filterChip,
                       { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
                     ]}
-                    onPress={() => setUserForm((current) => ({ ...current, accountStatus: status }))}
+                    disabled
                   >
                     <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{status}</Text>
                   </TouchableOpacity>
@@ -1834,16 +1832,16 @@ export default function AdminHome() {
       <Modal visible={Boolean(confirmingUserDelete)} transparent animationType="fade" onRequestClose={() => setConfirmingUserDelete(null)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.confirmCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Delete User Record</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Deletion Request</Text>
             <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
-              Remove {confirmingUserDelete ? getUserName(confirmingUserDelete) : "this user"} from the `users` collection? This does not change the Firebase Authentication password.
+              Direct deletion is disabled because it can orphan Firebase Authentication accounts. Use Operations to create a pending Phase 8 backend deletion request for {confirmingUserDelete ? getUserName(confirmingUserDelete) : "this user"}.
             </Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity style={[styles.secondaryActionButton, styles.confirmButton]} onPress={() => setConfirmingUserDelete(null)}>
                 <Text style={styles.secondaryActionButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.primaryActionButton, styles.confirmButton, savingUser && styles.actionButtonDisabled]} onPress={() => deleteUserRecord(confirmingUserDelete)} disabled={savingUser}>
-                <Text style={styles.primaryActionButtonText}>{savingUser ? "Deleting..." : "Delete Record"}</Text>
+                <Text style={styles.primaryActionButtonText}>{savingUser ? "Checking..." : "Deletion unavailable"}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1872,16 +1870,16 @@ export default function AdminHome() {
       <Modal visible={Boolean(confirmingVehicleDelete)} transparent animationType="fade" onRequestClose={() => setConfirmingVehicleDelete(null)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.confirmCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Delete Vehicle Record</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Archive Vehicle</Text>
             <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
-              Delete {confirmingVehicleDelete?.name || "this vehicle"} from the `vehicles` collection?
+              Archive {confirmingVehicleDelete?.name || "this vehicle"}? Historical records will be preserved.
             </Text>
             <View style={styles.confirmActions}>
               <TouchableOpacity style={[styles.secondaryActionButton, styles.confirmButton]} onPress={() => setConfirmingVehicleDelete(null)}>
                 <Text style={styles.secondaryActionButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.primaryActionButton, styles.confirmButton, savingVehicle && styles.actionButtonDisabled]} onPress={() => deleteVehicleRecord(confirmingVehicleDelete)} disabled={savingVehicle}>
-                <Text style={styles.primaryActionButtonText}>{savingVehicle ? "Deleting..." : "Delete Vehicle"}</Text>
+                <Text style={styles.primaryActionButtonText}>{savingVehicle ? "Archiving..." : "Archive Vehicle"}</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -1,8 +1,17 @@
-﻿{
+{
   "indexes": [
-    { "collectionGroup": "transportRequests", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "residentId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
-    { "collectionGroup": "driverAssignments", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "driverId", "order": "ASCENDING" }, { "fieldPath": "updatedAt", "order": "DESCENDING" } ] },
-    { "collectionGroup": "driverSchedules", "queryScope": "COLLECTION", "fields": [ { "fieldPath": "driverUid", "order": "ASCENDING" }, { "fieldPath": "startAt", "order": "DESCENDING" } ] }
+    { "collectionGroup": "transportRequests", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "residentId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "transportRequests", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "barangay", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "driverAssignments", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "driverId", "order": "ASCENDING" }, { "fieldPath": "updatedAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "driverAssignments", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "dispatcherId", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "updatedAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "driverSchedules", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "driverUid", "order": "ASCENDING" }, { "fieldPath": "startAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "users", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "role", "order": "ASCENDING" }, { "fieldPath": "accountStatus", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "Driver_Applications", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "vehicles", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "maintenanceStatus", "order": "ASCENDING" }] },
+    { "collectionGroup": "vehicleMaintenance", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "vehicleId", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "activityLogs", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "action", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "activityLogs", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "targetType", "order": "ASCENDING" }, { "fieldPath": "targetId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] },
+    { "collectionGroup": "staffInvitations", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "email", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" }] }
   ],
   "fieldOverrides": []
 }
