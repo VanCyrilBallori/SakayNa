@@ -40,7 +40,7 @@ import { useTheme } from "../lib/theme";
 const ADMIN_ROLE = "Admin";
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
-const sideLinks = ["Overview", "Operations", "Staff Management", "Requests", "Users", "Vehicles"];
+const sideLinks = ["Overview", "Operations", "Requests"];
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
 const requestTypeFilters = ["All", "Emergency Requests", "Community Transport Requests"];

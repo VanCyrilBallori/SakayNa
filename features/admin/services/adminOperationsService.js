@@ -173,7 +173,6 @@ export const createStaffInvitation = async ({ adminId, email, displayName, inten
   if (!existing.empty) throw new Error("A pending invitation already exists for this email address.");
   const invitationRef = doc(collection(db, FIRESTORE_COLLECTIONS.STAFF_INVITATIONS));
   await setDoc(invitationRef, { email: normalizedEmail, intendedRole, displayName: displayName.trim(), barangay: barangay.trim(), serviceAreas: [...new Set(serviceAreas.filter(Boolean))], operationalPhone: operationalPhone.trim(), status: ACTIVE_INVITATION_STATUS, createdBy: adminId, createdAt: serverTimestamp(), expiresAt: null });
-  await setDoc(doc(collection(db, FIRESTORE_COLLECTIONS.ACTIVITY_LOGS)), { action: "staff-invitation-created", actorId: adminId, actorRole: ROLES.ADMIN, targetType: "staffInvitation", targetId: invitationRef.id, summary: `Pending Dispatcher invitation created for ${normalizedEmail}.`, metadata: { intendedRole }, createdAt: serverTimestamp() });
 };
 
 export const requestPermanentDeletion = async ({ adminId, targetUser, reason }) => {
@@ -181,7 +180,6 @@ export const requestPermanentDeletion = async ({ adminId, targetUser, reason }) 
   if (!hasText(reason, 3)) throw new Error("A deletion-request reason is required.");
   const requestRef = doc(collection(db, FIRESTORE_COLLECTIONS.DELETION_REQUESTS));
   await setDoc(requestRef, { targetUserId: targetUser.id, requestedBy: adminId, reason: reason.trim(), status: "Pending backend processing", requestedAt: serverTimestamp() });
-  await setDoc(doc(collection(db, FIRESTORE_COLLECTIONS.ACTIVITY_LOGS)), { action: "permanent-deletion-requested", actorId: adminId, actorRole: ROLES.ADMIN, targetType: "user", targetId: targetUser.id, summary: `Permanent deletion requested for ${getProfileName(targetUser)}.`, metadata: { deletionRequestId: requestRef.id }, createdAt: serverTimestamp() });
 };
 
 export const saveMaintenanceRecord = async ({ adminId, vehicle, form, activeAssignments = [] }) => {
@@ -209,5 +207,4 @@ export const saveSystemSettings = async ({ adminId, settings }) => {
   const vehicleTypes = [...new Set((settings.vehicleTypes || []).filter((item) => hasText(item, 2)))];
   if (!hasText(settings.publicOfficePhone, 7)) throw new Error("Enter a public office phone number.");
   await setDoc(doc(db, FIRESTORE_COLLECTIONS.SYSTEM_SETTINGS, "operational"), { supportedBarangays: allowedBarangays, requestCategories: categories, vehicleTypes, publicOfficePhone: settings.publicOfficePhone.trim(), maintenanceReminderDays: Math.max(1, Number(settings.maintenanceReminderDays) || 30), updatedAt: serverTimestamp(), updatedBy: adminId }, { merge: true });
-  await setDoc(doc(collection(db, FIRESTORE_COLLECTIONS.ACTIVITY_LOGS)), { action: "system-settings-updated", actorId: adminId, actorRole: ROLES.ADMIN, targetType: "systemSettings", targetId: "operational", summary: "Operational display settings updated.", metadata: { barangayCount: allowedBarangays.length }, createdAt: serverTimestamp() });
 };

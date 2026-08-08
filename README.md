@@ -145,3 +145,8 @@ Email verification is not enforced for dashboard access in this phase. This temp
 ## Phase 2 Firestore rule update
 
 Publish the updated `firestore.rules`. Ordinary users can now update only basic profile and presence fields. They cannot change role, account status, approval fields, vehicle ownership preferences, or other administrative fields. Creating or approving privileged accounts still requires a trusted administrative workflow; client code must not be used to grant Admin or Dispatcher access.
+
+
+## Phase 8 backend
+
+Trusted callable Function setup, emulator use, deployment safety, token refresh, and retention behavior are documented in [docs/PHASE_8_BACKEND.md](docs/PHASE_8_BACKEND.md). Do not deploy Functions or hardened rules until all roles have completed emulator testing.

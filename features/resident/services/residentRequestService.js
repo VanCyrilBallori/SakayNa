@@ -1,6 +1,7 @@
-import { collection, doc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+import { callTrustedFunction } from "../../../lib/backendFunctions";
 import { FIRESTORE_COLLECTIONS, REQUEST_STATUSES } from "../../../constants/app";
 import { getResidentReportedPriority } from "../utils/requestOptions";
 
@@ -53,24 +54,4 @@ export const createResidentRequest = async ({ uid, residentName, form }) => {
   return { id: requestRef.id, reference };
 };
 
-export const cancelResidentRequest = async ({ requestId, uid, reason }) => {
-  const requestRef = doc(db, FIRESTORE_COLLECTIONS.TRANSPORT_REQUESTS, requestId);
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(requestRef);
-    if (!snapshot.exists()) throw new Error("not-found");
-    const request = snapshot.data();
-    if (request.residentId !== uid) throw new Error("not-owner");
-    if (![REQUEST_STATUSES.PENDING, REQUEST_STATUSES.ASSIGNED].includes(request.status || REQUEST_STATUSES.PENDING)) throw new Error("not-cancellable");
-
-    const priorTimeline = request.timeline && typeof request.timeline === "object" ? request.timeline : {};
-    transaction.update(requestRef, {
-      status: REQUEST_STATUSES.CANCELLED,
-      previousStatus: request.status || REQUEST_STATUSES.PENDING,
-      cancellationReason: reason,
-      cancelledBy: uid,
-      cancelledAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      timeline: { ...priorTimeline, cancelled: { actorRole: "Resident", actorId: uid, note: reason } },
-    });
-  });
-};
+export const cancelResidentRequest = async ({ requestId, reason }) => callTrustedFunction("cancelResidentRequest", { requestId, reason });

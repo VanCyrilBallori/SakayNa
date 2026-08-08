@@ -214,17 +214,7 @@ service cloud.firestore {
         || (signedIn() && resource.data.residentId == request.auth.uid)
         || (isApprovedDriver() && resource.data.assignedDriverId == request.auth.uid);
 
-      allow update: if isAdmin()
-        || isDispatcher()
-        || isValidResidentCancellation()
-        || (
-          isApprovedDriver()
-          && resource.data.assignedDriverId == request.auth.uid
-          && request.resource.data.assignedDriverId == resource.data.assignedDriverId
-          && request.resource.data.residentId == resource.data.residentId
-        );
-
-      allow delete: if isAdmin() || isDispatcher();
+      allow update, delete: if false;
     }
     match /driverAssignments/{assignmentId} {
       allow read: if isAdmin() || isDispatcher() || (signedIn() && resource.data.driverId == request.auth.uid);
@@ -273,23 +263,14 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (signedIn() && resource.data.driverUid == request.auth.uid);
 
-      allow update: if isAdmin() && resource.data.driverUid != request.auth.uid;
+      allow update: if false;
 
       allow delete: if false;
     }
 
     match /vehicles/{vehicleId} {
       allow read: if isAdmin() || isDispatcher() || isApprovedDriver();
-      allow create: if isAdmin();
-      allow delete: if false;
-      allow update: if isAdmin() || isDispatcher()
-        || (
-          isApprovedDriver()
-          && resource.data.assignedDriverId == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            "status", "assignedDriverId", "assignedRequestId", "updatedAt"
-          ])
-        );
+      allow create, update, delete: if false;
     }
     match /driverSchedules/{scheduleId} {
       allow read: if isAdmin()
@@ -346,16 +327,16 @@ service cloud.firestore {
 
     match /activityLogs/{logId} {
       allow read: if isAdmin();
-      allow create: if isAdmin()
-        && request.resource.data.actorId == request.auth.uid
-        && request.resource.data.actorRole == "Admin"
-        && request.resource.data.createdAt == request.time;
-      allow update, delete: if false;
+      allow create, update, delete: if false;
     }
 
     match /systemSettings/{settingId} {
       allow read, create, update: if isAdmin();
       allow delete: if false;
+    }
+    match /authoritativeAuditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
     }
     match /{document=**} {
       allow read, write: if false;
