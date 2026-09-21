@@ -1,9 +1,11 @@
-import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 import { FIRESTORE_COLLECTIONS } from "../../../constants/app";
 import { db } from "../../../firebase";
 import { normalizeResidentRequest } from "../utils/requestMapper";
+
+const toMillis = (value) => value?.toMillis?.() ?? (value ? new Date(value).getTime() || 0 : 0);
 
 export default function useResidentRequests(uid) {
   const [requests, setRequests] = useState([]);
@@ -19,16 +21,19 @@ export default function useResidentRequests(uid) {
 
     setLoading(true);
     setError("");
+    // Single-field filter only (no orderBy) so no composite index is needed. Sorted below.
     const requestsQuery = query(
       collection(db, FIRESTORE_COLLECTIONS.TRANSPORT_REQUESTS),
-      where("residentId", "==", uid),
-      orderBy("createdAt", "desc"),
-      limit(50)
+      where("residentId", "==", uid)
     );
     const unsubscribe = onSnapshot(
       requestsQuery,
       (snapshot) => {
-        setRequests(snapshot.docs.map((requestDoc) => normalizeResidentRequest(requestDoc.id, requestDoc.data())));
+        const rows = snapshot.docs
+          .map((requestDoc) => normalizeResidentRequest(requestDoc.id, requestDoc.data()))
+          .sort((a, b) => toMillis(b.submittedAt) - toMillis(a.submittedAt))
+          .slice(0, 50);
+        setRequests(rows);
         setLoading(false);
       },
       () => {

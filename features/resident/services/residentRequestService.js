@@ -1,7 +1,6 @@
-import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { db } from "../../../firebase";
-import { callTrustedFunction } from "../../../lib/backendFunctions";
 import { FIRESTORE_COLLECTIONS, REQUEST_STATUSES } from "../../../constants/app";
 import { getResidentReportedPriority } from "../utils/requestOptions";
 
@@ -54,4 +53,35 @@ export const createResidentRequest = async ({ uid, residentName, form }) => {
   return { id: requestRef.id, reference };
 };
 
-export const cancelResidentRequest = async ({ requestId, reason }) => callTrustedFunction("cancelResidentRequest", { requestId, reason });
+// Marks the resident's own request as Cancelled (previously a Cloud Function call).
+export const cancelResidentRequest = async ({ requestId, reason }) => {
+  const trimmedReason = (reason || "").trim();
+  if (!requestId || trimmedReason.length < 3) {
+    throw new Error("A request and a cancellation reason are required.");
+  }
+
+  await runTransaction(db, async (transaction) => {
+    const requestRef = doc(db, FIRESTORE_COLLECTIONS.TRANSPORT_REQUESTS, requestId);
+    const snapshot = await transaction.get(requestRef);
+
+    if (!snapshot.exists()) {
+      throw new Error("This request no longer exists.");
+    }
+
+    const request = snapshot.data();
+    if (!["Pending", "Assigned"].includes(request.status)) {
+      throw new Error("not-cancellable");
+    }
+
+    transaction.update(requestRef, {
+      status: REQUEST_STATUSES.CANCELLED,
+      previousStatus: request.status,
+      cancellationReason: trimmedReason,
+      cancelledBy: request.residentId || "",
+      cancelledAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  return { cancelled: true };
+};

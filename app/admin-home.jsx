@@ -1,18 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { onAuthStateChanged } from "firebase/auth";
-import {
-  collection,
-  doc,
-  getDoc,
-  limit,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  writeBatch,
-} from "firebase/firestore";
+import { doc, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,17 +18,30 @@ import {
 } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
+import AdminCallSessionsSection from "../features/admin/components/AdminCallSessionsSection";
 import AdminOperationsPanel from "../features/admin/components/AdminOperationsPanel";
+import AdminOverviewSection from "../features/admin/components/AdminOverviewSection";
+import AdminRequestsSection from "../features/admin/components/AdminRequestsSection";
+import AdminUsersSection from "../features/admin/components/AdminUsersSection";
+import AdminVehiclesSection from "../features/admin/components/AdminVehiclesSection";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
-import { auth, db } from "../firebase";
+import { db } from "../firebase";
+import useAdminCallSessions from "../features/admin/hooks/useAdminCallSessions";
+import useAdminDashboardData from "../features/admin/hooks/useAdminDashboardData";
+import { getApprovalStatus, getUserName } from "../features/admin/utils/userFormatters";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
+import {
+  formatDateTime,
+  getAverageDuration,
+  getDateFromValue,
+  getDurationLabel,
+} from "../lib/dates";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
-const ADMIN_ROLE = "Admin";
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
-const sideLinks = ["Overview", "Operations", "Requests"];
+const sideLinks = ["Overview", "Emergency Calls", "Operations", "Requests", "Users", "Vehicles"];
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
 const requestTypeFilters = ["All", "Emergency Requests", "Community Transport Requests"];
@@ -48,57 +49,7 @@ const accountStatusOptions = ["Active", "Approved", "Pending", "Rejected", "Deac
 const vehicleStatusOptions = ["Available", "Assigned", "In Use", "Inactive"];
 const cityVehicleOwnerOptions = [CITY_VEHICLE_OWNER];
 
-const getDateFromValue = (value) => {
-  if (!value) {
-    return null;
-  }
-
-  if (typeof value?.toDate === "function") {
-    return value.toDate();
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const getTimestampMillis = (value) => getDateFromValue(value)?.getTime() ?? null;
-
-const formatDate = (value) => {
-  const date = getDateFromValue(value);
-
-  if (!date) {
-    return "Not available";
-  }
-
-  return date.toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
-
-const formatDateTime = (value) => {
-  const date = getDateFromValue(value);
-
-  if (!date) {
-    return "Not available";
-  }
-
-  return date.toLocaleString("en-PH", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
-
 const normalizeRole = (role = "") => role.toLowerCase();
-const getUserPhone = (user) => user.phoneNumber || user.phone || "Not provided";
-const getUserName = (user) => user.fullName || user.displayName || user.email || "Registered User";
-const getUserAddress = (user) => user.address || user.pickupDetails || "Not provided";
-const getApprovalStatus = (user) => user.accountStatus || user.approvalStatus || user.status || "Active";
-const getProfilePhoto = (record) => record.profilePhoto || record.photoURL || record.avatarUrl || "";
 const applicationUsesOwnVehicle = (application) =>
   application?.useOwnVehicle === true ||
   Boolean(application?.vehicleMake || application?.vehicleModel || application?.plateNumber || application?.uploaded_document);
@@ -134,48 +85,6 @@ const getRequestVehicleLabel = (request) =>
   request.assignedVehicleName || request.vehicle || request.vehicleType || "Not assigned";
 
 const getRequestPriority = (request) => request.priorityLevel || request.level || "Normal";
-
-const getDurationLabel = (milliseconds) => {
-  if (typeof milliseconds !== "number" || Number.isNaN(milliseconds)) {
-    return "Not enough data";
-  }
-
-  if (milliseconds < 60_000) {
-    return `${Math.max(1, Math.round(milliseconds / 1000))} sec`;
-  }
-
-  const minutes = Math.round(milliseconds / 60_000);
-
-  if (minutes < 60) {
-    return `${minutes} min`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
-};
-
-const getAverageDuration = (requests, endFieldNames) => {
-  const durations = requests
-    .map((request) => {
-      const createdAt = getTimestampMillis(request.createdAt);
-      const endingField = endFieldNames.find((fieldName) => request[fieldName]);
-      const endedAt = endingField ? getTimestampMillis(request[endingField]) : null;
-
-      if (!createdAt || !endedAt || endedAt < createdAt) {
-        return null;
-      }
-
-      return endedAt - createdAt;
-    })
-    .filter((value) => typeof value === "number");
-
-  if (!durations.length) {
-    return null;
-  }
-
-  return durations.reduce((sum, value) => sum + value, 0) / durations.length;
-};
 
 const getRangeStart = (rangeLabel, now) => {
   const start = new Date(now);
@@ -361,7 +270,7 @@ export default function AdminHome() {
 
     return Math.max(540, height - 210);
   }, [compact, height]);
-  const { authUser, displayName, profile } = useCurrentUserProfile();
+  const { authUser, displayName, profile, profileStatus } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
 
   const initials = useMemo(() => {
@@ -369,33 +278,52 @@ export default function AdminHome() {
     return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "A";
   }, [displayName]);
 
-  const [adminAccessStatus, setAdminAccessStatus] = useState("checking");
+  const adminAccessStatus = useMemo(() => {
+    if (profileStatus === "idle" || profileStatus === "loading") {
+      return "checking";
+    }
+
+    if (profileStatus === "ready" && profile?.role === "Admin" && profile?.accountStatus === "Active") {
+      return "authorized";
+    }
+
+    return "unauthorized";
+  }, [profile, profileStatus]);
+
+  useEffect(() => {
+    if (adminAccessStatus === "unauthorized") {
+      router.replace("/login");
+    }
+  }, [adminAccessStatus, router]);
+
   const [selectedSection, setSelectedSection] = useState("Overview");
-  const [searchValue, setSearchValue] = useState("");
   const [rangeLabel, setRangeLabel] = useState("Week");
   const [requestStatusFilter, setRequestStatusFilter] = useState("All");
   const [requestTypeFilter, setRequestTypeFilter] = useState("All");
   const [userRoleView, setUserRoleView] = useState("All");
 
-  const [users, setUsers] = useState([]);
-  const [driverApplications, setDriverApplications] = useState([]);
-  const [transportRequests, setTransportRequests] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [driverAssignments, setDriverAssignments] = useState([]);
+  const {
+    users,
+    driverApplications,
+    transportRequests,
+    vehicles,
+    driverAssignments,
+    isLoadingUsers,
+    isLoadingRequests,
+    isLoadingVehicles,
+    usersError,
+    setUsersError,
+    requestsError,
+    vehiclesError,
+    setVehiclesError,
+  } = useAdminDashboardData(adminAccessStatus === "authorized");
 
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
-  const [isLoadingApplications, setIsLoadingApplications] = useState(true);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
-  const [isLoadingVehicles, setIsLoadingVehicles] = useState(true);
+  const { callSessions, staleRingingCount, isLoadingCallSessions, callSessionsError } = useAdminCallSessions(
+    adminAccessStatus === "authorized"
+  );
 
-  const [usersError, setUsersError] = useState("");
-  const [applicationsError, setApplicationsError] = useState("");
-  const [requestsError, setRequestsError] = useState("");
-  const [vehiclesError, setVehiclesError] = useState("");
-  const [staffMessage, setStaffMessage] = useState("");
   const [userMessage, setUserMessage] = useState("");
   const [vehicleMessage, setVehicleMessage] = useState("");
-  const [updatingApplicationId, setUpdatingApplicationId] = useState("");
   const [syncingVehicles, setSyncingVehicles] = useState(false);
 
   const [selectedRequestRecord, setSelectedRequestRecord] = useState(null);
@@ -407,131 +335,11 @@ export default function AdminHome() {
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [savingUser, setSavingUser] = useState(false);
   const [confirmingUserDelete, setConfirmingUserDelete] = useState(null);
-  const [confirmingUserDeactivate, setConfirmingUserDeactivate] = useState(null);
 
   const [vehicleEditorOpen, setVehicleEditorOpen] = useState(false);
   const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm);
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [confirmingVehicleDelete, setConfirmingVehicleDelete] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setAdminAccessStatus("unauthorized");
-        router.replace("/login");
-        return;
-      }
-
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        const role = userDoc.exists() ? userDoc.data()?.role : "";
-
-        if (role === ADMIN_ROLE) {
-          setAdminAccessStatus("authorized");
-          return;
-        }
-
-        setAdminAccessStatus("unauthorized");
-        router.replace("/login");
-      } catch (error) {
-        console.log("Admin role check failed:", error);
-        setAdminAccessStatus("unauthorized");
-        router.replace("/login");
-      }
-    });
-
-    return unsubscribe;
-  }, [router]);
-
-  useEffect(() => {
-    if (adminAccessStatus !== "authorized") {
-      return undefined;
-    }
-
-    const unsubscribeUsers = onSnapshot(
-      query(collection(db, "users"), limit(200)),
-      (snapshot) => {
-        setUsers(snapshot.docs.map((userDoc) => ({ id: userDoc.id, ...userDoc.data() })));
-        setUsersError("");
-        setIsLoadingUsers(false);
-      },
-      (error) => {
-        console.log("Users listener warning:", error);
-        setUsersError("Users could not be loaded. Please check Firestore permissions.");
-        setIsLoadingUsers(false);
-      }
-    );
-
-    const unsubscribeApplications = onSnapshot(
-      query(collection(db, "Driver_Applications"), limit(200)),
-      (snapshot) => {
-        const nextApplications = snapshot.docs
-          .map((applicationDoc) => ({ id: applicationDoc.id, ...applicationDoc.data() }))
-          .sort((first, second) => (getTimestampMillis(second.createdAt) ?? 0) - (getTimestampMillis(first.createdAt) ?? 0));
-
-        setDriverApplications(nextApplications);
-        setApplicationsError("");
-        setIsLoadingApplications(false);
-      },
-      (error) => {
-        console.log("Driver applications listener warning:", error);
-        setApplicationsError("Driver applications could not be loaded. Please check Firestore permissions.");
-        setIsLoadingApplications(false);
-      }
-    );
-
-    const unsubscribeRequests = onSnapshot(
-      query(collection(db, "transportRequests"), limit(200)),
-      (snapshot) => {
-        const nextRequests = snapshot.docs
-          .map((requestDoc) => ({ id: requestDoc.id, ...requestDoc.data() }))
-          .sort((first, second) => (getTimestampMillis(second.createdAt) ?? 0) - (getTimestampMillis(first.createdAt) ?? 0));
-
-        setTransportRequests(nextRequests);
-        setRequestsError("");
-        setIsLoadingRequests(false);
-      },
-      (error) => {
-        console.log("Transport requests listener warning:", error);
-        setRequestsError("Transport requests could not be loaded. Please check Firestore permissions.");
-        setIsLoadingRequests(false);
-      }
-    );
-
-    const unsubscribeVehicles = onSnapshot(
-      query(collection(db, "vehicles"), limit(200)),
-      (snapshot) => {
-        const nextVehicles = snapshot.docs
-          .map((vehicleDoc) => ({ id: vehicleDoc.id, ...vehicleDoc.data() }))
-          .sort((first, second) => (getTimestampMillis(second.createdAt) ?? 0) - (getTimestampMillis(first.createdAt) ?? 0));
-
-        setVehicles(nextVehicles);
-        setVehiclesError("");
-        setIsLoadingVehicles(false);
-      },
-      (error) => {
-        console.log("Vehicles listener warning:", error);
-        setVehiclesError("Vehicles could not be loaded. Please check Firestore permissions.");
-        setIsLoadingVehicles(false);
-      }
-    );
-
-    const unsubscribeAssignments = onSnapshot(
-      query(collection(db, "driverAssignments"), limit(200)),
-      (snapshot) => {
-        setDriverAssignments(snapshot.docs.map((assignmentDoc) => ({ id: assignmentDoc.id, ...assignmentDoc.data() })));
-      },
-      (error) => console.log("Driver assignments listener warning:", error)
-    );
-
-    return () => {
-      unsubscribeUsers();
-      unsubscribeApplications();
-      unsubscribeRequests();
-      unsubscribeVehicles();
-      unsubscribeAssignments();
-    };
-  }, [adminAccessStatus]);
 
   const usersById = useMemo(
     () =>
@@ -569,8 +377,6 @@ export default function AdminHome() {
   );
 
   const filteredRequests = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-
     return requestsWithDerivedFields.filter((request) => {
       const requestStatus = request.status || "Pending";
       const requestTypeLabel = request.requestTypeLabel;
@@ -579,38 +385,17 @@ export default function AdminHome() {
         requestTypeFilter === "All" ||
         (requestTypeFilter === "Emergency Requests" && requestTypeLabel === "Emergency Request") ||
         (requestTypeFilter === "Community Transport Requests" && requestTypeLabel === "Community Transport Request");
-      const matchesSearch =
-        !query ||
-        request.id.toLowerCase().includes(query) ||
-        (request.residentName || "").toLowerCase().includes(query) ||
-        requestTypeLabel.toLowerCase().includes(query) ||
-        (request.emergencyType || "").toLowerCase().includes(query) ||
-        (request.pickupLocation || "").toLowerCase().includes(query) ||
-        (request.destination || "").toLowerCase().includes(query) ||
-        request.vehicleLabel.toLowerCase().includes(query) ||
-        (request.assignedDriverName || "").toLowerCase().includes(query);
 
-      return matchesStatus && matchesType && matchesSearch;
+      return matchesStatus && matchesType;
     });
-  }, [requestStatusFilter, requestTypeFilter, requestsWithDerivedFields, searchValue]);
+  }, [requestStatusFilter, requestTypeFilter, requestsWithDerivedFields]);
 
   const filteredUsers = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-
     return users.filter((user) => {
       const role = user.role || "";
-      const matchesRole = userRoleView === "All" || role === userRoleView;
-      const matchesSearch =
-        !query ||
-        getUserName(user).toLowerCase().includes(query) ||
-        (user.email || "").toLowerCase().includes(query) ||
-        getUserPhone(user).toLowerCase().includes(query) ||
-        (user.barangay || "").toLowerCase().includes(query) ||
-        (user.address || "").toLowerCase().includes(query);
-
-      return matchesRole && matchesSearch;
+      return userRoleView === "All" || role === userRoleView;
     });
-  }, [searchValue, userRoleView, users]);
+  }, [userRoleView, users]);
 
   const vehiclesWithDerivedStatus = useMemo(
     () =>
@@ -621,26 +406,7 @@ export default function AdminHome() {
     [activeAssignments, usersById, vehicles]
   );
 
-  const filteredVehicles = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-
-    return vehiclesWithDerivedStatus.filter((vehicle) => {
-      if (!query) {
-        return true;
-      }
-
-      return [
-        vehicle.name,
-        vehicle.type,
-        vehicle.plateNumber,
-        vehicle.ownerType,
-        vehicle.driverName,
-        vehicle.ownerUid,
-      ]
-        .filter(Boolean)
-        .some((value) => `${value}`.toLowerCase().includes(query));
-    });
-  }, [searchValue, vehiclesWithDerivedStatus]);
+  const filteredVehicles = vehiclesWithDerivedStatus;
 
   const totalEmergencyRequests = useMemo(
     () => requestsWithDerivedFields.filter((request) => request.requestTypeLabel === "Emergency Request").length,
@@ -741,87 +507,8 @@ export default function AdminHome() {
   ];
 
   const clearSectionMessages = () => {
-    setStaffMessage("");
     setUserMessage("");
     setVehicleMessage("");
-  };
-
-  const updateApplicationStatus = async (application, status) => {
-    if (adminAccessStatus !== "authorized") {
-      setApplicationsError("Only admins can update driver applications.");
-      return;
-    }
-
-    if (!application?.driverUid) {
-      setApplicationsError("This application is missing the driver's Authentication UID.");
-      return;
-    }
-
-    setApplicationsError("");
-    setStaffMessage("");
-    setUpdatingApplicationId(application.id);
-
-    try {
-      const batch = writeBatch(db);
-      const statusTimestamp = status === "Approved" ? { approvedAt: serverTimestamp() } : { rejectedAt: serverTimestamp() };
-      const ownerProfile = usersById[application.driverUid];
-      const activeAssignment = activeAssignments.find((assignment) => assignment.driverId === application.driverUid);
-      const nextVehicleStatus =
-        status === "Approved"
-          ? activeAssignment
-            ? activeAssignment.status === "In Progress"
-              ? "In Use"
-              : "Assigned"
-            : "Available"
-          : "Inactive";
-
-      batch.update(doc(db, "Driver_Applications", application.id), {
-        status,
-        ...statusTimestamp,
-      });
-
-      batch.update(doc(db, "users", application.driverUid), {
-        accountStatus: status,
-        useOwnVehicle: applicationUsesOwnVehicle(application),
-        updatedAt: serverTimestamp(),
-        ...statusTimestamp,
-      });
-
-      if (status === "Approved" && applicationUsesOwnVehicle(application)) {
-        batch.set(
-          doc(db, "vehicles", `driver-${application.driverUid}`),
-          {
-            name: getVehicleNameFromApplication(application),
-            type: application.bodyType || application.vehicleModel || "Driver Vehicle",
-            plateNumber: application.plateNumber || "",
-            ownerType: DRIVER_VEHICLE_OWNER,
-            ownerUid: application.driverUid,
-            driverName: application.fullName || ownerProfile?.fullName || "Approved Driver",
-            color: application.color || "",
-            mvFileNumber: application.mvFileNumber || "",
-            status: nextVehicleStatus,
-            sourceApplicationId: application.id,
-            applicationStatus: status,
-            bodyType: application.bodyType || "",
-            vehicleMake: application.vehicleMake || "",
-            vehicleModel: application.vehicleModel || "",
-            vehicleYear: application.vehicleYear || "",
-            useOwnVehicle: true,
-            createdAt: application.createdAt || serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
-
-      await batch.commit();
-      setStaffMessage(`Application ${status.toLowerCase()} successfully.`);
-    } catch (error) {
-      console.log("Driver application status update failed:", error);
-      setApplicationsError("Application status could not be updated. Please check Firestore permissions.");
-    } finally {
-      setUpdatingApplicationId("");
-    }
   };
 
   const syncApprovedDriverVehicles = async () => {
@@ -924,32 +611,6 @@ export default function AdminHome() {
     }
   };
 
-  const deactivateUser = async (user) => {
-    if (!user?.id) {
-      return;
-    }
-
-    setSavingUser(true);
-    setUsersError("");
-    setUserMessage("");
-
-    try {
-      await updateDoc(doc(db, "users", user.id), {
-        accountStatus: "Deactivated",
-        ...(normalizeRole(user.role) === "driver" ? { availability: "Unavailable" } : {}),
-        updatedAt: serverTimestamp(),
-      });
-
-      setUserMessage(`${getUserName(user)} was deactivated.`);
-      setConfirmingUserDeactivate(null);
-    } catch (error) {
-      console.log("User deactivation failed:", error);
-      setUsersError("The account could not be deactivated. Please check Firestore permissions.");
-    } finally {
-      setSavingUser(false);
-    }
-  };
-
   const deleteUserRecord = async (user) => {
     if (!user?.id) {
       return;
@@ -1044,500 +705,90 @@ export default function AdminHome() {
     }
   };
 
-  const renderOverview = () => (
-    <>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Overview</Text>
-      </View>
-
-      <View style={[styles.notificationPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <View style={styles.notificationHeader}>
-          <FontAwesome name="bell" size={18} color="#06774B" />
-          <Text style={[styles.notificationTitle, { color: theme.text }]}>Live Firestore Summary</Text>
-        </View>
-        {notifications.map((note) => (
-          <Text key={note} style={[styles.notificationText, { color: theme.mutedText }]}>
-            {note}
-          </Text>
-        ))}
-      </View>
-
-      <View style={styles.metricsGrid}>
-        {overviewCards.map((metric) => (
-          <View key={metric.label} style={[styles.metricCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.metricLabel, { color: theme.secondaryText }]}>{metric.label}</Text>
-            <Text style={[styles.metricValue, { color: theme.text }]}>{metric.value}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={[styles.chartCard, { backgroundColor: theme.softSurface, borderColor: theme.softSurfaceBorder }]}>
-        <View style={styles.chartHeader}>
-          <View>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Request Activity</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.mutedText }]}>Actual transport request submissions from Firestore.</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.rangeButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() =>
-              setRangeLabel((current) => (current === "Week" ? "Month" : current === "Month" ? "Year" : "Week"))
-            }
-          >
-            <Text style={[styles.rangeButtonText, { color: theme.text }]}>{rangeLabel}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.barRow}>
-          {activityBuckets.map((bucket) => {
-            const ratio = maxActivity ? bucket.value / maxActivity : 0;
-
-            return (
-              <View key={bucket.key} style={styles.barItem}>
-                <Text style={[styles.barValue, { color: theme.text }]}>{bucket.value}</Text>
-                <View style={[styles.barTrack, { backgroundColor: theme.surface }]}>
-                  <View style={[styles.bar, { height: Math.max(16, 132 * ratio), backgroundColor: "#08A967" }]} />
-                </View>
-                <Text style={[styles.dayText, { color: theme.text }]}>{bucket.label}</Text>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={styles.statsGrid}>
-        <View style={[styles.statsPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.statsPanelTitle, { color: theme.text }]}>Request Status</Text>
-          {requestStatusStats.map((stat) => (
-            <View key={stat.label} style={styles.statLine}>
-              <Text style={[styles.statLineLabel, { color: theme.mutedText }]}>{stat.label}</Text>
-              <Text style={[styles.statLineValue, { color: theme.text }]}>{stat.value}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    </>
-  );
-
-  const renderStaffManagement = () => (
-    <>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Staff Management</Text>
-      </View>
-
-      <View style={[styles.infoPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Text style={[styles.infoPanelTitle, { color: theme.text }]}>Create Dispatcher/Admin Accounts</Text>
-        <Text style={[styles.infoPanelText, { color: theme.mutedText }]}>
-          Staff accounts are not created automatically from this Admin dashboard because the approved project flow must not rely on Cloud Functions or insecure client-side role creation.
-        </Text>
-      </View>
-
-      <View style={styles.verificationSection}>
-        <Text style={[styles.subsectionTitle, { color: theme.text }]}>Driver Applications</Text>
-        {isLoadingApplications ? (
-          <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <ActivityIndicator color="#06774B" />
-            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading driver applications...</Text>
-          </View>
-        ) : pendingApplications.length ? (
-          <View style={styles.verificationGrid}>
-            {pendingApplications.map((application) => {
-              const isUpdating = updatingApplicationId === application.id;
-
-              return (
-                <View key={application.id} style={[styles.verificationCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                  <View style={styles.verificationTop}>
-                    <View style={styles.verifyIdentity}>
-                      <View style={[styles.verifyAvatar, { backgroundColor: theme.avatarBg }]}>
-                        <FontAwesome name="user" size={22} color={theme.avatarText} />
-                      </View>
-                      <View style={styles.verifyIdentityCopy}>
-                        <Text style={[styles.verifyName, { color: theme.text }]}>{application.fullName || "Not provided"}</Text>
-                        <Text style={[styles.verifyMeta, { color: theme.mutedText }]}>{application.email || "Not provided"}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.pendingPill}>
-                      <Text style={styles.pendingPillText}>Pending</Text>
-                    </View>
-                  </View>
-
-                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Phone: {application.phone || "Not provided"}</Text>
-                  <Text style={[styles.verifyDetail, { color: theme.text }]}>License: {application.licenseNumber || "Not provided"}</Text>
-                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Vehicle Option: {applicationUsesOwnVehicle(application) ? "Driver-owned vehicle" : "Needs city/barangay vehicle"}</Text>
-                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Plate: {application.plateNumber || "Not provided"}</Text>
-                  <Text style={[styles.verifyDetail, { color: theme.text }]}>Vehicle: {getVehicleNameFromApplication(application)}</Text>
-                  {applicationUsesOwnVehicle(application) ? (
-                    <>
-                      <Text style={[styles.verifyDetail, { color: theme.text }]}>Body Type: {application.bodyType || "Not provided"}</Text>
-                      <Text style={[styles.verifyDetail, { color: theme.text }]}>Color: {application.color || "Not provided"}</Text>
-                      <Text style={[styles.verifyDetail, { color: theme.text }]}>MV File Number: {application.mvFileNumber || "Not provided"}</Text>
-                    </>
-                  ) : null}
-                  <Text style={[styles.verifyDetail, { color: theme.mutedText }]}>Applied: {formatDate(application.createdAt)}</Text>
-
-                  {application.uploaded_document ? (
-                    <TouchableOpacity style={styles.documentPreviewWrap} onPress={() => setPreviewImageUrl(application.uploaded_document)}>
-                      <Image source={{ uri: application.uploaded_document }} style={styles.documentImage} />
-                    </TouchableOpacity>
-                  ) : null}
-
-                  {application.vehiclePhotoUrls?.length ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.documentGallery}>
-                      {application.vehiclePhotoUrls.map((photoUrl, index) => (
-                        <TouchableOpacity key={`${application.id}-vehicle-photo-${index + 1}`} style={styles.documentPreviewWrap} onPress={() => setPreviewImageUrl(photoUrl)}>
-                          <Image source={{ uri: photoUrl }} style={styles.documentImage} />
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  ) : null}
-
-                  <View style={styles.verifyActions}>
-                    <TouchableOpacity
-                      style={[styles.verifyButton, styles.rejectButton, isUpdating && styles.actionButtonDisabled]}
-                      onPress={() => updateApplicationStatus(application, "Rejected")}
-                      disabled={isUpdating}
-                    >
-                      <Text style={styles.verifyButtonText}>Reject</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.verifyButton, styles.approveButton, isUpdating && styles.actionButtonDisabled]}
-                      onPress={() => updateApplicationStatus(application, "Approved")}
-                      disabled={isUpdating}
-                    >
-                      <Text style={styles.verifyButtonText}>{isUpdating ? "Saving..." : "Approve"}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No pending driver applications</Text>
-            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Approved and rejected applications remain stored in Firestore for records.</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.verificationSection}>
-        <Text style={[styles.subsectionTitle, { color: theme.text }]}>Dispatcher Accounts</Text>
-        {dispatcherAccounts.length ? (
-          <View style={styles.usersGrid}>
-            {dispatcherAccounts.map((user) => (
-              <View key={user.id} style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-                <View style={styles.userCardTop}>
-                  <View style={styles.userIdentity}>
-                    <View style={[styles.userAvatar, { backgroundColor: theme.avatarBg }]}>
-                      {getProfilePhoto(user) ? (
-                        <Image source={{ uri: getProfilePhoto(user) }} style={styles.avatarImage} />
-                      ) : (
-                        <FontAwesome name="user" size={22} color={theme.avatarText} />
-                      )}
-                    </View>
-                    <View style={styles.userIdentityCopy}>
-                      <Text style={[styles.userName, { color: theme.text }]}>{getUserName(user)}</Text>
-                      <Text style={[styles.userRole, { color: theme.mutedText }]}>Dispatcher</Text>
-                    </View>
-                  </View>
-                  <View style={[styles.userStatusPill, { backgroundColor: "#DDF2E6" }]}>
-                    <Text style={styles.userStatusText}>{getApprovalStatus(user)}</Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.userLine, { color: theme.text }]}>Email: {user.email || "Not provided"}</Text>
-                <Text style={[styles.userLine, { color: theme.text }]}>Phone: {getUserPhone(user)}</Text>
-                <Text style={[styles.userLine, { color: theme.text }]}>Status: {getApprovalStatus(user)}</Text>
-                <Text style={[styles.userLine, { color: theme.mutedText }]}>Registered: {formatDate(user.createdAt)}</Text>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No dispatcher accounts found</Text>
-            <Text style={[styles.emptyText, { color: theme.mutedText }]}>Dispatcher accounts from the `users` collection will appear here.</Text>
-          </View>
-        )}
-      </View>
-
-      {applicationsError ? <Text style={styles.errorText}>{applicationsError}</Text> : null}
-      {staffMessage ? <Text style={styles.feedbackText}>{staffMessage}</Text> : null}
-    </>
-  );
-
-  const renderRequests = () => (
-    <>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Request History</Text>
-      </View>
-
-      <View style={styles.filterRow}>
-        {requestTypeFilters.map((type) => {
-          const active = requestTypeFilter === type;
-
-          return (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.filterChip,
-                { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
-              ]}
-              onPress={() => setRequestTypeFilter(type)}
-            >
-              <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{type}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <View style={styles.filterRow}>
-        {requestStatusFilters.map((status) => {
-          const active = requestStatusFilter === status;
-
-          return (
-            <TouchableOpacity
-              key={status}
-              style={[
-                styles.filterChip,
-                { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
-              ]}
-              onPress={() => setRequestStatusFilter(status)}
-            >
-              <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{status}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {isLoadingRequests ? (
-        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <ActivityIndicator color="#06774B" />
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading request history...</Text>
-        </View>
-      ) : filteredRequests.length ? (
-        <View style={styles.requestGrid}>
-          {filteredRequests.map((request) => (
-            <TouchableOpacity
-              key={request.id}
-              style={[styles.requestCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-              onPress={() => setSelectedRequestRecord(request)}
-            >
-              <View style={styles.requestCardTop}>
-                <View style={[styles.requestLevelPill, { backgroundColor: request.requestTypeLabel === "Emergency Request" ? "#FAD9D9" : "#DDF2E6" }]}>
-                  <Text style={styles.requestLevelText}>{request.requestTypeLabel}</Text>
-                </View>
-                <Text style={[styles.requestStatusText, { color: theme.mutedText }]}>{request.status || "Pending"}</Text>
-              </View>
-
-              <Text style={[styles.requestTitle, { color: theme.text }]}>{request.id}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Resident: {request.residentName || "Resident"}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Emergency Type: {request.emergencyType || "Not specified"}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Pickup: {request.pickupLocation || request.barangay || "Not available"}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Destination: {request.destination || "Not available"}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Assigned Driver: {request.assignedDriverName || "Unassigned"}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Vehicle: {request.vehicleLabel}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Priority: {request.priorityLabel}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Submitted: {formatDateTime(request.createdAt)}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Completed: {formatDateTime(request.completedAt)}</Text>
-
-              <TouchableOpacity style={styles.requestViewButton} onPress={() => setSelectedRequestRecord(request)}>
-                <Text style={styles.requestViewButtonText}>View Details</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-        </View>
-      ) : (
-        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No request records match the active filters.</Text>
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>{requestsError || "Transport requests will appear here once residents submit them."}</Text>
-        </View>
-      )}
-    </>
-  );
-
-  const renderUsers = () => (
-    <>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>User Management</Text>
-      </View>
-
-      <View style={styles.filterRow}>
-        {userRoleViews.map((role) => {
-          const active = userRoleView === role;
-
-          return (
-            <TouchableOpacity
-              key={role}
-              style={[
-                styles.filterChip,
-                { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
-              ]}
-              onPress={() => setUserRoleView(role)}
-            >
-              <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{role}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {isLoadingUsers ? (
-        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <ActivityIndicator color="#06774B" />
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading registered users...</Text>
-        </View>
-      ) : filteredUsers.length ? (
-        <View style={styles.usersGrid}>
-          {filteredUsers.map((user) => (
-            <View key={user.id} style={[styles.userCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <View style={styles.userCardTop}>
-                <View style={styles.userIdentity}>
-                  <View style={[styles.userAvatar, { backgroundColor: theme.avatarBg }]}>
-                    {getProfilePhoto(user) ? (
-                      <Image source={{ uri: getProfilePhoto(user) }} style={styles.avatarImage} />
-                    ) : (
-                      <FontAwesome name="user" size={22} color={theme.avatarText} />
-                    )}
-                  </View>
-                  <View style={styles.userIdentityCopy}>
-                    <Text style={[styles.userName, { color: theme.text }]}>{getUserName(user)}</Text>
-                    <Text style={[styles.userRole, { color: theme.mutedText }]}>{user.role || "No role"}</Text>
-                  </View>
-                </View>
-                <View style={[styles.userStatusPill, { backgroundColor: getApprovalStatus(user) === "Deactivated" ? "#F0E8E8" : "#DDF2E6" }]}>
-                  <Text style={styles.userStatusText}>{getApprovalStatus(user)}</Text>
-                </View>
-              </View>
-
-              <Text style={[styles.userLine, { color: theme.text }]}>Email: {user.email || "Not provided"}</Text>
-              <Text style={[styles.userLine, { color: theme.text }]}>Phone: {getUserPhone(user)}</Text>
-              <Text style={[styles.userLine, { color: theme.text }]}>Barangay: {user.barangay || "Not provided"}</Text>
-              <Text style={[styles.userLine, { color: theme.text }]}>Address: {getUserAddress(user)}</Text>
-              <Text style={[styles.userLine, { color: theme.mutedText }]}>Created: {formatDate(user.createdAt)}</Text>
-
-              <View style={styles.userActions}>
-                <TouchableOpacity style={[styles.smallActionButton, styles.editButton]} onPress={() => openUserEditor(user)}>
-                  <Text style={styles.smallActionButtonText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.smallActionButton, styles.deactivateButton]}
-                  onPress={() => setSelectedSection("Operations")}
-                >
-                  <Text style={styles.smallActionButtonText}>Manage lifecycle</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.smallActionButton, styles.editButton]} onPress={() => setSelectedSection("Operations")}>
-                  <Text style={styles.smallActionButtonText}>Manage lifecycle</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No users match the selected view.</Text>
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>{usersError || "Try a different role view or search term."}</Text>
-        </View>
-      )}
-
-      {usersError ? <Text style={styles.errorText}>{usersError}</Text> : null}
-      {userMessage ? <Text style={styles.feedbackText}>{userMessage}</Text> : null}
-    </>
-  );
-
-  const renderVehicles = () => (
-    <>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Vehicle Management</Text>
-      </View>
-
-      <View style={styles.vehicleToolbar}>
-        <TouchableOpacity style={styles.primaryActionButton} onPress={() => openVehicleEditor()}>
-          <Text style={styles.primaryActionButtonText}>Add City/Barangay Vehicle</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.secondaryActionButton, syncingVehicles && styles.actionButtonDisabled]}
-          onPress={syncApprovedDriverVehicles}
-          disabled={syncingVehicles}
-        >
-          <Text style={styles.secondaryActionButtonText}>{syncingVehicles ? "Syncing..." : "Sync Driver-Owned Vehicles"}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {isLoadingVehicles ? (
-        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <ActivityIndicator color="#06774B" />
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading vehicle records...</Text>
-        </View>
-      ) : filteredVehicles.length ? (
-        <View style={styles.vehicleRow}>
-          {filteredVehicles.map((vehicle) => (
-            <View key={vehicle.id} style={[styles.vehicleCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <View style={styles.vehicleHeader}>
-                <View style={styles.vehicleHeaderCopy}>
-                  <Text style={[styles.vehicleTitle, { color: theme.text }]}>{vehicle.name || "Unnamed vehicle"}</Text>
-                  <Text style={[styles.vehicleMeta, { color: theme.mutedText }]}>
-                    {vehicle.type || "Vehicle"} | {vehicle.plateNumber || "No plate number"}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.userStatusPill,
-                    { backgroundColor: vehicle.derivedStatus === "Inactive" ? "#F0E8E8" : "#DDF2E6" },
-                  ]}
-                >
-                  <Text style={styles.userStatusText}>{vehicle.derivedStatus}</Text>
-                </View>
-              </View>
-
-              <Text style={[styles.userLine, { color: theme.text }]}>Owner Type: {vehicle.ownerType || CITY_VEHICLE_OWNER}</Text>
-              <Text style={[styles.userLine, { color: theme.text }]}>Driver: {vehicle.driverName || "Not linked"}</Text>
-              <Text style={[styles.userLine, { color: theme.text }]}>Owner UID: {vehicle.ownerUid || "Not linked"}</Text>
-              <Text style={[styles.userLine, { color: theme.mutedText }]}>Created: {formatDate(vehicle.createdAt)}</Text>
-
-              <View style={styles.userActions}>
-                <TouchableOpacity style={[styles.smallActionButton, styles.editButton]} onPress={() => openVehicleEditor(vehicle)}>
-                  <Text style={styles.smallActionButtonText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.smallActionButton, styles.deleteButton]} onPress={() => setConfirmingVehicleDelete(vehicle)}>
-                  <Text style={styles.smallActionButtonText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>No vehicle records found.</Text>
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>
-            {vehiclesError || "Add a city/barangay vehicle or sync approved driver-owned vehicles to populate this section."}
-          </Text>
-        </View>
-      )}
-
-      {vehiclesError ? <Text style={styles.errorText}>{vehiclesError}</Text> : null}
-      {vehicleMessage ? <Text style={styles.feedbackText}>{vehicleMessage}</Text> : null}
-    </>
-  );
-
   const renderSectionContent = () => {
+    if (selectedSection === "Emergency Calls") {
+      return (
+        <AdminCallSessionsSection
+          theme={theme}
+          callSessions={callSessions}
+          isLoadingCallSessions={isLoadingCallSessions}
+          callSessionsError={callSessionsError}
+        />
+      );
+    }
+
     if (selectedSection === "Operations") {
       return <AdminOperationsPanel users={users} applications={driverApplications} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} theme={theme} />;
     }
 
-    if (selectedSection === "Staff Management") {
-      return renderStaffManagement();
-    }
-
     if (selectedSection === "Requests") {
-      return renderRequests();
+      return (
+        <AdminRequestsSection
+          theme={theme}
+          styles={styles}
+          requestTypeFilters={requestTypeFilters}
+          requestTypeFilter={requestTypeFilter}
+          setRequestTypeFilter={setRequestTypeFilter}
+          requestStatusFilters={requestStatusFilters}
+          requestStatusFilter={requestStatusFilter}
+          setRequestStatusFilter={setRequestStatusFilter}
+          isLoadingRequests={isLoadingRequests}
+          filteredRequests={filteredRequests}
+          requestsError={requestsError}
+          setSelectedRequestRecord={setSelectedRequestRecord}
+        />
+      );
     }
 
     if (selectedSection === "Users") {
-      return renderUsers();
+      return (
+        <AdminUsersSection
+          theme={theme}
+          styles={styles}
+          userRoleViews={userRoleViews}
+          userRoleView={userRoleView}
+          setUserRoleView={setUserRoleView}
+          isLoadingUsers={isLoadingUsers}
+          filteredUsers={filteredUsers}
+          usersError={usersError}
+          userMessage={userMessage}
+          openUserEditor={openUserEditor}
+          setSelectedSection={setSelectedSection}
+        />
+      );
     }
 
     if (selectedSection === "Vehicles") {
-      return renderVehicles();
+      return (
+        <AdminVehiclesSection
+          theme={theme}
+          styles={styles}
+          cityVehicleOwnerLabel={CITY_VEHICLE_OWNER}
+          syncingVehicles={syncingVehicles}
+          syncApprovedDriverVehicles={syncApprovedDriverVehicles}
+          isLoadingVehicles={isLoadingVehicles}
+          filteredVehicles={filteredVehicles}
+          vehiclesError={vehiclesError}
+          vehicleMessage={vehicleMessage}
+          openVehicleEditor={openVehicleEditor}
+          setConfirmingVehicleDelete={setConfirmingVehicleDelete}
+        />
+      );
     }
 
-    return renderOverview();
+    return (
+      <AdminOverviewSection
+        theme={theme}
+        styles={styles}
+        notifications={notifications}
+        overviewCards={overviewCards}
+        rangeLabel={rangeLabel}
+        setRangeLabel={setRangeLabel}
+        activityBuckets={activityBuckets}
+        maxActivity={maxActivity}
+        requestStatusStats={requestStatusStats}
+      />
+    );
   };
 
   if (adminAccessStatus !== "authorized") {
@@ -1586,7 +837,14 @@ export default function AdminHome() {
                       style={[styles.sideBlock, active && styles.sideBlockActive, { backgroundColor: active ? "#06774B" : "#EAF4EF" }]}
                       onPress={() => setSelectedSection(label)}
                     >
-                      <Text style={[styles.sideBlockText, { color: active ? "#FFFFFF" : "#214238" }]}>{label}</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <Text style={[styles.sideBlockText, { color: active ? "#FFFFFF" : "#214238" }]}>{label}</Text>
+                        {label === "Emergency Calls" && staleRingingCount > 0 ? (
+                          <View style={{ backgroundColor: "#C53A3A", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{staleRingingCount}</Text>
+                          </View>
+                        ) : null}
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -1594,27 +852,6 @@ export default function AdminHome() {
             </View>
 
             <View style={[styles.mainArea, !compact && { height: adminPanelHeight }]}>
-              <View style={styles.topControls}>
-                <View style={[styles.searchBar, { backgroundColor: theme.softSurface, borderColor: theme.softSurfaceBorder }]}>
-                  <FontAwesome name="search" size={20} color="#335E50" />
-                  <TextInput
-                    style={[styles.searchInput, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.border }]}
-                    placeholder="Search current admin section..."
-                    placeholderTextColor={theme.subtleText}
-                    value={searchValue}
-                    onChangeText={setSearchValue}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.filterButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
-                  onPress={() => setRangeLabel((current) => (current === "Week" ? "Month" : current === "Month" ? "Year" : "Week"))}
-                >
-                  <Text style={[styles.filterButtonText, { color: theme.text }]}>{rangeLabel}</Text>
-                  <FontAwesome name="chevron-down" size={18} color="#111111" />
-                </TouchableOpacity>
-              </View>
-
               <ScrollView
                 style={[styles.contentPanel, !compact && styles.contentPanelFixed, { backgroundColor: theme.surface, borderColor: theme.border }]}
                 contentContainerStyle={styles.contentPanelScrollContent}
@@ -1848,25 +1085,6 @@ export default function AdminHome() {
         </View>
       </Modal>
 
-      <Modal visible={Boolean(confirmingUserDeactivate)} transparent animationType="fade" onRequestClose={() => setConfirmingUserDeactivate(null)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.confirmCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Deactivate Account</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
-              Mark {confirmingUserDeactivate ? getUserName(confirmingUserDeactivate) : "this user"} as deactivated?
-            </Text>
-            <View style={styles.confirmActions}>
-              <TouchableOpacity style={[styles.secondaryActionButton, styles.confirmButton]} onPress={() => setConfirmingUserDeactivate(null)}>
-                <Text style={styles.secondaryActionButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryActionButton, styles.confirmButton, savingUser && styles.actionButtonDisabled]} onPress={() => deactivateUser(confirmingUserDeactivate)} disabled={savingUser}>
-                <Text style={styles.primaryActionButtonText}>{savingUser ? "Saving..." : "Deactivate"}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <Modal visible={Boolean(confirmingVehicleDelete)} transparent animationType="fade" onRequestClose={() => setConfirmingVehicleDelete(null)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.confirmCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -2053,41 +1271,9 @@ const styles = StyleSheet.create({
   sideBlockActive: { backgroundColor: "#06774B" },
   sideBlockText: { flex: 1, fontSize: 14, fontWeight: "800", textAlign: "center" },
   mainArea: { flex: 1, minWidth: 0, gap: 12 },
-  topControls: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "center" },
-  searchBar: {
-    flex: 1,
-    minWidth: 260,
-    minHeight: 48,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 36,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    fontSize: 14,
-  },
-  filterButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  filterButtonText: { fontSize: 15, fontWeight: "700" },
   contentPanel: { padding: 14, borderRadius: 18, borderWidth: 1 },
   contentPanelFixed: { flex: 1, minHeight: 0 },
   contentPanelScrollContent: { paddingBottom: 2 },
-  sectionHeader: { paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, backgroundColor: "#3F4542" },
-  sectionHeaderText: { fontSize: 22, fontWeight: "900", color: "#FFFFFF" },
   notificationPanel: {
     marginTop: 12,
     padding: 16,
@@ -2145,6 +1331,11 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 12 },
   filterChip: { paddingVertical: 9, paddingHorizontal: 13, borderRadius: 999, borderWidth: 1 },
   filterChipText: { fontSize: 13, fontWeight: "800" },
+  filterField: { flexGrow: 1, flexBasis: 220, marginTop: 12, marginBottom: 12 },
+  filterFieldLabel: { fontSize: 13, fontWeight: "800", marginBottom: 6 },
+  dropdown: { minHeight: 46, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14 },
+  dropdownContainer: { borderWidth: 1, borderRadius: 10 },
+  dropdownText: { fontSize: 14, fontWeight: "700" },
   requestGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 6 },
   requestCard: { flexGrow: 1, flexBasis: 320, padding: 18, borderRadius: 14, borderWidth: 1 },
   requestCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },

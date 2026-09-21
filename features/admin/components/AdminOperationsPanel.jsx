@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Dropdown } from "react-native-element-dropdown";
 import { collection, doc, limit, onSnapshot, query } from "firebase/firestore";
 
 import AppButton from "../../../components/ui/AppButton";
@@ -73,13 +74,12 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
     });
   }, [filterRole, filterStatus, search, users]);
   const pendingApplications = useMemo(() => applications.filter((application) => ["Pending", "Under Review", "Correction Requested"].includes(application.status || application.approvalStatus)), [applications]);
-  const activeMissions = assignments.filter((assignment) => ["Assigned", "In Progress", "Accepted", "En Route", "Arrived", "Picked Up"].includes(assignment.status || assignment.missionStatus));
   const vehicleMaintenance = useMemo(() => vehicles.filter((vehicle) => vehicle.maintenanceStatus && vehicle.maintenanceStatus !== "Completed").length, [vehicles]);
 
   const openUser = (user) => {
     setSelectedUser(user);
     setReason("");
-    setNextStatus(statusOf(user) === ACCOUNT_STATUSES.DEACTIVATED ? ACCOUNT_STATUSES.ACTIVE : ACCOUNT_STATUSES.DEACTIVATED);
+    setNextStatus(statusOf(user));
     setNextRole(user.role || ROLES.RESIDENT);
     setScopeAreas(user.serviceAreas || []);
     setScopePhone(user.operationalPhone || "");
@@ -89,7 +89,15 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
     setBusy(true); setError(""); setMessage("");
     try { await work(); setMessage(success); } catch (operationError) { setError(operationError?.message || "The requested change could not be completed."); } finally { setBusy(false); }
   };
-  const confirm = (title, copy, action) => Alert.alert(title, copy, [{ text: "Cancel", style: "cancel" }, { text: "Confirm", style: "destructive", onPress: action }]);
+  const confirm = (title, copy, action) => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.confirm(`${title}\n\n${copy}`)) {
+        action();
+      }
+      return;
+    }
+    Alert.alert(title, copy, [{ text: "Cancel", style: "cancel" }, { text: "Confirm", style: "destructive", onPress: action }]);
+  };
   const exportRequests = () => {
     const rows = [["Request ID", "Status", "Priority", "Barangay", "Submitted", "Completed"]].concat(requests.slice(0, 200).map((request) => [request.id, request.status || "Pending", request.priorityLevel || request.level || "Not specified", request.barangay || "Not specified", toDateLabel(request.createdAt), toDateLabel(request.completedAt)]));
     const csv = buildCsv({ title: "SakayNa Request Summary", generatedBy: adminName, filters: "Latest 200 loaded request records", rows });
@@ -104,9 +112,43 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
     <Text style={[styles.title, { color: theme.text }]}>Account Operations</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>The list is limited to the profiles already loaded by the Admin console. Passwords, tokens, and private documents are never displayed here.</Text>
     <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={search} onChangeText={setSearch} placeholder="Name, UID, phone, email, barangay..." placeholderTextColor={theme.subtleText} />
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{["All", ...ROLE_OPTIONS].map((item) => chip(item, filterRole === item, () => setFilterRole(item)))}</ScrollView>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{["All", ...Object.values(ACCOUNT_STATUSES)].map((item) => chip(item, filterStatus === item, () => setFilterStatus(item)))}</ScrollView>
-    <View style={styles.summaryRow}>{card(<><Text style={[styles.metric, { color: theme.text }]}>{filteredUsers.length}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>matching profiles</Text></>, "count")}{card(<><Text style={[styles.metric, { color: theme.text }]}>{activeMissions.length}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>active missions checked for conflicts</Text></>, "missions")}</View>
+    <View style={styles.fieldsRow}>
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.text }]}>Role</Text>
+        <Dropdown
+          style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
+          containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
+          itemTextStyle={[styles.dropdownText, { color: theme.text }]}
+          activeColor={theme.softSurface}
+          data={["All", ...ROLE_OPTIONS].map((item) => ({ label: item, value: item }))}
+          labelField="label"
+          valueField="value"
+          value={filterRole}
+          onChange={(item) => setFilterRole(item.value)}
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.text }]}>Account status</Text>
+        <Dropdown
+          style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
+          containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
+          itemTextStyle={[styles.dropdownText, { color: theme.text }]}
+          activeColor={theme.softSurface}
+          data={["All", ...Object.values(ACCOUNT_STATUSES)].map((item) => ({ label: item, value: item }))}
+          labelField="label"
+          valueField="value"
+          value={filterStatus}
+          onChange={(item) => setFilterStatus(item.value)}
+        />
+      </View>
+
+      <View style={[styles.field, styles.accountsCountBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.accountsCountText, { color: theme.text }]}>Accounts: {filteredUsers.length}</Text>
+      </View>
+    </View>
     {filteredUsers.slice(0, 100).map((user) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{getProfileName(user)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{user.role || "No role"} | {statusOf(user)} | {user.barangay || user.office || "No operational area"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {user.operationalPhone || user.phoneNumber || user.phone || "Not provided"}</Text><AppButton label="Manage profile" variant="secondary" onPress={() => openUser(user)} style={styles.button} /></>, user.id))}
   </>;
 
@@ -116,9 +158,9 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
   </>;
 
   const renderStaff = () => <>
-    <Text style={[styles.title, { color: theme.text }]}>Staff Invitations</Text>
-    <Text style={[styles.copy, { color: theme.mutedText }]}>An invitation is a pending Phase 8 handoff record only. It does not create an Authentication account or a working login.</Text>
-    <AppButton label="Create Dispatcher invitation" onPress={() => setInvitationOpen(true)} style={styles.button} />
+    <Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text>
+    <Text style={[styles.copy, { color: theme.mutedText }]}>This creates a pending Phase 8 handoff record only. It does not create an Authentication account or a working login.</Text>
+    <AppButton label="Add Dispatcher" onPress={() => setInvitationOpen(true)} style={styles.button} />
   </>;
 
   const renderVehicles = () => <>
@@ -153,10 +195,10 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
     {logs.length ? logs.map((log) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{log.action || "Administrative action"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{log.summary || "No summary"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{toDateLabel(log.createdAt)} | Actor: {log.actorId || "Not available"}</Text></>, log.id)) : card(<Text style={[styles.copy, { color: theme.mutedText }]}>No activity records are available yet.</Text>, "logs-empty")}
   </>;
 
-  const viewContent = { Accounts: renderAccounts, Applications: renderApplications, Invitations: renderStaff, Maintenance: renderVehicles, Reports: renderReports, Settings: renderSettings, Logs: renderLogs }[view];
+  const viewContent = { Accounts: renderAccounts, Applications: renderApplications, "Add Dispatcher": renderStaff, Maintenance: renderVehicles, Reports: renderReports, Settings: renderSettings, Logs: renderLogs }[view];
   return <>
     <View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nav}>{["Accounts", "Applications", "Invitations", "Maintenance", "Reports", "Settings", "Logs"].map((item) => chip(item, view === item, () => setView(item)))}</ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nav}>{["Accounts", "Applications", "Add Dispatcher", "Maintenance", "Reports", "Settings", "Logs"].map((item) => chip(item, view === item, () => setView(item)))}</ScrollView>
       <FeedbackMessage message={error} tone="error" />
       <FeedbackMessage message={message} tone="success" />
       {viewContent()}
@@ -180,7 +222,7 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
 
     <Modal visible={Boolean(reviewingApplication)} transparent animationType="fade" onRequestClose={() => setReviewingApplication(null)}><View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}><Text style={[styles.title, { color: theme.text }]}>Review Driver Application</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{["Approved", "Rejected", "Under Review", "Correction Requested"].map((item) => chip(item, reviewDecision === item, () => setReviewDecision(item)))}</ScrollView><Text style={[styles.label, { color: theme.text }]}>Rejection reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reviewReason} onChangeText={setReviewReason} multiline placeholder="Required when rejecting" placeholderTextColor={theme.subtleText} /><Text style={[styles.label, { color: theme.text }]}>Review notes</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reviewNotes} onChangeText={setReviewNotes} multiline /><AppButton label={`Save ${reviewDecision}`} loading={busy} onPress={() => confirm("Confirm application review", `Mark this application ${reviewDecision}? Final decisions cannot be reversed by this client.`, () => run(async () => { await reviewDriverApplication({ adminId, applicationId: reviewingApplication.id, decision: reviewDecision, reason: reviewReason, notes: reviewNotes }); setReviewingApplication(null); }, `Application marked ${reviewDecision}.`))} style={styles.button} /><AppButton label="Close" variant="secondary" onPress={() => setReviewingApplication(null)} style={styles.button} /></ScrollView></View></Modal>
 
-    <Modal visible={invitationOpen} transparent animationType="fade" onRequestClose={() => setInvitationOpen(false)}><View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}><Text style={[styles.title, { color: theme.text }]}>Pending Dispatcher Invitation</Text><Text style={[styles.copy, { color: theme.mutedText }]}>This record does not create a Firebase Authentication user. Secure delivery and account provisioning remain Phase 8.</Text>{[["Display name", "displayName"], ["Email", "email"], ["Barangay", "barangay"], ["Operational phone", "operationalPhone"]].map(([label, key]) => <View key={key}><Text style={[styles.label, { color: theme.text }]}>{label}</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={invitation[key]} onChangeText={(value) => setInvitation((current) => ({ ...current, [key]: value }))} keyboardType={key === "email" ? "email-address" : key === "operationalPhone" ? "phone-pad" : "default"} autoCapitalize="none" /></View>)}<AppButton label="Create pending invitation" loading={busy} onPress={() => confirm("Create invitation", "This does not create a login account.", () => run(async () => { await createStaffInvitation({ adminId, ...invitation, intendedRole: ROLES.DISPATCHER }); setInvitationOpen(false); }, "Pending Dispatcher invitation created."))} style={styles.button} /><AppButton label="Close" variant="secondary" onPress={() => setInvitationOpen(false)} style={styles.button} /></ScrollView></View></Modal>
+    <Modal visible={invitationOpen} transparent animationType="fade" onRequestClose={() => setInvitationOpen(false)}><View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}><Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text><Text style={[styles.copy, { color: theme.mutedText }]}>This creates a pending handoff record only — it does not create a Firebase Authentication user. Secure delivery and account provisioning remain Phase 8.</Text>{[["Display name", "displayName"], ["Email", "email"], ["Barangay", "barangay"], ["Operational phone", "operationalPhone"]].map(([label, key]) => <View key={key}><Text style={[styles.label, { color: theme.text }]}>{label}</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={invitation[key]} onChangeText={(value) => setInvitation((current) => ({ ...current, [key]: value }))} keyboardType={key === "email" ? "email-address" : key === "operationalPhone" ? "phone-pad" : "default"} autoCapitalize="none" /></View>)}<AppButton label="Add Dispatcher" loading={busy} onPress={() => confirm("Add Dispatcher", "This does not create a login account.", () => run(async () => { await createStaffInvitation({ adminId, ...invitation, intendedRole: ROLES.DISPATCHER }); setInvitationOpen(false); }, "Dispatcher record created."))} style={styles.button} /><AppButton label="Close" variant="secondary" onPress={() => setInvitationOpen(false)} style={styles.button} /></ScrollView></View></Modal>
 
     <Modal visible={Boolean(maintenanceVehicle)} transparent animationType="fade" onRequestClose={() => setMaintenanceVehicle(null)}>
       <View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}>
@@ -205,5 +247,5 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
 }
 
 const styles = StyleSheet.create({
-  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 }, chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 12, borderRadius: 6, borderWidth: 1 }, chipText: { fontSize: 13, fontWeight: "700" }, title: { fontSize: 21, fontWeight: "800", marginTop: 8, marginBottom: 6 }, copy: { fontSize: 13, lineHeight: 19 }, label: { fontSize: 13, fontWeight: "800", marginTop: 12, marginBottom: 4 }, input: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }, card: { marginTop: 10, borderWidth: 1, borderRadius: 8, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontWeight: "800" }, button: { marginTop: 10 }, summaryRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" }, metric: { fontSize: 28, fontWeight: "800" }, overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.45)" }, modal: { width: "100%", maxHeight: "92%", borderRadius: 8, padding: 18 }
+  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 }, chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 12, borderRadius: 6, borderWidth: 1 }, chipText: { fontSize: 13, fontWeight: "700" }, title: { fontSize: 21, fontWeight: "800", marginTop: 8, marginBottom: 6 }, copy: { fontSize: 13, lineHeight: 19 }, label: { fontSize: 13, fontWeight: "800", marginTop: 12, marginBottom: 4 }, input: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }, dropdown: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: 6 }, dropdownText: { fontSize: 14 }, fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 }, accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontWeight: "800" }, card: { marginTop: 10, borderWidth: 1, borderRadius: 8, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontWeight: "800" }, button: { marginTop: 10 }, summaryRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" }, metric: { fontSize: 28, fontWeight: "800" }, overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.45)" }, modal: { width: "100%", maxHeight: "92%", borderRadius: 8, padding: 18 }
 });
