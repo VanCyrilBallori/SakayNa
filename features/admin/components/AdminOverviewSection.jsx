@@ -28,7 +28,8 @@ export default function AdminOverviewSection({
         ))}
         {atLimit ? (
           <Text style={[styles.limitNotice, { color: theme.mutedText }]}>
-            Showing the latest {collectionLimit} requests. Totals and averages below count only these.
+            Totals below count the whole collection. The averages, the activity chart, and the Request
+            Status panel use only the latest {collectionLimit} requests.
           </Text>
         ) : null}
       </View>

@@ -1,13 +1,30 @@
-import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, getCountFromServer, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
 
 const COLLECTION_LIMIT = 200;
+// Quiet period before re-counting, so bursts of listener fires (e.g. the driver
+// presence heartbeat writing to user documents) collapse into a single re-count.
+const COUNT_DEBOUNCE_MS = 2000;
 
 const sortByCreatedAtDesc = (first, second) =>
   (getTimestampMillis(second.createdAt) ?? 0) - (getTimestampMillis(first.createdAt) ?? 0);
+
+// null means "server count not loaded yet"; callers fall back to the client-side tally.
+const EMPTY_COUNTS = {
+  emergencyRequests: null,
+  communityRequests: null,
+  activeRequests: null,
+  completedRequests: null,
+  cancelledRequests: null,
+  registeredDrivers: null,
+  availableDrivers: null,
+  registeredVehicles: null,
+};
+
+const readCount = async (builtQuery) => (await getCountFromServer(builtQuery)).data().count;
 
 export default function useAdminDashboardData(enabled) {
   const [users, setUsers] = useState([]);
@@ -26,6 +43,13 @@ export default function useAdminDashboardData(enabled) {
   const [requestsError, setRequestsError] = useState("");
   const [vehiclesError, setVehiclesError] = useState("");
 
+  // Bumped by each listener so the matching server-side counts re-run on live changes.
+  const [usersRevision, setUsersRevision] = useState(0);
+  const [requestsRevision, setRequestsRevision] = useState(0);
+  const [vehiclesRevision, setVehiclesRevision] = useState(0);
+
+  const [counts, setCounts] = useState(EMPTY_COUNTS);
+
   useEffect(() => {
     if (!enabled) {
       return undefined;
@@ -37,6 +61,7 @@ export default function useAdminDashboardData(enabled) {
         setUsers(snapshot.docs.map((userDoc) => ({ id: userDoc.id, ...userDoc.data() })));
         setUsersError("");
         setIsLoadingUsers(false);
+        setUsersRevision((value) => value + 1);
       },
       (error) => {
         console.log("Users listener warning:", error);
@@ -73,6 +98,7 @@ export default function useAdminDashboardData(enabled) {
         setTransportRequests(nextRequests);
         setRequestsError("");
         setIsLoadingRequests(false);
+        setRequestsRevision((value) => value + 1);
       },
       (error) => {
         console.log("Transport requests listener warning:", error);
@@ -91,6 +117,7 @@ export default function useAdminDashboardData(enabled) {
         setVehicles(nextVehicles);
         setVehiclesError("");
         setIsLoadingVehicles(false);
+        setVehiclesRevision((value) => value + 1);
       },
       (error) => {
         console.log("Vehicles listener warning:", error);
@@ -116,6 +143,100 @@ export default function useAdminDashboardData(enabled) {
     };
   }, [enabled]);
 
+  useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const requestsRef = collection(db, "transportRequests");
+
+    const timeoutId = setTimeout(() => {
+      Promise.all([
+        readCount(query(requestsRef, where("requestType", "==", "Emergency Request"))),
+        readCount(query(requestsRef, where("requestType", "==", "Community Transport Request"))),
+        readCount(query(requestsRef, where("status", "not-in", ["Completed", "Cancelled"]))),
+        readCount(query(requestsRef, where("status", "==", "Completed"))),
+        readCount(query(requestsRef, where("status", "==", "Cancelled"))),
+      ])
+        .then(([emergencyRequests, communityRequests, activeRequests, completedRequests, cancelledRequests]) => {
+          if (!cancelled) {
+            setCounts((current) => ({
+              ...current,
+              emergencyRequests,
+              communityRequests,
+              activeRequests,
+              completedRequests,
+              cancelledRequests,
+            }));
+          }
+        })
+        .catch((error) => console.log("Request counts warning:", error));
+    }, COUNT_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [enabled, requestsRevision]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const usersRef = collection(db, "users");
+
+    const timeoutId = setTimeout(() => {
+      Promise.all([
+        readCount(query(usersRef, where("role", "==", "Driver"))),
+        readCount(
+          query(
+            usersRef,
+            where("role", "==", "Driver"),
+            where("accountStatus", "==", "Approved"),
+            where("availability", "==", "Available")
+          )
+        ),
+      ])
+        .then(([registeredDrivers, availableDrivers]) => {
+          if (!cancelled) {
+            setCounts((current) => ({ ...current, registeredDrivers, availableDrivers }));
+          }
+        })
+        .catch((error) => console.log("User counts warning:", error));
+    }, COUNT_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [enabled, usersRevision]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const timeoutId = setTimeout(() => {
+      readCount(collection(db, "vehicles"))
+        .then((registeredVehicles) => {
+          if (!cancelled) {
+            setCounts((current) => ({ ...current, registeredVehicles }));
+          }
+        })
+        .catch((error) => console.log("Vehicle count warning:", error));
+    }, COUNT_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [enabled, vehiclesRevision]);
+
   return {
     users,
     driverApplications,
@@ -136,5 +257,6 @@ export default function useAdminDashboardData(enabled) {
     requestsAtLimit: transportRequests.length === COLLECTION_LIMIT,
     vehiclesAtLimit: vehicles.length === COLLECTION_LIMIT,
     collectionLimit: COLLECTION_LIMIT,
+    counts,
   };
 }

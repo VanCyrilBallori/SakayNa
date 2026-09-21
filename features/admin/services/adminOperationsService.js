@@ -41,6 +41,20 @@ const writeActivity = (transaction, adminId, action, targetType, targetId, summa
   });
 };
 
+// Same document shape as writeActivity, for callers that write outside a transaction.
+export const logAdminActivity = async ({ adminId, action, targetType, targetId, summary, metadata = {} }) => {
+  await setDoc(doc(collection(db, FIRESTORE_COLLECTIONS.ACTIVITY_LOGS)), {
+    action,
+    actorId: adminId,
+    actorRole: ROLES.ADMIN,
+    targetType,
+    targetId,
+    summary,
+    metadata,
+    createdAt: serverTimestamp(),
+  });
+};
+
 export const reviewDriverApplication = async ({ adminId, applicationId, decision, reason = "", notes = "" }) => {
   if (!["Approved", "Rejected", "Under Review", "Correction Requested"].includes(decision)) {
     throw new Error("Choose a supported application decision.");

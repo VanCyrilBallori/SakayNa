@@ -28,6 +28,7 @@ import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { db } from "../firebase";
 import useAdminCallSessions from "../features/admin/hooks/useAdminCallSessions";
 import useAdminDashboardData from "../features/admin/hooks/useAdminDashboardData";
+import { logAdminActivity } from "../features/admin/services/adminOperationsService";
 import { getApprovalStatus, getUserName } from "../features/admin/utils/userFormatters";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import {
@@ -320,6 +321,7 @@ export default function AdminHome() {
     requestsAtLimit,
     vehiclesAtLimit,
     collectionLimit,
+    counts,
   } = useAdminDashboardData(adminAccessStatus === "authorized");
 
   const { callSessions, staleRingingCount, isLoadingCallSessions, callSessionsError } = useAdminCallSessions(
@@ -464,15 +466,16 @@ export default function AdminHome() {
     [requestsWithDerivedFields]
   );
 
+  // Totals prefer the server-side count; the client tally is the fallback until it loads.
   const overviewCards = [
-    { label: "Total Emergency Requests", value: totalEmergencyRequests },
-    { label: "Total Community Transport Requests", value: totalCommunityRequests },
-    { label: "Active Requests", value: activeRequestsCount },
-    { label: "Completed Requests", value: completedRequestsCount },
-    { label: "Cancelled Requests", value: cancelledRequestsCount },
-    { label: "Total Registered Drivers", value: totalRegisteredDrivers },
-    { label: "Available Drivers", value: availableDrivers },
-    { label: "Total Registered Vehicles", value: vehicles.length },
+    { label: "Total Emergency Requests", value: counts.emergencyRequests ?? totalEmergencyRequests },
+    { label: "Total Community Transport Requests", value: counts.communityRequests ?? totalCommunityRequests },
+    { label: "Active Requests", value: counts.activeRequests ?? activeRequestsCount },
+    { label: "Completed Requests", value: counts.completedRequests ?? completedRequestsCount },
+    { label: "Cancelled Requests", value: counts.cancelledRequests ?? cancelledRequestsCount },
+    { label: "Total Registered Drivers", value: counts.registeredDrivers ?? totalRegisteredDrivers },
+    { label: "Available Drivers", value: counts.availableDrivers ?? availableDrivers },
+    { label: "Total Registered Vehicles", value: counts.registeredVehicles ?? vehicles.length },
     { label: "Average Response Time", value: getDurationLabel(averageResponseTime) },
     { label: "Average Dispatch Time", value: getDurationLabel(averageDispatchTime) },
   ];
@@ -604,6 +607,15 @@ export default function AdminHome() {
         updatedAt: serverTimestamp(),
       });
 
+      logAdminActivity({
+        adminId: authUser?.uid || "",
+        action: "user-profile-updated",
+        targetType: "user",
+        targetId: editingUser.id,
+        summary: `${getUserName(editingUser)} profile details updated.`,
+        metadata: { fields: ["phoneNumber", "phone", "barangay", "address"] },
+      }).catch((error) => console.log("Activity log warning:", error));
+
       setUserMessage("User account updated successfully.");
       setEditingUser(null);
       setUserForm(emptyUserForm);
@@ -672,6 +684,15 @@ export default function AdminHome() {
 
       await setDoc(doc(db, "vehicles", vehicleId), payload, { merge: true });
 
+      logAdminActivity({
+        adminId: authUser?.uid || "",
+        action: vehicleForm.id ? "vehicle-updated" : "vehicle-created",
+        targetType: "vehicle",
+        targetId: vehicleId,
+        summary: `${payload.name} was ${vehicleForm.id ? "updated" : "created"}.`,
+        metadata: { plateNumber: payload.plateNumber, status: payload.status, ownerType: payload.ownerType },
+      }).catch((error) => console.log("Activity log warning:", error));
+
       setVehicleMessage(vehicleForm.id ? "Vehicle updated successfully." : "Vehicle added successfully.");
       setVehicleEditorOpen(false);
       setVehicleForm(emptyVehicleForm);
@@ -699,6 +720,15 @@ export default function AdminHome() {
         archivedBy: authUser?.uid || "",
         updatedAt: serverTimestamp(),
       });
+      logAdminActivity({
+        adminId: authUser?.uid || "",
+        action: "vehicle-archived",
+        targetType: "vehicle",
+        targetId: vehicle.id,
+        summary: `${vehicle.name || "Vehicle"} was archived.`,
+        metadata: { plateNumber: vehicle.plateNumber || "" },
+      }).catch((error) => console.log("Activity log warning:", error));
+
       setVehicleMessage(`${vehicle.name || "Vehicle"} was archived. Historical assignments were preserved.`);
       setConfirmingVehicleDelete(null);
     } catch (error) {
