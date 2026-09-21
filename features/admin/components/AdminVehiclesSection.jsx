@@ -14,6 +14,8 @@ export default function AdminVehiclesSection({
   vehicleMessage,
   openVehicleEditor,
   setConfirmingVehicleDelete,
+  atLimit,
+  collectionLimit,
 }) {
   return (
     <>
@@ -29,6 +31,12 @@ export default function AdminVehiclesSection({
           <Text style={styles.secondaryActionButtonText}>{syncingVehicles ? "Syncing..." : "Sync Driver-Owned Vehicles"}</Text>
         </TouchableOpacity>
       </View>
+
+      {atLimit ? (
+        <Text style={[styles.limitNotice, { color: theme.mutedText }]}>
+          Showing the latest {collectionLimit} vehicles. Older ones are not loaded.
+        </Text>
+      ) : null}
 
       {isLoadingVehicles ? (
         <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>

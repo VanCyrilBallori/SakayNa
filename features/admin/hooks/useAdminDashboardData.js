@@ -1,4 +1,4 @@
-import { collection, limit, onSnapshot, query } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 import { db } from "../../../firebase";
@@ -32,7 +32,7 @@ export default function useAdminDashboardData(enabled) {
     }
 
     const unsubscribeUsers = onSnapshot(
-      query(collection(db, "users"), limit(COLLECTION_LIMIT)),
+      query(collection(db, "users"), orderBy("createdAt", "desc"), limit(COLLECTION_LIMIT)),
       (snapshot) => {
         setUsers(snapshot.docs.map((userDoc) => ({ id: userDoc.id, ...userDoc.data() })));
         setUsersError("");
@@ -46,7 +46,7 @@ export default function useAdminDashboardData(enabled) {
     );
 
     const unsubscribeApplications = onSnapshot(
-      query(collection(db, "Driver_Applications"), limit(COLLECTION_LIMIT)),
+      query(collection(db, "Driver_Applications"), orderBy("createdAt", "desc"), limit(COLLECTION_LIMIT)),
       (snapshot) => {
         const nextApplications = snapshot.docs
           .map((applicationDoc) => ({ id: applicationDoc.id, ...applicationDoc.data() }))
@@ -64,7 +64,7 @@ export default function useAdminDashboardData(enabled) {
     );
 
     const unsubscribeRequests = onSnapshot(
-      query(collection(db, "transportRequests"), limit(COLLECTION_LIMIT)),
+      query(collection(db, "transportRequests"), orderBy("createdAt", "desc"), limit(COLLECTION_LIMIT)),
       (snapshot) => {
         const nextRequests = snapshot.docs
           .map((requestDoc) => ({ id: requestDoc.id, ...requestDoc.data() }))
@@ -82,7 +82,7 @@ export default function useAdminDashboardData(enabled) {
     );
 
     const unsubscribeVehicles = onSnapshot(
-      query(collection(db, "vehicles"), limit(COLLECTION_LIMIT)),
+      query(collection(db, "vehicles"), orderBy("createdAt", "desc"), limit(COLLECTION_LIMIT)),
       (snapshot) => {
         const nextVehicles = snapshot.docs
           .map((vehicleDoc) => ({ id: vehicleDoc.id, ...vehicleDoc.data() }))
@@ -100,7 +100,7 @@ export default function useAdminDashboardData(enabled) {
     );
 
     const unsubscribeAssignments = onSnapshot(
-      query(collection(db, "driverAssignments"), limit(COLLECTION_LIMIT)),
+      query(collection(db, "driverAssignments"), orderBy("createdAt", "desc"), limit(COLLECTION_LIMIT)),
       (snapshot) => {
         setDriverAssignments(snapshot.docs.map((assignmentDoc) => ({ id: assignmentDoc.id, ...assignmentDoc.data() })));
       },
@@ -132,5 +132,9 @@ export default function useAdminDashboardData(enabled) {
     requestsError,
     vehiclesError,
     setVehiclesError,
+    usersAtLimit: users.length === COLLECTION_LIMIT,
+    requestsAtLimit: transportRequests.length === COLLECTION_LIMIT,
+    vehiclesAtLimit: vehicles.length === COLLECTION_LIMIT,
+    collectionLimit: COLLECTION_LIMIT,
   };
 }

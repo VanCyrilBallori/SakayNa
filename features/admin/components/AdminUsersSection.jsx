@@ -17,6 +17,8 @@ export default function AdminUsersSection({
   userMessage,
   openUserEditor,
   setSelectedSection,
+  atLimit,
+  collectionLimit,
 }) {
   return (
     <>
@@ -35,6 +37,12 @@ export default function AdminUsersSection({
           onChange={(item) => setUserRoleView(item.value)}
         />
       </View>
+
+      {atLimit ? (
+        <Text style={[styles.limitNotice, { color: theme.mutedText }]}>
+          Showing the latest {collectionLimit} users. Older ones are not loaded.
+        </Text>
+      ) : null}
 
       {isLoadingUsers ? (
         <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>

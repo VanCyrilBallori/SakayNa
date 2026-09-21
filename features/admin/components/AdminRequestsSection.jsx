@@ -16,6 +16,8 @@ export default function AdminRequestsSection({
   filteredRequests,
   requestsError,
   setSelectedRequestRecord,
+  atLimit,
+  collectionLimit,
 }) {
   return (
     <>
@@ -52,6 +54,12 @@ export default function AdminRequestsSection({
           />
         </View>
       </View>
+
+      {atLimit ? (
+        <Text style={[styles.limitNotice, { color: theme.mutedText }]}>
+          Showing the latest {collectionLimit} requests. Older ones are not loaded.
+        </Text>
+      ) : null}
 
       {isLoadingRequests ? (
         <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>

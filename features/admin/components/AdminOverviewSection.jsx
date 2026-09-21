@@ -11,6 +11,8 @@ export default function AdminOverviewSection({
   activityBuckets,
   maxActivity,
   requestStatusStats,
+  atLimit,
+  collectionLimit,
 }) {
   return (
     <>
@@ -24,6 +26,11 @@ export default function AdminOverviewSection({
             {note}
           </Text>
         ))}
+        {atLimit ? (
+          <Text style={[styles.limitNotice, { color: theme.mutedText }]}>
+            Showing the latest {collectionLimit} requests. Totals and averages below count only these.
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.metricsGrid}>

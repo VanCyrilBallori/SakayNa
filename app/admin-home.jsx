@@ -316,6 +316,10 @@ export default function AdminHome() {
     requestsError,
     vehiclesError,
     setVehiclesError,
+    usersAtLimit,
+    requestsAtLimit,
+    vehiclesAtLimit,
+    collectionLimit,
   } = useAdminDashboardData(adminAccessStatus === "authorized");
 
   const { callSessions, staleRingingCount, isLoadingCallSessions, callSessionsError } = useAdminCallSessions(
@@ -736,6 +740,8 @@ export default function AdminHome() {
           filteredRequests={filteredRequests}
           requestsError={requestsError}
           setSelectedRequestRecord={setSelectedRequestRecord}
+          atLimit={requestsAtLimit}
+          collectionLimit={collectionLimit}
         />
       );
     }
@@ -754,6 +760,8 @@ export default function AdminHome() {
           userMessage={userMessage}
           openUserEditor={openUserEditor}
           setSelectedSection={setSelectedSection}
+          atLimit={usersAtLimit}
+          collectionLimit={collectionLimit}
         />
       );
     }
@@ -772,6 +780,8 @@ export default function AdminHome() {
           vehicleMessage={vehicleMessage}
           openVehicleEditor={openVehicleEditor}
           setConfirmingVehicleDelete={setConfirmingVehicleDelete}
+          atLimit={vehiclesAtLimit}
+          collectionLimit={collectionLimit}
         />
       );
     }
@@ -787,6 +797,8 @@ export default function AdminHome() {
         activityBuckets={activityBuckets}
         maxActivity={maxActivity}
         requestStatusStats={requestStatusStats}
+        atLimit={requestsAtLimit}
+        collectionLimit={collectionLimit}
       />
     );
   };
@@ -1336,6 +1348,7 @@ const styles = StyleSheet.create({
   dropdown: { minHeight: 46, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14 },
   dropdownContainer: { borderWidth: 1, borderRadius: 10 },
   dropdownText: { fontSize: 14, fontWeight: "700" },
+  limitNotice: { marginTop: 10, fontSize: 12, fontWeight: "700", fontStyle: "italic" },
   requestGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 6 },
   requestCard: { flexGrow: 1, flexBasis: 320, padding: 18, borderRadius: 14, borderWidth: 1 },
   requestCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },

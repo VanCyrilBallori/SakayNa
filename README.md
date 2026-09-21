@@ -61,18 +61,22 @@ copy its **UID**, then create a Firestore document at `users/{that-UID}`:
 
 | Document | Fields |
 | --- | --- |
-| `users/{admin}` | `role: "Admin"`, `accountStatus: "Active"`, `fullName`, `email` |
-| `users/{dispatcher}` | `role: "Dispatcher"`, `accountStatus: "Active"`, `fullName`, `email` |
-| `users/{resident}` | `role: "Resident"`, `accountStatus: "Active"`, `fullName`, `email`, `barangay`, `phone`, `phoneNumber` |
-| `users/{driver}` | `role: "Driver"`, `accountStatus: "Approved"`, `fullName`, `email`, `barangay` |
-| `users/{pendingDriver}` | `role: "Driver"`, `accountStatus: "Pending"`, `fullName`, `email` |
+| `users/{admin}` | `role: "Admin"`, `accountStatus: "Active"`, `fullName`, `email`, `createdAt` |
+| `users/{dispatcher}` | `role: "Dispatcher"`, `accountStatus: "Active"`, `fullName`, `email`, `createdAt` |
+| `users/{resident}` | `role: "Resident"`, `accountStatus: "Active"`, `fullName`, `email`, `barangay`, `phone`, `phoneNumber`, `createdAt` |
+| `users/{driver}` | `role: "Driver"`, `accountStatus: "Approved"`, `fullName`, `email`, `barangay`, `createdAt` |
+| `users/{pendingDriver}` | `role: "Driver"`, `accountStatus: "Pending"`, `fullName`, `email`, `createdAt` |
 
 Then one vehicle at `vehicles/{auto-id}`:
 
 `name: "City Ambulance 1"`, `type: "Ambulance"`, `plateNumber: "ABC 1234"`,
-`ownerType: "City/Barangay Vehicle"`, `status: "Available"`
+`ownerType: "City/Barangay Vehicle"`, `status: "Available"`, `createdAt`
 
 (The `users/{uid}` document ID must exactly match the Authentication UID.)
+
+**`createdAt` must be added with Firestore's `timestamp` type** (not string or number). The Admin
+console orders these collections by `createdAt`, and Firestore silently excludes documents that are
+missing the field — a seeded account without it will not appear in the Admin dashboard at all.
 
 ### 5. Run
 
