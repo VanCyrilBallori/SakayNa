@@ -7,6 +7,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -1205,7 +1206,14 @@ export default function AdminHome() {
                   setProfileMenuOpen(false);
                   router.replace("/login");
                 } catch (error) {
-                  Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+                  const message = getAuthErrorMessage(error, "We could not log you out. Please try again.");
+                  if (Platform.OS === "web") {
+                    if (typeof window !== "undefined") {
+                      window.alert(`Logout failed\n\n${message}`);
+                    }
+                  } else {
+                    Alert.alert("Logout failed", message);
+                  }
                 }
               }}
             >
