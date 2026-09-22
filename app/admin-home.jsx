@@ -563,6 +563,19 @@ export default function AdminHome() {
       });
 
       await batch.commit();
+
+      if (approvedApplications.length) {
+        const vehicleIds = approvedApplications.map((application) => `driver-${application.driverUid}`);
+        logAdminActivity({
+          adminId: authUser?.uid || "",
+          action: "driver-vehicles-synced",
+          targetType: "vehicle",
+          targetId: "",
+          summary: `${vehicleIds.length} driver-owned vehicle${vehicleIds.length === 1 ? "" : "s"} synced from approved applications.`,
+          metadata: { count: vehicleIds.length, vehicleIds },
+        }).catch((error) => console.log("Activity log warning:", error));
+      }
+
       setVehicleMessage(
         approvedApplications.length
           ? "Driver-owned vehicle records synced from approved applications."
@@ -599,22 +612,29 @@ export default function AdminHome() {
     setUserMessage("");
 
     try {
-      await updateDoc(doc(db, "users", editingUser.id), {
+      const nextValues = {
         phoneNumber: userForm.phoneNumber.trim(),
         phone: userForm.phoneNumber.trim(),
         barangay: userForm.barangay.trim(),
         address: userForm.address.trim(),
+      };
+      const changedFields = Object.keys(nextValues).filter((field) => nextValues[field] !== (editingUser[field] || ""));
+
+      await updateDoc(doc(db, "users", editingUser.id), {
+        ...nextValues,
         updatedAt: serverTimestamp(),
       });
 
-      logAdminActivity({
-        adminId: authUser?.uid || "",
-        action: "user-profile-updated",
-        targetType: "user",
-        targetId: editingUser.id,
-        summary: `${getUserName(editingUser)} profile details updated.`,
-        metadata: { fields: ["phoneNumber", "phone", "barangay", "address"] },
-      }).catch((error) => console.log("Activity log warning:", error));
+      if (changedFields.length) {
+        logAdminActivity({
+          adminId: authUser?.uid || "",
+          action: "user-profile-updated",
+          targetType: "user",
+          targetId: editingUser.id,
+          summary: `${getUserName(editingUser)} profile details updated.`,
+          metadata: { fields: changedFields },
+        }).catch((error) => console.log("Activity log warning:", error));
+      }
 
       setUserMessage("User account updated successfully.");
       setEditingUser(null);
