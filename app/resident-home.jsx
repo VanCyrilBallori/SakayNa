@@ -1,9 +1,9 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
-import { addDoc, collection, doc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
@@ -12,7 +12,11 @@ import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurren
 import { useTheme } from "../lib/theme";
 import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
+import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
+
+const NO_ANSWER_TIMEOUT_MS = 30_000;
+const toTelUrl = (phone) => `tel:${String(phone).replace(/\s+/g, "")}`;
 
 const getStatusTone = (value) => {
   if (["Assigned", "In Progress", "Completed"].includes(value)) {
@@ -57,8 +61,15 @@ export default function ResidentHome() {
   const [callSessionId, setCallSessionId] = useState("");
   const [callStatus, setCallStatus] = useState("idle");
   const [callDispatcherName, setCallDispatcherName] = useState("");
+  const [callDispatcherPhone, setCallDispatcherPhone] = useState("");
+  const [officePhone, setOfficePhone] = useState("");
+  const [alertLocationStatus, setAlertLocationStatus] = useState("idle");
+  const [noAnswerTimedOut, setNoAnswerTimedOut] = useState(false);
+  const [cancelAlertConfirmOpen, setCancelAlertConfirmOpen] = useState(false);
   const [startingEmergencyCall, setStartingEmergencyCall] = useState(false);
-  const emergencyCallStartRef = useRef(false);
+  // Tracks the alert currently on screen so late GPS results can't write to a closed alert.
+  const activeAlertIdRef = useRef("");
+  const { detectLocation } = useCurrentLocation();
   const [settingsForm, setSettingsForm] = useState({
     fullName: "",
     phoneNumber: "",
@@ -90,12 +101,23 @@ export default function ResidentHome() {
         const callData = snapshot.data();
         setCallStatus(callData?.status ?? "ended");
         setCallDispatcherName(callData?.dispatcherName ?? "");
+        setCallDispatcherPhone(callData?.dispatcherPhone ?? "");
       },
-      (error) => console.log("Emergency call listener warning:", error)
+      (error) => console.log("Emergency alert listener warning:", error)
     );
 
     return unsubscribe;
   }, [callSessionId]);
+
+  useEffect(() => {
+    if (!callOpen || callStatus !== "ringing") {
+      setNoAnswerTimedOut(false);
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => setNoAnswerTimedOut(true), NO_ANSWER_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [callOpen, callStatus]);
 
   useEffect(() => {
     if (!settingsOpen) {
@@ -157,31 +179,82 @@ export default function ResidentHome() {
     });
   };
 
-  const startEmergencyCall = async () => {
-    if (startingEmergencyCall || emergencyCallStartRef.current) {
+  // GPS is attached after the alert is already sent, so a slow or denied location never delays it.
+  // detectLocation() resolves within 15 s at most and never rejects.
+  const attachAlertLocation = async (alertId) => {
+    const result = await detectLocation();
+
+    if (activeAlertIdRef.current !== alertId) {
+      return;
+    }
+
+    if (result.error || !result.location) {
+      setAlertLocationStatus("failed");
+      return;
+    }
+
+    const { latitude, longitude, address, barangay } = result.location;
+
+    try {
+      await updateDoc(doc(db, "callSessions", alertId), {
+        location: { latitude, longitude, address, barangay: barangay ?? null, source: "gps" },
+        pickupLocation: address,
+        updatedAt: serverTimestamp(),
+      });
+
+      if (activeAlertIdRef.current === alertId) {
+        setAlertLocationStatus("sent");
+      }
+    } catch (error) {
+      console.log("Emergency alert location warning:", error);
+      if (activeAlertIdRef.current === alertId) {
+        setAlertLocationStatus("failed");
+      }
+    }
+  };
+
+  const loadOfficePhone = async () => {
+    try {
+      const snapshot = await getDoc(doc(db, "systemSettings", "operational"));
+      setOfficePhone(snapshot.exists() ? (snapshot.data()?.publicOfficePhone ?? "").trim() : "");
+    } catch (error) {
+      console.log("Office phone lookup warning:", error);
+      setOfficePhone("");
+    }
+  };
+
+  const sendEmergencyAlert = async () => {
+    if (startingEmergencyCall || callOpen) {
       return;
     }
 
     if (!authUser?.uid) {
       setResidentStatus({
         title: "Login Required",
-        description: "Please log in before starting an emergency call.",
-        meta: "Emergency call not started",
+        description: "Please log in before sending an emergency alert.",
+        meta: "Emergency alert not sent",
         tag: "Action Needed",
       });
       return;
     }
 
+    setStartingEmergencyCall(true);
+    setCallOpen(true);
+    setCallStatus("ringing");
+    setCallDispatcherName("");
+    setCallDispatcherPhone("");
+    setNoAnswerTimedOut(false);
+    setAlertLocationStatus("pending");
+
+    let alertId = "";
+
     try {
-      emergencyCallStartRef.current = true;
-      setStartingEmergencyCall(true);
-      setCallOpen(true);
-      setCallStatus("ringing");
-      const callDoc = await addDoc(collection(db, "callSessions"), {
+      const alertDoc = await addDoc(collection(db, "callSessions"), {
         residentId: authUser.uid,
         residentName: displayName,
         dispatcherId: "",
         dispatcherName: "",
+        dispatcherPhone: "",
         targetRole: "Dispatcher",
         latestRequestId: latestRequest?.id ?? "",
         emergencyType: latestRequest?.emergencyType ?? latestRequest?.serviceType ?? "",
@@ -189,50 +262,85 @@ export default function ResidentHome() {
         pickupLocation: latestRequest?.pickupLocation ?? activeProfile?.barangay ?? "",
         pickupDetails: latestRequest?.pickupDetails ?? "",
         additionalNotes: latestRequest?.additionalNotes ?? "",
+        location: null,
         status: "ringing",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      setCallSessionId(callDoc.id);
+      alertId = alertDoc.id;
+      activeAlertIdRef.current = alertId;
+      setCallSessionId(alertId);
       setResidentStatus({
-        title: "Calling Dispatcher",
-        description: "Emergency call request sent to the dispatcher station.",
-        meta: "Waiting for dispatcher",
+        title: "Emergency alert sent",
+        description: "Dispatchers can see your alert now. Keep this screen open.",
+        meta: "Waiting for a dispatcher to accept",
         tag: "Emergency",
       });
     } catch (error) {
-      console.log("Emergency call failed:", error);
+      console.log("Emergency alert failed:", error);
       setCallOpen(false);
       setCallStatus("idle");
+      setAlertLocationStatus("idle");
       setResidentStatus({
-        title: "Emergency Call Failed",
-        description: "The in-app call could not start. Please check Firestore permissions.",
-        meta: "Call not connected",
+        title: "Emergency alert not sent",
+        description: "We could not reach dispatch. Please call the office or ask someone nearby for help.",
+        meta: "Alert not sent",
         tag: "Error",
       });
     } finally {
       setStartingEmergencyCall(false);
     }
+
+    if (!alertId) {
+      return;
+    }
+
+    loadOfficePhone();
+    attachAlertLocation(alertId);
   };
 
-  const endEmergencyCall = async () => {
-    const nextStatus = callStatus === "connected" ? "ended" : "cancelled";
-
-    if (callSessionId) {
+  const closeEmergencyAlert = async () => {
+    if (callSessionId && ["ringing", "connected"].includes(callStatus)) {
       try {
         await updateDoc(doc(db, "callSessions", callSessionId), {
-          status: nextStatus,
+          status: callStatus === "connected" ? "ended" : "cancelled",
           updatedAt: serverTimestamp(),
         });
       } catch (error) {
-        console.log("Emergency call end warning:", error);
+        console.log("Emergency alert close warning:", error);
       }
     }
 
+    activeAlertIdRef.current = "";
+    setCancelAlertConfirmOpen(false);
     setCallOpen(false);
     setCallSessionId("");
     setCallStatus("idle");
+    setCallDispatcherName("");
+    setCallDispatcherPhone("");
+    setNoAnswerTimedOut(false);
+    setAlertLocationStatus("idle");
+  };
+
+  // Hardware Back while an alert is still ringing asks first; a Back press on that
+  // question keeps the alert. Any other state closes as before.
+  const handleAlertBack = () => {
+    if (cancelAlertConfirmOpen) {
+      setCancelAlertConfirmOpen(false);
+      return;
+    }
+
+    if (callStatus === "ringing") {
+      setCancelAlertConfirmOpen(true);
+      return;
+    }
+
+    closeEmergencyAlert();
+  };
+
+  const openPhone = (phone) => {
+    Linking.openURL(toTelUrl(phone)).catch((error) => console.log("Phone dialer warning:", error));
   };
 
   const saveResidentSettings = async () => {
@@ -401,9 +509,9 @@ export default function ResidentHome() {
             <View style={[styles.featureCard, { backgroundColor: theme.emergencyCard }]}>
               <FontAwesome name="warning" size={compact ? 32 : 38} color="#C70000" />
               <Text style={[styles.cardTitle, { color: theme.text }]}>Emergency</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Call the dispatcher immediately for urgent help and emergency coordination.</Text>
+              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Send an alert to the dispatchers. They will see your location and can call you back.</Text>
               <TouchableOpacity style={styles.sosButton} onPress={() => handleQuickAction("emergency-call")}>
-                <Text style={styles.cardButtonText}>Open Emergency Call</Text>
+                <Text style={styles.cardButtonText}>Send emergency alert</Text>
               </TouchableOpacity>
             </View>
 
@@ -481,9 +589,9 @@ export default function ResidentHome() {
       <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <FontAwesome name="phone" size={52} color="#CF0000" />
-            <Text style={[styles.callTitle, { color: theme.text }]}>Call Emergency Help?</Text>
-            <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Are you sure you want to call Emergency Help?</Text>
+            <FontAwesome name="warning" size={52} color="#CF0000" />
+            <Text style={[styles.callTitle, { color: theme.text }]}>Send emergency alert?</Text>
+            <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will see your name and location right away.</Text>
 
             <View style={styles.callActionRow}>
               <TouchableOpacity style={[styles.modalButton, styles.callActionButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)}>
@@ -494,32 +602,110 @@ export default function ResidentHome() {
                 disabled={startingEmergencyCall}
                 onPress={() => {
                   setCallConfirmOpen(false);
-                  startEmergencyCall();
+                  sendEmergencyAlert();
                 }}
               >
-                <Text style={styles.callConfirmButtonText}>Call</Text>
+                <Text style={styles.callConfirmButtonText}>Send alert</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      <Modal visible={callOpen} transparent animationType="fade" onRequestClose={endEmergencyCall}>
+      <Modal visible={callOpen} transparent animationType="fade" onRequestClose={handleAlertBack}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <FontAwesome name="phone" size={52} color="#CF0000" />
-            <Text style={[styles.callTitle, { color: theme.text }]}>
-              {callStatus === "connected" ? "Connected to Dispatcher" : callStatus === "ringing" ? "Calling Dispatcher" : "Emergency Call"}
-            </Text>
-            <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>
-              {callStatus === "connected"
-                ? `${callDispatcherName || "Dispatcher"} is connected to this in-app emergency call.`
-                : "Waiting for the dispatcher station to answer."}
-            </Text>
+            {cancelAlertConfirmOpen ? (
+              <>
+                <FontAwesome name="exclamation-circle" size={52} color="#CF0000" />
+                <Text style={[styles.callTitle, { color: theme.text }]} accessibilityLiveRegion="polite">
+                  Cancel your emergency alert?
+                </Text>
+                <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will stop seeing it.</Text>
 
-            <TouchableOpacity style={styles.endCallButton} onPress={endEmergencyCall}>
-              <Text style={styles.endCallButtonText}>{callStatus === "connected" ? "End Call" : "Cancel Call"}</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.callNowButton} onPress={() => setCancelAlertConfirmOpen(false)} accessibilityRole="button" accessibilityLabel="Keep the emergency alert">
+                  <Text style={styles.callNowButtonText}>Keep alert</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.endCallButton} onPress={closeEmergencyAlert} accessibilityRole="button" accessibilityLabel="Cancel the emergency alert">
+                  <Text style={styles.endCallButtonText}>Cancel alert</Text>
+                </TouchableOpacity>
+              </>
+            ) : (() => {
+              const dispatcherLabel = callDispatcherName || "the dispatcher";
+              const waitingForAnswer = callStatus === "ringing" && !noAnswerTimedOut;
+              const unanswered = callStatus === "ringing" && noAnswerTimedOut;
+              const accepted = callStatus === "connected";
+              const declined = callStatus === "declined";
+              const showOfficeFallback = unanswered || declined;
+
+              const icon = accepted ? "check-circle" : waitingForAnswer ? "bell" : "exclamation-circle";
+              const iconColor = accepted ? "#06774B" : "#CF0000";
+              const title = accepted
+                ? "Dispatcher accepted"
+                : waitingForAnswer
+                  ? "Emergency alert sent"
+                  : unanswered
+                    ? "No dispatcher has accepted yet"
+                    : declined
+                      ? "Dispatcher could not accept"
+                      : "Alert closed";
+              const body = accepted
+                ? `${dispatcherLabel} has your alert and can see where you are.`
+                : waitingForAnswer
+                  ? "Waiting for a dispatcher to accept. Keep this screen open."
+                  : showOfficeFallback
+                    ? "You can call the office directly while you wait."
+                    : "This alert is no longer active.";
+              const locationLine =
+                alertLocationStatus === "pending"
+                  ? "Location: sending…"
+                  : alertLocationStatus === "sent"
+                    ? "Location: sent"
+                    : alertLocationStatus === "failed"
+                      ? "Location: not available — dispatchers will see your barangay."
+                      : "";
+
+              return (
+                <>
+                  <FontAwesome name={icon} size={52} color={iconColor} />
+                  <Text style={[styles.callTitle, { color: theme.text }]} accessibilityLiveRegion="polite">
+                    {title}
+                  </Text>
+                  <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>{body}</Text>
+                  {locationLine && (waitingForAnswer || unanswered || accepted) ? (
+                    <Text style={[styles.callSubtitle, { color: theme.secondaryText }]}>{locationLine}</Text>
+                  ) : null}
+
+                  {accepted ? (
+                    callDispatcherPhone ? (
+                      <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(callDispatcherPhone)} accessibilityRole="button" accessibilityLabel={`Call ${dispatcherLabel}`}>
+                        <Text style={styles.callNowButtonText}>Call {dispatcherLabel}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>
+                        {dispatcherLabel} has no phone number on file. They can see your alert and location.
+                      </Text>
+                    )
+                  ) : null}
+
+                  {showOfficeFallback ? (
+                    officePhone ? (
+                      <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(officePhone)} accessibilityRole="button" accessibilityLabel="Call the office">
+                        <Text style={styles.callNowButtonText}>Call the office</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>
+                        The office phone number is not available. Keep waiting, or ask someone nearby to call for help.
+                      </Text>
+                    )
+                  ) : null}
+
+                  <TouchableOpacity style={styles.endCallButton} onPress={closeEmergencyAlert}>
+                    <Text style={styles.endCallButtonText}>{accepted ? "Done" : callStatus === "ringing" ? "Cancel alert" : "Close"}</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
           </View>
         </View>
       </Modal>
@@ -1169,6 +1355,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   endCallButtonText: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  callNowButton: {
+    width: "100%",
+    marginTop: 20,
+    minHeight: 58,
+    borderRadius: 18,
+    backgroundColor: "#06774B",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  callNowButtonText: {
     fontSize: 17,
     fontWeight: "800",
     color: "#FFFFFF",

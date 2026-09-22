@@ -1,6 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { arrayUnion, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
@@ -327,10 +327,13 @@ export default function DispatcherHome() {
     const unsubscribe = onSnapshot(
       callsQuery,
       (snapshot) => {
-        const calls = snapshot.docs.map((callDoc) => ({
-          id: callDoc.id,
-          ...callDoc.data(),
-        }));
+        // An alert stays "ringing" for everyone; a decline only hides it from the dispatcher who declined.
+        const calls = snapshot.docs
+          .map((callDoc) => ({
+            id: callDoc.id,
+            ...callDoc.data(),
+          }))
+          .filter((call) => !(call.declinedBy ?? []).includes(authUser?.uid));
 
         setIncomingCall(calls[0] ?? null);
       },
@@ -338,7 +341,7 @@ export default function DispatcherHome() {
     );
 
     return unsubscribe;
-  }, []);
+  }, [authUser?.uid]);
 
   const openAssignModal = (driver) => {
     setSelectedDriver(driver);
@@ -399,6 +402,7 @@ export default function DispatcherHome() {
       await updateDoc(doc(db, "callSessions", incomingCall.id), {
         dispatcherId: authUser?.uid ?? "",
         dispatcherName: displayName,
+        dispatcherPhone: profile?.officePhone || profile?.operationalPhone || "",
         status: "connected",
         updatedAt: serverTimestamp(),
       });
@@ -415,7 +419,7 @@ export default function DispatcherHome() {
 
     try {
       await updateDoc(doc(db, "callSessions", incomingCall.id), {
-        status: "declined",
+        declinedBy: arrayUnion(authUser?.uid ?? ""),
         updatedAt: serverTimestamp(),
       });
       setIncomingCall(null);
