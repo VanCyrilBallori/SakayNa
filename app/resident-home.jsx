@@ -680,7 +680,9 @@ export default function ResidentHome() {
                 <Text style={[styles.callTitle, { color: theme.text }]} accessibilityLiveRegion="polite">
                   Cancel your emergency alert?
                 </Text>
-                <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will stop seeing it.</Text>
+                <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>
+                  {sendPhase === "sent" ? "Dispatchers will stop seeing it." : "It will be cancelled, even if it is still sending."}
+                </Text>
 
                 <TouchableOpacity style={styles.callNowButton} onPress={() => setCancelAlertConfirmOpen(false)} accessibilityRole="button" accessibilityLabel="Keep the emergency alert">
                   <Text style={styles.callNowButtonText}>Keep alert</Text>
@@ -725,9 +727,10 @@ export default function ResidentHome() {
               if (sending) {
                 body = "Sending to dispatchers. Keep this screen open.";
               } else if (sendFailed) {
+                // The queued write only survives while the app stays open (memory cache).
                 body = officePhone
-                  ? "We could not confirm the alert reached dispatch. It may still go through. Try again, or call the office."
-                  : "We could not confirm the alert reached dispatch. It may still go through. Try again, or ask someone nearby to call for help.";
+                  ? "We could not confirm the alert reached dispatch. It may still go through if you keep this screen open. Try again, or call the office."
+                  : "We could not confirm the alert reached dispatch. It may still go through if you keep this screen open. Try again, or ask someone nearby to call for help.";
               } else if (accepted) {
                 body = callDispatcherPhone
                   ? `${dispatcherLabel} has your alert and can see where you are.`
