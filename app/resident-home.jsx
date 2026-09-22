@@ -1,8 +1,8 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
-import { addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
@@ -16,7 +16,17 @@ import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
+// Firestore queues writes while offline and the promise simply stays pending, so an
+// unconfirmed write after this long is treated as failed even though it may sync later.
+const SEND_TIMEOUT_MS = 10_000;
 const toTelUrl = (phone) => `tel:${String(phone).replace(/\s+/g, "")}`;
+
+const IDLE_RESIDENT_STATUS = {
+  title: "Current Ride Status",
+  description: "No active vehicle has been assigned yet. Once dispatch responds, you will see updates here.",
+  meta: "Waiting for your next request",
+  tag: "Tracking",
+};
 
 const getStatusTone = (value) => {
   if (["Assigned", "In Progress", "Completed"].includes(value)) {
@@ -41,12 +51,7 @@ export default function ResidentHome() {
   const narrow = width < 560;
   const { authUser, displayName: fallbackDisplayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
-  const [residentStatus, setResidentStatus] = useState({
-    title: "Current Ride Status",
-    description: "No active vehicle has been assigned yet. Once dispatch responds, you will see updates here.",
-    meta: "Waiting for your next request",
-    tag: "Tracking",
-  });
+  const [residentStatus, setResidentStatus] = useState(IDLE_RESIDENT_STATUS);
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
   const [profileOverride, setProfileOverride] = useState(null);
@@ -66,9 +71,13 @@ export default function ResidentHome() {
   const [alertLocationStatus, setAlertLocationStatus] = useState("idle");
   const [noAnswerTimedOut, setNoAnswerTimedOut] = useState(false);
   const [cancelAlertConfirmOpen, setCancelAlertConfirmOpen] = useState(false);
-  const [startingEmergencyCall, setStartingEmergencyCall] = useState(false);
+  // "sending" until the server confirms the write; "failed" on rejection or timeout;
+  // "sent" once confirmed. callStatus only means anything once this is "sent".
+  const [sendPhase, setSendPhase] = useState("idle");
   // Tracks the alert currently on screen so late GPS results can't write to a closed alert.
   const activeAlertIdRef = useRef("");
+  // True once a snapshot without pending writes proves the alert reached the server.
+  const serverConfirmedRef = useRef(false);
   const { detectLocation } = useCurrentLocation();
   const [settingsForm, setSettingsForm] = useState({
     fullName: "",
@@ -98,10 +107,23 @@ export default function ResidentHome() {
     const unsubscribe = onSnapshot(
       doc(db, "callSessions", callSessionId),
       (snapshot) => {
+        // The listener is attached before the write lands, so a missing document is
+        // "not there yet", not "ended".
+        if (!snapshot.exists()) {
+          return;
+        }
+
         const callData = snapshot.data();
-        setCallStatus(callData?.status ?? "ended");
+        setCallStatus(callData?.status ?? "ringing");
         setCallDispatcherName(callData?.dispatcherName ?? "");
         setCallDispatcherPhone(callData?.dispatcherPhone ?? "");
+
+        // A snapshot with no pending writes means the server has it — including a
+        // queued offline write that synced after we already showed the error state.
+        if (!snapshot.metadata.hasPendingWrites) {
+          serverConfirmedRef.current = true;
+          setSendPhase((current) => (current === "sending" || current === "failed" ? "sent" : current));
+        }
       },
       (error) => console.log("Emergency alert listener warning:", error)
     );
@@ -109,15 +131,44 @@ export default function ResidentHome() {
     return unsubscribe;
   }, [callSessionId]);
 
+  // The 30 s no-answer clock only starts once the alert actually exists on the server.
   useEffect(() => {
-    if (!callOpen || callStatus !== "ringing") {
+    if (sendPhase !== "sent" || callStatus !== "ringing") {
       setNoAnswerTimedOut(false);
       return undefined;
     }
 
     const timeoutId = setTimeout(() => setNoAnswerTimedOut(true), NO_ANSWER_TIMEOUT_MS);
     return () => clearTimeout(timeoutId);
-  }, [callOpen, callStatus]);
+  }, [sendPhase, callStatus]);
+
+  const loadOfficePhone = useCallback(async () => {
+    try {
+      const snapshot = await getDoc(doc(db, "systemSettings", "operational"));
+      setOfficePhone(snapshot.exists() ? (snapshot.data()?.publicOfficePhone ?? "").trim() : "");
+    } catch (error) {
+      console.log("Office phone lookup warning:", error);
+      setOfficePhone("");
+    }
+  }, []);
+
+  // Loaded at sign-in, not at send time, so the number is already on hand if a send fails.
+  useEffect(() => {
+    if (authUser?.uid) {
+      loadOfficePhone();
+    }
+  }, [authUser?.uid, loadOfficePhone]);
+
+  useEffect(() => {
+    if (sendPhase === "sent") {
+      setResidentStatus({
+        title: "Emergency alert sent",
+        description: "Dispatchers can see your alert now. Keep this screen open.",
+        meta: "Waiting for a dispatcher to accept",
+        tag: "Emergency",
+      });
+    }
+  }, [sendPhase]);
 
   useEffect(() => {
     if (!settingsOpen) {
@@ -213,18 +264,55 @@ export default function ResidentHome() {
     }
   };
 
-  const loadOfficePhone = async () => {
+  // Writes the alert under the ID generated once per attempt. Retries reuse the same ID,
+  // so a queued offline write that syncs later and a retry can never become two alerts.
+  const writeAlert = async (alertId) => {
+    if (serverConfirmedRef.current) {
+      setSendPhase("sent");
+      return;
+    }
+
+    setSendPhase("sending");
+
+    const payload = {
+      residentId: authUser.uid,
+      residentName: displayName,
+      residentPhone: activeProfile?.phoneNumber || activeProfile?.phone || "",
+      dispatcherId: "",
+      dispatcherName: "",
+      dispatcherPhone: "",
+      targetRole: "Dispatcher",
+      latestRequestId: latestRequest?.id ?? "",
+      pickupLocation: activeProfile?.barangay ?? "",
+      location: null,
+      status: "ringing",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    let timeoutId;
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error("send-timeout")), SEND_TIMEOUT_MS);
+    });
+
     try {
-      const snapshot = await getDoc(doc(db, "systemSettings", "operational"));
-      setOfficePhone(snapshot.exists() ? (snapshot.data()?.publicOfficePhone ?? "").trim() : "");
+      await Promise.race([setDoc(doc(db, "callSessions", alertId), payload), timeout]);
+      if (activeAlertIdRef.current === alertId) {
+        serverConfirmedRef.current = true;
+        setSendPhase("sent");
+      }
     } catch (error) {
-      console.log("Office phone lookup warning:", error);
-      setOfficePhone("");
+      console.log("Emergency alert send warning:", error?.message ?? error);
+      if (activeAlertIdRef.current === alertId) {
+        setSendPhase((current) => (current === "sent" ? current : "failed"));
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
   const sendEmergencyAlert = async () => {
-    if (startingEmergencyCall || callOpen) {
+    if (callOpen) {
       return;
     }
 
@@ -238,89 +326,55 @@ export default function ResidentHome() {
       return;
     }
 
-    setStartingEmergencyCall(true);
+    const alertId = doc(collection(db, "callSessions")).id;
+    activeAlertIdRef.current = alertId;
+    serverConfirmedRef.current = false;
+
     setCallOpen(true);
     setCallStatus("ringing");
     setCallDispatcherName("");
     setCallDispatcherPhone("");
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("pending");
+    setCallSessionId(alertId);
 
-    let alertId = "";
-
-    try {
-      const alertDoc = await addDoc(collection(db, "callSessions"), {
-        residentId: authUser.uid,
-        residentName: displayName,
-        dispatcherId: "",
-        dispatcherName: "",
-        dispatcherPhone: "",
-        targetRole: "Dispatcher",
-        latestRequestId: latestRequest?.id ?? "",
-        emergencyType: latestRequest?.emergencyType ?? latestRequest?.serviceType ?? "",
-        serviceType: latestRequest?.serviceType ?? latestRequest?.emergencyType ?? "",
-        pickupLocation: latestRequest?.pickupLocation ?? activeProfile?.barangay ?? "",
-        pickupDetails: latestRequest?.pickupDetails ?? "",
-        additionalNotes: latestRequest?.additionalNotes ?? "",
-        location: null,
-        status: "ringing",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      alertId = alertDoc.id;
-      activeAlertIdRef.current = alertId;
-      setCallSessionId(alertId);
-      setResidentStatus({
-        title: "Emergency alert sent",
-        description: "Dispatchers can see your alert now. Keep this screen open.",
-        meta: "Waiting for a dispatcher to accept",
-        tag: "Emergency",
-      });
-    } catch (error) {
-      console.log("Emergency alert failed:", error);
-      setCallOpen(false);
-      setCallStatus("idle");
-      setAlertLocationStatus("idle");
-      setResidentStatus({
-        title: "Emergency alert not sent",
-        description: "We could not reach dispatch. Please call the office or ask someone nearby for help.",
-        meta: "Alert not sent",
-        tag: "Error",
-      });
-    } finally {
-      setStartingEmergencyCall(false);
+    if (!officePhone) {
+      loadOfficePhone();
     }
 
-    if (!alertId) {
-      return;
-    }
-
-    loadOfficePhone();
+    writeAlert(alertId);
     attachAlertLocation(alertId);
   };
 
-  const closeEmergencyAlert = async () => {
+  const retryEmergencyAlert = () => {
+    if (activeAlertIdRef.current) {
+      writeAlert(activeAlertIdRef.current);
+    }
+  };
+
+  const closeEmergencyAlert = () => {
+    // Fire-and-forget: offline this promise would hang and trap the modal open. It is
+    // still worth sending — a queued create syncs before this queued update, so a
+    // late-arriving alert is cancelled rather than left ringing.
     if (callSessionId && ["ringing", "connected"].includes(callStatus)) {
-      try {
-        await updateDoc(doc(db, "callSessions", callSessionId), {
-          status: callStatus === "connected" ? "ended" : "cancelled",
-          updatedAt: serverTimestamp(),
-        });
-      } catch (error) {
-        console.log("Emergency alert close warning:", error);
-      }
+      updateDoc(doc(db, "callSessions", callSessionId), {
+        status: callStatus === "connected" ? "ended" : "cancelled",
+        updatedAt: serverTimestamp(),
+      }).catch((error) => console.log("Emergency alert close warning:", error));
     }
 
     activeAlertIdRef.current = "";
+    serverConfirmedRef.current = false;
     setCancelAlertConfirmOpen(false);
     setCallOpen(false);
     setCallSessionId("");
     setCallStatus("idle");
+    setSendPhase("idle");
     setCallDispatcherName("");
     setCallDispatcherPhone("");
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("idle");
+    setResidentStatus(IDLE_RESIDENT_STATUS);
   };
 
   // Hardware Back while an alert is still ringing asks first; a Back press on that
@@ -591,7 +645,7 @@ export default function ResidentHome() {
           <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
             <FontAwesome name="warning" size={52} color="#CF0000" />
             <Text style={[styles.callTitle, { color: theme.text }]}>Send emergency alert?</Text>
-            <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will see your name and location right away.</Text>
+            <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will see your name and phone number. We will try to send your location.</Text>
 
             <View style={styles.callActionRow}>
               <TouchableOpacity style={[styles.modalButton, styles.callActionButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)} accessibilityRole="button">
@@ -599,7 +653,6 @@ export default function ResidentHome() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.callActionButton, styles.callConfirmButton]}
-                disabled={startingEmergencyCall}
                 onPress={() => {
                   setCallConfirmOpen(false);
                   sendEmergencyAlert();
@@ -616,7 +669,11 @@ export default function ResidentHome() {
 
       <Modal visible={callOpen} transparent animationType="fade" onRequestClose={handleAlertBack}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+          <ScrollView
+            style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}
+            contentContainerStyle={styles.callCardContent}
+            showsVerticalScrollIndicator={false}
+          >
             {cancelAlertConfirmOpen ? (
               <>
                 <FontAwesome name="exclamation-circle" size={52} color="#CF0000" />
@@ -634,28 +691,44 @@ export default function ResidentHome() {
               </>
             ) : (() => {
               const dispatcherLabel = callDispatcherName || "the dispatcher";
-              const waitingForAnswer = callStatus === "ringing" && !noAnswerTimedOut;
-              const unanswered = callStatus === "ringing" && noAnswerTimedOut;
-              const accepted = callStatus === "connected";
-              const declined = callStatus === "declined";
-              const showOfficeFallback = unanswered || declined;
+              const sending = sendPhase === "sending";
+              const sendFailed = sendPhase === "failed";
+              const confirmed = sendPhase === "sent";
+              const waitingForAnswer = confirmed && callStatus === "ringing" && !noAnswerTimedOut;
+              const unanswered = confirmed && callStatus === "ringing" && noAnswerTimedOut;
+              const accepted = confirmed && callStatus === "connected";
+              const declined = confirmed && callStatus === "declined";
+              const showOfficeFallback = sendFailed || unanswered || declined;
+              // While the alert is still live (sending, waiting, or possibly queued), the
+              // bottom button cancels and goes through the confirmation question.
+              const stillLive = sending || sendFailed || waitingForAnswer || unanswered;
 
-              const icon = accepted ? "check-circle" : waitingForAnswer ? "bell" : "exclamation-circle";
+              const icon = accepted ? "check-circle" : sending || waitingForAnswer ? "bell" : "exclamation-circle";
               const iconColor = accepted ? "#06774B" : "#CF0000";
-              const title = accepted
-                ? "Dispatcher accepted"
-                : waitingForAnswer
-                  ? "Emergency alert sent"
-                  : unanswered
-                    ? "No dispatcher has accepted yet"
-                    : declined
-                      ? "Dispatcher could not accept"
-                      : "Alert closed";
+              const title = sending
+                ? "Sending alert…"
+                : sendFailed
+                  ? "Alert not confirmed"
+                  : accepted
+                    ? "Dispatcher accepted"
+                    : waitingForAnswer
+                      ? "Emergency alert sent"
+                      : unanswered
+                        ? "No dispatcher has accepted yet"
+                        : declined
+                          ? "Dispatcher could not accept"
+                          : "Alert closed";
 
               // The body states what the resident can do next, so it never promises a
               // call button that isn't there.
               let body = "This alert is no longer active.";
-              if (accepted) {
+              if (sending) {
+                body = "Sending to dispatchers. Keep this screen open.";
+              } else if (sendFailed) {
+                body = officePhone
+                  ? "We could not confirm the alert reached dispatch. It may still go through. Try again, or call the office."
+                  : "We could not confirm the alert reached dispatch. It may still go through. Try again, or ask someone nearby to call for help.";
+              } else if (accepted) {
                 body = callDispatcherPhone
                   ? `${dispatcherLabel} has your alert and can see where you are.`
                   : `${dispatcherLabel} has your alert and can see where you are. No phone number is on file for them.`;
@@ -677,7 +750,8 @@ export default function ResidentHome() {
                       : "";
               const showCallDispatcher = accepted && Boolean(callDispatcherPhone);
               const showCallOffice = showOfficeFallback && Boolean(officePhone);
-              const closeLabel = accepted ? "Done" : callStatus === "ringing" ? "Cancel alert" : "Close";
+              const closeLabel = accepted ? "Done" : stillLive ? "Cancel alert" : "Close";
+              const onClosePress = stillLive ? handleAlertBack : closeEmergencyAlert;
 
               return (
                 <>
@@ -686,9 +760,15 @@ export default function ResidentHome() {
                     {title}
                   </Text>
                   <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>{body}</Text>
-                  {waitingForAnswer ? <ActivityIndicator color="#CF0000" style={styles.alertSpinner} /> : null}
-                  {locationLine && (waitingForAnswer || unanswered || accepted) ? (
+                  {sending || waitingForAnswer ? <ActivityIndicator color="#CF0000" style={styles.alertSpinner} /> : null}
+                  {locationLine && (sending || waitingForAnswer || unanswered || accepted) ? (
                     <Text style={[styles.callSubtitle, { color: theme.secondaryText }]}>{locationLine}</Text>
+                  ) : null}
+
+                  {sendFailed ? (
+                    <TouchableOpacity style={styles.callNowButton} onPress={retryEmergencyAlert} accessibilityRole="button" accessibilityLabel="Try sending the alert again">
+                      <Text style={styles.callNowButtonText}>Try again</Text>
+                    </TouchableOpacity>
                   ) : null}
 
                   {showCallDispatcher ? (
@@ -703,13 +783,18 @@ export default function ResidentHome() {
                     </TouchableOpacity>
                   ) : null}
 
-                  <TouchableOpacity style={styles.endCallButton} onPress={closeEmergencyAlert} accessibilityRole="button" accessibilityLabel={closeLabel}>
-                    <Text style={styles.endCallButtonText}>{closeLabel}</Text>
+                  <TouchableOpacity
+                    style={stillLive ? styles.cancelAlertButton : styles.endCallButton}
+                    onPress={onClosePress}
+                    accessibilityRole="button"
+                    accessibilityLabel={closeLabel}
+                  >
+                    <Text style={stillLive ? styles.cancelAlertButtonText : styles.endCallButtonText}>{closeLabel}</Text>
                   </TouchableOpacity>
                 </>
               );
             })()}
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -1329,9 +1414,13 @@ const styles = StyleSheet.create({
   callCard: {
     width: "100%",
     maxWidth: 440,
+    maxHeight: "90%",
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 24,
+    alignItems: "center",
+  },
+  callCardContent: {
     alignItems: "center",
   },
   callTitle: {
@@ -1380,6 +1469,26 @@ const styles = StyleSheet.create({
   },
   alertSpinner: {
     marginTop: 14,
+  },
+  // Low-emphasis on purpose: while an alert is live, the solid green "Keep alert" /
+  // "Call" actions should win the eye over cancelling.
+  cancelAlertButton: {
+    width: "100%",
+    marginTop: 24,
+    minHeight: 58,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#CF0000",
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelAlertButtonText: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#CF0000",
+    textAlign: "center",
   },
   menuOverlay: {
     flex: 1,
