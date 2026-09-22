@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
@@ -510,7 +510,7 @@ export default function ResidentHome() {
               <FontAwesome name="warning" size={compact ? 32 : 38} color="#C70000" />
               <Text style={[styles.cardTitle, { color: theme.text }]}>Emergency</Text>
               <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Send an alert to the dispatchers. They will see your location and can call you back.</Text>
-              <TouchableOpacity style={styles.sosButton} onPress={() => handleQuickAction("emergency-call")}>
+              <TouchableOpacity style={styles.sosButton} onPress={() => handleQuickAction("emergency-call")} accessibilityRole="button" accessibilityLabel="Send emergency alert to dispatchers">
                 <Text style={styles.cardButtonText}>Send emergency alert</Text>
               </TouchableOpacity>
             </View>
@@ -594,7 +594,7 @@ export default function ResidentHome() {
             <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will see your name and location right away.</Text>
 
             <View style={styles.callActionRow}>
-              <TouchableOpacity style={[styles.modalButton, styles.callActionButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)}>
+              <TouchableOpacity style={[styles.modalButton, styles.callActionButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)} accessibilityRole="button">
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -604,6 +604,8 @@ export default function ResidentHome() {
                   setCallConfirmOpen(false);
                   sendEmergencyAlert();
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Send the emergency alert"
               >
                 <Text style={styles.callConfirmButtonText}>Send alert</Text>
               </TouchableOpacity>
@@ -649,13 +651,22 @@ export default function ResidentHome() {
                     : declined
                       ? "Dispatcher could not accept"
                       : "Alert closed";
-              const body = accepted
-                ? `${dispatcherLabel} has your alert and can see where you are.`
-                : waitingForAnswer
-                  ? "Waiting for a dispatcher to accept. Keep this screen open."
-                  : showOfficeFallback
-                    ? "You can call the office directly while you wait."
-                    : "This alert is no longer active.";
+
+              // The body states what the resident can do next, so it never promises a
+              // call button that isn't there.
+              let body = "This alert is no longer active.";
+              if (accepted) {
+                body = callDispatcherPhone
+                  ? `${dispatcherLabel} has your alert and can see where you are.`
+                  : `${dispatcherLabel} has your alert and can see where you are. No phone number is on file for them.`;
+              } else if (waitingForAnswer) {
+                body = "Waiting for a dispatcher to accept. Keep this screen open.";
+              } else if (showOfficeFallback) {
+                body = officePhone
+                  ? "You can call the office directly while you wait."
+                  : "The office phone number is not available. Keep waiting, or ask someone nearby to call for help.";
+              }
+
               const locationLine =
                 alertLocationStatus === "pending"
                   ? "Location: sending…"
@@ -664,6 +675,9 @@ export default function ResidentHome() {
                     : alertLocationStatus === "failed"
                       ? "Location: not available — dispatchers will see your barangay."
                       : "";
+              const showCallDispatcher = accepted && Boolean(callDispatcherPhone);
+              const showCallOffice = showOfficeFallback && Boolean(officePhone);
+              const closeLabel = accepted ? "Done" : callStatus === "ringing" ? "Cancel alert" : "Close";
 
               return (
                 <>
@@ -672,36 +686,25 @@ export default function ResidentHome() {
                     {title}
                   </Text>
                   <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>{body}</Text>
+                  {waitingForAnswer ? <ActivityIndicator color="#CF0000" style={styles.alertSpinner} /> : null}
                   {locationLine && (waitingForAnswer || unanswered || accepted) ? (
                     <Text style={[styles.callSubtitle, { color: theme.secondaryText }]}>{locationLine}</Text>
                   ) : null}
 
-                  {accepted ? (
-                    callDispatcherPhone ? (
-                      <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(callDispatcherPhone)} accessibilityRole="button" accessibilityLabel={`Call ${dispatcherLabel}`}>
-                        <Text style={styles.callNowButtonText}>Call {dispatcherLabel}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>
-                        {dispatcherLabel} has no phone number on file. They can see your alert and location.
-                      </Text>
-                    )
+                  {showCallDispatcher ? (
+                    <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(callDispatcherPhone)} accessibilityRole="button" accessibilityLabel={`Call ${dispatcherLabel}`}>
+                      <Text style={styles.callNowButtonText}>Call {dispatcherLabel}</Text>
+                    </TouchableOpacity>
                   ) : null}
 
-                  {showOfficeFallback ? (
-                    officePhone ? (
-                      <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(officePhone)} accessibilityRole="button" accessibilityLabel="Call the office">
-                        <Text style={styles.callNowButtonText}>Call the office</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>
-                        The office phone number is not available. Keep waiting, or ask someone nearby to call for help.
-                      </Text>
-                    )
+                  {showCallOffice ? (
+                    <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(officePhone)} accessibilityRole="button" accessibilityLabel="Call the office">
+                      <Text style={styles.callNowButtonText}>Call the office</Text>
+                    </TouchableOpacity>
                   ) : null}
 
-                  <TouchableOpacity style={styles.endCallButton} onPress={closeEmergencyAlert}>
-                    <Text style={styles.endCallButtonText}>{accepted ? "Done" : callStatus === "ringing" ? "Cancel alert" : "Close"}</Text>
+                  <TouchableOpacity style={styles.endCallButton} onPress={closeEmergencyAlert} accessibilityRole="button" accessibilityLabel={closeLabel}>
+                    <Text style={styles.endCallButtonText}>{closeLabel}</Text>
                   </TouchableOpacity>
                 </>
               );
@@ -1361,8 +1364,9 @@ const styles = StyleSheet.create({
   },
   callNowButton: {
     width: "100%",
-    marginTop: 20,
+    marginTop: 24,
     minHeight: 58,
+    paddingHorizontal: 16,
     borderRadius: 18,
     backgroundColor: "#06774B",
     alignItems: "center",
@@ -1372,6 +1376,10 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "800",
     color: "#FFFFFF",
+    textAlign: "center",
+  },
+  alertSpinner: {
+    marginTop: 14,
   },
   menuOverlay: {
     flex: 1,
