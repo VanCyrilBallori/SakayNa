@@ -168,3 +168,6 @@ My goal is to understand my own project, not simply copy and paste AI-generated 
 
 ## 11. One change at a time
 After every change, tell me exactly how to test it on my phone, then STOP. Do not start the next change until I say it's tested and committed.
+
+## 12. Installing packages
+Always use npx expo install to add packages, never plain npm install, so versions match my Expo SDK.
