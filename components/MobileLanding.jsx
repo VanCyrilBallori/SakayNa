@@ -1,45 +1,29 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
-import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
 import { TERMS_URL } from "../constants/app";
 import { COLORS } from "../constants/design";
 
-// Follows the phone's own light/dark setting, because nobody is logged in yet on this screen.
-const PALETTES = {
-  light: {
-    page: "#EEF5F1",
-    arc: "rgba(6, 119, 75, 0.10)",
-    card: "#FFFFFF",
-    heading: COLORS.text,
-    muted: COLORS.mutedText,
-    link: COLORS.primary,
-    building: "rgba(6, 119, 75, 0.12)",
-    groundShadow: "rgba(23, 56, 46, 0.10)",
-    phoneFrame: "#17382E",
-    phoneScreen: "#F7FBF9",
-    map: "#DDEEE5",
-    road: "#FFFFFF",
-    van: COLORS.primary,
-  },
-  dark: {
-    page: "#111815",
-    arc: "rgba(92, 201, 154, 0.08)",
-    card: "#1A2420",
-    heading: "#F1F5F2",
-    muted: "#B1C1BA",
-    link: "#5CC99A",
-    building: "rgba(92, 201, 154, 0.12)",
-    groundShadow: "rgba(0, 0, 0, 0.35)",
-    phoneFrame: "#050807",
-    phoneScreen: "#22302A",
-    map: "#1E3A30",
-    road: "#2E4A3F",
-    van: "#5CC99A",
-  },
+// Always dark on purpose: this page does not follow the phone's or the app's theme.
+const DARK_COLORS = {
+  page: "#111815",
+  arc: "rgba(92, 201, 154, 0.08)",
+  card: "#1A2420",
+  heading: "#F1F5F2",
+  muted: "#B1C1BA",
+  link: "#5CC99A",
+  building: "rgba(92, 201, 154, 0.12)",
+  groundShadow: "rgba(0, 0, 0, 0.35)",
+  phoneFrame: "#050807",
+  phoneScreen: "#22302A",
+  map: "#1E3A30",
+  road: "#2E4A3F",
+  van: "#5CC99A",
 };
 
 // Faint city skyline behind the phone and van: [left, width, height] in the 320-wide drawing.
@@ -60,7 +44,7 @@ export default function MobileLanding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const colors = useColorScheme() === "dark" ? PALETTES.dark : PALETTES.light;
+  const colors = DARK_COLORS;
 
   // The illustration is drawn on a 320 x 230 grid and scaled to fit small and large phones.
   const scale = Math.min((width - 48) / 320, (height * 0.36) / 230, 1.2);
@@ -73,6 +57,8 @@ export default function MobileLanding() {
 
   return (
     <View style={[styles.page, { backgroundColor: colors.page }]}>
+      {/* Light clock/battery icons so they stay visible on the dark page, even when the phone is in light mode. */}
+      <StatusBar style="light" />
       <View style={[styles.arcTop, { backgroundColor: colors.arc }]} />
       <View style={[styles.arcBottom, { backgroundColor: colors.arc }]} />
 

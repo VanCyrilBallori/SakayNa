@@ -11,13 +11,13 @@ Scope: native-only start screen shown by `app/index.jsx` MobileStart after first
 
 Audience/job: a Toledo City resident opening the app, often on a basic Android phone. They must understand "this gets me a ride" and tap Get Started (Sign Up), or Log In if returning.
 
-Constraints: no fares, prices or payment UI (public service). System font (incumbent). No new packages. Follows the phone's system light/dark setting. 48dp touch targets; scrolls under large font scale; safe-area insets.
+Constraints: no fares, prices or payment UI (public service). System font (incumbent). No new packages. Always dark on purpose (owner decision); does not follow the phone or app theme. 48dp touch targets; scrolls under large font scale; safe-area insets.
 
 ## Direction contract
 
 THESIS: A calm public-service welcome, not a ride-hailing ad: one mark, one scene, one action. Refuses the marketplace hero with fares, vehicle price lists and payment chips.
 
-OWN-WORLD: SakayNa green #06774B on a pale mint field (light) or green-black #111815 (dark). White S-mark inside a solid green disc. Faint green city skyline at low opacity. Phone frame with a mini Toledo City map and pickup pin; a SakayNa van beside it. Rounded bottom sheet in surface color holding the action.
+OWN-WORLD: SakayNa green #06774B on a green-black #111815 field (always dark). White S-mark inside a solid green disc. Faint green city skyline at low opacity. Phone frame with a mini Toledo City map and pickup pin; a SakayNa van beside it. Rounded bottom sheet in surface color holding the action.
 
 STORY: The resident sees the SakayNa mark, a phone summoning a city van, then "Request a Ride now" and acts.
 
