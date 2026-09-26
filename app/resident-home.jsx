@@ -3,11 +3,12 @@ import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { auth, db } from "../firebase";
+import { startPhoneCall } from "../lib/phoneCall";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
@@ -19,7 +20,6 @@ const NO_ANSWER_TIMEOUT_MS = 30_000;
 // Firestore queues writes while offline and the promise simply stays pending, so an
 // unconfirmed write after this long is treated as failed even though it may sync later.
 const SEND_TIMEOUT_MS = 10_000;
-const toTelUrl = (phone) => `tel:${String(phone).replace(/\s+/g, "")}`;
 
 const IDLE_RESIDENT_STATUS = {
   title: "Current Ride Status",
@@ -394,7 +394,7 @@ export default function ResidentHome() {
   };
 
   const openPhone = (phone) => {
-    Linking.openURL(toTelUrl(phone)).catch((error) => console.log("Phone dialer warning:", error));
+    startPhoneCall(phone);
   };
 
   const saveResidentSettings = async () => {

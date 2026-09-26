@@ -4,7 +4,7 @@ import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { Redirect, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { PermissionsAndroid, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import BrandLogo from "../components/BrandLogo";
 import ScreenState from "../components/ui/ScreenState";
 import { getPostAuthenticationRoute } from "../lib/roles";
@@ -20,6 +20,7 @@ export default function Index() {
 }
 
 const NOTIFICATIONS_ASKED_KEY = "sakayna-notifications-asked";
+const CALL_PHONE_ASKED_KEY = "sakayna-call-phone-asked";
 
 // Asks only on the first launch, so later launches skip the pop-ups.
 // "Don't allow" or an error just moves on to the next step; the app never gets stuck here.
@@ -49,6 +50,21 @@ async function askFirstLaunchPermissions() {
     }
   } catch (error) {
     console.log("Location permission warning:", error);
+  }
+
+  // Lets a Call button start the call directly (see lib/phoneCall.js). PermissionsAndroid can't
+  // tell "never asked" from "said no", so a saved flag remembers whether the app already asked.
+  if (Platform.OS === "android") {
+    try {
+      const allowed = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CALL_PHONE);
+      const alreadyAsked = await AsyncStorage.getItem(CALL_PHONE_ASKED_KEY);
+      if (!allowed && !alreadyAsked) {
+        await AsyncStorage.setItem(CALL_PHONE_ASKED_KEY, "yes");
+        await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CALL_PHONE);
+      }
+    } catch (error) {
+      console.log("Phone call permission warning:", error);
+    }
   }
 }
 
