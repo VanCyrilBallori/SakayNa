@@ -6,6 +6,7 @@ import { Redirect, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { PermissionsAndroid, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import BrandLogo from "../components/BrandLogo";
+import MobileLanding from "../components/MobileLanding";
 import ScreenState from "../components/ui/ScreenState";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { useCurrentUserProfile } from "../lib/session";
@@ -80,9 +81,9 @@ function MobileStart() {
     return <ScreenState loading message="Starting SakayNa..." />;
   }
 
-  // Logged in with an allowed account: go to that role's home. Otherwise: login.
+  // Logged in with an allowed account: go to that role's home. Otherwise: the mobile landing page.
   const homeRoute = authUser && profileStatus === "ready" ? getPostAuthenticationRoute(profile) : null;
-  return <Redirect href={homeRoute || "/login"} />;
+  return homeRoute ? <Redirect href={homeRoute} /> : <MobileLanding />;
 }
 
 function WebLandingPage() {

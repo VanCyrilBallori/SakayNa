@@ -52,6 +52,9 @@ export const RESIDENT_CANCELLABLE_STATUSES = Object.freeze([
   REQUEST_STATUSES.ASSIGNED,
 ]);
 
+// Placeholder until the real Terms of Service page exists. Change only this line.
+export const TERMS_URL = "https://example.com/sakayna-terms";
+
 export const FIRESTORE_COLLECTIONS = Object.freeze({
   USERS: "users",
   TRANSPORT_REQUESTS: "transportRequests",
