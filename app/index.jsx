@@ -1,10 +1,75 @@
 import { FontAwesome } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
+import { Redirect, useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import BrandLogo from "../components/BrandLogo";
+import ScreenState from "../components/ui/ScreenState";
+import { getPostAuthenticationRoute } from "../lib/roles";
+import { useCurrentUserProfile } from "../lib/session";
 
 export default function Index() {
+  // The landing page is for the website only. The phone app asks for permissions, then skips it.
+  if (Platform.OS !== "web") {
+    return <MobileStart />;
+  }
+
+  return <WebLandingPage />;
+}
+
+const NOTIFICATIONS_ASKED_KEY = "sakayna-notifications-asked";
+
+// Asks only on the first launch, so later launches skip the pop-ups.
+// "Don't allow" or an error just moves on to the next step; the app never gets stuck here.
+async function askFirstLaunchPermissions() {
+  try {
+    const notifications = await Notifications.getPermissionsAsync();
+    // On Android 13+ a never-asked notification permission reports "denied", not "undetermined",
+    // so a saved flag remembers whether the app already asked.
+    const alreadyAsked = await AsyncStorage.getItem(NOTIFICATIONS_ASKED_KEY);
+    if (notifications.status !== "granted" && notifications.canAskAgain && !alreadyAsked) {
+      await AsyncStorage.setItem(NOTIFICATIONS_ASKED_KEY, "yes");
+      // Android 13+ only shows the notification pop-up after a notification channel exists.
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Default",
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+      await Notifications.requestPermissionsAsync();
+    }
+  } catch (error) {
+    console.log("Notification permission warning:", error);
+  }
+
+  try {
+    const location = await Location.getForegroundPermissionsAsync();
+    if (location.status === "undetermined") {
+      await Location.requestForegroundPermissionsAsync();
+    }
+  } catch (error) {
+    console.log("Location permission warning:", error);
+  }
+}
+
+function MobileStart() {
+  const { authUser, authStatus, profile, profileStatus } = useCurrentUserProfile();
+  const [permissionsDone, setPermissionsDone] = useState(false);
+
+  useEffect(() => {
+    askFirstLaunchPermissions().finally(() => setPermissionsDone(true));
+  }, []);
+
+  if (!permissionsDone || authStatus !== "ready" || profileStatus === "idle" || profileStatus === "loading") {
+    return <ScreenState loading message="Starting SakayNa..." />;
+  }
+
+  // Logged in with an allowed account: go to that role's home. Otherwise: login.
+  const homeRoute = authUser && profileStatus === "ready" ? getPostAuthenticationRoute(profile) : null;
+  return <Redirect href={homeRoute || "/login"} />;
+}
+
+function WebLandingPage() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 960;
