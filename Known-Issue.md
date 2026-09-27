@@ -45,3 +45,14 @@ Call Stack
   switch to light mode anytime in Settings, and switch back to dark.
 - **Status:** Not built yet. The landing page is already dark, so nothing
   needs fixing there.
+
+  ## Emergency alerts can get stuck "ringing"
+
+- **What happens:** If the app crashes or is closed while an alert is
+  ringing, the alert stays "ringing" in Firestore forever. Dispatchers
+  keep getting the pop-up, and there's no way to cancel it from the phone.
+- **Found:** During testing, a crash left test alerts stuck. I cleared
+  them manually in the Firebase Console.
+- **Idea for fix:** Alerts should automatically expire (for example,
+  after a few minutes with no answer).
+- **Status:** Not fixed yet. Important before the pilot.

@@ -1,13 +1,14 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { arrayUnion, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import LeafletMap from "../components/LeafletMap";
 import { db } from "../firebase";
+import { getTimestampMillis } from "../lib/dates";
 import {
   DRIVER_SCHEDULE_COLLECTION,
   formatScheduleWindow,
@@ -15,6 +16,12 @@ import {
   getDriverAvailabilityState,
 } from "../lib/driverScheduling";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
+
+// A ringing alert whose "I'm still here" signal (lastActiveAt) hasn't changed for this long is
+// treated as stuck (the resident's app crashed or closed) and hidden. It is only hidden, not
+// changed in Firestore, so it comes back by itself if the signal starts again.
+const STUCK_ALERT_MS = 120_000;
+const STUCK_CHECK_INTERVAL_MS = 10_000;
 
 const getRequestStyle = (level) => {
   if (level === "Emergency") {
@@ -50,6 +57,11 @@ export default function DispatcherHome() {
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
   const [activeAssignments, setActiveAssignments] = useState([]);
   const [incomingCall, setIncomingCall] = useState(null);
+  const [ringingCalls, setRingingCalls] = useState([]);
+  const [now, setNow] = useState(() => Date.now());
+  // For each ringing alert: its last lastActiveAt value, and when THIS device saw it change.
+  // Using only this device's own clock means a wrong clock on any phone or PC can't hide a live alert.
+  const lastSignOfLifeRef = useRef({});
   const [vehicles, setVehicles] = useState([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [driverSchedules, setDriverSchedules] = useState([]);
@@ -335,13 +347,37 @@ export default function DispatcherHome() {
           }))
           .filter((call) => !(call.declinedBy ?? []).includes(authUser?.uid));
 
-        setIncomingCall(calls[0] ?? null);
+        const previous = lastSignOfLifeRef.current;
+        const next = {};
+        calls.forEach((call) => {
+          const signOfLife = getTimestampMillis(call.lastActiveAt);
+          const seenBefore = previous[call.id];
+          next[call.id] = seenBefore && seenBefore.signOfLife === signOfLife ? seenBefore : { signOfLife, seenAt: Date.now() };
+        });
+        lastSignOfLifeRef.current = next;
+
+        setRingingCalls(calls);
       },
       (error) => console.log("Incoming call listener warning:", error)
     );
 
     return unsubscribe;
   }, [authUser?.uid]);
+
+  // A crashed app sends no more updates, so nothing would trigger a re-check. This clock does.
+  useEffect(() => {
+    const intervalId = setInterval(() => setNow(Date.now()), STUCK_CHECK_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    const liveCall = ringingCalls.find((call) => {
+      const seenAt = lastSignOfLifeRef.current[call.id]?.seenAt ?? Date.now();
+      return now - seenAt < STUCK_ALERT_MS;
+    });
+
+    setIncomingCall(liveCall ?? null);
+  }, [ringingCalls, now]);
 
   const openAssignModal = (driver) => {
     setSelectedDriver(driver);

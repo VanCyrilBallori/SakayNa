@@ -20,6 +20,10 @@ const NO_ANSWER_TIMEOUT_MS = 30_000;
 // Firestore queues writes while offline and the promise simply stays pending, so an
 // unconfirmed write after this long is treated as failed even though it may sync later.
 const SEND_TIMEOUT_MS = 10_000;
+// While an alert is ringing, the app saves "I'm still here" (lastActiveAt) this often.
+// Dispatchers hide a ringing alert that has gone 2 minutes without one (crashed or closed app).
+const ALERT_HEARTBEAT_MS = 20_000;
+const KEEP_AWAKE_TAG = "emergency-alert";
 
 const IDLE_RESIDENT_STATUS = {
   title: "Current Ride Status",
@@ -141,6 +145,47 @@ export default function ResidentHome() {
     const timeoutId = setTimeout(() => setNoAnswerTimedOut(true), NO_ANSWER_TIMEOUT_MS);
     return () => clearTimeout(timeoutId);
   }, [sendPhase, callStatus]);
+
+  // "I'm still here" signal: while this screen shows a ringing alert, refresh lastActiveAt so
+  // dispatchers know someone is still waiting. It stops when the alert is answered, cancelled,
+  // or the app closes — and that silence is how dispatchers spot a stuck alert.
+  useEffect(() => {
+    if (!callSessionId || sendPhase !== "sent" || callStatus !== "ringing") {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      updateDoc(doc(db, "callSessions", callSessionId), {
+        lastActiveAt: serverTimestamp(),
+      }).catch((error) => console.log("Emergency alert heartbeat warning:", error));
+    }, ALERT_HEARTBEAT_MS);
+
+    return () => clearInterval(intervalId);
+  }, [callSessionId, sendPhase, callStatus]);
+
+  // Keeps the screen from locking by itself while the alert is ringing.
+  // Loaded here instead of at the top of the file (like expo-intent-launcher in lib/phoneCall.js):
+  // if the native module is missing, loading it throws, and we catch that so the alert keeps
+  // working — the screen just sleeps as usual. Browsers without wake lock support are caught too.
+  useEffect(() => {
+    if (!callOpen || callStatus !== "ringing") {
+      return undefined;
+    }
+
+    let KeepAwake;
+    try {
+      KeepAwake = require("expo-keep-awake");
+    } catch (error) {
+      console.log("Keep awake unavailable:", error);
+      return undefined;
+    }
+
+    KeepAwake.activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch((error) => console.log("Keep awake warning:", error));
+
+    return () => {
+      KeepAwake.deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
+    };
+  }, [callOpen, callStatus]);
 
   const loadOfficePhone = useCallback(async () => {
     try {
@@ -288,6 +333,7 @@ export default function ResidentHome() {
       status: "ringing",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      lastActiveAt: serverTimestamp(),
     };
 
     let timeoutId;
@@ -725,7 +771,7 @@ export default function ResidentHome() {
               // call button that isn't there.
               let body = "This alert is no longer active.";
               if (sending) {
-                body = "Sending to dispatchers. Keep this screen open.";
+                body = "Sending to dispatchers.";
               } else if (sendFailed) {
                 // The queued write only survives while the app stays open (memory cache).
                 body = officePhone
@@ -736,7 +782,7 @@ export default function ResidentHome() {
                   ? `${dispatcherLabel} has your alert and can see where you are.`
                   : `${dispatcherLabel} has your alert and can see where you are. No phone number is on file for them.`;
               } else if (waitingForAnswer) {
-                body = "Waiting for a dispatcher to accept. Keep this screen open.";
+                body = "Waiting for a dispatcher to accept.";
               } else if (showOfficeFallback) {
                 body = officePhone
                   ? "You can call the office directly while you wait."
@@ -763,6 +809,9 @@ export default function ResidentHome() {
                     {title}
                   </Text>
                   <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>{body}</Text>
+                  {sending || waitingForAnswer || unanswered ? (
+                    <Text style={[styles.callSubtitle, { color: theme.text, fontWeight: "700" }]}>Keep this screen open until a dispatcher accepts.</Text>
+                  ) : null}
                   {sending || waitingForAnswer ? <ActivityIndicator color="#CF0000" style={styles.alertSpinner} /> : null}
                   {locationLine && (sending || waitingForAnswer || unanswered || accepted) ? (
                     <Text style={[styles.callSubtitle, { color: theme.secondaryText }]}>{locationLine}</Text>
