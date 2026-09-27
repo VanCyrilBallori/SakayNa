@@ -642,7 +642,7 @@ export default function ResidentHome() {
       />
       <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+          <View style={[styles.callCard, styles.callCardContent, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
             <FontAwesome name="warning" size={52} color="#CF0000" />
             <Text style={[styles.callTitle, { color: theme.text }]}>Send emergency alert?</Text>
             <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will see your name and phone number. We will try to send your location.</Text>
@@ -1421,8 +1421,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 24,
-    alignItems: "center",
   },
+  // Centering lives here, not in callCard: a ScrollView only accepts it through contentContainerStyle.
   callCardContent: {
     alignItems: "center",
   },
