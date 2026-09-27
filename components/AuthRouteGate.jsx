@@ -1,7 +1,10 @@
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 
 import ScreenState from "./ui/ScreenState";
+import { ROLES } from "../constants/app";
+import { askResidentPermissionsOnce } from "../lib/permissions";
 import { getPostAuthenticationRoute, isDisabledProfile, isSupportedRole } from "../lib/roles";
 import { clearLocalSession, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 
@@ -35,6 +38,17 @@ export default function AuthRouteGate({ children }) {
       router.replace(destination);
     }
   }, [authStatus, authUser, currentRoute, destination, profile, profileStatus, requiresProtection, router]);
+
+  // Phone app only: once a Resident is let through to their home screen, ask for the permissions
+  // their features use (notifications, location, phone calls). Other roles are not asked for now.
+  const residentAllowedIn =
+    requiresProtection && Boolean(authUser) && profileStatus === "ready" && profile?.role === ROLES.RESIDENT && destination === currentRoute;
+
+  useEffect(() => {
+    if (Platform.OS !== "web" && residentAllowedIn) {
+      askResidentPermissionsOnce();
+    }
+  }, [residentAllowedIn]);
 
   if (!requiresProtection) {
     return children;
