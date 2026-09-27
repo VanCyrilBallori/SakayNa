@@ -88,7 +88,9 @@ service cloud.firestore {
 
     // ---- In-app emergency call signaling ----
     match /callSessions/{callId} {
-      allow read:   if isStaff() || (signedIn() && resource.data.residentId == request.auth.uid);
+      // resource == null: the resident's app starts watching its new alert while the alert is
+      // still being saved. A not-yet-existing alert has nothing to show, so this is safe.
+      allow read:   if isStaff() || (signedIn() && (resource == null || resource.data.residentId == request.auth.uid));
       allow create: if signedIn() && request.resource.data.residentId == request.auth.uid;
       allow update: if isStaff() || (signedIn() && resource.data.residentId == request.auth.uid);
       allow delete: if isStaff();
