@@ -24,8 +24,14 @@
 - The Option I picked was Option B
 
 ## Phases (one at a time: plan → test → commit)
-1. Slide-up sheet UI only (buttons show "coming soon" for now)
+1. Slide-up sheet UI only (buttons show "coming soon" for now) — DONE
+   - Half-screen sheet, drag down from the title area to close
+   - Google shows a "Coming soon" pop-up
+   - Facebook and Mobile Number are greyed out with a "Soon" tag
+   - "Log in with email" link opens the current login screen
 2. Google sign-in (new EAS build)
+   - Use Google's official multicolored "G" on the Google button, per
+     Google's branding rules
 3. Role choice + Complete your profile + Firestore rules
 4. Phone login (depends on the decision above)
 
