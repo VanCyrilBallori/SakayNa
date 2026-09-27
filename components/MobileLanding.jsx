@@ -2,7 +2,19 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useMemo, useState } from "react";
+import {
+  Alert,
+  Animated,
+  Modal,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
@@ -24,6 +36,13 @@ const DARK_COLORS = {
   map: "#1E3A30",
   road: "#2E4A3F",
   van: "#5CC99A",
+  // Slide-up sheet
+  backdrop: "rgba(0, 0, 0, 0.6)",
+  handle: "rgba(241, 245, 242, 0.24)",
+  line: "rgba(241, 245, 242, 0.16)",
+  ripple: "rgba(92, 201, 154, 0.16)",
+  disabled: "#7A8B84",
+  soonTag: "rgba(241, 245, 242, 0.08)",
 };
 
 // Faint city skyline behind the phone and van: [left, width, height] in the 320-wide drawing.
@@ -45,6 +64,35 @@ export default function MobileLanding() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const colors = DARK_COLORS;
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // The sheet always takes half of the screen.
+  const sheetHeight = height * 0.5;
+  // How far the sheet has been dragged down from its open position (0 = fully open).
+  const [dragY] = useState(() => new Animated.Value(0));
+
+  // Watches a finger on the sheet's top part (grey bar + title) and moves the sheet with it.
+  const sheetDrag = useMemo(() => {
+    const springBack = () => {
+      Animated.spring(dragY, { toValue: 0, bounciness: 4, useNativeDriver: true }).start();
+    };
+
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      // Math.max(0, ...) stops the sheet from going higher than its open position.
+      onPanResponderMove: (event, gesture) => dragY.setValue(Math.max(0, gesture.dy)),
+      onPanResponderRelease: (event, gesture) => {
+        // Dragged down more than a third of the sheet, or flicked down fast: close it.
+        if (gesture.dy > sheetHeight * 0.33 || gesture.vy > 1) {
+          Animated.timing(dragY, { toValue: sheetHeight, duration: 180, useNativeDriver: true }).start(() => setSheetOpen(false));
+        } else {
+          springBack();
+        }
+      },
+      onPanResponderTerminate: springBack,
+    });
+  }, [dragY, sheetHeight]);
 
   // The illustration is drawn on a 320 x 230 grid and scaled to fit small and large phones.
   const scale = Math.min((width - 48) / 320, (height * 0.36) / 230, 1.2);
@@ -53,6 +101,22 @@ export default function MobileLanding() {
 
   const openTerms = () => {
     WebBrowser.openBrowserAsync(TERMS_URL).catch((error) => console.log("Terms page warning:", error));
+  };
+
+  // Google sign-in comes in Phase 2. Until then, the button only explains that.
+  const showGoogleComingSoon = () => {
+    Alert.alert("Coming soon", "Google sign-in is coming soon. For now, please use \"Log in with email\".");
+  };
+
+  const openSheet = () => {
+    // Start fully open, even if the sheet was dragged closed last time.
+    dragY.setValue(0);
+    setSheetOpen(true);
+  };
+
+  const openEmailLogin = () => {
+    setSheetOpen(false);
+    router.push("/login");
   };
 
   return (
@@ -195,9 +259,9 @@ export default function MobileLanding() {
           <Pressable
             style={styles.primaryButton}
             android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
-            onPress={() => router.push("/signup")}
+            onPress={openSheet}
             accessibilityRole="button"
-            accessibilityLabel="Get Started. Create a SakayNa account."
+            accessibilityLabel="Get Started. Choose how to log in or create an account."
           >
             <Text style={styles.primaryButtonText}>Get Started</Text>
             <MaterialCommunityIcons name="arrow-right" size={22} color="#FFFFFF" />
@@ -217,7 +281,94 @@ export default function MobileLanding() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Slide-up sheet: a layer on top of the page. Back button or tapping the dark area closes it. */}
+      <Modal
+        visible={sheetOpen}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={() => setSheetOpen(false)}
+      >
+        <View style={[styles.sheetBackdrop, { backgroundColor: colors.backdrop }]}>
+          <Pressable
+            style={styles.sheetDismissArea}
+            onPress={() => setSheetOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          />
+
+          <Animated.View
+            style={[styles.sheet, { height: sheetHeight, backgroundColor: colors.card, transform: [{ translateY: dragY }] }]}
+          >
+            {/* Drag area: the finger grabs the sheet here. It is kept out of the scroll list below so they don't fight. */}
+            <View style={styles.sheetGrabArea} {...sheetDrag.panHandlers}>
+              <View style={[styles.sheetHandle, { backgroundColor: colors.handle }]} />
+
+              <Text style={[styles.sheetTitle, { color: colors.heading }]} accessibilityRole="header">
+                Let&apos;s Continue with
+              </Text>
+              <Text style={[styles.sheetSubtitle, { color: colors.muted }]}>
+                Select an Option to Log in or Create an Account
+              </Text>
+            </View>
+
+            {/* Scrolls when the buttons don't fit in half the screen (for example with large text). */}
+            {/* The bottom padding keeps the last button above Android's navigation bar. */}
+            <ScrollView
+              contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 16 }]}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <View style={styles.sheetOptions}>
+                <SheetOption icon="google" label="Continue with Google" colors={colors} onPress={showGoogleComingSoon} />
+                <SheetOption icon="facebook" label="Continue with Facebook" colors={colors} soon />
+
+                <View style={styles.orRow}>
+                  <View style={[styles.orLine, { backgroundColor: colors.line }]} />
+                  <Text style={[styles.orText, { color: colors.muted }]}>or</Text>
+                  <View style={[styles.orLine, { backgroundColor: colors.line }]} />
+                </View>
+
+                <SheetOption icon="phone" label="Continue with Mobile Number" colors={colors} soon />
+              </View>
+
+              <Pressable style={styles.emailLink} onPress={openEmailLogin} accessibilityRole="link">
+                <Text style={[styles.emailLinkText, { color: colors.link }]}>Log in with email</Text>
+              </Pressable>
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
+  );
+}
+
+// One row button in the sheet. "soon" = greyed out with a "Soon" tag, and tapping does nothing.
+function SheetOption({ icon, label, colors, onPress, soon = false }) {
+  const textColor = soon ? colors.disabled : colors.heading;
+
+  return (
+    <Pressable
+      style={[styles.option, { borderColor: colors.line }]}
+      onPress={onPress}
+      disabled={soon}
+      android_ripple={soon ? undefined : { color: colors.ripple }}
+      accessibilityRole="button"
+      accessibilityLabel={soon ? `${label}. Coming soon.` : label}
+      accessibilityState={{ disabled: soon }}
+    >
+      <MaterialCommunityIcons name={icon} size={26} color={textColor} />
+      <Text style={[styles.optionText, { color: textColor }]}>{label}</Text>
+      {soon ? (
+        <View style={[styles.soonTag, { backgroundColor: colors.soonTag }]}>
+          <Text style={[styles.soonText, { color: colors.muted }]}>Soon</Text>
+        </View>
+      ) : (
+        <MaterialCommunityIcons name="chevron-right" size={24} color={colors.muted} />
+      )}
+    </Pressable>
   );
 }
 
@@ -263,4 +414,32 @@ const styles = StyleSheet.create({
   termsLink: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
   termsText: { fontSize: 12.5, lineHeight: 18, textAlign: "center" },
   termsStrong: { fontWeight: "700", textDecorationLine: "underline" },
+  sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
+  sheetDismissArea: { flex: 1 },
+  sheet: { width: "100%", borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
+  sheetGrabArea: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 },
+  sheetContent: { paddingHorizontal: 24 },
+  sheetHandle: { alignSelf: "center", width: 44, height: 5, borderRadius: 3, marginBottom: 16 },
+  sheetTitle: { fontSize: 24, lineHeight: 30, fontWeight: "800", textAlign: "center" },
+  sheetSubtitle: { marginTop: 6, fontSize: 15, lineHeight: 21, textAlign: "center" },
+  sheetOptions: { gap: 10 },
+  option: {
+    minHeight: 54,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderRadius: 20,
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  optionText: { flex: 1, fontSize: 17, fontWeight: "700" },
+  soonTag: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
+  soonText: { fontSize: 13, fontWeight: "700" },
+  orRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+  orLine: { flex: 1, height: 1 },
+  orText: { fontSize: 15, fontWeight: "600" },
+  emailLink: { minHeight: 48, marginTop: 4, alignItems: "center", justifyContent: "center" },
+  emailLinkText: { fontSize: 15, fontWeight: "800" },
 });
