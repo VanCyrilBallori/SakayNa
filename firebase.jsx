@@ -1,6 +1,8 @@
+import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import { getAuth, getReactNativePersistence, initializeAuth } from "firebase/auth";
 import { getFirestore, initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -21,7 +23,23 @@ if (missingFirebaseConfig.length) {
 }
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+// Phone: save the login in AsyncStorage so it survives closing the app.
+// Website: keep the normal browser login, same as before.
+const createAuth = () => {
+  if (Platform.OS === "web") {
+    return getAuth(app);
+  }
+
+  try {
+    return initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+  } catch {
+    // Already set up (e.g. after a reload during development).
+    return getAuth(app);
+  }
+};
+
+export const auth = createAuth();
 
 let dbInstance;
 
