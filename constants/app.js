@@ -52,8 +52,8 @@ export const RESIDENT_CANCELLABLE_STATUSES = Object.freeze([
   REQUEST_STATUSES.ASSIGNED,
 ]);
 
-// Placeholder until the real Terms of Service page exists. Change only this line.
-export const TERMS_URL = "https://example.com/sakayna-terms";
+// The Terms of Service page on the website (app/terms.jsx).
+export const TERMS_URL = "https://sakay-na-delta.vercel.app/terms";
 
 export const FIRESTORE_COLLECTIONS = Object.freeze({
   USERS: "users",
