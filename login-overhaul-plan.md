@@ -79,7 +79,7 @@ Registration always starts with "Are you a Resident or a Driver?"
 ## Steps (one at a time: plan → test on phone → commit)
 [UI] = design with Impeccable   [Build] = new EAS build   [Rules] = deploy rules
 
-1. Close the two rules gaps [Rules]
+1. Close the two rules gaps [Rules] — DONE (deployed 2026-09-28, tested)
    - A new driver application must have status "Pending".
    - Users cannot change their own role, accountStatus, approvalStatus,
      or review fields.
