@@ -23,37 +23,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
 import { FIRESTORE_COLLECTIONS, TERMS_URL } from "../constants/app";
-import { COLORS } from "../constants/design";
+import { COLORS, DARK_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
 
 // Google's official "G" logo, cut from Google's sign-in button files. Do not recolor or stretch it.
 const GOOGLE_G_LOGO = require("../assets/images/google-g.png");
-
-// Always dark on purpose: this page does not follow the phone's or the app's theme.
-const DARK_COLORS = {
-  page: "#111815",
-  arc: "rgba(92, 201, 154, 0.08)",
-  card: "#1A2420",
-  heading: "#F1F5F2",
-  muted: "#B1C1BA",
-  link: "#5CC99A",
-  building: "rgba(92, 201, 154, 0.12)",
-  groundShadow: "rgba(0, 0, 0, 0.35)",
-  phoneFrame: "#050807",
-  phoneScreen: "#22302A",
-  map: "#1E3A30",
-  road: "#2E4A3F",
-  van: "#5CC99A",
-  // Slide-up sheet
-  backdrop: "rgba(0, 0, 0, 0.6)",
-  handle: "rgba(241, 245, 242, 0.24)",
-  line: "rgba(241, 245, 242, 0.16)",
-  ripple: "rgba(92, 201, 154, 0.16)",
-  disabled: "#7A8B84",
-  soonTag: "rgba(241, 245, 242, 0.08)",
-};
 
 // Faint city skyline behind the phone and van: [left, width, height] in the 320-wide drawing.
 const BUILDINGS = [
@@ -139,7 +115,7 @@ export default function MobileLanding() {
         await logoutCurrentUser();
         Alert.alert(
           "Coming soon",
-          "Your Google account works, but creating a new SakayNa account with Google is coming soon. For now, please use \"Log in with email\"."
+          "Your Google account works, but creating a new SakayNa account with Google is coming soon. For now, please use \"Sign up with Email\"."
         );
         return;
       }
@@ -171,6 +147,11 @@ export default function MobileLanding() {
   const openEmailLogin = () => {
     setSheetOpen(false);
     router.push("/login");
+  };
+
+  const openChooseRole = () => {
+    setSheetOpen(false);
+    router.push("/choose-role");
   };
 
   return (
@@ -382,7 +363,6 @@ export default function MobileLanding() {
                   colors={colors}
                   onPress={signInWithGoogle}
                 />
-                <SheetOption icon="facebook" label="Continue with Facebook" colors={colors} soon />
 
                 <View style={styles.orRow}>
                   <View style={[styles.orLine, { backgroundColor: colors.line }]} />
@@ -390,11 +370,13 @@ export default function MobileLanding() {
                   <View style={[styles.orLine, { backgroundColor: colors.line }]} />
                 </View>
 
-                <SheetOption icon="phone" label="Continue with Mobile Number" colors={colors} soon />
+                <SheetOption icon="email-outline" label="Sign up with Email" colors={colors} onPress={openChooseRole} />
               </View>
 
               <Pressable style={styles.emailLink} onPress={openEmailLogin} accessibilityRole="link">
-                <Text style={[styles.emailLinkText, { color: colors.link }]}>Log in with email</Text>
+                <Text style={[styles.emailLinkText, { color: colors.muted }]}>
+                  Already have an account? <Text style={[styles.linkStrong, { color: colors.link }]}>Log in with email</Text>
+                </Text>
               </Pressable>
             </ScrollView>
           </Animated.View>
@@ -404,34 +386,24 @@ export default function MobileLanding() {
   );
 }
 
-// One row button in the sheet. "soon" = greyed out with a "Soon" tag, and tapping does nothing.
+// One row button in the sheet.
 // "image" shows a picture (like Google's colored G) instead of a one-color icon.
-function SheetOption({ icon, image, label, colors, onPress, soon = false }) {
-  const textColor = soon ? colors.disabled : colors.heading;
-
+function SheetOption({ icon, image, label, colors, onPress }) {
   return (
     <Pressable
       style={[styles.option, { borderColor: colors.line }]}
       onPress={onPress}
-      disabled={soon}
-      android_ripple={soon ? undefined : { color: colors.ripple }}
+      android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
-      accessibilityLabel={soon ? `${label}. Coming soon.` : label}
-      accessibilityState={{ disabled: soon }}
+      accessibilityLabel={label}
     >
       {image ? (
         <Image source={image} style={styles.optionImage} accessibilityIgnoresInvertColors />
       ) : (
-        <MaterialCommunityIcons name={icon} size={26} color={textColor} />
+        <MaterialCommunityIcons name={icon} size={26} color={colors.heading} />
       )}
-      <Text style={[styles.optionText, { color: textColor }]}>{label}</Text>
-      {soon ? (
-        <View style={[styles.soonTag, { backgroundColor: colors.soonTag }]}>
-          <Text style={[styles.soonText, { color: colors.muted }]}>Soon</Text>
-        </View>
-      ) : (
-        <MaterialCommunityIcons name="chevron-right" size={24} color={colors.muted} />
-      )}
+      <Text style={[styles.optionText, { color: colors.heading }]}>{label}</Text>
+      <MaterialCommunityIcons name="chevron-right" size={24} color={colors.muted} />
     </Pressable>
   );
 }
@@ -501,11 +473,9 @@ const styles = StyleSheet.create({
   optionText: { flex: 1, fontSize: 17, fontWeight: "700" },
   // Same space as the 26-wide icons, so all labels line up. The G itself is 24 x 24.
   optionImage: { width: 24, height: 24, marginHorizontal: 1 },
-  soonTag: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  soonText: { fontSize: 13, fontWeight: "700" },
   orRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   orLine: { flex: 1, height: 1 },
   orText: { fontSize: 15, fontWeight: "600" },
   emailLink: { minHeight: 48, marginTop: 4, alignItems: "center", justifyContent: "center" },
-  emailLinkText: { fontSize: 15, fontWeight: "800" },
+  emailLinkText: { fontSize: 15, textAlign: "center" },
 });

@@ -83,7 +83,7 @@ Registration always starts with "Are you a Resident or a Driver?"
    - A new driver application must have status "Pending".
    - Users cannot change their own role, accountStatus, approvalStatus,
      or review fields.
-2. Sheet + Choose Role screen [UI]
+2. Sheet + Choose Role screen [UI] — DONE (tested 2026-09-28)
    - Remove Facebook, rename the button, add the new Choose Role screen.
    - For now: Resident → current signup, Driver → current Apply to Drive.
 3. Photo upload helper [Build]
