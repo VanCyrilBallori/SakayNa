@@ -1,11 +1,15 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { GoogleSignin, isErrorWithCode, isSuccessResponse, statusCodes } from "@react-native-google-signin/google-signin";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { useMemo, useState } from "react";
 import {
   Alert,
   Animated,
+  Image,
   Modal,
   PanResponder,
   Pressable,
@@ -18,8 +22,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
-import { TERMS_URL } from "../constants/app";
+import { FIRESTORE_COLLECTIONS, TERMS_URL } from "../constants/app";
 import { COLORS } from "../constants/design";
+import { auth, db } from "../firebase";
+import { getPostAuthenticationRoute } from "../lib/roles";
+import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
+
+// Google's official "G" logo, cut from Google's sign-in button files. Do not recolor or stretch it.
+const GOOGLE_G_LOGO = require("../assets/images/google-g.png");
 
 // Always dark on purpose: this page does not follow the phone's or the app's theme.
 const DARK_COLORS = {
@@ -65,6 +75,7 @@ export default function MobileLanding() {
   const { width, height } = useWindowDimensions();
   const colors = DARK_COLORS;
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   // The sheet always takes half of the screen.
   const sheetHeight = height * 0.5;
@@ -103,9 +114,52 @@ export default function MobileLanding() {
     WebBrowser.openBrowserAsync(TERMS_URL).catch((error) => console.log("Terms page warning:", error));
   };
 
-  // Google sign-in comes in Phase 2. Until then, the button only explains that.
-  const showGoogleComingSoon = () => {
-    Alert.alert("Coming soon", "Google sign-in is coming soon. For now, please use \"Log in with email\".");
+  // 1. Google shows the account picker and gives us an ID token (a signed note: "this is juan@gmail.com").
+  // 2. Firebase checks that note and logs the user in, so Firestore knows who they are.
+  // 3. If they already have a SakayNa profile, index.jsx sends them to their home screen.
+  const signInWithGoogle = async () => {
+    if (googleBusy) return;
+
+    setGoogleBusy(true);
+    try {
+      GoogleSignin.configure({ webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID });
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response)) return; // The user closed the account picker.
+
+      // Firebase keeps the login from here on. Forgetting the Google side makes the picker show again next time.
+      await GoogleSignin.signOut();
+      const { user } = await signInWithCredential(auth, GoogleAuthProvider.credential(response.data.idToken));
+
+      const userDoc = await getDoc(doc(db, FIRESTORE_COLLECTIONS.USERS, user.uid));
+      const profile = userDoc.exists() ? userDoc.data() : null;
+
+      // New Google user: creating the profile (Resident or Driver) comes in Phase 3. Until then, log them out again.
+      if (!profile) {
+        await logoutCurrentUser();
+        Alert.alert(
+          "Coming soon",
+          "Your Google account works, but creating a new SakayNa account with Google is coming soon. For now, please use \"Log in with email\"."
+        );
+        return;
+      }
+
+      // Same check as the email login: disabled, pending, or unknown-role accounts may not go in.
+      if (!getPostAuthenticationRoute(profile)) {
+        await logoutCurrentUser();
+        Alert.alert("Account unavailable", "Your account is unavailable or has an invalid role. Please contact SakayNa support.");
+      }
+    } catch (error) {
+      console.log("Google sign-in failed:", error);
+      if (isErrorWithCode(error) && error.code === statusCodes.IN_PROGRESS) return;
+      const message =
+        isErrorWithCode(error) && error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE
+          ? "Google Play services is missing or out of date on this phone."
+          : getAuthErrorMessage(error, "Google sign-in did not work. Please try again, or use \"Log in with email\".");
+      Alert.alert("Google sign-in", message);
+    } finally {
+      setGoogleBusy(false);
+    }
   };
 
   const openSheet = () => {
@@ -322,7 +376,12 @@ export default function MobileLanding() {
               bounces={false}
             >
               <View style={styles.sheetOptions}>
-                <SheetOption icon="google" label="Continue with Google" colors={colors} onPress={showGoogleComingSoon} />
+                <SheetOption
+                  image={GOOGLE_G_LOGO}
+                  label={googleBusy ? "Signing in..." : "Continue with Google"}
+                  colors={colors}
+                  onPress={signInWithGoogle}
+                />
                 <SheetOption icon="facebook" label="Continue with Facebook" colors={colors} soon />
 
                 <View style={styles.orRow}>
@@ -346,7 +405,8 @@ export default function MobileLanding() {
 }
 
 // One row button in the sheet. "soon" = greyed out with a "Soon" tag, and tapping does nothing.
-function SheetOption({ icon, label, colors, onPress, soon = false }) {
+// "image" shows a picture (like Google's colored G) instead of a one-color icon.
+function SheetOption({ icon, image, label, colors, onPress, soon = false }) {
   const textColor = soon ? colors.disabled : colors.heading;
 
   return (
@@ -359,7 +419,11 @@ function SheetOption({ icon, label, colors, onPress, soon = false }) {
       accessibilityLabel={soon ? `${label}. Coming soon.` : label}
       accessibilityState={{ disabled: soon }}
     >
-      <MaterialCommunityIcons name={icon} size={26} color={textColor} />
+      {image ? (
+        <Image source={image} style={styles.optionImage} accessibilityIgnoresInvertColors />
+      ) : (
+        <MaterialCommunityIcons name={icon} size={26} color={textColor} />
+      )}
       <Text style={[styles.optionText, { color: textColor }]}>{label}</Text>
       {soon ? (
         <View style={[styles.soonTag, { backgroundColor: colors.soonTag }]}>
@@ -435,6 +499,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   optionText: { flex: 1, fontSize: 17, fontWeight: "700" },
+  // Same space as the 26-wide icons, so all labels line up. The G itself is 24 x 24.
+  optionImage: { width: 24, height: 24, marginHorizontal: 1 },
   soonTag: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
   soonText: { fontSize: 13, fontWeight: "700" },
   orRow: { flexDirection: "row", alignItems: "center", gap: 16 },
