@@ -7,7 +7,8 @@ Problems found but not fixed yet. Newest at the top.
 ## 1. Emergency call error on Android
 
 - **Date found:** [Sept 26, 2026]
-- **Status:** Not fixed yet
+- **Status:** Fixed (Sept 27, 2026, commit f827299). The pop-up's
+  centering moved into the ScrollView's contentContainerStyle.
 - **Steps:**
   1. Log in as Resident on the Android development build
   2. Tap "Send emergency alert" → "Send alert"
@@ -55,4 +56,7 @@ Call Stack
   them manually in the Firebase Console.
 - **Idea for fix:** Alerts should automatically expire (for example,
   after a few minutes with no answer).
-- **Status:** Not fixed yet. Important before the pilot.
+- **Status:** Partly fixed (commit cfc717b): dispatchers stop seeing stuck
+  alerts after 2 minutes. Firestore still says "ringing", and the Admin
+  Emergency Calls list still shows them as "Ringing — Unanswered".
+  Important before the pilot.
