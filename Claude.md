@@ -171,3 +171,36 @@ After every change, tell me exactly how to test it on my phone, then STOP. Do no
 
 ## 12. Installing packages
 Always use npx expo install to add packages, never plain npm install, so versions match my Expo SDK.
+
+Before starting work: role docs are in the Skills folder (resident.md,
+admin.md, etc.). Known problems are in known-issues.md.
+
+## EAS build checklist
+1. Commit first (git status must be clean).
+2. Run npx expo install --check.
+3. After the build: eas fingerprint:compare --build-id <id> should say "matches".
+4. Uninstall the old app, install the new APK.
+
+## How to update the website (Vercel)
+
+Vercel builds the website from the `main` branch. I work on `master`.
+To put my latest work on the live website, copy master onto main.
+
+Before starting:
+- Everything must be tested and committed (git status = clean).
+- Everything on master goes live, not just the last change.
+- Emergency alert changes: old APKs may not work with the new website.
+  Make sure testers have the newest APK.
+
+Commands (run one at a time, from the project folder):
+1. git push origin master      → back up master to GitHub
+2. git switch main             → open the main branch
+3. git merge --ff-only master  → move main forward to match master
+                                 (must say "Fast-forward"; if it says
+                                 "Not possible to fast-forward", STOP)
+4. git push origin main        → this makes Vercel build the website
+5. git switch master           → go back to master to keep working
+
+After:
+- Vercel dashboard: new deployment should say "Ready".
+- Open https://sakay-na-delta.vercel.app and check the changed pages.
