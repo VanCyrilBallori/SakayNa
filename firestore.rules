@@ -36,11 +36,12 @@ service cloud.firestore {
         || (request.resource.data.role == "Driver" && request.resource.data.accountStatus == "Pending");
     }
 
-    // A self-update (by the profile's own owner) may never change role or
-    // accountStatus. Those fields may only move through isAdmin()/isStaff() paths.
-    function keepsRoleAndStatus() {
-      return request.resource.data.role == resource.data.role
-        && request.resource.data.accountStatus == resource.data.accountStatus;
+    // A self-update (by the profile's own owner) may never change these
+    // fields. Only an Admin may change them.
+    function keepsAdminOnlyFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(["role", "accountStatus", "approvalStatus",
+                 "approvalReviewedAt", "approvalReviewedBy"]);
     }
 
     // ---- User profiles ----
@@ -48,7 +49,7 @@ service cloud.firestore {
       allow read:   if signedIn() && (request.auth.uid == userId || isStaff());
       allow create: if signedIn() && request.auth.uid == userId && selfCreateProfileIsSafe();
       allow update: if signedIn() && (
-        (request.auth.uid == userId && keepsRoleAndStatus()) || (isAdmin() && request.auth.uid != userId)
+        (request.auth.uid == userId && keepsAdminOnlyFields()) || (isAdmin() && request.auth.uid != userId)
       );
       allow delete: if false;
     }
@@ -99,7 +100,10 @@ service cloud.firestore {
     // ---- Driver applications ----
     match /Driver_Applications/{applicationId} {
       allow read:   if isAdmin() || (signedIn() && resource.data.driverUid == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.driverUid == request.auth.uid;
+      // A new application must start as "Pending". Only an Admin may approve it.
+      allow create: if signedIn()
+        && request.resource.data.driverUid == request.auth.uid
+        && request.resource.data.status == "Pending";
       allow update: if isAdmin();
       allow delete: if false;
     }
