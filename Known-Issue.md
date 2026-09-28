@@ -39,13 +39,14 @@ Call Stack
 
   ## Theme plan (future feature, not a bug)
 
-- **Mobile landing page ("Get Started" page):** Always dark. It should NOT
-  change with the phone's theme or the app's theme setting. This is on
-  purpose.
-- **Rest of the app (future):** Default theme is dark for everyone. Users can
-  switch to light mode anytime in Settings, and switch back to dark.
-- **Status:** Not built yet. The landing page is already dark, so nothing
-  needs fixing there.
+- **Decided (Sept 28, 2026):** the app uses light mode, not dark.
+- **Landing page, Get Started sheet and Choose Role:** Always light. They
+  do NOT change with the phone's theme or the app's Dark / Light switch.
+  This is on purpose.
+- **Rest of the app:** Already starts in light mode (lib/theme.js). Users
+  can still switch to Dark in the avatar menu.
+- **Status:** Done (login-overhaul-plan.md step 2b). Nothing else needs
+  building.
 
   ## Emergency alerts can get stuck "ringing"
 

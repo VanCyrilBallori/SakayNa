@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, DARK_COLORS } from "../constants/design";
+import { COLORS, LIGHT_COLORS } from "../constants/design";
 
 // The two account types a person can create by themselves.
 // Dispatcher and Admin accounts are made by an Admin, so they are not here.
@@ -26,11 +26,11 @@ const ROLE_CHOICES = [
   },
 ];
 
-// Opened from "Sign up with Email" in the Get Started sheet. Always dark, like the landing page.
+// Opened from "Sign up with Email" in the Get Started sheet. Always light, like the landing page.
 export default function ChooseRole() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = DARK_COLORS;
+  const colors = LIGHT_COLORS;
   const [resident, driver] = ROLE_CHOICES;
 
   const goBack = () => {
@@ -43,8 +43,8 @@ export default function ChooseRole() {
 
   return (
     <View style={[styles.page, { backgroundColor: colors.page }]}>
-      {/* Light clock/battery icons so they stay visible on the dark page. */}
-      <StatusBar style="light" />
+      {/* Dark clock/battery icons so they stay visible on the white page. */}
+      <StatusBar style="dark" />
 
       {/* Scrolls when the phone's text size is very large, so nothing gets cut off. */}
       <ScrollView
@@ -93,7 +93,7 @@ export default function ChooseRole() {
   );
 }
 
-// One big button. "filled" = SakayNa green. Otherwise dark with a light outline so its edges are easy to see.
+// One big button. "filled" = SakayNa green. Otherwise a light panel with a green-grey outline so its edges are easy to see.
 function RoleButton({ choice, filled = false, colors, onPress }) {
   const textColor = filled ? "#FFFFFF" : colors.heading;
 

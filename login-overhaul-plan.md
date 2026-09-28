@@ -54,6 +54,8 @@ Registration always starts with "Are you a Resident or a Driver?"
   documents. Vehicles belong to the barangay.
 - Old driver accounts, driver applications and driver-owned vehicles are
   test data. Delete them by hand in the Firebase Console (step 10).
+- New screens are light mode (white background, SakayNa green buttons).
+  The landing page, Get Started sheet and Choose Role are always light.
 
 ## Resident registration form
 - Full Name, Phone Number, Barangay, Address (house no. / street / purok)
@@ -86,6 +88,10 @@ Registration always starts with "Are you a Resident or a Driver?"
 2. Sheet + Choose Role screen [UI] — DONE (tested 2026-09-28)
    - Remove Facebook, rename the button, add the new Choose Role screen.
    - For now: Resident → current signup, Driver → current Apply to Drive.
+2b. Light mode for the start screens [UI] — DONE (tested 2026-09-28)
+   - Landing page, Get Started sheet and Choose Role switch from dark to
+     light. Shared colors in constants/design.js become LIGHT_COLORS.
+   - Google and Email buttons in the sheet get a visible outline.
 3. Photo upload helper [Build]
    - npx expo install expo-image-picker expo-image-manipulator
    - New lib/uploadPhoto.js: take/pick photo → shrink → upload to

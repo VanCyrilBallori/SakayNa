@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
 import { FIRESTORE_COLLECTIONS, TERMS_URL } from "../constants/app";
-import { COLORS, DARK_COLORS } from "../constants/design";
+import { COLORS, LIGHT_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
@@ -49,7 +49,7 @@ export default function MobileLanding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const colors = DARK_COLORS;
+  const colors = LIGHT_COLORS;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
 
@@ -156,8 +156,8 @@ export default function MobileLanding() {
 
   return (
     <View style={[styles.page, { backgroundColor: colors.page }]}>
-      {/* Light clock/battery icons so they stay visible on the dark page, even when the phone is in light mode. */}
-      <StatusBar style="light" />
+      {/* Dark clock/battery icons so they stay visible on the white page, even when the phone is in dark mode. */}
+      <StatusBar style="dark" />
       <View style={[styles.arcTop, { backgroundColor: colors.arc }]} />
       <View style={[styles.arcBottom, { backgroundColor: colors.arc }]} />
 
@@ -391,7 +391,7 @@ export default function MobileLanding() {
 function SheetOption({ icon, image, label, colors, onPress }) {
   return (
     <Pressable
-      style={[styles.option, { borderColor: colors.line }]}
+      style={[styles.option, { borderColor: colors.outline }]}
       onPress={onPress}
       android_ripple={{ color: colors.ripple }}
       accessibilityRole="button"
