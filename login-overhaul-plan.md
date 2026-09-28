@@ -29,9 +29,13 @@
    - Google shows a "Coming soon" pop-up
    - Facebook and Mobile Number are greyed out with a "Soon" tag
    - "Log in with email" link opens the current login screen
-2. Google sign-in (new EAS build)
+2. Google sign-in (new EAS build) — DONE
    - Use Google's official multicolored "G" on the Google button, per
      Google's branding rules
+   - Google package gives an ID token, Firebase JS SDK signs in with it
+   - Existing profile → home screen; blocked profile → logged out
+   - New Google user (no profile) → logged out + "coming soon" message
+     (Phase 3 replaces this with role choice + profile)
 3. Role choice + Complete your profile + Firestore rules
 4. Phone login (depends on the decision above)
 
