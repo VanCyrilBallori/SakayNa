@@ -99,7 +99,7 @@ Registration always starts with "Are you a Resident or a Driver?"
    - Tighten the upload preset in the Cloudinary dashboard (images only,
      small max file size, one folder).
    - Test it inside the current Apply to Drive page.
-4. Resident registration form [UI] [Rules]
+4. Resident registration form [UI] [Rules] — DONE (deployed and tested 2026-09-29)
    - New app/register-resident.jsx (design-refs/resident-form.png,
      screens 3-6): Details → Proof → Review → Submitted. Google new users
      can now finish sign-up (replaces the "coming soon" message).
