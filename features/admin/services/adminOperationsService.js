@@ -55,12 +55,14 @@ export const logAdminActivity = async ({ adminId, action, targetType, targetId, 
   });
 };
 
-export const reviewDriverApplication = async ({ adminId, applicationId, decision, reason = "", notes = "" }) => {
-  if (!["Approved", "Rejected", "Under Review", "Correction Requested"].includes(decision)) {
-    throw new Error("Choose a supported application decision.");
+// Approve or reject a Driver's application.
+// The application and the Driver's profile are changed together, and the activity log records it.
+export const reviewDriverApplication = async ({ adminId, applicationId, decision, reason = "" }) => {
+  if (![ACCOUNT_STATUSES.APPROVED, ACCOUNT_STATUSES.REJECTED].includes(decision)) {
+    throw new Error("Choose Approve or Reject.");
   }
-  if (decision === "Rejected" && !hasText(reason, 3)) {
-    throw new Error("A rejection reason of at least 3 characters is required.");
+  if (decision === ACCOUNT_STATUSES.REJECTED && !hasText(reason, 3)) {
+    throw new Error("Write a reason of at least 3 characters.");
   }
 
   await runTransaction(db, async (transaction) => {
@@ -69,8 +71,8 @@ export const reviewDriverApplication = async ({ adminId, applicationId, decision
     if (!applicationSnapshot.exists()) throw new Error("The driver application no longer exists.");
     const application = applicationSnapshot.data();
     if (application.driverUid === adminId) throw new Error("You cannot review your own driver application.");
-    if (["Approved", "Rejected"].includes(application.status) && application.status !== decision) {
-      throw new Error("This application already has a final decision.");
+    if (application.status !== ACCOUNT_STATUSES.PENDING) {
+      throw new Error("This application was already reviewed.");
     }
     const driverRef = doc(db, FIRESTORE_COLLECTIONS.USERS, application.driverUid);
     const driverSnapshot = await transaction.get(driverRef);
@@ -81,7 +83,6 @@ export const reviewDriverApplication = async ({ adminId, applicationId, decision
       approvalStatus: decision,
       reviewedAt: serverTimestamp(),
       reviewedBy: adminId,
-      reviewNotes: notes.trim(),
       rejectionReason: decision === "Rejected" ? reason.trim() : "",
       updatedAt: serverTimestamp(),
     };

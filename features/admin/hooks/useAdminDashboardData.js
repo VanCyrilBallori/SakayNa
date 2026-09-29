@@ -26,7 +26,7 @@ const EMPTY_COUNTS = {
 
 const readCount = async (builtQuery) => (await getCountFromServer(builtQuery)).data().count;
 
-export default function useAdminDashboardData(enabled) {
+export default function useAdminDashboardData(enabled, adminBarangay) {
   const [users, setUsers] = useState([]);
   const [driverApplications, setDriverApplications] = useState([]);
   const [transportRequests, setTransportRequests] = useState([]);
@@ -67,24 +67,6 @@ export default function useAdminDashboardData(enabled) {
         console.log("Users listener warning:", error);
         setUsersError("Users could not be loaded. Please check Firestore permissions.");
         setIsLoadingUsers(false);
-      }
-    );
-
-    const unsubscribeApplications = onSnapshot(
-      query(collection(db, "Driver_Applications"), orderBy("createdAt", "desc"), limit(COLLECTION_LIMIT)),
-      (snapshot) => {
-        const nextApplications = snapshot.docs
-          .map((applicationDoc) => ({ id: applicationDoc.id, ...applicationDoc.data() }))
-          .sort(sortByCreatedAtDesc);
-
-        setDriverApplications(nextApplications);
-        setApplicationsError("");
-        setIsLoadingApplications(false);
-      },
-      (error) => {
-        console.log("Driver applications listener warning:", error);
-        setApplicationsError("Driver applications could not be loaded. Please check Firestore permissions.");
-        setIsLoadingApplications(false);
       }
     );
 
@@ -136,12 +118,43 @@ export default function useAdminDashboardData(enabled) {
 
     return () => {
       unsubscribeUsers();
-      unsubscribeApplications();
       unsubscribeRequests();
       unsubscribeVehicles();
       unsubscribeAssignments();
     };
   }, [enabled]);
+
+  // Driver applications: only this Admin's own barangay.
+  // The rules refuse the whole list if it could include another barangay, so the list must ask for one barangay.
+  // No orderBy here (it would need a new Firestore index); the list is sorted below instead.
+  useEffect(() => {
+    if (!enabled || !adminBarangay) {
+      setDriverApplications([]);
+      setIsLoadingApplications(false);
+      return undefined;
+    }
+
+    setIsLoadingApplications(true);
+    const unsubscribeApplications = onSnapshot(
+      query(collection(db, "Driver_Applications"), where("barangay", "==", adminBarangay), limit(COLLECTION_LIMIT)),
+      (snapshot) => {
+        const nextApplications = snapshot.docs
+          .map((applicationDoc) => ({ id: applicationDoc.id, ...applicationDoc.data() }))
+          .sort(sortByCreatedAtDesc);
+
+        setDriverApplications(nextApplications);
+        setApplicationsError("");
+        setIsLoadingApplications(false);
+      },
+      (error) => {
+        console.log("Driver applications listener warning:", error);
+        setApplicationsError("Driver applications could not be loaded. Please check Firestore permissions.");
+        setIsLoadingApplications(false);
+      }
+    );
+
+    return unsubscribeApplications;
+  }, [enabled, adminBarangay]);
 
   useEffect(() => {
     if (!enabled) {

@@ -1,6 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -20,6 +20,7 @@ import {
 
 import BrandLogo from "../components/BrandLogo";
 import AdminCallSessionsSection from "../features/admin/components/AdminCallSessionsSection";
+import AdminDriverApplicationsSection from "../features/admin/components/AdminDriverApplicationsSection";
 import AdminOperationsPanel from "../features/admin/components/AdminOperationsPanel";
 import AdminOverviewSection from "../features/admin/components/AdminOverviewSection";
 import AdminRequestsSection from "../features/admin/components/AdminRequestsSection";
@@ -43,7 +44,7 @@ import { useTheme } from "../lib/theme";
 
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
-const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Operations", "Requests", "Users", "Vehicles"];
+const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Driver Applications", "Operations", "Requests", "Users", "Vehicles"];
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
 const requestTypeFilters = ["All", "Emergency Requests", "Community Transport Requests"];
@@ -52,19 +53,6 @@ const vehicleStatusOptions = ["Available", "Assigned", "In Use", "Inactive"];
 const cityVehicleOwnerOptions = [CITY_VEHICLE_OWNER];
 
 const normalizeRole = (role = "") => role.toLowerCase();
-const applicationUsesOwnVehicle = (application) =>
-  application?.useOwnVehicle === true ||
-  Boolean(application?.vehicleMake || application?.vehicleModel || application?.plateNumber || application?.uploaded_document);
-
-const getVehicleNameFromApplication = (application) => {
-  if (!applicationUsesOwnVehicle(application)) {
-    return "No personal vehicle submitted";
-  }
-
-  const parts = [application.vehicleYear, application.vehicleMake, application.vehicleModel].filter(Boolean);
-  return parts.join(" ") || "Driver-Owned Vehicle";
-};
-
 const getRequestTypeLabel = (request) => {
   const rawType = `${request.requestType || request.type || request.transportType || ""}`.toLowerCase();
 
@@ -304,6 +292,10 @@ export default function AdminHome() {
   const [requestTypeFilter, setRequestTypeFilter] = useState("All");
   const [userRoleView, setUserRoleView] = useState("All");
 
+  // Resident Verification and Driver Applications: only this Admin's own barangay.
+  // The barangay is set on the Admin's profile in the Firebase Console.
+  const adminBarangay = profile?.barangay || "";
+
   const {
     users,
     driverApplications,
@@ -313,9 +305,11 @@ export default function AdminHome() {
     isLoadingUsers,
     isLoadingRequests,
     isLoadingVehicles,
+    isLoadingApplications,
     usersError,
     setUsersError,
     requestsError,
+    applicationsError,
     vehiclesError,
     setVehiclesError,
     usersAtLimit,
@@ -323,15 +317,13 @@ export default function AdminHome() {
     vehiclesAtLimit,
     collectionLimit,
     counts,
-  } = useAdminDashboardData(adminAccessStatus === "authorized");
+  } = useAdminDashboardData(adminAccessStatus === "authorized", adminBarangay);
 
   const { callSessions, staleRingingCount, isLoadingCallSessions, callSessionsError } = useAdminCallSessions(
     adminAccessStatus === "authorized"
   );
 
   // Resident Verification: only the Pending residents of this Admin's own barangay.
-  // The barangay is set on the Admin's profile in the Firebase Console.
-  const adminBarangay = profile?.barangay || "";
   const [residentVerifications, setResidentVerifications] = useState([]);
   const [isLoadingVerifications, setIsLoadingVerifications] = useState(false);
   const [verificationsError, setVerificationsError] = useState("");
@@ -367,7 +359,6 @@ export default function AdminHome() {
 
   const [userMessage, setUserMessage] = useState("");
   const [vehicleMessage, setVehicleMessage] = useState("");
-  const [syncingVehicles, setSyncingVehicles] = useState(false);
 
   const [selectedRequestRecord, setSelectedRequestRecord] = useState(null);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
@@ -553,77 +544,6 @@ export default function AdminHome() {
   const clearSectionMessages = () => {
     setUserMessage("");
     setVehicleMessage("");
-  };
-
-  const syncApprovedDriverVehicles = async () => {
-    setVehiclesError("");
-    setVehicleMessage("");
-    setSyncingVehicles(true);
-
-    try {
-      const approvedApplications = driverApplications.filter((application) => application.status === "Approved" && applicationUsesOwnVehicle(application));
-      const batch = writeBatch(db);
-
-      approvedApplications.forEach((application) => {
-        const ownerProfile = usersById[application.driverUid];
-        const activeAssignment = activeAssignments.find((assignment) => assignment.driverId === application.driverUid);
-        const nextStatus = activeAssignment
-          ? activeAssignment.status === "In Progress"
-            ? "In Use"
-            : "Assigned"
-          : "Available";
-
-        batch.set(
-          doc(db, "vehicles", `driver-${application.driverUid}`),
-          {
-            name: getVehicleNameFromApplication(application),
-            type: application.bodyType || application.vehicleModel || "Driver Vehicle",
-            plateNumber: application.plateNumber || "",
-            ownerType: DRIVER_VEHICLE_OWNER,
-            ownerUid: application.driverUid,
-            driverName: application.fullName || ownerProfile?.fullName || "Approved Driver",
-            color: application.color || "",
-            mvFileNumber: application.mvFileNumber || "",
-            status: nextStatus,
-            sourceApplicationId: application.id,
-            applicationStatus: "Approved",
-            bodyType: application.bodyType || "",
-            vehicleMake: application.vehicleMake || "",
-            vehicleModel: application.vehicleModel || "",
-            vehicleYear: application.vehicleYear || "",
-            useOwnVehicle: true,
-            createdAt: application.createdAt || serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      });
-
-      await batch.commit();
-
-      if (approvedApplications.length) {
-        const vehicleIds = approvedApplications.map((application) => `driver-${application.driverUid}`);
-        logAdminActivity({
-          adminId: authUser?.uid || "",
-          action: "driver-vehicles-synced",
-          targetType: "vehicle",
-          targetId: "",
-          summary: `${vehicleIds.length} driver-owned vehicle${vehicleIds.length === 1 ? "" : "s"} synced from approved applications.`,
-          metadata: { count: vehicleIds.length, vehicleIds },
-        }).catch((error) => console.log("Activity log warning:", error));
-      }
-
-      setVehicleMessage(
-        approvedApplications.length
-          ? "Driver-owned vehicle records synced from approved applications."
-          : "No approved personal-vehicle applications were available to sync."
-      );
-    } catch (error) {
-      console.log("Driver vehicle sync failed:", error);
-      setVehiclesError("Approved driver vehicles could not be synced. Please check Firestore permissions.");
-    } finally {
-      setSyncingVehicles(false);
-    }
   };
 
   const openUserEditor = (user) => {
@@ -821,8 +741,21 @@ export default function AdminHome() {
       );
     }
 
+    if (selectedSection === "Driver Applications") {
+      return (
+        <AdminDriverApplicationsSection
+          theme={theme}
+          adminId={authUser?.uid || ""}
+          adminBarangay={adminBarangay}
+          applications={pendingApplications}
+          isLoading={isLoadingApplications}
+          loadError={applicationsError}
+        />
+      );
+    }
+
     if (selectedSection === "Operations") {
-      return <AdminOperationsPanel users={users} applications={driverApplications} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} theme={theme} />;
+      return <AdminOperationsPanel users={users} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} theme={theme} />;
     }
 
     if (selectedSection === "Requests") {
@@ -872,8 +805,6 @@ export default function AdminHome() {
           theme={theme}
           styles={styles}
           cityVehicleOwnerLabel={CITY_VEHICLE_OWNER}
-          syncingVehicles={syncingVehicles}
-          syncApprovedDriverVehicles={syncApprovedDriverVehicles}
           isLoadingVehicles={isLoadingVehicles}
           filteredVehicles={filteredVehicles}
           vehiclesError={vehiclesError}
@@ -959,6 +890,11 @@ export default function AdminHome() {
                         {label === "Resident Verification" && residentVerifications.length > 0 ? (
                           <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
                             <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{residentVerifications.length}</Text>
+                          </View>
+                        ) : null}
+                        {label === "Driver Applications" && pendingApplications.length > 0 ? (
+                          <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{pendingApplications.length}</Text>
                           </View>
                         ) : null}
                       </View>

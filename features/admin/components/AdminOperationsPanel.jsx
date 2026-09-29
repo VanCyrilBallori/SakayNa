@@ -17,7 +17,6 @@ import {
   getProfileName,
   getUserMissionConflicts,
   requestPermanentDeletion,
-  reviewDriverApplication,
   saveMaintenanceRecord,
   saveSystemSettings,
   updateDispatcherScope,
@@ -30,7 +29,7 @@ const toDateLabel = (value) => {
 };
 const statusOf = (user) => user.accountStatus || user.approvalStatus || ACCOUNT_STATUSES.ACTIVE;
 
-export default function AdminOperationsPanel({ users, applications, vehicles, assignments, requests, adminId, adminName, theme }) {
+export default function AdminOperationsPanel({ users, vehicles, assignments, requests, adminId, adminName, theme }) {
   const [view, setView] = useState("Accounts");
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("All");
@@ -45,10 +44,6 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
   const [scopeAreas, setScopeAreas] = useState([]);
   const [scopePhone, setScopePhone] = useState("");
   const [scopeOffice, setScopeOffice] = useState("");
-  const [reviewingApplication, setReviewingApplication] = useState(null);
-  const [reviewDecision, setReviewDecision] = useState("Approved");
-  const [reviewReason, setReviewReason] = useState("");
-  const [reviewNotes, setReviewNotes] = useState("");
   const [invitationOpen, setInvitationOpen] = useState(false);
   const [invitation, setInvitation] = useState({ email: "", displayName: "", barangay: "", serviceAreas: [], operationalPhone: "" });
   const [maintenanceVehicle, setMaintenanceVehicle] = useState(null);
@@ -73,7 +68,6 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
       return (filterRole === "All" || user.role === filterRole) && (filterStatus === "All" || statusOf(user) === filterStatus) && (!needle || haystack.includes(needle));
     });
   }, [filterRole, filterStatus, search, users]);
-  const pendingApplications = useMemo(() => applications.filter((application) => ["Pending", "Under Review", "Correction Requested"].includes(application.status || application.approvalStatus)), [applications]);
   const vehicleMaintenance = useMemo(() => vehicles.filter((vehicle) => vehicle.maintenanceStatus && vehicle.maintenanceStatus !== "Completed").length, [vehicles]);
 
   const openUser = (user) => {
@@ -152,11 +146,6 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
     {filteredUsers.slice(0, 100).map((user) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{getProfileName(user)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{user.role || "No role"} | {statusOf(user)} | {user.barangay || user.office || "No operational area"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {user.operationalPhone || user.phoneNumber || user.phone || "Not provided"}</Text><AppButton label="Manage profile" variant="secondary" onPress={() => openUser(user)} style={styles.button} /></>, user.id))}
   </>;
 
-  const renderApplications = () => <>
-    <Text style={[styles.title, { color: theme.text }]}>Driver Application Review</Text>
-    {pendingApplications.length ? pendingApplications.map((application) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{application.fullName || application.email || "Driver applicant"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Status: {application.status || application.approvalStatus || "Pending"} | Applied: {toDateLabel(application.createdAt)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {application.phone || "Not provided"} | License: {application.licenseNumber || "Not provided"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Vehicle preference: {application.useOwnVehicle ? "Driver-owned" : "Needs city/barangay vehicle"}</Text><AppButton label="Review application" onPress={() => { setReviewingApplication(application); setReviewDecision("Approved"); setReviewReason(""); setReviewNotes(""); }} style={styles.button} /></>, application.id)) : card(<Text style={[styles.copy, { color: theme.mutedText }]}>No pending Driver applications. Final decisions remain stored for review history.</Text>, "empty")}
-  </>;
-
   const renderStaff = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>Coming soon. Creating a Dispatcher requires a trusted backend that can provision a Firebase Authentication login, which this app does not have. Nothing is sent or queued from here. To add a Dispatcher today, create the account directly in the Firebase console (see README step 4).</Text>
@@ -195,10 +184,10 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
     {logs.length ? logs.map((log) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{log.action || "Administrative action"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{log.summary || "No summary"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{toDateLabel(log.createdAt)} | Actor: {log.actorId || "Not available"}</Text></>, log.id)) : card(<Text style={[styles.copy, { color: theme.mutedText }]}>No activity records are available yet.</Text>, "logs-empty")}
   </>;
 
-  const viewContent = { Accounts: renderAccounts, Applications: renderApplications, "Add Dispatcher": renderStaff, Maintenance: renderVehicles, Reports: renderReports, Settings: renderSettings, Logs: renderLogs }[view];
+  const viewContent = { Accounts: renderAccounts, "Add Dispatcher": renderStaff, Maintenance: renderVehicles, Reports: renderReports, Settings: renderSettings, Logs: renderLogs }[view];
   return <>
     <View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nav}>{["Accounts", "Applications", "Add Dispatcher", "Maintenance", "Reports", "Settings", "Logs"].map((item) => chip(item, view === item, () => setView(item)))}</ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nav}>{["Accounts", "Add Dispatcher", "Maintenance", "Reports", "Settings", "Logs"].map((item) => chip(item, view === item, () => setView(item)))}</ScrollView>
       <FeedbackMessage message={error} tone="error" />
       <FeedbackMessage message={message} tone="success" />
       {viewContent()}
@@ -220,8 +209,6 @@ export default function AdminOperationsPanel({ users, applications, vehicles, as
         <AppButton label="Close" variant="secondary" onPress={() => setSelectedUser(null)} style={styles.button} />
       </ScrollView></View>
     </Modal>
-
-    <Modal visible={Boolean(reviewingApplication)} transparent animationType="fade" onRequestClose={() => setReviewingApplication(null)}><View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}><Text style={[styles.title, { color: theme.text }]}>Review Driver Application</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{["Approved", "Rejected", "Under Review", "Correction Requested"].map((item) => chip(item, reviewDecision === item, () => setReviewDecision(item)))}</ScrollView><Text style={[styles.label, { color: theme.text }]}>Rejection reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reviewReason} onChangeText={setReviewReason} multiline placeholder="Required when rejecting" placeholderTextColor={theme.subtleText} /><Text style={[styles.label, { color: theme.text }]}>Review notes</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reviewNotes} onChangeText={setReviewNotes} multiline /><AppButton label={`Save ${reviewDecision}`} loading={busy} onPress={() => confirm("Confirm application review", `Mark this application ${reviewDecision}? Final decisions cannot be reversed by this client.`, () => run(async () => { await reviewDriverApplication({ adminId, applicationId: reviewingApplication.id, decision: reviewDecision, reason: reviewReason, notes: reviewNotes }); setReviewingApplication(null); }, `Application marked ${reviewDecision}.`))} style={styles.button} /><AppButton label="Close" variant="secondary" onPress={() => setReviewingApplication(null)} style={styles.button} /></ScrollView></View></Modal>
 
     <Modal visible={invitationOpen} transparent animationType="fade" onRequestClose={() => setInvitationOpen(false)}><View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}><Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text><Text style={[styles.copy, { color: theme.mutedText }]}>This creates a pending handoff record only — it does not create a Firebase Authentication user. Secure delivery and account provisioning remain Phase 8.</Text>{[["Display name", "displayName"], ["Email", "email"], ["Barangay", "barangay"], ["Operational phone", "operationalPhone"]].map(([label, key]) => <View key={key}><Text style={[styles.label, { color: theme.text }]}>{label}</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={invitation[key]} onChangeText={(value) => setInvitation((current) => ({ ...current, [key]: value }))} keyboardType={key === "email" ? "email-address" : key === "operationalPhone" ? "phone-pad" : "default"} autoCapitalize="none" /></View>)}<AppButton label="Add Dispatcher (coming soon)" disabled onPress={() => confirm("Add Dispatcher", "This does not create a login account.", () => run(async () => { await createStaffInvitation({ adminId, ...invitation, intendedRole: ROLES.DISPATCHER }); setInvitationOpen(false); }, "Dispatcher record created."))} style={styles.button} /><AppButton label="Close" variant="secondary" onPress={() => setInvitationOpen(false)} style={styles.button} /></ScrollView></View></Modal>
 

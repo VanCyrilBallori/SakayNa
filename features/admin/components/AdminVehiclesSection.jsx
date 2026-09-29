@@ -6,8 +6,6 @@ export default function AdminVehiclesSection({
   theme,
   styles,
   cityVehicleOwnerLabel,
-  syncingVehicles,
-  syncApprovedDriverVehicles,
   isLoadingVehicles,
   filteredVehicles,
   vehiclesError,
@@ -22,13 +20,6 @@ export default function AdminVehiclesSection({
       <View style={styles.vehicleToolbar}>
         <TouchableOpacity style={styles.primaryActionButton} onPress={() => openVehicleEditor()}>
           <Text style={styles.primaryActionButtonText}>Add City/Barangay Vehicle</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.secondaryActionButton, syncingVehicles && styles.actionButtonDisabled]}
-          onPress={syncApprovedDriverVehicles}
-          disabled={syncingVehicles}
-        >
-          <Text style={styles.secondaryActionButtonText}>{syncingVehicles ? "Syncing..." : "Sync Driver-Owned Vehicles"}</Text>
         </TouchableOpacity>
       </View>
 
@@ -84,7 +75,7 @@ export default function AdminVehiclesSection({
         <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>No vehicle records found.</Text>
           <Text style={[styles.emptyText, { color: theme.mutedText }]}>
-            {vehiclesError || "Add a city/barangay vehicle or sync approved driver-owned vehicles to populate this section."}
+            {vehiclesError || "Add a city/barangay vehicle to populate this section."}
           </Text>
         </View>
       )}
