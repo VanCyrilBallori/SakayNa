@@ -138,16 +138,23 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
    - New "Resident Verification" list: photo, Approve / Reject + reason.
    - Rules: lock barangay (only admin can change it). Driver Settings
      shows barangay as read-only.
-8. Resident resubmit
+8. Resident resubmit (after the demo)
    - Rejected banner shows the reason + "Upload new proof" → Pending.
+   - Driver: "Fix and resubmit" on driver-status.jsx (moved from step 9).
    - Rules: the only status change a user may make is Rejected → Pending.
-9. Driver application form [UI] [Rules]
-   - New app/register-driver.jsx (checks age 18+).
-   - Rules: a new Driver needs a verified email too (moved from step 5).
-   - driver-status.jsx: new status names, rejection reason, "Fix and
-     resubmit".
+9. Driver application form [UI] [Rules] — DONE (deployed and tested 2026-09-29)
+   - New app/register-driver.jsx: Personal → License → Clearances →
+     Review → Submitted. Must be 18 or older; an expired license is
+     blocked. Choose Role → Driver opens it (email and Google users).
+   - Rules: a new Driver needs a verified email too (moved from step 5);
+     a driver application's id must be the driver's own uid.
+   - driver-status.jsx: timeline (Submitted → Pending Review → Approved
+     or Rejected), rejection reason, Logout. "Fix and resubmit" moved
+     to step 8.
 10. Admin driver review (barangay admin only)
    - Review window shows every document photo. Only Approve / Reject.
+   - Rules: only the Admin of the same barangay may read or review
+     Driver_Applications (today any Admin can read them).
    - Remove the "sync driver-owned vehicles" code in admin-home.jsx.
    - Delete old test drivers, applications and driver-owned vehicles in
      the Firebase Console.
