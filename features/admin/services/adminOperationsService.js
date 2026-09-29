@@ -111,6 +111,53 @@ export const reviewDriverApplication = async ({ adminId, applicationId, decision
   });
 };
 
+// Approve ("Active") or reject ("Rejected") a Resident's proof of residency.
+// The verification and the Resident's profile are changed together, and the activity log records it.
+// The rules only let an Admin of the same barangay do this.
+export const reviewResidentVerification = async ({ adminId, residentUid, decision, reason = "" }) => {
+  if (![ACCOUNT_STATUSES.ACTIVE, ACCOUNT_STATUSES.REJECTED].includes(decision)) {
+    throw new Error("Choose Approve or Reject.");
+  }
+  if (decision === ACCOUNT_STATUSES.REJECTED && !hasText(reason, 3)) {
+    throw new Error("Write a reason of at least 3 characters.");
+  }
+
+  await runTransaction(db, async (transaction) => {
+    const verificationRef = doc(db, FIRESTORE_COLLECTIONS.RESIDENT_VERIFICATIONS, residentUid);
+    const verificationSnapshot = await transaction.get(verificationRef);
+    if (!verificationSnapshot.exists()) throw new Error("This verification no longer exists.");
+    if (verificationSnapshot.data().status !== ACCOUNT_STATUSES.PENDING) {
+      throw new Error("This verification was already reviewed.");
+    }
+
+    const residentRef = doc(db, FIRESTORE_COLLECTIONS.USERS, residentUid);
+    const residentSnapshot = await transaction.get(residentRef);
+    if (!residentSnapshot.exists()) throw new Error("This resident's profile could not be found.");
+
+    transaction.update(verificationRef, {
+      status: decision,
+      rejectionReason: decision === ACCOUNT_STATUSES.REJECTED ? reason.trim() : "",
+      reviewedAt: serverTimestamp(),
+      reviewedBy: adminId,
+    });
+    transaction.update(residentRef, {
+      accountStatus: decision,
+      approvalReviewedAt: serverTimestamp(),
+      approvalReviewedBy: adminId,
+      updatedAt: serverTimestamp(),
+    });
+    writeActivity(
+      transaction,
+      adminId,
+      "resident-verification-reviewed",
+      "residentVerification",
+      residentUid,
+      `${getProfileName(residentSnapshot.data())} ${decision === ACCOUNT_STATUSES.ACTIVE ? "approved" : "rejected"} as a resident.`,
+      { decision }
+    );
+  });
+};
+
 export const changeAccountStatus = async ({ adminId, targetUser, nextStatus, reason, activeAssignments = [] }) => {
   if (!Object.values(ACCOUNT_STATUSES).includes(nextStatus)) throw new Error("Choose a supported account status.");
   if (!hasText(reason, 3)) throw new Error("A reason of at least 3 characters is required.");

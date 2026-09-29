@@ -1,6 +1,6 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { doc, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,6 +23,7 @@ import AdminCallSessionsSection from "../features/admin/components/AdminCallSess
 import AdminOperationsPanel from "../features/admin/components/AdminOperationsPanel";
 import AdminOverviewSection from "../features/admin/components/AdminOverviewSection";
 import AdminRequestsSection from "../features/admin/components/AdminRequestsSection";
+import AdminResidentVerificationSection from "../features/admin/components/AdminResidentVerificationSection";
 import AdminUsersSection from "../features/admin/components/AdminUsersSection";
 import AdminVehiclesSection from "../features/admin/components/AdminVehiclesSection";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
@@ -31,7 +32,6 @@ import useAdminCallSessions from "../features/admin/hooks/useAdminCallSessions";
 import useAdminDashboardData from "../features/admin/hooks/useAdminDashboardData";
 import { logAdminActivity } from "../features/admin/services/adminOperationsService";
 import { getApprovalStatus, getUserName } from "../features/admin/utils/userFormatters";
-import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import {
   formatDateTime,
   getAverageDuration,
@@ -43,7 +43,7 @@ import { useTheme } from "../lib/theme";
 
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
-const sideLinks = ["Overview", "Emergency Calls", "Operations", "Requests", "Users", "Vehicles"];
+const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Operations", "Requests", "Users", "Vehicles"];
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
 const requestTypeFilters = ["All", "Emergency Requests", "Community Transport Requests"];
@@ -328,6 +328,42 @@ export default function AdminHome() {
   const { callSessions, staleRingingCount, isLoadingCallSessions, callSessionsError } = useAdminCallSessions(
     adminAccessStatus === "authorized"
   );
+
+  // Resident Verification: only the Pending residents of this Admin's own barangay.
+  // The barangay is set on the Admin's profile in the Firebase Console.
+  const adminBarangay = profile?.barangay || "";
+  const [residentVerifications, setResidentVerifications] = useState([]);
+  const [isLoadingVerifications, setIsLoadingVerifications] = useState(false);
+  const [verificationsError, setVerificationsError] = useState("");
+
+  useEffect(() => {
+    if (adminAccessStatus !== "authorized" || !adminBarangay) {
+      setResidentVerifications([]);
+      return undefined;
+    }
+
+    setIsLoadingVerifications(true);
+    const unsubscribe = onSnapshot(
+      query(collection(db, "residentVerifications"), where("barangay", "==", adminBarangay)),
+      (snapshot) => {
+        const pending = snapshot.docs
+          .map((item) => ({ id: item.id, ...item.data() }))
+          .filter((item) => item.status === "Pending")
+          // Oldest first, so nobody waits too long.
+          .sort((a, b) => (a.submittedAt?.toMillis?.() ?? 0) - (b.submittedAt?.toMillis?.() ?? 0));
+        setResidentVerifications(pending);
+        setVerificationsError("");
+        setIsLoadingVerifications(false);
+      },
+      (error) => {
+        console.log("Resident verifications listener warning:", error);
+        setVerificationsError("Resident verifications could not be loaded. Please check Firestore permissions.");
+        setIsLoadingVerifications(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [adminAccessStatus, adminBarangay]);
 
   const [userMessage, setUserMessage] = useState("");
   const [vehicleMessage, setVehicleMessage] = useState("");
@@ -772,6 +808,19 @@ export default function AdminHome() {
       );
     }
 
+    if (selectedSection === "Resident Verification") {
+      return (
+        <AdminResidentVerificationSection
+          theme={theme}
+          adminId={authUser?.uid || ""}
+          adminBarangay={adminBarangay}
+          verifications={residentVerifications}
+          isLoading={isLoadingVerifications}
+          loadError={verificationsError}
+        />
+      );
+    }
+
     if (selectedSection === "Operations") {
       return <AdminOperationsPanel users={users} applications={driverApplications} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} theme={theme} />;
     }
@@ -905,6 +954,11 @@ export default function AdminHome() {
                         {label === "Emergency Calls" && staleRingingCount > 0 ? (
                           <View style={{ backgroundColor: "#C53A3A", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
                             <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{staleRingingCount}</Text>
+                          </View>
+                        ) : null}
+                        {label === "Resident Verification" && residentVerifications.length > 0 ? (
+                          <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{residentVerifications.length}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -1250,7 +1304,7 @@ export default function AdminHome() {
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
             <TextInput
               style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              value={profile?.barangay || TOLEDO_BARANGAY_OPTIONS[0]?.label || ""}
+              value={profile?.barangay || "Not set (set it in the Firebase Console)"}
               editable={false}
             />
           </View>

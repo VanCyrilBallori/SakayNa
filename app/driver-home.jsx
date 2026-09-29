@@ -540,8 +540,8 @@ export default function DriverHome() {
       return;
     }
 
-    if (!settingsForm.fullName.trim() || !settingsForm.phoneNumber.trim() || !settingsForm.barangay.trim() || !settingsForm.email.trim()) {
-      setProfileError("Full name, phone number, barangay, and email are required.");
+    if (!settingsForm.fullName.trim() || !settingsForm.phoneNumber.trim() || !settingsForm.email.trim()) {
+      setProfileError("Full name, phone number, and email are required.");
       return;
     }
 
@@ -561,7 +561,7 @@ export default function DriverHome() {
         fullName: settingsForm.fullName.trim(),
         phoneNumber: settingsForm.phoneNumber.trim(),
         phone: settingsForm.phoneNumber.trim(),
-        barangay: settingsForm.barangay.trim(),
+        // Barangay is not saved here: it is locked after sign-up. Only an Admin can change it.
         address: settingsForm.address.trim(),
         email: nextEmail,
         updatedAt: serverTimestamp(),
@@ -571,7 +571,7 @@ export default function DriverHome() {
         uid: authUser.uid,
         email: nextEmail,
         fullName: settingsForm.fullName.trim(),
-        barangay: settingsForm.barangay.trim(),
+        barangay: profile?.barangay || "",
         phoneNumber: settingsForm.phoneNumber.trim(),
         phone: settingsForm.phoneNumber.trim(),
         role: "Driver",
@@ -977,13 +977,13 @@ export default function DriverHome() {
               />
 
               <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
+              {/* Read-only: the barangay is locked after sign-up. Only an Admin can change it. */}
               <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={settingsForm.barangay}
-                onChangeText={(value) => setSettingsForm((current) => ({ ...current, barangay: value }))}
-                placeholder="Barangay"
-                placeholderTextColor={theme.subtleText}
+                style={[styles.profileInput, { backgroundColor: theme.surfaceMuted, borderColor: theme.border, color: theme.mutedText }]}
+                value={settingsForm.barangay || "Not set"}
+                editable={false}
               />
+              <Text style={[styles.profileFieldHint, { color: theme.mutedText }]}>Only an admin can change your barangay.</Text>
 
               <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
               <TextInput
@@ -1251,6 +1251,7 @@ const styles = StyleSheet.create({
   profileInfoValue: { marginTop: 6, fontSize: 15, lineHeight: 22, fontWeight: "700" },
   profileFieldLabel: { marginTop: 20, fontSize: 15, fontWeight: "700" },
   profileInput: { marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, fontSize: 15, color: "#111111" },
+  profileFieldHint: { marginTop: 6, fontSize: 14, fontWeight: "600" },
   historyList: { paddingTop: 18, paddingBottom: 6, gap: 14 },
   historyCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 6 },
   historyHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
