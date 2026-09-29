@@ -92,7 +92,7 @@ Registration always starts with "Are you a Resident or a Driver?"
    - Landing page, Get Started sheet and Choose Role switch from dark to
      light. Shared colors in constants/design.js become LIGHT_COLORS.
    - Google and Email buttons in the sheet get a visible outline.
-3. Photo upload helper [Build]
+3. Photo upload helper [Build] — DONE (tested on phone 2026-09-29)
    - npx expo install expo-image-picker expo-image-manipulator
    - New lib/uploadPhoto.js: take/pick photo → shrink → upload to
      Cloudinary (one photo at a time) → return the link.
