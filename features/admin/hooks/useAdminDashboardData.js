@@ -14,8 +14,9 @@ const sortByCreatedAtDesc = (first, second) =>
 
 // null means "server count not loaded yet"; callers fall back to the client-side tally.
 const EMPTY_COUNTS = {
-  emergencyRequests: null,
+  medicalRequests: null,
   communityRequests: null,
+  otherRequests: null,
   activeRequests: null,
   completedRequests: null,
   cancelledRequests: null,
@@ -166,18 +167,21 @@ export default function useAdminDashboardData(enabled, adminBarangay) {
 
     const timeoutId = setTimeout(() => {
       Promise.all([
-        readCount(query(requestsRef, where("requestType", "==", "Emergency Request"))),
-        readCount(query(requestsRef, where("requestType", "==", "Community Transport Request"))),
+        // One count per "What is the ride for?" choice in the resident's request form.
+        readCount(query(requestsRef, where("purpose", "==", "Medical / Health"))),
+        readCount(query(requestsRef, where("purpose", "==", "Community / Personal Trip"))),
+        readCount(query(requestsRef, where("purpose", "==", "Other"))),
         readCount(query(requestsRef, where("status", "not-in", ["Completed", "Cancelled"]))),
         readCount(query(requestsRef, where("status", "==", "Completed"))),
         readCount(query(requestsRef, where("status", "==", "Cancelled"))),
       ])
-        .then(([emergencyRequests, communityRequests, activeRequests, completedRequests, cancelledRequests]) => {
+        .then(([medicalRequests, communityRequests, otherRequests, activeRequests, completedRequests, cancelledRequests]) => {
           if (!cancelled) {
             setCounts((current) => ({
               ...current,
-              emergencyRequests,
+              medicalRequests,
               communityRequests,
+              otherRequests,
               activeRequests,
               completedRequests,
               cancelledRequests,

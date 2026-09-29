@@ -18,6 +18,7 @@ import ResidentRequestForm from "../features/resident/components/ResidentRequest
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
+import { getPassengerCountText } from "../features/resident/utils/requestMapper";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
 // Firestore queues writes while offline and the promise simply stays pending, so an
@@ -278,7 +279,7 @@ export default function ResidentHome() {
         description: latestRequest.assignedDriverName
           ? `${latestRequest.status || "Pending"} | Assigned to ${latestRequest.assignedDriverName}`
           : `${latestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
-        meta: `${latestRequest.pickupLocation || "Pickup pending"} | ${latestRequest.vehicle || "Vehicle pending"}`,
+        meta: `${latestRequest.pickupLocation || "Pickup pending"} | ${latestRequest.assignedVehicleName || "Vehicle pending"}`,
         tag: latestRequest.status || latestRequest.level || "Tracking",
       });
       return;
@@ -580,7 +581,7 @@ export default function ResidentHome() {
   const displayResidentStatus = latestRequest ? {
     title: latestRequest.title || `${latestRequest.serviceType || latestRequest.emergencyType || "Transport"} Request`,
     description: latestRequest.assignedDriverName ? `${latestRequest.status || "Pending"} | Assigned to ${latestRequest.assignedDriverName}` : `${latestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
-    meta: `${latestRequest.pickupLocation || "Pickup pending"} | ${latestRequest.vehicle || "Vehicle pending"}`,
+    meta: `${latestRequest.pickupLocation || "Pickup pending"} | ${latestRequest.assignedVehicleName || "Vehicle pending"}`,
     tag: latestRequest.status || latestRequest.level || "Pending",
   } : residentStatus;
 
@@ -650,7 +651,7 @@ export default function ResidentHome() {
             <View style={[styles.featureCard, { backgroundColor: theme.transportCard }]}>
               <FontAwesome name="clipboard" size={compact ? 28 : 34} color="#D88400" />
               <Text style={[styles.cardTitle, { color: theme.text }]}>Transport Request</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Send your service type, passenger capacity, pickup location, and exact location details.</Text>
+              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Tell us who is riding, where to pick you up, and where you are going.</Text>
               <TouchableOpacity style={styles.bookingButton} onPress={() => handleQuickAction("transport")}>
                 <Text style={styles.cardButtonText}>Open Request Form</Text>
               </TouchableOpacity>
@@ -684,19 +685,19 @@ export default function ResidentHome() {
             {latestRequest ? (
               <View style={[styles.requestSnapshot, { backgroundColor: theme.surfaceMuted }]}>
                 <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Service Type</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.serviceType || latestRequest.emergencyType || "Not set"}</Text>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Ride for</Text>
+                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.title || latestRequest.serviceType || "Not set"}</Text>
                 </View>
                 <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Passenger Capacity</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.passengerCapacity || latestRequest.vehicle || latestRequest.vehicleType || "Not set"}</Text>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>People riding</Text>
+                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{getPassengerCountText(latestRequest)}</Text>
                 </View>
                 <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Pickup Location</Text>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Pickup</Text>
                   <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.pickupLocation || "Not set"}</Text>
                 </View>
                 <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Exact Pickup</Text>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Landmark</Text>
                   <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.pickupDetails || "Not provided"}</Text>
                 </View>
               </View>

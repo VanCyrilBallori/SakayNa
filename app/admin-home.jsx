@@ -33,6 +33,8 @@ import useAdminCallSessions from "../features/admin/hooks/useAdminCallSessions";
 import useAdminDashboardData from "../features/admin/hooks/useAdminDashboardData";
 import { logAdminActivity } from "../features/admin/services/adminOperationsService";
 import { getApprovalStatus, getUserName } from "../features/admin/utils/userFormatters";
+import { getAssistanceText, getPassengerCountText, getPassengerName } from "../features/resident/utils/requestMapper";
+import { PURPOSE_OPTIONS } from "../features/resident/utils/requestOptions";
 import {
   formatDateTime,
   getAverageDuration,
@@ -47,7 +49,8 @@ const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
 const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Driver Applications", "Operations", "Requests", "Users", "Vehicles"];
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
-const requestTypeFilters = ["All", "Emergency Requests", "Community Transport Requests"];
+// "Ride for" filter: the choices from the resident's request form. Old requests have no purpose, so they show under "All" only.
+const requestTypeFilters = ["All", ...PURPOSE_OPTIONS];
 const accountStatusOptions = ["Active", "Approved", "Pending", "Rejected", "Deactivated"];
 const vehicleStatusOptions = ["Available", "Assigned", "In Use", "Inactive"];
 const cityVehicleOwnerOptions = [CITY_VEHICLE_OWNER];
@@ -413,12 +416,8 @@ export default function AdminHome() {
   const filteredRequests = useMemo(() => {
     return requestsWithDerivedFields.filter((request) => {
       const requestStatus = request.status || "Pending";
-      const requestTypeLabel = request.requestTypeLabel;
       const matchesStatus = requestStatusFilter === "All" || requestStatus === requestStatusFilter;
-      const matchesType =
-        requestTypeFilter === "All" ||
-        (requestTypeFilter === "Emergency Requests" && requestTypeLabel === "Emergency Request") ||
-        (requestTypeFilter === "Community Transport Requests" && requestTypeLabel === "Community Transport Request");
+      const matchesType = requestTypeFilter === "All" || request.purpose === requestTypeFilter;
 
       return matchesStatus && matchesType;
     });
@@ -442,15 +441,8 @@ export default function AdminHome() {
 
   const filteredVehicles = vehiclesWithDerivedStatus;
 
-  const totalEmergencyRequests = useMemo(
-    () => requestsWithDerivedFields.filter((request) => request.requestTypeLabel === "Emergency Request").length,
-    [requestsWithDerivedFields]
-  );
-
-  const totalCommunityRequests = useMemo(
-    () => requestsWithDerivedFields.filter((request) => request.requestTypeLabel === "Community Transport Request").length,
-    [requestsWithDerivedFields]
-  );
+  // How many loaded requests have this "ride for" choice (used until the server counts load).
+  const countRequestsByPurpose = (purpose) => requestsWithDerivedFields.filter((request) => request.purpose === purpose).length;
 
   const activeRequestsCount = useMemo(
     () =>
@@ -496,8 +488,9 @@ export default function AdminHome() {
 
   // Totals prefer the server-side count; the client tally is the fallback until it loads.
   const overviewCards = [
-    { label: "Total Emergency Requests", value: counts.emergencyRequests ?? totalEmergencyRequests },
-    { label: "Total Community Transport Requests", value: counts.communityRequests ?? totalCommunityRequests },
+    { label: "Medical / Health Rides", value: counts.medicalRequests ?? countRequestsByPurpose("Medical / Health") },
+    { label: "Community / Personal Trips", value: counts.communityRequests ?? countRequestsByPurpose("Community / Personal Trip") },
+    { label: "Other Rides", value: counts.otherRequests ?? countRequestsByPurpose("Other") },
     { label: "Active Requests", value: counts.activeRequests ?? activeRequestsCount },
     { label: "Completed Requests", value: counts.completedRequests ?? completedRequestsCount },
     { label: "Cancelled Requests", value: counts.cancelledRequests ?? cancelledRequestsCount },
@@ -932,10 +925,14 @@ export default function AdminHome() {
 
             <View style={[styles.detailBox, { backgroundColor: theme.surfaceMuted }]}>
               <Text style={[styles.detailLine, { color: theme.text }]}>Resident: {selectedRequestRecord?.residentName || "Resident"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Request Type: {selectedRequestRecord?.requestTypeLabel || "Not available"}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Emergency Type: {selectedRequestRecord?.emergencyType || "Not specified"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Ride for: {selectedRequestRecord?.title || selectedRequestRecord?.emergencyType || "Not specified"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Passenger: {getPassengerName(selectedRequestRecord)}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Contact Number: {selectedRequestRecord?.contactNumber || "Not provided"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>People Riding: {getPassengerCountText(selectedRequestRecord)}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Pickup: {selectedRequestRecord?.pickupLocation || selectedRequestRecord?.barangay || "Not available"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Landmark: {selectedRequestRecord?.pickupDetails || "Not provided"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Destination: {selectedRequestRecord?.destination || "Not available"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Help Needed: {getAssistanceText(selectedRequestRecord)}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Assigned Driver: {selectedRequestRecord?.assignedDriverName || "Unassigned"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Vehicle: {selectedRequestRecord?.vehicleLabel || "Not assigned"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Priority: {selectedRequestRecord?.priorityLabel || "Normal"}</Text>

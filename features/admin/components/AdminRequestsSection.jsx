@@ -23,7 +23,7 @@ export default function AdminRequestsSection({
     <>
       <View style={styles.filterRow}>
         <View style={styles.filterField}>
-          <Text style={[styles.filterFieldLabel, { color: theme.text }]}>Request type</Text>
+          <Text style={[styles.filterFieldLabel, { color: theme.text }]}>Ride for</Text>
           <Dropdown
             style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
             containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
@@ -75,15 +75,16 @@ export default function AdminRequestsSection({
               onPress={() => setSelectedRequestRecord(request)}
             >
               <View style={styles.requestCardTop}>
-                <View style={[styles.requestLevelPill, { backgroundColor: request.requestTypeLabel === "Emergency Request" ? "#FAD9D9" : "#DDF2E6" }]}>
-                  <Text style={styles.requestLevelText}>{request.requestTypeLabel}</Text>
+                {/* The resident's "ride for" choice. Old requests show their old type (red only for old Emergency requests). */}
+                <View style={[styles.requestLevelPill, { backgroundColor: !request.purpose && request.requestTypeLabel === "Emergency Request" ? "#FAD9D9" : "#DDF2E6" }]}>
+                  <Text style={styles.requestLevelText}>{request.purpose || request.requestTypeLabel}</Text>
                 </View>
                 <Text style={[styles.requestStatusText, { color: theme.mutedText }]}>{request.status || "Pending"}</Text>
               </View>
 
               <Text style={[styles.requestTitle, { color: theme.text }]}>{request.residentName || "Resident"}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Reference: {request.id}</Text>
-              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Emergency Type: {request.emergencyType || "Not specified"}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Ride for: {request.title || request.emergencyType || "Not specified"}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Pickup: {request.pickupLocation || request.barangay || "Not available"}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Destination: {request.destination || "Not available"}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Assigned Driver: {request.assignedDriverName || "Unassigned"}</Text>
