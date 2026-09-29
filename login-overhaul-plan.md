@@ -164,14 +164,29 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
    - Old test drivers, applications and driver-owned vehicles deleted
      by hand in the Firebase Console. All roles tested, including an
      emergency alert ("Dispatcher accepted").
-11. Website Apply to Drive page
-   - /apply-to-drive opens the new driver flow (old form removed).
+11. Website Apply to Drive page — DONE (tested on localhost and live website 2026-09-29)
+   - /apply-to-drive is now a signpost (old form removed): not logged in
+     → Create Account; logged in without a profile → Verify Email or the
+     driver form; has an account → their own home.
+   - Website footer link "Jobs" renamed "Apply to Drive".
+   - Privacy Policy text updated early (still a DRAFT for the adviser):
+     proof-of-residency photo, driver documents incl. medical
+     certificate, no vehicle info, photo links are public.
+   - Website released (master → main → Vercel). EAS preview variables
+     checked: all 10 match .env. Vercel has the 9 web variables.
+   - Not fixed (website only): the browser's Back button leaves a form
+     and loses what was typed; iPhone HEIC photos can't be read by
+     Chrome on a computer (JPG/PNG work); "Call 911" does nothing on a
+     computer.
 12. Paperwork
-   - Privacy Policy (new documents, incl. medical certificate; photo
-     links are public), PRODUCT.md, README.md, Skills/resident.md.
+   - Privacy Policy: text updated in step 11; still needs the adviser's
+     review and the "[time period to be decided]" parts.
+   - PRODUCT.md, README.md, Skills/resident.md (still describe the old
+     Apply to Drive page and driver-owned vehicles).
 
 ## Release warning
-- Do not update the website or send out a new APK until step 11 is done.
+- Step 11 is done and the website was updated (2026-09-29). Testers need
+  the new preview APK.
 - Rules go live the moment they're deployed. After step 5, OLD APKs
   can't create new accounts (they save residents as "Active"). Existing
   users can still log in. Testers need the new APK.
