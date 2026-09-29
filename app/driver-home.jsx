@@ -7,7 +7,8 @@ import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollV
 
 import BrandLogo from "../components/BrandLogo";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
-import { getMissionStatus } from "../features/driver/utils/driverMissionMapper";
+import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
+import { VULNERABLE_GROUP_OPTIONS } from "../features/resident/utils/requestOptions";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
@@ -20,8 +21,24 @@ import {
   getScheduleLifecycleStatus,
   overlapsScheduleWindow,
 } from "../lib/driverScheduling";
+import { startPhoneCall } from "../lib/phoneCall";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
+
+// The person riding: the name typed in the request form, or the account owner's name for older requests.
+const getPassengerName = (request, assignment) =>
+  request?.passengerName || request?.patientName || request?.residentName || assignment?.residentName || "Not provided";
+
+// Turns the request's assistance switches (for example { seniorCitizen: true, pwd: true }) into "Senior citizen, PWD",
+// plus the resident's accessibility notes if there are any.
+const getAssistanceText = (request) => {
+  const groups = request?.vulnerableGroups || {};
+  const labels = VULNERABLE_GROUP_OPTIONS.filter((option) => groups[option.key]).map((option) => option.label);
+  return [labels.join(", "), request?.accessibilityNotes].filter(Boolean).join(" | ") || "None";
+};
+
+// The assigned vehicle's name. (Old requests saved the passenger count in "vehicle", so that field is not used here.)
+const getVehicleName = (request, assignment) => request?.assignedVehicleName || assignment?.vehicleName || "Vehicle pending";
 
 const getLocalDateValue = (date = new Date()) =>
   `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
@@ -382,16 +399,9 @@ export default function DriverHome() {
       };
     }
 
-    const pickupCoordinates =
-      typeof request.pickupLatitude === "number" && typeof request.pickupLongitude === "number"
-        ? [request.pickupLatitude, request.pickupLongitude]
-        : typeof request.latitude === "number" && typeof request.longitude === "number"
-          ? [request.latitude, request.longitude]
-          : null;
-    const destinationCoordinates =
-      typeof request.destinationLatitude === "number" && typeof request.destinationLongitude === "number"
-        ? [request.destinationLatitude, request.destinationLongitude]
-        : null;
+    // Same helpers the "Open pickup" button uses: they read the resident's pin (pickup.latitude) first.
+    const pickupCoordinates = getPickupCoordinates(request);
+    const destinationCoordinates = getDestinationCoordinates(request);
 
     return {
       title: request.emergencyType ?? request.title ?? "Assigned Request Map",
@@ -712,10 +722,28 @@ export default function DriverHome() {
                         </View>
                       </View>
                       <Text style={styles.missionTitle}>{request.emergencyType ?? request.title}</Text>
-                      <Text style={styles.missionText}>
-                        Patient: {request.patientName ?? request.residentName ?? assignedTransfer.residentName ?? "Not provided"}
-                      </Text>
                       <Text style={styles.missionText}>Request: {request.summary}</Text>
+                    </View>
+
+                    <View style={styles.infoCard}>
+                      <Text style={styles.sectionTitle}>Passenger</Text>
+                      <Text style={styles.passengerName}>{getPassengerName(request, assignedTransfer)}</Text>
+                      {request.contactNumber ? (
+                        <TouchableOpacity
+                          style={styles.locationRow}
+                          onPress={() => startPhoneCall(request.contactNumber)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Call passenger at ${request.contactNumber}`}
+                        >
+                          <FontAwesome name="phone" size={20} color="#06774B" />
+                          <Text style={styles.phoneLink}>{request.contactNumber}</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.missionText}>Phone: Not provided</Text>
+                      )}
+                      <Text style={styles.missionText}>Passengers: {request.passengerCapacity || "Not provided"}</Text>
+                      <Text style={styles.missionText}>Assistance: {getAssistanceText(request)}</Text>
+                      {request.additionalNotes ? <Text style={styles.missionText}>Notes: {request.additionalNotes}</Text> : null}
                     </View>
 
                     <View style={styles.infoCard}>
@@ -737,7 +765,7 @@ export default function DriverHome() {
                     <View style={styles.infoCard}>
                       <Text style={styles.sectionTitle}>Trip Summary</Text>
                       <Text style={styles.summaryText}>{request.summary}</Text>
-                      <Text style={styles.requestMeta}>{request.level} | {request.emergencyType ?? request.title} | {request.vehicle || "Vehicle pending"}</Text>
+                      <Text style={styles.requestMeta}>{request.level} | {request.emergencyType ?? request.title} | {getVehicleName(request, assignedTransfer)}</Text>
                     </View>
                   </View>
 
@@ -775,11 +803,23 @@ export default function DriverHome() {
           <View style={styles.modalOverlay}>
             <View style={[styles.reviewCard, compact && styles.reviewCardCompact]}>
               <Text style={styles.reviewTitle}>Mission Details</Text>
-              <Text style={styles.reviewLine}>Patient: {request?.patientName ?? request?.residentName ?? assignedTransfer?.residentName ?? "Not provided"}</Text>
+              <Text style={styles.reviewLine}>Passenger: {getPassengerName(request, assignedTransfer)}</Text>
+              {request?.contactNumber ? (
+                <TouchableOpacity onPress={() => startPhoneCall(request.contactNumber)} accessibilityRole="button" accessibilityLabel={`Call passenger at ${request.contactNumber}`}>
+                  <Text style={styles.reviewLine}>
+                    Phone: <Text style={styles.phoneLink}>{request.contactNumber}</Text>
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.reviewLine}>Phone: Not provided</Text>
+              )}
+              <Text style={styles.reviewLine}>Passengers: {request?.passengerCapacity || "Not provided"}</Text>
+              <Text style={styles.reviewLine}>Assistance: {getAssistanceText(request)}</Text>
+              {request?.additionalNotes ? <Text style={styles.reviewLine}>Notes: {request.additionalNotes}</Text> : null}
               <Text style={styles.reviewLine}>Request: {request?.emergencyType ?? request?.title ?? "Transport Request"}</Text>
               <Text style={styles.reviewLine}>Pickup: {request?.pickupLocation ?? "Pickup location pending"}</Text>
               <Text style={styles.reviewLine}>Destination: {request?.destination ?? "Nearest available response center"}</Text>
-              <Text style={styles.reviewLine}>Vehicle: {request?.vehicle ?? "Available Vehicle"}</Text>
+              <Text style={styles.reviewLine}>Vehicle: {getVehicleName(request, assignedTransfer)}</Text>
               <TouchableOpacity style={styles.reviewCloseButton} onPress={() => setReviewOpen(false)}>
                 <Text style={styles.reviewCloseButtonText}>Close</Text>
               </TouchableOpacity>
@@ -1167,6 +1207,8 @@ const styles = StyleSheet.create({
   locationRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
   locationText: { flex: 1, fontSize: 17, fontWeight: "600", color: "#1C2723" },
   summaryText: { marginTop: 10, fontSize: 15, lineHeight: 23, color: "#475652" },
+  passengerName: { marginTop: 10, fontSize: 17, fontWeight: "700", color: "#1C2723" },
+  phoneLink: { fontSize: 17, fontWeight: "700", color: "#06774B", textDecorationLine: "underline" },
   requestMeta: { marginTop: 12, fontSize: 13, fontWeight: "700", color: "#60716B" },
   mapCard: { flex: 0.82, minWidth: 280, maxWidth: 460, borderRadius: 18, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D5DEDA", overflow: "hidden" },
   mapCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#E4EBE7", gap: 12, flexWrap: "wrap" },

@@ -218,6 +218,11 @@ export default function DispatcherHome() {
             vehicle: data.vehicle ?? "Available Vehicle",
             barangay: data.barangay ?? data.pickupLocation ?? "Pickup location pending",
             pickupLocation: data.pickupLocation ?? data.barangay ?? "Pickup location pending",
+            // The map below needs these to show the resident's exact pin instead of guessing from the address.
+            pickup: data.pickup ?? null,
+            pickupDetails: data.pickupDetails ?? "",
+            destinationLocation: data.destinationLocation ?? null,
+            reference: data.reference ?? "",
             destination: data.destination ?? "Nearest available response center",
             summary: data.summary ?? "Resident transport request waiting for dispatcher assignment.",
             residentId: data.residentId ?? "",
