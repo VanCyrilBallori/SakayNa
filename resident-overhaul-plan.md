@@ -156,8 +156,15 @@ if already allowed (the once-per-install pop-ups stay as they are).
        - Admin: 3 purpose overview cards (server counts) replace
          "Total Emergency / Community Requests"; "Ride for" filter,
          pills and details.
-4. Schedule for later: date/time dropdowns, dispatcher tag + warning,
-   time shown to driver and resident.
+4. Schedule for later.
+   4a. Form + dispatcher — DONE (tested 2026-09-30)
+       - Form: "When do you need the ride?" ASAP / Schedule for later,
+         Day + Time dropdowns (30-minute steps, 1 hour to 7 days ahead),
+         time checked again when sending. Scheduled → priority "Planned".
+       - Dispatcher: "Scheduled: Fri, Oct 2, 9:00 AM" tag (red "Scheduled
+         time passed" when late); ASAP first, then scheduled soonest
+         first; assign window warns when the ride is > 2 hours away.
+   4b. Time shown to driver and resident.
 5. Side menu [UI]: slide-in pop-up from the left (no new package). Name +
    status at the top, Request History, Profile, Settings, Help / Contact
    office, Terms & Privacy (existing /terms and /privacy), Log out.
