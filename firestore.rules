@@ -27,6 +27,13 @@ service cloud.firestore {
     function isStaff()      { return isAdmin() || isDispatcher(); }
     function isDriver()     { return myRole() == "Driver"; }
 
+    // Only a verified (Active) Resident may send a new emergency alert or transport request.
+    // Pending and Rejected Residents are blocked here too, not just in the app.
+    function isActiveResident() {
+      return myRole() == "Resident"
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == "Active";
+    }
+
     // A brand-new self-created profile may only be an unapproved Resident or an
     // unapproved (Pending) Driver applicant. Dispatcher and Admin accounts are
     // always provisioned by an Admin through the Firebase console, never by the
@@ -65,7 +72,7 @@ service cloud.firestore {
       allow read: if isStaff()
         || (signedIn() && resource.data.residentId == request.auth.uid)
         || (isDriver() && resource.data.assignedDriverId == request.auth.uid);
-      allow create: if signedIn() && request.resource.data.residentId == request.auth.uid;
+      allow create: if isActiveResident() && request.resource.data.residentId == request.auth.uid;
       allow update: if isStaff()
         || (signedIn() && resource.data.residentId == request.auth.uid)
         || (isDriver() && resource.data.assignedDriverId == request.auth.uid);
@@ -98,7 +105,7 @@ service cloud.firestore {
       // resource == null: the resident's app starts watching its new alert while the alert is
       // still being saved. A not-yet-existing alert has nothing to show, so this is safe.
       allow read:   if isStaff() || (signedIn() && (resource == null || resource.data.residentId == request.auth.uid));
-      allow create: if signedIn() && request.resource.data.residentId == request.auth.uid;
+      allow create: if isActiveResident() && request.resource.data.residentId == request.auth.uid;
       allow update: if isStaff() || (signedIn() && resource.data.residentId == request.auth.uid);
       allow delete: if isStaff();
     }
