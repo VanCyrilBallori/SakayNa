@@ -3,47 +3,51 @@ import { collection, doc, runTransaction, serverTimestamp, setDoc } from "fireba
 import { db } from "../../../firebase";
 import { FIRESTORE_COLLECTIONS, REQUEST_STATUSES } from "../../../constants/app";
 import { getResidentReportedPriority } from "../utils/requestOptions";
+import { normalizePhilippinePhone } from "../utils/requestValidation";
 
-const destinationFor = (form) => {
-  if (form.destinationMode === "nearest-facility") return { address: "Nearest appropriate facility", latitude: null, longitude: null, source: "nearest-facility" };
-  if (form.destinationMode === "no-destination") return { address: "", latitude: null, longitude: null, source: "manual" };
-  return { address: form.destinationAddress, latitude: null, longitude: null, source: "manual" };
-};
-
-export const createResidentRequest = async ({ uid, residentName, form }) => {
+// Saves a new transport request. The form must already be checked by validateResidentRequest.
+// residentPhone = the phone in the resident's profile.
+export const createResidentRequest = async ({ uid, residentName, residentPhone, form }) => {
   const requestRef = doc(collection(db, FIRESTORE_COLLECTIONS.TRANSPORT_REQUESTS));
   const reference = `SKN-${requestRef.id.slice(0, 8).toUpperCase()}`;
-  const priority = getResidentReportedPriority(form.category, form.serviceType);
-  const destinationLocation = destinationFor(form);
+  const priority = getResidentReportedPriority(form.purpose);
+  const myPhone = normalizePhilippinePhone(residentPhone || "");
+  const riderIsMe = form.ridingFor === "self";
+  // "Other: Groceries" instead of just "Other", so dispatchers and drivers know what the ride is for.
+  const purposeLabel = form.purpose === "Other" ? `Other: ${form.purposeOther}` : form.purpose;
+  // Without a GPS location or map pin, the barangay name is the pickup (same as the old form).
+  const pickupAddress = form.pickup.address || form.barangay;
+  const peopleLabel = `${form.passengerCount} ${form.passengerCount === 1 ? "person" : "people"}`;
 
   await setDoc(requestRef, {
     residentId: uid,
     residentName: residentName || "Resident",
+    residentPhone: myPhone,
     reference,
-    category: form.category,
-    requestType: form.category,
+    // Every form request is a non-emergency ride now. Emergencies go through the red Emergency alert.
+    requestType: "Community Transport Request",
     status: REQUEST_STATUSES.PENDING,
-    residentReportedUrgency: form.category === "Emergency Request" ? "Emergency" : "Standard",
     level: priority,
     priorityLevel: priority,
-    title: `${form.serviceType} Transport Request`,
-    emergencyType: form.serviceType,
-    serviceType: form.serviceType,
-    vehicle: form.passengerCapacity,
-    vehicleType: form.passengerCapacity,
-    passengerCapacity: form.passengerCapacity,
-    passengerName: form.passengerName,
-    contactNumber: form.contactNumber,
+    purpose: form.purpose,
+    purposeOther: form.purpose === "Other" ? form.purposeOther : "",
+    // "When" comes in Step 4 of resident-overhaul-plan.md. Until then every ride is "as soon as possible".
+    timing: "asap",
+    scheduledFor: null,
+    title: purposeLabel,
+    ridingFor: form.ridingFor,
+    passengerName: riderIsMe ? residentName || "Resident" : form.passengerName,
+    // Someone else with no phone: the driver gets the resident's number instead.
+    contactNumber: riderIsMe ? myPhone : normalizePhilippinePhone(form.passengerPhone) || myPhone,
+    passengerCount: form.passengerCount,
     barangay: form.barangay,
-    pickupLocation: form.pickup.address,
-    pickup: form.pickup,
+    pickupLocation: pickupAddress,
+    pickup: { ...form.pickup, address: pickupAddress, barangay: form.barangay },
     pickupDetails: form.pickupDetails,
-    destination: destinationLocation.address,
-    destinationLocation,
-    summary: `${form.serviceType} transport request from ${form.pickup.address}.`,
-    description: form.description,
-    vulnerableGroups: form.vulnerableGroups,
-    accessibilityNotes: form.accessibilityNotes,
+    destination: form.destination,
+    summary: `${purposeLabel} ride for ${peopleLabel} from ${pickupAddress} to ${form.destination}.`,
+    assistance: form.assistance,
+    assistanceOther: form.assistance.includes("Other") ? form.assistanceOther : "",
     additionalNotes: form.additionalNotes,
     timeline: { submitted: { actorRole: "Resident", actorId: uid, note: null } },
     createdAt: serverTimestamp(),

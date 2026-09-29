@@ -1,3 +1,5 @@
+import { MAX_PASSENGERS } from "./requestOptions";
+
 const compactWhitespace = (value = "") => value.trim().replace(/\s+/g, " ");
 
 export const normalizePhilippinePhone = (value = "") => {
@@ -13,42 +15,41 @@ const hasText = (value, max) => {
   return normalized.length > 0 && normalized.length <= max;
 };
 
+// Removes extra spaces from everything the resident typed.
 export const sanitizeRequestForm = (form) => ({
   ...form,
-  serviceType: compactWhitespace(form.serviceType),
+  purposeOther: compactWhitespace(form.purposeOther),
   passengerName: compactWhitespace(form.passengerName),
-  contactNumber: normalizePhilippinePhone(form.contactNumber),
-  barangay: compactWhitespace(form.barangay),
+  passengerPhone: form.passengerPhone.trim(),
   pickupDetails: compactWhitespace(form.pickupDetails),
-  destinationAddress: compactWhitespace(form.destinationAddress),
-  description: compactWhitespace(form.description),
-  accessibilityNotes: compactWhitespace(form.accessibilityNotes),
+  destination: compactWhitespace(form.destination),
+  assistanceOther: compactWhitespace(form.assistanceOther),
   additionalNotes: compactWhitespace(form.additionalNotes),
-  pickup: {
-    ...form.pickup,
-    address: compactWhitespace(form.pickup?.address),
-    barangay: compactWhitespace(form.pickup?.barangay) || null,
-  },
 });
 
-export const validateResidentRequest = (form) => {
+// Returns { fieldName: "message" } for every field that needs fixing. Empty object = the form is complete.
+// residentPhone is the phone saved in the resident's profile (used when "Me" is riding).
+export const validateResidentRequest = (form, residentPhone) => {
   const errors = {};
-  if (!form.category) errors.category = "Choose the request category.";
-  if (!form.serviceType) errors.serviceType = "Choose the service type.";
-  if (!form.passengerCapacity) errors.passengerCapacity = "Choose the passenger count.";
-  if (!hasText(form.passengerName, 80)) errors.passengerName = "Enter the passenger's name (up to 80 characters).";
-  if (!form.contactNumber) errors.contactNumber = "Enter a valid Philippine mobile number.";
-  if (!hasText(form.barangay, 80)) errors.barangay = "Choose the pickup barangay.";
-  if (!hasText(form.pickup?.address, 180)) errors.pickup = "Enter or select a pickup location.";
-  if (!hasText(form.pickupDetails, 300)) errors.pickupDetails = "Add clear pickup details so the driver can find you.";
 
-  const canOmitDestination = form.category === "Emergency Request" && form.destinationMode === "no-destination";
-  if (!canOmitDestination && form.destinationMode !== "nearest-facility" && !hasText(form.destinationAddress, 180)) {
-    errors.destination = "Enter a destination or choose the nearest appropriate facility.";
+  if (!form.purpose) errors.purpose = "Choose what the ride is for.";
+  else if (form.purpose === "Other" && !hasText(form.purposeOther, 100)) errors.purposeOther = "Tell us briefly what the ride is for (up to 100 letters).";
+
+  if (form.ridingFor === "self" && !normalizePhilippinePhone(residentPhone || "")) {
+    errors.ridingFor = "Your profile has no phone number. Add it in Settings first.";
   }
-  if (!hasText(form.description, 500)) errors.description = "Describe the transport need (up to 500 characters).";
-  if (form.accessibilityNotes && form.accessibilityNotes.length > 500) errors.accessibilityNotes = "Accessibility notes must be 500 characters or fewer.";
-  if (form.additionalNotes && form.additionalNotes.length > 500) errors.additionalNotes = "Additional notes must be 500 characters or fewer.";
+  if (form.ridingFor === "other") {
+    if (!hasText(form.passengerName, 80) || form.passengerName.length < 2) errors.passengerName = "Enter the passenger's name.";
+    // The passenger's phone is optional, but if something was typed it must be a real mobile number.
+    if (form.passengerPhone && !normalizePhilippinePhone(form.passengerPhone)) errors.passengerPhone = "Enter a mobile number like 0917 123 4567, or leave it empty.";
+  }
+
+  if (!(form.passengerCount >= 1 && form.passengerCount <= MAX_PASSENGERS)) errors.passengerCount = `Choose 1 to ${MAX_PASSENGERS} people.`;
+  if (!form.barangay) errors.barangay = "Choose the pickup barangay.";
+  if (!hasText(form.pickupDetails, 300)) errors.pickupDetails = "Tell the driver how to find you, like a landmark or gate color.";
+  if (!hasText(form.destination, 180)) errors.destination = "Enter where you are going.";
+  if (form.assistance.includes("Other") && !hasText(form.assistanceOther, 100)) errors.assistanceOther = "Tell us what help is needed (up to 100 letters).";
+  if (form.additionalNotes.length > 500) errors.additionalNotes = "Notes must be 500 letters or fewer.";
 
   return errors;
 };

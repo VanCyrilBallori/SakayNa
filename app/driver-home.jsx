@@ -29,12 +29,23 @@ import { useTheme } from "../lib/theme";
 const getPassengerName = (request, assignment) =>
   request?.passengerName || request?.patientName || request?.residentName || assignment?.residentName || "Not provided";
 
-// Turns the request's assistance switches (for example { seniorCitizen: true, pwd: true }) into "Senior citizen, PWD",
-// plus the resident's accessibility notes if there are any.
+// The help the passenger needs, as one line like "Senior citizen, PWD".
+// New requests save a list (assistance); older requests saved on/off switches (vulnerableGroups) plus notes.
 const getAssistanceText = (request) => {
+  if (Array.isArray(request?.assistance)) {
+    const labels = request.assistance.map((item) => (item === "Other" && request.assistanceOther ? `Other: ${request.assistanceOther}` : item));
+    return labels.join(", ") || "None";
+  }
   const groups = request?.vulnerableGroups || {};
   const labels = VULNERABLE_GROUP_OPTIONS.filter((option) => groups[option.key]).map((option) => option.label);
   return [labels.join(", "), request?.accessibilityNotes].filter(Boolean).join(" | ") || "None";
+};
+
+// New requests save a number (passengerCount); older requests saved text like "2 passengers".
+const getPassengerCountText = (request) => {
+  const count = request?.passengerCount;
+  if (typeof count === "number") return `${count} ${count === 1 ? "person" : "people"}`;
+  return request?.passengerCapacity || "Not provided";
 };
 
 // The assigned vehicle's name. (Old requests saved the passenger count in "vehicle", so that field is not used here.)
@@ -741,7 +752,7 @@ export default function DriverHome() {
                       ) : (
                         <Text style={styles.missionText}>Phone: Not provided</Text>
                       )}
-                      <Text style={styles.missionText}>Passengers: {request.passengerCapacity || "Not provided"}</Text>
+                      <Text style={styles.missionText}>Passengers: {getPassengerCountText(request)}</Text>
                       <Text style={styles.missionText}>Assistance: {getAssistanceText(request)}</Text>
                       {request.additionalNotes ? <Text style={styles.missionText}>Notes: {request.additionalNotes}</Text> : null}
                     </View>
@@ -813,7 +824,7 @@ export default function DriverHome() {
               ) : (
                 <Text style={styles.reviewLine}>Phone: Not provided</Text>
               )}
-              <Text style={styles.reviewLine}>Passengers: {request?.passengerCapacity || "Not provided"}</Text>
+              <Text style={styles.reviewLine}>Passengers: {getPassengerCountText(request)}</Text>
               <Text style={styles.reviewLine}>Assistance: {getAssistanceText(request)}</Text>
               {request?.additionalNotes ? <Text style={styles.reviewLine}>Notes: {request.additionalNotes}</Text> : null}
               <Text style={styles.reviewLine}>Request: {request?.emergencyType ?? request?.title ?? "Transport Request"}</Text>
