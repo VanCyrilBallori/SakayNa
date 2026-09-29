@@ -52,6 +52,14 @@
       ],
       "expo-font",
       "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "SakayNa uses your camera to take photos of your documents.",
+          "photosPermission": "SakayNa uses your photos so you can choose pictures of your documents.",
+          "microphonePermission": false
+        }
+      ],
       "@react-native-google-signin/google-signin"
     ],
     "experiments": {

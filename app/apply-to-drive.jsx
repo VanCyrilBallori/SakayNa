@@ -1,4 +1,3 @@
-import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -11,19 +10,10 @@ import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile } from "../lib/session";
+import { pickPhoto, uploadPhotos } from "../lib/uploadPhoto";
 
-const allowedMimeTypes = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-];
-
-const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"];
-const cloudinaryCloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
-const cloudinaryUploadPreset = process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 const minimumPasswordLength = 8;
+const minimumVehiclePhotos = 3;
 
 const emptyForm = {
   fullName: "",
@@ -43,65 +33,7 @@ const emptyForm = {
   mvFileNumber: "",
 };
 
-const getFileExtension = (fileName = "") => {
-  const dotIndex = fileName.lastIndexOf(".");
-  return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
-};
-
-const sanitizeFileName = (fileName = "driver-document") => fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 const bodyTypeOptions = ["Sedan", "SUV", "MPV", "Pickup"];
-
-const isValidDocument = (asset) => {
-  const extension = getFileExtension(asset?.name);
-  return allowedMimeTypes.includes(asset?.mimeType) || allowedExtensions.includes(extension);
-};
-
-const appendCloudinaryFile = async (formData, asset) => {
-  if (Platform.OS === "web") {
-    const fileResponse = await fetch(asset.uri);
-    const fileBlob = await fileResponse.blob();
-    formData.append("file", fileBlob, asset.name);
-    return;
-  }
-
-  formData.append("file", {
-    uri: asset.uri,
-    name: asset.name,
-    type: asset.mimeType || "application/octet-stream",
-  });
-};
-
-const uploadDocumentToCloudinary = async (asset, applicationId) => {
-  if (!cloudinaryCloudName || !cloudinaryUploadPreset) {
-    throw new Error("Cloudinary is not configured.");
-  }
-
-  const formData = new FormData();
-  const safeFileName = sanitizeFileName(asset.name).replace(/\.[^/.]+$/, "");
-
-  formData.append("upload_preset", cloudinaryUploadPreset);
-  formData.append("folder", "driver-applications");
-  formData.append("public_id", `${applicationId}-${Date.now()}-${safeFileName}`);
-  await appendCloudinaryFile(formData, asset);
-
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/image/upload`, {
-    method: "POST",
-    body: formData,
-  });
-  const uploadResult = await response.json();
-
-  if (!response.ok || !uploadResult.secure_url) {
-    throw new Error(uploadResult.error?.message || "Cloudinary upload failed.");
-  }
-
-  return uploadResult.secure_url;
-};
-
-const uploadMultipleDocumentsToCloudinary = async (assets, applicationId, folderSuffix) => {
-  return Promise.all(
-    assets.map((asset, index) => uploadDocumentToCloudinary({ ...asset, name: `${folderSuffix}-${index + 1}-${asset.name}` }, applicationId))
-  );
-};
 
 export default function ApplyToDrive() {
   const router = useRouter();
@@ -113,69 +45,31 @@ export default function ApplyToDrive() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // "Uploading photo 2 of 4..." while photos are being sent; empty the rest of the time.
+  const [uploadProgress, setUploadProgress] = useState("");
   const requiresVehicleDetails = form.useOwnVehicle === "yes";
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const pickSingleDocument = async (onPick) => {
+  // Take or choose ONE photo. It comes back already shrunk (see lib/uploadPhoto.js).
+  const addPhoto = async (onAdded) => {
     setErrorMessage("");
 
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: allowedMimeTypes,
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
-
-      if (result.canceled) {
-        return;
+      const photo = await pickPhoto();
+      if (photo) {
+        onAdded(photo);
       }
-
-      const asset = result.assets?.[0];
-
-      if (!isValidDocument(asset)) {
-        onPick(null);
-        setErrorMessage("Please upload a valid image file.");
-        return;
-      }
-
-      onPick(asset);
     } catch (error) {
-      console.log("Document picker warning:", error);
-      setErrorMessage("Document selection failed. Please try again.");
+      console.log("Photo picker warning:", error);
+      setErrorMessage("The photo could not be added. Please try again.");
     }
   };
 
-  const pickMultipleDocuments = async () => {
-    setErrorMessage("");
-
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: allowedMimeTypes,
-        copyToCacheDirectory: true,
-        multiple: true,
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const assets = result.assets ?? [];
-
-      if (!assets.length || assets.some((asset) => !isValidDocument(asset))) {
-        setVehiclePhotoAssets([]);
-        setErrorMessage("Please upload valid vehicle photo files.");
-        return;
-      }
-
-      setVehiclePhotoAssets(assets);
-    } catch (error) {
-      console.log("Vehicle photos picker warning:", error);
-      setErrorMessage("Vehicle photo selection failed. Please try again.");
-    }
-  };
+  const addOrCrPhoto = () => addPhoto(setOrCrAsset);
+  const addVehiclePhoto = () => addPhoto((photo) => setVehiclePhotoAssets((current) => [...current, photo]));
 
   const validateForm = () => {
     if (
@@ -222,12 +116,12 @@ export default function ApplyToDrive() {
         return "MV File Number must be exactly 15 digits.";
       }
 
-      if (!isValidDocument(orCrAsset)) {
-        return "Please upload a valid OR/CR image.";
+      if (!orCrAsset) {
+        return "Please add a photo of your OR/CR.";
       }
 
-      if (vehiclePhotoAssets.length < 3) {
-        return "Please upload at least 3 vehicle photos: front, back, and interior.";
+      if (vehiclePhotoAssets.length < minimumVehiclePhotos) {
+        return "Please add at least 3 vehicle photos: front, back, and interior.";
       }
     }
 
@@ -249,8 +143,14 @@ export default function ApplyToDrive() {
       setIsSubmitting(true);
 
       const applicationRef = doc(collection(db, FIRESTORE_COLLECTIONS.DRIVER_APPLICATIONS));
-      const orCrDocumentUrl = requiresVehicleDetails ? await uploadDocumentToCloudinary(orCrAsset, `${applicationRef.id}-orcr`) : "";
-      const vehiclePhotoUrls = requiresVehicleDetails ? await uploadMultipleDocumentsToCloudinary(vehiclePhotoAssets, applicationRef.id, "vehicle-photo") : [];
+      // OR/CR first, then the vehicle photos, sent one at a time. photoLinks keeps the same order.
+      const photosToUpload = requiresVehicleDetails ? [orCrAsset, ...vehiclePhotoAssets] : [];
+      const photoLinks = await uploadPhotos(photosToUpload, { folder: "driver-applications", name: applicationRef.id }, (current, total) =>
+        setUploadProgress(`Uploading photo ${current} of ${total}...`)
+      );
+      setUploadProgress("");
+      const orCrDocumentUrl = requiresVehicleDetails ? photoLinks[0] : "";
+      const vehiclePhotoUrls = photoLinks.slice(1);
       const userCredential = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
       createdUser = userCredential.user;
       const driverUid = userCredential.user.uid;
@@ -310,6 +210,7 @@ export default function ApplyToDrive() {
       }
       setErrorMessage(error.message === "Cloudinary is not configured." ? "Cloudinary upload is not configured yet." : getAuthErrorMessage(error, "Application submission failed. Check your connection and try again."));
     } finally {
+      setUploadProgress("");
       setIsSubmitting(false);
     }
   };
@@ -443,17 +344,27 @@ export default function ApplyToDrive() {
               </View>
 
               <Text style={styles.sectionTitle}>Vehicle Documents</Text>
-              <TouchableOpacity style={styles.uploadBox} onPress={() => pickSingleDocument(setOrCrAsset)}>
-                <Text style={styles.uploadTitle}>{orCrAsset?.name || "Upload OR/CR Photo"}</Text>
-                <Text style={styles.uploadText}>Accepted: JPG, PNG, WEBP, HEIC</Text>
+              <TouchableOpacity style={styles.uploadBox} onPress={addOrCrPhoto} accessibilityRole="button">
+                <Text style={styles.uploadTitle}>{orCrAsset ? "OR/CR photo added" : "Add OR/CR Photo"}</Text>
+                <Text style={styles.uploadText}>
+                  {orCrAsset ? "Tap to replace it with a different photo." : "Take a photo, or choose one from your gallery."}
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.uploadBox, styles.uploadBoxSpaced]} onPress={pickMultipleDocuments}>
+              <TouchableOpacity style={[styles.uploadBox, styles.uploadBoxSpaced]} onPress={addVehiclePhoto} accessibilityRole="button">
                 <Text style={styles.uploadTitle}>
-                  {vehiclePhotoAssets.length ? `${vehiclePhotoAssets.length} vehicle photo(s) selected` : "Upload Vehicle Photos"}
+                  {vehiclePhotoAssets.length < minimumVehiclePhotos
+                    ? `${vehiclePhotoAssets.length} of ${minimumVehiclePhotos} vehicle photos added`
+                    : `${vehiclePhotoAssets.length} vehicle photos added`}
                 </Text>
-                <Text style={styles.uploadText}>Required: front, back, and interior photos.</Text>
+                <Text style={styles.uploadText}>Tap to add one photo at a time: front, back, and interior.</Text>
               </TouchableOpacity>
+
+              {vehiclePhotoAssets.length ? (
+                <TouchableOpacity style={styles.clearPhotosButton} onPress={() => setVehiclePhotoAssets([])} accessibilityRole="button">
+                  <Text style={styles.clearPhotosText}>Clear vehicle photos</Text>
+                </TouchableOpacity>
+              ) : null}
             </>
           ) : (
             <View style={styles.noticeCard}>
@@ -466,7 +377,7 @@ export default function ApplyToDrive() {
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
           <TouchableOpacity style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={handleSubmit} disabled={isSubmitting}>
-            <Text style={styles.submitButtonText}>{isSubmitting ? "Submitting..." : "Submit Application"}</Text>
+            <Text style={styles.submitButtonText}>{isSubmitting ? uploadProgress || "Submitting..." : "Submit Application"}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -589,6 +500,8 @@ const styles = StyleSheet.create({
   uploadTitle: { fontSize: 16, fontWeight: "800", color: "#17382E" },
   uploadText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#5C7269" },
   uploadBoxSpaced: { marginTop: 12 },
+  clearPhotosButton: { minHeight: 48, alignSelf: "flex-start", justifyContent: "center", paddingHorizontal: 4 },
+  clearPhotosText: { fontSize: 14, fontWeight: "700", color: "#0F6B4F", textDecorationLine: "underline" },
   noticeCard: {
     marginBottom: 18,
     padding: 16,
