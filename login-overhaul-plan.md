@@ -106,7 +106,7 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
    - lib/roles.js: Pending/Rejected residents may open resident home.
    - Rules: a new Resident may start "Pending" (the old "Active" stays
      until step 5); residentVerifications rules.
-5. New email sign-up order [Rules]
+5. New email sign-up order [Rules] — DONE (deployed and tested 2026-09-29)
    - signup.jsx asks only email + password → verify email.
    - verify-email refreshes the login token → Choose Role → form.
    - Login + gatekeeper: signed in but no profile → Choose Role
