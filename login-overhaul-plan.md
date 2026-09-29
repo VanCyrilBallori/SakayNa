@@ -53,7 +53,7 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
 - Drivers: no vehicle info, OR/CR, own-vehicle option, or operator
   documents. Vehicles belong to the barangay.
 - Old driver accounts, driver applications and driver-owned vehicles are
-  test data. Delete them by hand in the Firebase Console (step 10).
+  test data. Deleted by hand in the Firebase Console (step 10, done).
 - New screens are light mode (white background, SakayNa green buttons).
   The landing page, Get Started sheet and Choose Role are always light.
 
@@ -151,13 +151,19 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
    - driver-status.jsx: timeline (Submitted → Pending Review → Approved
      or Rejected), rejection reason, Logout. "Fix and resubmit" moved
      to step 8.
-10. Admin driver review (barangay admin only)
-   - Review window shows every document photo. Only Approve / Reject.
+10. Admin driver review (barangay admin only) [Rules] — DONE (deployed and tested 2026-09-29)
+   - New "Driver Applications" list in admin home: every document photo
+     (tap for full screen). Only Approve / Reject + reason. The old
+     Operations → Applications tab was removed.
+   - The admin's application list asks only for the admin's own barangay.
    - Rules: only the Admin of the same barangay may read or review
-     Driver_Applications (today any Admin can read them).
-   - Remove the "sync driver-owned vehicles" code in admin-home.jsx.
-   - Delete old test drivers, applications and driver-owned vehicles in
-     the Firebase Console.
+     Driver_Applications, only to "Approved" or "Rejected".
+   - Removed the "Sync Driver-Owned Vehicles" button and code. Leftover
+     driver-owned code in the dispatcher screen and vehicle editor was
+     kept on purpose (harmless without driver-owned vehicles).
+   - Old test drivers, applications and driver-owned vehicles deleted
+     by hand in the Firebase Console. All roles tested, including an
+     emergency alert ("Dispatcher accepted").
 11. Website Apply to Drive page
    - /apply-to-drive opens the new driver flow (old form removed).
 12. Paperwork
