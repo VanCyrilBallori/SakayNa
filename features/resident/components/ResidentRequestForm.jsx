@@ -9,7 +9,16 @@ import { COLORS, LIGHT_COLORS } from "../../../constants/design";
 import { TOLEDO_BARANGAY_OPTIONS } from "../../../lib/barangays";
 import useCurrentLocation from "../hooks/useCurrentLocation";
 import { createResidentRequest } from "../services/residentRequestService";
-import { ASSISTANCE_OPTIONS, MAX_PASSENGERS, PURPOSE_OPTIONS } from "../utils/requestOptions";
+import { formatClockTime, formatShortDay } from "../../../lib/dates";
+import {
+  ASSISTANCE_OPTIONS,
+  MAX_PASSENGERS,
+  PURPOSE_OPTIONS,
+  SCHEDULE_MAX_DAYS_AHEAD,
+  buildScheduledDate,
+  getScheduleDayOptions,
+  getScheduleTimeOptions,
+} from "../utils/requestOptions";
 import { sanitizeRequestForm, validateResidentRequest } from "../utils/requestValidation";
 import MapLocationModal from "./MapLocationModal";
 
@@ -22,6 +31,9 @@ const colors = LIGHT_COLORS;
 const newForm = (barangay) => ({
   purpose: "",
   purposeOther: "",
+  timing: "asap", // "asap" or "scheduled"
+  scheduleDay: "", // "2026-10-02"
+  scheduleMinutes: null, // minutes after midnight, e.g. 540 = 9:00 AM
   ridingFor: "self", // "self" or "other"
   passengerName: "",
   passengerPhone: "",
@@ -76,6 +88,18 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
     if (option === "Other") setErrors((current) => ({ ...current, assistanceOther: "" }));
   };
 
+  // Changing the day clears the time if that time can't be booked on the new day.
+  const setScheduleDay = (dayValue) => {
+    const stillAllowed = getScheduleTimeOptions(dayValue).some((option) => option.value === form.scheduleMinutes);
+    setForm((current) => ({ ...current, scheduleDay: dayValue, scheduleMinutes: stillAllowed ? current.scheduleMinutes : null }));
+    setErrors((current) => ({ ...current, schedule: "" }));
+  };
+
+  const setScheduleMinutes = (minutes) => {
+    setForm((current) => ({ ...current, scheduleMinutes: minutes }));
+    setErrors((current) => ({ ...current, schedule: "" }));
+  };
+
   const changeCount = (step) => {
     setValue("passengerCount", Math.min(MAX_PASSENGERS, Math.max(1, form.passengerCount + step)));
   };
@@ -108,6 +132,13 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
 
   const submit = async () => {
     if (saving || !uid) return;
+    // Check again: the chosen time may have become too soon while the form was open.
+    const nextErrors = validateResidentRequest(form, residentPhone);
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      setPage("fill");
+      return;
+    }
     setSaving(true);
     setSendError("");
     try {
@@ -173,6 +204,8 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
                     residentName={residentName}
                     residentPhone={residentPhone}
                     setValue={setValue}
+                    setScheduleDay={setScheduleDay}
+                    setScheduleMinutes={setScheduleMinutes}
                     toggleAssistance={toggleAssistance}
                     changeCount={changeCount}
                     locating={locating}
@@ -238,7 +271,7 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
   );
 }
 
-function FillPage({ form, errors, residentName, residentPhone, setValue, toggleAssistance, changeCount, locating, locationMessage, onUseGps, onOpenMap }) {
+function FillPage({ form, errors, residentName, residentPhone, setValue, setScheduleDay, setScheduleMinutes, toggleAssistance, changeCount, locating, locationMessage, onUseGps, onOpenMap }) {
   const hasExactSpot = form.pickup.latitude !== null;
 
   return (
@@ -268,6 +301,14 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, toggleA
             <ErrorText message={errors.purposeOther} />
           </>
         ) : null}
+      </Field>
+
+      <Field icon="clock-outline" label="When do you need the ride?" error={errors.schedule}>
+        <View style={styles.choiceList} accessibilityRole="radiogroup">
+          <ChoiceRow type="radio" label="As soon as possible" selected={form.timing === "asap"} onPress={() => setValue("timing", "asap")} />
+          <ChoiceRow type="radio" label="Schedule for later" selected={form.timing === "scheduled"} onPress={() => setValue("timing", "scheduled")} />
+        </View>
+        {form.timing === "scheduled" ? <SchedulePicker form={form} hasError={Boolean(errors.schedule)} setScheduleDay={setScheduleDay} setScheduleMinutes={setScheduleMinutes} /> : null}
       </Field>
 
       <Field icon="account-outline" label="Who is riding?" error={errors.ridingFor}>
@@ -423,6 +464,7 @@ function ReviewPage({ form, residentName, residentPhone }) {
   const assistance = form.assistance.map((item) => (item === "Other" ? `Other: ${form.assistanceOther}` : item)).join(", ");
   const rows = [
     ["clipboard-text-outline", "Ride for", form.purpose === "Other" ? `Other: ${form.purposeOther}` : form.purpose],
+    ["clock-outline", "When", form.timing === "scheduled" ? scheduleText(form) : "As soon as possible"],
     ["account-outline", "Who is riding", riderIsMe ? `Me (${residentName})` : form.passengerName],
     ["phone-outline", "Contact number", riderIsMe || !form.passengerPhone ? `${residentPhone}${riderIsMe ? "" : " (yours)"}` : form.passengerPhone],
     ["account-multiple-outline", "People riding", peopleText(form.passengerCount)],
@@ -449,6 +491,59 @@ function ReviewPage({ form, residentName, residentPhone }) {
         ))}
       </View>
     </>
+  );
+}
+
+// "Fri, Oct 2, 9:00 AM" for the day and time chosen in the form.
+const scheduleText = (form) => {
+  const date = buildScheduledDate(form.scheduleDay, form.scheduleMinutes);
+  return `${formatShortDay(date)}, ${formatClockTime(date)}`;
+};
+
+// The Day and Time dropdowns under "Schedule for later". Only times that can be booked are listed.
+function SchedulePicker({ form, hasError, setScheduleDay, setScheduleMinutes }) {
+  const dayOptions = getScheduleDayOptions();
+  const timeOptions = form.scheduleDay ? getScheduleTimeOptions(form.scheduleDay) : [];
+
+  return (
+    <View style={styles.schedulePicker}>
+      <Text style={styles.subLabel}>Day</Text>
+      <Dropdown
+        style={[styles.input, hasError && !form.scheduleDay && styles.inputError]}
+        containerStyle={styles.dropdownList}
+        placeholderStyle={[styles.dropdownText, { color: colors.muted }]}
+        selectedTextStyle={[styles.dropdownText, { color: colors.heading }]}
+        itemTextStyle={[styles.dropdownText, { color: colors.heading }]}
+        maxHeight={320}
+        data={dayOptions}
+        labelField="label"
+        valueField="value"
+        placeholder="Choose the day"
+        value={form.scheduleDay}
+        onChange={(item) => setScheduleDay(item.value)}
+        accessibilityLabel="Day of the ride"
+      />
+
+      <Text style={[styles.subLabel, styles.subLabelSpaced]}>Time</Text>
+      <Dropdown
+        style={[styles.input, hasError && styles.inputError, !form.scheduleDay && styles.inputDisabled]}
+        containerStyle={styles.dropdownList}
+        placeholderStyle={[styles.dropdownText, { color: colors.muted }]}
+        selectedTextStyle={[styles.dropdownText, { color: colors.heading }]}
+        itemTextStyle={[styles.dropdownText, { color: colors.heading }]}
+        maxHeight={320}
+        data={timeOptions}
+        labelField="label"
+        valueField="value"
+        placeholder={form.scheduleDay ? "Choose the time" : "Choose the day first"}
+        value={form.scheduleMinutes}
+        onChange={(item) => setScheduleMinutes(item.value)}
+        disable={!form.scheduleDay}
+        accessibilityLabel="Time of the ride"
+      />
+
+      <Hint icon="information-outline" text={`Book at least 1 hour ahead, up to ${SCHEDULE_MAX_DAYS_AHEAD} days.`} />
+    </View>
   );
 }
 
@@ -591,6 +686,10 @@ const styles = StyleSheet.create({
   },
   inputBelow: { marginTop: 10 },
   inputError: { borderColor: COLORS.emergency, borderWidth: 2 },
+  inputDisabled: { backgroundColor: colors.card },
+  schedulePicker: { marginTop: 14 },
+  subLabel: { marginBottom: 8, fontSize: 16, fontWeight: "600", color: colors.heading },
+  subLabelSpaced: { marginTop: 14 },
   multiline: { minHeight: 96, paddingTop: 14, paddingBottom: 14 },
   dropdownText: { fontSize: 17 },
   dropdownList: { borderRadius: 12, borderWidth: 1.5, borderColor: colors.outline, overflow: "hidden" },

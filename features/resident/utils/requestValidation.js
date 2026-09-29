@@ -1,4 +1,4 @@
-import { MAX_PASSENGERS } from "./requestOptions";
+import { MAX_PASSENGERS, SCHEDULE_MIN_MINUTES_AHEAD, buildScheduledDate, isAllowedScheduleTime } from "./requestOptions";
 
 const compactWhitespace = (value = "") => value.trim().replace(/\s+/g, " ");
 
@@ -29,11 +29,21 @@ export const sanitizeRequestForm = (form) => ({
 
 // Returns { fieldName: "message" } for every field that needs fixing. Empty object = the form is complete.
 // residentPhone is the phone saved in the resident's profile (used when "Me" is riding).
-export const validateResidentRequest = (form, residentPhone) => {
+// now is the current time (the scheduled time is checked against it).
+export const validateResidentRequest = (form, residentPhone, now = new Date()) => {
   const errors = {};
 
   if (!form.purpose) errors.purpose = "Choose what the ride is for.";
   else if (form.purpose === "Other" && !hasText(form.purposeOther, 100)) errors.purposeOther = "Tell us briefly what the ride is for (up to 100 letters).";
+
+  if (form.timing === "scheduled") {
+    if (!form.scheduleDay || form.scheduleMinutes === null) {
+      errors.schedule = "Choose the day and time for the ride.";
+    } else if (!isAllowedScheduleTime(buildScheduledDate(form.scheduleDay, form.scheduleMinutes), now)) {
+      // Happens when the form stays open until the chosen time is less than 1 hour away.
+      errors.schedule = `This time is now too soon. Choose a time at least ${SCHEDULE_MIN_MINUTES_AHEAD / 60} hour from now.`;
+    }
+  }
 
   if (form.ridingFor === "self" && !normalizePhilippinePhone(residentPhone || "")) {
     errors.ridingFor = "Your profile has no phone number. Add it in Settings first.";

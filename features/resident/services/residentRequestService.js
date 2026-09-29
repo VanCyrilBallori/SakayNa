@@ -2,7 +2,8 @@ import { collection, doc, runTransaction, serverTimestamp, setDoc } from "fireba
 
 import { db } from "../../../firebase";
 import { FIRESTORE_COLLECTIONS, REQUEST_STATUSES } from "../../../constants/app";
-import { getResidentReportedPriority } from "../utils/requestOptions";
+import { buildScheduledDate, getResidentReportedPriority } from "../utils/requestOptions";
+import { formatClockTime, formatShortDay } from "../../../lib/dates";
 import { normalizePhilippinePhone } from "../utils/requestValidation";
 
 // Saves a new transport request. The form must already be checked by validateResidentRequest.
@@ -10,7 +11,10 @@ import { normalizePhilippinePhone } from "../utils/requestValidation";
 export const createResidentRequest = async ({ uid, residentName, residentPhone, form }) => {
   const requestRef = doc(collection(db, FIRESTORE_COLLECTIONS.TRANSPORT_REQUESTS));
   const reference = `SKN-${requestRef.id.slice(0, 8).toUpperCase()}`;
-  const priority = getResidentReportedPriority(form.purpose);
+  const priority = getResidentReportedPriority(form.purpose, form.timing);
+  // A scheduled ride saves its date and time. Firestore stores it as a Timestamp.
+  const scheduledFor = form.timing === "scheduled" ? buildScheduledDate(form.scheduleDay, form.scheduleMinutes) : null;
+  const whenText = scheduledFor ? ` on ${formatShortDay(scheduledFor)}, ${formatClockTime(scheduledFor)}` : "";
   const myPhone = normalizePhilippinePhone(residentPhone || "");
   const riderIsMe = form.ridingFor === "self";
   // "Other: Groceries" instead of just "Other", so dispatchers and drivers know what the ride is for.
@@ -31,9 +35,8 @@ export const createResidentRequest = async ({ uid, residentName, residentPhone, 
     priorityLevel: priority,
     purpose: form.purpose,
     purposeOther: form.purpose === "Other" ? form.purposeOther : "",
-    // "When" comes in Step 4 of resident-overhaul-plan.md. Until then every ride is "as soon as possible".
-    timing: "asap",
-    scheduledFor: null,
+    timing: form.timing, // "asap" or "scheduled"
+    scheduledFor,
     title: purposeLabel,
     ridingFor: form.ridingFor,
     passengerName: riderIsMe ? residentName || "Resident" : form.passengerName,
@@ -45,7 +48,7 @@ export const createResidentRequest = async ({ uid, residentName, residentPhone, 
     pickup: { ...form.pickup, address: pickupAddress, barangay: form.barangay },
     pickupDetails: form.pickupDetails,
     destination: form.destination,
-    summary: `${purposeLabel} ride for ${peopleLabel} from ${pickupAddress} to ${form.destination}.`,
+    summary: `${purposeLabel} ride for ${peopleLabel}${whenText} from ${pickupAddress} to ${form.destination}.`,
     assistance: form.assistance,
     assistanceOther: form.assistance.includes("Other") ? form.assistanceOther : "",
     additionalNotes: form.additionalNotes,

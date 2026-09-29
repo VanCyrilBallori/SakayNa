@@ -6,7 +6,7 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindow
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
-import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName } from "../features/resident/utils/requestMapper";
+import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
 import { startPhoneCall } from "../lib/phoneCall";
 import LeafletMap from "../components/LeafletMap";
 import { db } from "../firebase";
@@ -43,8 +43,32 @@ const formatPhoneForDialing = (phone = "") => {
   return match ? `0${match[1]} ${match[2]} ${match[3]}` : phone;
 };
 
+// Rides scheduled more than this far ahead get the "Assign it closer to the time" warning.
+const ASSIGN_EARLY_WARNING_MS = 2 * 60 * 60_000;
+
+// True for a scheduled ride that is still more than 2 hours away. now = Date.now() from the screen's clock.
+const isScheduledFarAhead = (request, now) => {
+  const scheduled = getScheduledDate(request);
+  return Boolean(scheduled) && scheduled.getTime() - now > ASSIGN_EARLY_WARNING_MS;
+};
+
+// "ASAP", "Scheduled: Fri, Oct 2, 9:00 AM", or in red "Scheduled time passed: ..." when nobody assigned it in time.
+function WhenLabel({ request, now, style }) {
+  const scheduled = getScheduledDate(request);
+  if (!scheduled) return <Text style={style}>ASAP</Text>;
+  const passed = scheduled.getTime() < now;
+  return <Text style={[style, passed && styles.whenPassed]}>{passed ? "Scheduled time passed" : "Scheduled"}: {getWhenText(request)}</Text>;
+}
+
+// Waiting list order: ASAP rides first (the one waiting longest on top), then scheduled rides (soonest first).
+// A request the server hasn't timed yet goes last in its group.
+const queueOrder = (request) => {
+  const scheduled = getScheduledDate(request);
+  return scheduled ? [1, scheduled.getTime()] : [0, request.createdAt?.toMillis?.() ?? Infinity];
+};
+
 // Everything about the request the dispatcher tapped, under the queue / map / drivers columns.
-function SelectedRequestDetails({ request }) {
+function SelectedRequestDetails({ request, now }) {
   if (!request) {
     return (
       <View style={styles.detailsPanel}>
@@ -75,7 +99,7 @@ function SelectedRequestDetails({ request }) {
         </View>
         <Text style={styles.detailsTitle}>{request.title}</Text>
         <Text style={styles.detailsMuted}>
-          ASAP · {request.reference || request.id} · Sent {formatRequestDate(request.createdAt)}
+          <WhenLabel request={request} now={now} /> · {request.reference || request.id} · Sent {formatRequestDate(request.createdAt)}
         </Text>
       </View>
 
@@ -306,8 +330,11 @@ export default function DispatcherHome() {
           };
         });
 
-        // The request that has waited longest goes on top. (A request the server hasn't timed yet goes last.)
-        nextRequests.sort((first, second) => (first.createdAt?.toMillis?.() ?? Infinity) - (second.createdAt?.toMillis?.() ?? Infinity));
+        nextRequests.sort((first, second) => {
+          const [firstGroup, firstTime] = queueOrder(first);
+          const [secondGroup, secondTime] = queueOrder(second);
+          return firstGroup - secondGroup || firstTime - secondTime || 0;
+        });
 
         setRequests(nextRequests);
         setSelectedRequest((current) => {
@@ -590,8 +617,7 @@ export default function DispatcherHome() {
                         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
                           <Text style={styles.requestChipText}>{request.level}</Text>
                         </View>
-                        {/* Every ride is "as soon as possible" for now. Scheduled rides come in Step 4 of resident-overhaul-plan.md. */}
-                        <Text style={styles.requestStatus}>ASAP</Text>
+                        <WhenLabel request={request} now={now} style={styles.requestStatus} />
                       </View>
                       <Text style={styles.requestTitle}>{request.title}</Text>
                       <Text style={styles.requestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
@@ -680,7 +706,7 @@ export default function DispatcherHome() {
             </View>
           </View>
 
-          <SelectedRequestDetails request={selectedRequest} />
+          <SelectedRequestDetails request={selectedRequest} now={now} />
         </View>
       </ScrollView>
 
@@ -712,6 +738,7 @@ export default function DispatcherHome() {
                     <View style={styles.modalRequestCopy}>
                       <Text style={styles.modalRequestTitle}>{request.title}</Text>
                       <Text style={styles.modalRequestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
+                      <WhenLabel request={request} now={now} style={styles.modalRequestMeta} />
                     </View>
                   </TouchableOpacity>
                 ))
@@ -764,6 +791,11 @@ export default function DispatcherHome() {
                   <Text style={styles.assignmentSummaryText}>
                     Vehicle: {resolvedVehicle?.name || (selectedDriverUsesOwnVehicle ? "No approved personal vehicle found" : "No city/barangay vehicle available")}
                   </Text>
+                  {isScheduledFarAhead(requestToAssign, now) ? (
+                    <Text style={styles.assignEarlyWarning}>
+                      This ride is scheduled for {getWhenText(requestToAssign)}. If you assign it now, the driver and vehicle stay busy until the trip is done. Assign it closer to the time.
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View style={styles.assignmentActionRow}>
@@ -830,6 +862,8 @@ const styles = StyleSheet.create({
   requestTitle: { marginTop: 10, fontSize: 18, fontWeight: "800", color: "#111111" },
   requestMeta: { marginTop: 10, fontSize: 12, lineHeight: 17, color: "#465752" },
   requestHelp: { marginTop: 6, fontWeight: "700", color: "#24342E" },
+  whenPassed: { color: "#B42318", fontWeight: "800" },
+  assignEarlyWarning: { marginTop: 12, padding: 12, borderRadius: 12, overflow: "hidden", backgroundColor: "#FFF3CD", color: "#5C3F00", fontSize: 14, lineHeight: 20, fontWeight: "700" },
   detailsPanel: { padding: 20, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5E0" },
   detailsHeading: { fontSize: 24, fontWeight: "800", color: "#06774B" },
   detailsEmpty: { marginTop: 8, fontSize: 15, color: "#60716B" },

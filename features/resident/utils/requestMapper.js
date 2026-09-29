@@ -1,8 +1,18 @@
 import { REQUEST_STATUSES, RESIDENT_CANCELLABLE_STATUSES } from "../../../constants/app";
+import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
 import { VULNERABLE_GROUP_OPTIONS } from "./requestOptions";
 
 // ---- Labels shared by the resident, dispatcher, driver and admin screens ----
 // Each one reads the new form's fields first, then the old form's fields, so old requests still show.
+
+// The date and time of a scheduled ride, or null for "as soon as possible" (old requests are always ASAP).
+export const getScheduledDate = (request) => (request?.timing === "scheduled" ? getDateFromValue(request.scheduledFor) : null);
+
+// "Fri, Oct 2, 9:00 AM" for a scheduled ride, or "As soon as possible".
+export const getWhenText = (request) => {
+  const scheduled = getScheduledDate(request);
+  return scheduled ? `${formatShortDay(scheduled)}, ${formatClockTime(scheduled)}` : "As soon as possible";
+};
 
 // The person riding: the name typed in the request form, or the account owner's name for older requests.
 export const getPassengerName = (request, assignment) =>
