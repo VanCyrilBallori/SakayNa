@@ -42,3 +42,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# design reference screenshots from other apps (keep local only)
+design-refs/indrive-*.png

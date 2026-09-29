@@ -17,15 +17,16 @@
   the red Emergency button."
 - Old requests (old form, old APKs) must still show correctly. Screens
   read the new fields first, then fall back to the old ones.
-- design-refs/indrive-*.png are layout ideas only. SakayNa colors, and
+- design-refs/indrive-*.png are layout ideas only (kept on this computer
+  only, not in git; see .gitignore). SakayNa colors, and
   the current Dark/Light switch stays.
 
 ## Answers (2026-09-29)
 1. Max passengers: 6 (MAX_PASSENGERS in requestOptions.js, easy to change).
 2. Schedule: at least 1 hour from now, at most 7 days ahead.
 3. Help / Contact: show the one city office number (publicOfficePhone).
-4. Old transport requests: NOT DECIDED YET (test data or keep?).
-   See "Deleting old test requests" below.
+4. Old transport requests: test data. You delete them by hand later,
+   using "Deleting old test requests" below.
 5. Pickup barangay: starts filled from the profile, resident can change it.
 
 ## What I found
@@ -159,7 +160,7 @@ Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
 new place first), then map home.
 
-## Deleting old test requests (only if you decide "yes" in answer 4)
+## Deleting old test requests (answer 4)
 Do this in the Firebase Console, when no driver is on a trip:
 1. driverAssignments: delete every document (each one points to a
    request through requestId).
