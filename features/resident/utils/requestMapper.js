@@ -1,4 +1,31 @@
 import { REQUEST_STATUSES, RESIDENT_CANCELLABLE_STATUSES } from "../../../constants/app";
+import { VULNERABLE_GROUP_OPTIONS } from "./requestOptions";
+
+// ---- Labels shared by the resident, dispatcher, driver and admin screens ----
+// Each one reads the new form's fields first, then the old form's fields, so old requests still show.
+
+// The person riding: the name typed in the request form, or the account owner's name for older requests.
+export const getPassengerName = (request, assignment) =>
+  request?.passengerName || request?.patientName || request?.residentName || assignment?.residentName || "Not provided";
+
+// New requests save a number (passengerCount); older requests saved text like "2 passengers".
+export const getPassengerCountText = (request) => {
+  const count = request?.passengerCount;
+  if (typeof count === "number") return `${count} ${count === 1 ? "person" : "people"}`;
+  return request?.passengerCapacity || "Not provided";
+};
+
+// The help the passenger needs, as one line like "Senior citizen, PWD". "None" if nothing was chosen.
+// New requests save a list (assistance); older requests saved on/off switches (vulnerableGroups) plus notes.
+export const getAssistanceText = (request) => {
+  if (Array.isArray(request?.assistance)) {
+    const labels = request.assistance.map((item) => (item === "Other" && request.assistanceOther ? `Other: ${request.assistanceOther}` : item));
+    return labels.join(", ") || "None";
+  }
+  const groups = request?.vulnerableGroups || {};
+  const labels = VULNERABLE_GROUP_OPTIONS.filter((option) => groups[option.key]).map((option) => option.label);
+  return [labels.join(", "), request?.accessibilityNotes].filter(Boolean).join(" | ") || "None";
+};
 
 const statusMeta = {
   [REQUEST_STATUSES.PENDING]: { label: "Pending review", tone: "warning", icon: "clock-o" },

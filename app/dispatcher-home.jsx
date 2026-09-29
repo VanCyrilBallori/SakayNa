@@ -6,6 +6,8 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindow
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
+import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName } from "../features/resident/utils/requestMapper";
+import { startPhoneCall } from "../lib/phoneCall";
 import LeafletMap from "../components/LeafletMap";
 import { db } from "../firebase";
 import { getTimestampMillis } from "../lib/dates";
@@ -34,6 +36,80 @@ const getRequestStyle = (level) => {
 
   return { color: "#D1E6DD", chip: "#06774B" };
 };
+
+// "+639171234567" → "0917 123 4567", so it is easy to read and dial from an office phone.
+const formatPhoneForDialing = (phone = "") => {
+  const match = /^\+63(9\d{2})(\d{3})(\d{4})$/.exec(phone);
+  return match ? `0${match[1]} ${match[2]} ${match[3]}` : phone;
+};
+
+// Everything about the request the dispatcher tapped, under the queue / map / drivers columns.
+function SelectedRequestDetails({ request }) {
+  if (!request) {
+    return (
+      <View style={styles.detailsPanel}>
+        <Text style={styles.detailsHeading}>Selected Request</Text>
+        <Text style={styles.detailsEmpty}>Tap a request in the list to see its details.</Text>
+      </View>
+    );
+  }
+
+  const phone = request.contactNumber || request.residentPhone || "";
+  const bookedForSomeoneElse = request.ridingFor === "other";
+  const items = [
+    ["People riding", getPassengerCountText(request)],
+    ["Pickup", [request.pickupLocation, request.barangay].filter(Boolean).filter((value, index, list) => list.indexOf(value) === index).join(", ")],
+    ["Landmark / pickup details", request.pickupDetails || "Not provided"],
+    ["Going to", request.destination || "Not provided"],
+    ["Needs help", getAssistanceText(request)],
+    ["Notes", request.additionalNotes || "None"],
+  ];
+
+  return (
+    <View style={styles.detailsPanel}>
+      <Text style={styles.detailsHeading}>Selected Request</Text>
+
+      <View style={styles.detailsTop}>
+        <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
+          <Text style={styles.requestChipText}>{request.level}</Text>
+        </View>
+        <Text style={styles.detailsTitle}>{request.title}</Text>
+        <Text style={styles.detailsMuted}>
+          ASAP · {request.reference || request.id} · Sent {formatRequestDate(request.createdAt)}
+        </Text>
+      </View>
+
+      <View style={styles.detailsPhoneBlock}>
+        <Text style={styles.detailsLabel}>Passenger</Text>
+        <Text style={styles.detailsPassenger}>{getPassengerName(request)}</Text>
+        {phone ? (
+          <TouchableOpacity onPress={() => startPhoneCall(phone)} accessibilityRole="button" accessibilityLabel={`Call ${formatPhoneForDialing(phone)}`}>
+            <Text style={styles.detailsPhone} selectable>
+              {formatPhoneForDialing(phone)}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.detailsValue}>No phone number</Text>
+        )}
+        {bookedForSomeoneElse ? (
+          <Text style={styles.detailsMuted}>
+            Booked by {request.residentName || "a resident"}
+            {request.residentPhone && request.residentPhone !== phone ? ` · ${formatPhoneForDialing(request.residentPhone)}` : " (this is the resident's number)"}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={styles.detailsGrid}>
+        {items.map(([label, value]) => (
+          <View key={label} style={styles.detailsItem}>
+            <Text style={styles.detailsLabel}>{label}</Text>
+            <Text style={styles.detailsValue}>{value}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function DispatcherHome() {
   const router = useRouter();
@@ -210,6 +286,9 @@ export default function DispatcherHome() {
           const requestStyle = getRequestStyle(data.level);
 
           return {
+            // Every saved field (passenger, phone, landmark, help needed, notes...) for the
+            // Selected request box and the map. The lines below add fallbacks for older requests.
+            ...data,
             id: requestDoc.id,
             level: data.priorityLevel ?? data.level ?? "Emergency",
             status: data.status ?? "Pending",
@@ -218,11 +297,6 @@ export default function DispatcherHome() {
             vehicle: data.vehicle ?? "Available Vehicle",
             barangay: data.barangay ?? data.pickupLocation ?? "Pickup location pending",
             pickupLocation: data.pickupLocation ?? data.barangay ?? "Pickup location pending",
-            // The map below needs these to show the resident's exact pin instead of guessing from the address.
-            pickup: data.pickup ?? null,
-            pickupDetails: data.pickupDetails ?? "",
-            destinationLocation: data.destinationLocation ?? null,
-            reference: data.reference ?? "",
             destination: data.destination ?? "Nearest available response center",
             summary: data.summary ?? "Resident transport request waiting for dispatcher assignment.",
             residentId: data.residentId ?? "",
@@ -231,6 +305,9 @@ export default function DispatcherHome() {
             chip: requestStyle.chip,
           };
         });
+
+        // The request that has waited longest goes on top. (A request the server hasn't timed yet goes last.)
+        nextRequests.sort((first, second) => (first.createdAt?.toMillis?.() ?? Infinity) - (second.createdAt?.toMillis?.() ?? Infinity));
 
         setRequests(nextRequests);
         setSelectedRequest((current) => {
@@ -391,7 +468,7 @@ export default function DispatcherHome() {
     setAssignmentMessage("");
 
     if (driver.activeAssignment) {
-      setAssignmentMessage(`${driver.name} is handling ${driver.activeAssignment.request?.title || "an assigned mission"} (${driver.activeAssignment.status}).`);
+      setAssignmentMessage(`${driver.name} is handling ${driver.activeAssignment.title || "an assigned mission"} (${driver.activeAssignment.status}).`);
       return;
     }
 
@@ -513,10 +590,14 @@ export default function DispatcherHome() {
                         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
                           <Text style={styles.requestChipText}>{request.level}</Text>
                         </View>
-                        <Text style={styles.requestStatus}>{request.status}</Text>
+                        {/* Every ride is "as soon as possible" for now. Scheduled rides come in Step 4 of resident-overhaul-plan.md. */}
+                        <Text style={styles.requestStatus}>ASAP</Text>
                       </View>
-                      <Text style={styles.requestTitle}>{request.level}</Text>
-                      <Text style={styles.requestMeta}>{request.emergencyType} | {request.vehicle} | {request.barangay}</Text>
+                      <Text style={styles.requestTitle}>{request.title}</Text>
+                      <Text style={styles.requestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
+                      {getAssistanceText(request) !== "None" ? (
+                        <Text style={[styles.requestMeta, styles.requestHelp]}>Needs help: {getAssistanceText(request)}</Text>
+                      ) : null}
                     </TouchableOpacity>
                   ))
                 ) : (
@@ -584,7 +665,7 @@ export default function DispatcherHome() {
                       {driver.activeAssignment ? (
                         <View style={styles.driverMission}>
                           <Text style={styles.driverMissionLabel}>Handling</Text>
-                          <Text style={styles.driverMissionText}>{driver.activeAssignment.request?.title || driver.activeAssignment.request?.emergencyType || "Assigned mission"}</Text>
+                          <Text style={styles.driverMissionText}>{driver.activeAssignment.title || "Assigned mission"}</Text>
                         </View>
                       ) : null}
                     </TouchableOpacity>
@@ -599,6 +680,7 @@ export default function DispatcherHome() {
             </View>
           </View>
 
+          <SelectedRequestDetails request={selectedRequest} />
         </View>
       </ScrollView>
 
@@ -628,8 +710,8 @@ export default function DispatcherHome() {
                       <Text style={styles.requestChipText}>{request.level}</Text>
                     </View>
                     <View style={styles.modalRequestCopy}>
-                      <Text style={styles.modalRequestTitle}>{request.emergencyType}</Text>
-                      <Text style={styles.modalRequestMeta}>{request.level} | {request.vehicle} | {request.barangay}</Text>
+                      <Text style={styles.modalRequestTitle}>{request.title}</Text>
+                      <Text style={styles.modalRequestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
                     </View>
                   </TouchableOpacity>
                 ))
@@ -677,7 +759,7 @@ export default function DispatcherHome() {
               <>
                 <View style={styles.assignmentSummaryCard}>
                   <Text style={styles.assignmentSummaryTitle}>Assignment Ready</Text>
-                  <Text style={styles.assignmentSummaryText}>Request: {requestToAssign.emergencyType}</Text>
+                  <Text style={styles.assignmentSummaryText}>Request: {requestToAssign.title} · {getPassengerCountText(requestToAssign)}</Text>
                   <Text style={styles.assignmentSummaryText}>Driver: {selectedDriver?.name || "No driver selected"}</Text>
                   <Text style={styles.assignmentSummaryText}>
                     Vehicle: {resolvedVehicle?.name || (selectedDriverUsesOwnVehicle ? "No approved personal vehicle found" : "No city/barangay vehicle available")}
@@ -747,6 +829,20 @@ const styles = StyleSheet.create({
   requestStatus: { fontSize: 13, fontWeight: "700", color: "#344640" },
   requestTitle: { marginTop: 10, fontSize: 18, fontWeight: "800", color: "#111111" },
   requestMeta: { marginTop: 10, fontSize: 12, lineHeight: 17, color: "#465752" },
+  requestHelp: { marginTop: 6, fontWeight: "700", color: "#24342E" },
+  detailsPanel: { padding: 20, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5E0" },
+  detailsHeading: { fontSize: 24, fontWeight: "800", color: "#06774B" },
+  detailsEmpty: { marginTop: 8, fontSize: 15, color: "#60716B" },
+  detailsTop: { marginTop: 14, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
+  detailsTitle: { fontSize: 22, fontWeight: "800", color: "#111111" },
+  detailsMuted: { fontSize: 14, lineHeight: 20, color: "#60716B" },
+  detailsPhoneBlock: { marginTop: 18, padding: 16, borderRadius: 16, backgroundColor: "#E5F4ED", gap: 4 },
+  detailsPassenger: { fontSize: 20, fontWeight: "800", color: "#111111" },
+  detailsPhone: { fontSize: 32, lineHeight: 40, fontWeight: "800", letterSpacing: 0.5, color: "#06774B", fontVariant: ["tabular-nums"] },
+  detailsGrid: { marginTop: 18, flexDirection: "row", flexWrap: "wrap", gap: 18 },
+  detailsItem: { flexGrow: 1, flexBasis: 240, maxWidth: 480 },
+  detailsLabel: { fontSize: 13, fontWeight: "700", color: "#496B5F" },
+  detailsValue: { marginTop: 4, fontSize: 16, lineHeight: 23, color: "#111111" },
   mapPanel: { flex: 4, minWidth: 360, height: 560, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D6DFDB", overflow: "hidden" },
   mapPanelCompact: { flexBasis: "100%", minWidth: 0, height: 560 },
   mapPlaceholder: { flex: 1, minHeight: 560, alignItems: "stretch", justifyContent: "flex-start", backgroundColor: "#F7F9F8" },

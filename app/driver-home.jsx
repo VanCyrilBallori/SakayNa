@@ -8,7 +8,7 @@ import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollV
 import BrandLogo from "../components/BrandLogo";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
-import { VULNERABLE_GROUP_OPTIONS } from "../features/resident/utils/requestOptions";
+import { getAssistanceText, getPassengerCountText, getPassengerName } from "../features/resident/utils/requestMapper";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
@@ -24,29 +24,6 @@ import {
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
-
-// The person riding: the name typed in the request form, or the account owner's name for older requests.
-const getPassengerName = (request, assignment) =>
-  request?.passengerName || request?.patientName || request?.residentName || assignment?.residentName || "Not provided";
-
-// The help the passenger needs, as one line like "Senior citizen, PWD".
-// New requests save a list (assistance); older requests saved on/off switches (vulnerableGroups) plus notes.
-const getAssistanceText = (request) => {
-  if (Array.isArray(request?.assistance)) {
-    const labels = request.assistance.map((item) => (item === "Other" && request.assistanceOther ? `Other: ${request.assistanceOther}` : item));
-    return labels.join(", ") || "None";
-  }
-  const groups = request?.vulnerableGroups || {};
-  const labels = VULNERABLE_GROUP_OPTIONS.filter((option) => groups[option.key]).map((option) => option.label);
-  return [labels.join(", "), request?.accessibilityNotes].filter(Boolean).join(" | ") || "None";
-};
-
-// New requests save a number (passengerCount); older requests saved text like "2 passengers".
-const getPassengerCountText = (request) => {
-  const count = request?.passengerCount;
-  if (typeof count === "number") return `${count} ${count === 1 ? "person" : "people"}`;
-  return request?.passengerCapacity || "Not provided";
-};
 
 // The assigned vehicle's name. (Old requests saved the passenger count in "vehicle", so that field is not used here.)
 const getVehicleName = (request, assignment) => request?.assignedVehicleName || assignment?.vehicleName || "Vehicle pending";
@@ -715,12 +692,12 @@ export default function DriverHome() {
             <View style={styles.assignmentPanel}>
               <View style={styles.panelHeader}>
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Patient Transfer Inbox</Text>
+                  <Text style={styles.badgeText}>Ride Inbox</Text>
                 </View>
                 <Text style={styles.assignmentStatus}>{assignedTransfer ? "Assigned request" : "No assigned task"}</Text>
               </View>
 
-              <Text style={[styles.assignmentTitle, compact && styles.assignmentTitleCompact]}>Patient Transfer</Text>
+              <Text style={[styles.assignmentTitle, compact && styles.assignmentTitleCompact]}>Current Ride</Text>
 
               {request ? (
                 <View style={styles.assignmentGrid}>
@@ -763,6 +740,7 @@ export default function DriverHome() {
                         <FontAwesome name="map-marker" size={26} color="#111111" />
                         <Text style={styles.locationText}>{request.pickupLocation || "Pickup location pending"}</Text>
                       </View>
+                      {request.pickupDetails ? <Text style={styles.missionText}>Landmark: {request.pickupDetails}</Text> : null}
                     </View>
 
                     <View style={styles.infoCard}>
@@ -782,7 +760,7 @@ export default function DriverHome() {
 
                   <View style={styles.mapCard}>
                     <View style={styles.mapCardHeader}>
-                      <Text style={styles.mapCardTitle}>{request.emergencyType ?? request.title ?? "Patient Transfer"}</Text>
+                      <Text style={styles.mapCardTitle}>{request.emergencyType ?? request.title ?? "Current Ride"}</Text>
                       <View style={styles.mapHeaderButton}>
                         <Text style={styles.mapHeaderButtonText}>{missionStatus}</Text>
                       </View>
@@ -803,7 +781,7 @@ export default function DriverHome() {
                 <View style={styles.emptyInbox}>
                   <FontAwesome name="envelope-o" size={54} color="#8EA098" />
                   <Text style={styles.emptyTitle}>Inbox empty</Text>
-                  <Text style={styles.emptyText}>Assigned patient transfer tasks from dispatch will appear here.</Text>
+                  <Text style={styles.emptyText}>Rides assigned to you by dispatch will appear here.</Text>
                 </View>
               )}
             </View>
@@ -963,7 +941,7 @@ export default function DriverHome() {
                   assignmentHistory.map((assignment) => (
                     <View key={assignment.id} style={[styles.historyCard, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
                       <View style={styles.historyHeader}>
-                        <Text style={[styles.historyTitle, { color: theme.text }]}>{assignment.requestType || assignment.emergencyType || assignment.title || "Transport Request"}</Text>
+                        <Text style={[styles.historyTitle, { color: theme.text }]}>{assignment.title || assignment.requestType || assignment.emergencyType || "Transport Request"}</Text>
                         <View style={styles.badge}>
                           <Text style={styles.badgeText}>{assignment.status || "Pending"}</Text>
                         </View>

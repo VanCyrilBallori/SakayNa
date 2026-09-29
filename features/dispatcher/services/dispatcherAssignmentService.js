@@ -33,6 +33,8 @@ export const assignDispatcherRequest = async ({ requestId, driver, vehicle, disp
       requestId,
       residentId: request.residentId || "",
       residentName: request.residentName || "Resident",
+      // What the ride is for (e.g. "Medical / Health"), shown in the dispatcher's Drivers column and the driver's History.
+      title: request.title || "Transport Request",
       driverId: driver.id,
       driverName,
       dispatcherId: dispatcher.uid || "",
