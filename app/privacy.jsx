@@ -14,11 +14,13 @@ const sections = [
   {
     heading: "2. What information we collect",
     lines: [
-      "When you sign up: your full name, email address, phone number, and barangay. Your password is handled by Firebase Authentication. We never see or store your password.",
+      "When you sign up with email: your email address and a password. Your password is handled by Firebase Authentication. We never see or store your password.",
       "When you sign in with Google: only your name and email address from your Google account. We do not get your Google password, contacts, or any other Google data.",
       "When you request transport: the pickup location (from your phone's GPS, a pin you place on the map, or an address you type), the destination, the passenger's name, a contact number, the type of service, and any notes you choose to add (for example, a description, accessibility needs, or whether the passenger needs extra care).",
       "When you send an emergency alert: your name, phone number, barangay, and your latest transport request. Right after the alert is sent, the app also attaches your GPS location (latitude, longitude, and address) so responders can find you, if your phone allows it.",
-      "When you apply to be a driver: your full name, email address, phone number, barangay, and driver's license number. If you will use your own vehicle, we also collect the plate number, make, model, year, body type, color, MV file number, a photo of the OR/CR, and photos of the vehicle.",
+      "When you register as a resident: your full name, phone number, barangay, and address (house number, street, or purok). You also send one photo that proves you live in your barangay (a Barangay Certificate of Residency, a Barangay ID, or another government document that shows your address), and you say which document it is.",
+      "When you apply to be a driver: your full name, date of birth, contact number, barangay, address, and a profile picture. You also send photos of your documents: your Professional Driver's License (front and back, with its number and expiration date), your NBI Clearance or Police Clearance, your Medical Certificate, and, if you choose to, your Drug Test Clearance. Some of these documents, like the medical certificate, contain sensitive personal information.",
+      "SakayNa does not collect any vehicle information from drivers. Vehicles belong to the barangay.",
       "Location: the app only gets your location when you use a feature that needs it, like filling in a pickup location or sending an emergency alert.",
     ],
   },
@@ -28,7 +30,8 @@ const sections = [
       "To create and manage your account.",
       "To send the right vehicle to the right place, and to let dispatchers and drivers contact you about your request.",
       "To respond to emergency alerts as quickly as possible.",
-      "To review driver applications and check that drivers and vehicles are allowed to operate.",
+      "To check that residents live in their barangay before they can send emergency alerts or transport requests.",
+      "To review driver applications and check that drivers are allowed to drive.",
       "To keep a record of requests for safety and reporting.",
     ],
   },
@@ -36,13 +39,15 @@ const sections = [
     heading: "4. Who can see your information",
     lines: [
       "Only the people who need it to do their job in SakayNa: dispatchers, the driver assigned to your request, and system administrators.",
+      "Your proof-of-residency photo and your driver documents can only be opened in SakayNa by you and by the administrator of your barangay, who reviews them. Dispatchers and drivers cannot see them.",
+      "Please note: the photos are stored as web links. Anyone who has the exact link can open the photo, but SakayNa only shows these links to you and your barangay's administrator.",
       "We do not sell your information, and we do not share it for advertising.",
     ],
   },
   {
     heading: "5. Where your information is stored",
     lines: [
-      "Account and request information is stored in Google Firebase (Firebase Authentication and Cloud Firestore). Driver application photos are stored in Cloudinary. These services may keep data on servers outside the Philippines.",
+      "Account and request information is stored in Google Firebase (Firebase Authentication and Cloud Firestore). Proof-of-residency photos and driver document photos are stored in Cloudinary. These services may keep data on servers outside the Philippines.",
     ],
   },
   {
@@ -56,7 +61,7 @@ const sections = [
     lines: [
       "We keep your account information while your account is active.",
       "Transport request and emergency alert records are kept for [time period to be decided] for safety and reporting.",
-      "Rejected driver applications, including their photos, are deleted after [time period to be decided].",
+      "Proof-of-residency photos and driver document photos are kept after they are reviewed, so an administrator can check them again. They are deleted after [time period to be decided].",
       "If you ask us to delete your account, we will delete or anonymize your information within [time period to be decided], unless the law requires us to keep it longer.",
     ],
   },
@@ -86,7 +91,7 @@ export default function PrivacyPolicy() {
         </View>
 
         <Text style={styles.title}>SakayNa Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: September 28, 2026 (draft)</Text>
+        <Text style={styles.updated}>Last updated: September 29, 2026 (draft)</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>

@@ -188,7 +188,7 @@ function WebLandingPage() {
               Privacy Policy
             </Link>
             <TouchableOpacity onPress={() => router.push("/apply-to-drive")}>
-              <Text style={styles.footerLink}>Jobs</Text>
+              <Text style={styles.footerLink}>Apply to Drive</Text>
             </TouchableOpacity>
           </View>
         </View>
