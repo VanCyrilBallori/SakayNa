@@ -15,6 +15,7 @@ const sections = [
     heading: "2. SakayNa does not replace emergency hotlines",
     lines: [
       "In a life-threatening emergency, also call 911 or your local emergency hotline. SakayNa cannot promise that a vehicle will always be available or will arrive by a certain time.",
+      "Accounts that are not yet verified cannot send emergency alerts or transport requests. If you have an emergency while your account is waiting for verification, call 911.",
     ],
   },
   {

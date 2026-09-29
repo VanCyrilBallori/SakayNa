@@ -3,12 +3,15 @@ import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
+import { ACCOUNT_STATUSES } from "../constants/app";
+import { COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
+import { getAccountStatusLabel } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
@@ -66,6 +69,8 @@ export default function ResidentHome() {
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
   const [callConfirmOpen, setCallConfirmOpen] = useState(false);
+  // "" = closed. "emergency" or "transport" = the "your account is not verified yet" pop-up for that button.
+  const [notVerifiedPopup, setNotVerifiedPopup] = useState("");
   const [callOpen, setCallOpen] = useState(false);
   const [callSessionId, setCallSessionId] = useState("");
   const [callStatus, setCallStatus] = useState("idle");
@@ -97,6 +102,10 @@ export default function ResidentHome() {
 
   const activeProfile = profileOverride ?? profile;
   const displayName = activeProfile?.fullName?.trim() || fallbackDisplayName;
+  // Pending and Rejected residents can open this screen, but cannot send alerts or requests
+  // until an Admin verifies them. Active (verified) residents are not affected.
+  const isRejected = activeProfile?.accountStatus === ACCOUNT_STATUSES.REJECTED;
+  const notVerified = isRejected || activeProfile?.accountStatus === ACCOUNT_STATUSES.PENDING;
 
   const initials = useMemo(() => {
     const words = displayName.split(" ").filter(Boolean);
@@ -246,11 +255,19 @@ export default function ResidentHome() {
 
   const handleQuickAction = (type) => {
     if (type === "emergency-call") {
+      if (notVerified) {
+        setNotVerifiedPopup("emergency");
+        return;
+      }
       setCallConfirmOpen(true);
       return;
     }
 
     if (type === "transport") {
+      if (notVerified) {
+        setNotVerifiedPopup("transport");
+        return;
+      }
       setSosOpen(true);
       return;
     }
@@ -589,6 +606,21 @@ export default function ResidentHome() {
         </View>
 
         <View style={[styles.container, compact && styles.containerCompact]}>
+          {notVerified ? (
+            // Same light colors in Light and Dark mode on purpose, so the banner always stands out.
+            <View style={[styles.statusBanner, isRejected ? styles.statusBannerRejected : styles.statusBannerPending]}>
+              <FontAwesome name={isRejected ? "times-circle" : "clock-o"} size={30} color={isRejected ? COLORS.emergency : COLORS.warning} />
+              <View style={styles.statusBannerCopy}>
+                <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile)}</Text>
+                <Text style={styles.statusBannerText}>
+                  {isRejected
+                    ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
+                    : "An admin from your barangay is checking your proof of residency. You can send emergency alerts and transport requests after you are verified."}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           <View
             style={[
               styles.heroCard,
@@ -686,6 +718,53 @@ export default function ResidentHome() {
         profile={activeProfile}
         onCreated={({ reference }) => setResidentStatus({ title: "Transport Request Sent", description: "Your request was sent to dispatch.", meta: `Reference: ${reference}`, tag: "Pending" })}
       />
+      <Modal visible={Boolean(notVerifiedPopup)} transparent animationType="fade" onRequestClose={() => setNotVerifiedPopup("")}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.callCard, styles.callCardContent, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+            {notVerifiedPopup === "emergency" ? (
+              <>
+                <FontAwesome name="warning" size={52} color="#CF0000" />
+                <Text style={[styles.callTitle, { color: theme.text }]}>Emergency</Text>
+                <Text style={[styles.notVerifiedText, { color: theme.text }]}>
+                  {isRejected ? "Your account was not verified." : "Your account is still being verified."} For emergencies, call 911.
+                </Text>
+                {/* Opens the dialer with 911 typed in. The person still presses call, so a wrong tap never calls 911.
+                    (startPhoneCall is not used here because it can start the call right away.) */}
+                <TouchableOpacity
+                  style={[styles.endCallButton, styles.call911Button]}
+                  onPress={() => Linking.openURL("tel:911").catch((error) => console.log("Phone dialer warning:", error))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Call 911. Opens the phone dialer."
+                >
+                  <FontAwesome name="phone" size={22} color="#FFFFFF" />
+                  <Text style={styles.endCallButtonText}>Call 911</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.notVerifiedCloseButton, { borderColor: theme.mutedText }]}
+                  onPress={() => setNotVerifiedPopup("")}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.notVerifiedCloseText, { color: theme.text }]}>Close</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <FontAwesome name="clipboard" size={48} color="#D88400" />
+                <Text style={[styles.callTitle, { color: theme.text }]}>Transport Request</Text>
+                <Text style={[styles.notVerifiedText, { color: theme.text }]}>
+                  {isRejected
+                    ? "Your account was not verified, so you cannot send transport requests."
+                    : "Your account is still being verified. You can send transport requests after an admin from your barangay approves your account."}
+                </Text>
+                <TouchableOpacity style={styles.callNowButton} onPress={() => setNotVerifiedPopup("")} accessibilityRole="button">
+                  <Text style={styles.callNowButtonText}>OK</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.callCard, styles.callCardContent, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
@@ -1120,6 +1199,39 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 14,
   },
+  // Account status banner (Pending or Rejected residents only). Big, dark text for seniors.
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  statusBannerPending: {
+    backgroundColor: COLORS.warningSurface,
+    borderColor: COLORS.warning,
+  },
+  statusBannerRejected: {
+    backgroundColor: COLORS.emergencySurface,
+    borderColor: COLORS.emergency,
+  },
+  statusBannerCopy: {
+    flex: 1,
+  },
+  statusBannerTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+  statusBannerText: {
+    marginTop: 4,
+    fontSize: 16,
+    lineHeight: 23,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
   heroCard: {
     padding: 22,
     borderRadius: 18,
@@ -1488,6 +1600,31 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     color: "#4A5C55",
     textAlign: "center",
+  },
+  // "Not verified yet" pop-up (Pending or Rejected residents). Bigger, darker text than callSubtitle for seniors.
+  notVerifiedText: {
+    marginTop: 10,
+    fontSize: 17,
+    lineHeight: 25,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  call911Button: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  notVerifiedCloseButton: {
+    width: "100%",
+    marginTop: 12,
+    minHeight: 58,
+    borderRadius: 18,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notVerifiedCloseText: {
+    fontSize: 17,
+    fontWeight: "800",
   },
   endCallButton: {
     width: "100%",
