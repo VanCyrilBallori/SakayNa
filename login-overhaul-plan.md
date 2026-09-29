@@ -127,7 +127,7 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
      callSessions.
    - Terms: unverified accounts cannot send alerts; SakayNa does not
      replace 911.
-7. Admin reviews residents of their barangay [Rules]
+7. Admin reviews residents of their barangay [Rules] — DONE (deployed and tested 2026-09-29)
    - Each admin profile gets a barangay (set in Firebase Console).
    - New "Resident Verification" list: photo, Approve / Reject + reason.
    - Rules: lock barangay (only admin can change it). Driver Settings
