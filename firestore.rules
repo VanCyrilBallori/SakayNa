@@ -34,6 +34,18 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == "Active";
     }
 
+    // The barangay on the caller's own profile ("" if none).
+    function myBarangay() {
+      return profileExists()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("barangay", "")
+        : "";
+    }
+
+    // An Admin in charge of this barangay. Each Admin gets a barangay in the Firebase Console.
+    function isAdminOf(barangay) {
+      return isAdmin() && barangay != "" && myBarangay() == barangay;
+    }
+
     // A brand-new self-created profile may only be an unapproved Resident or an
     // unapproved (Pending) Driver applicant. Dispatcher and Admin accounts are
     // always provisioned by an Admin through the Firebase console, never by the
@@ -50,11 +62,11 @@ service cloud.firestore {
     }
 
     // A self-update (by the profile's own owner) may never change these
-    // fields. Only an Admin may change them.
+    // fields. Only an Admin may change them. The barangay is locked after sign-up.
     function keepsAdminOnlyFields() {
       return !request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(["role", "accountStatus", "approvalStatus",
-                 "approvalReviewedAt", "approvalReviewedBy"]);
+                 "approvalReviewedAt", "approvalReviewedBy", "barangay"]);
     }
 
     // ---- User profiles ----
@@ -122,13 +134,17 @@ service cloud.firestore {
     }
 
     // ---- Resident proof of residency (one per Resident, document id = their uid) ----
-    // Holds the document photo link, so only the Resident and Admins may read it.
-    // A Resident may only create their own, and only as "Pending". Only an Admin may change it.
+    // Holds the document photo link, so only the Resident and the Admin of their barangay may read it.
+    // A Resident may only create their own, and only as "Pending". Only that Admin may change it.
     match /residentVerifications/{uid} {
-      allow read:   if signedIn() && (request.auth.uid == uid || isAdmin());
+      // Only the Admin of the same barangay may read or review it.
+      allow read:   if signedIn() && (request.auth.uid == uid || isAdminOf(resource.data.barangay));
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.status == "Pending";
-      allow update: if isAdmin();
+      // An Admin of that barangay may only Approve ("Active") or Reject, and may not move it to another barangay.
+      allow update: if isAdminOf(resource.data.barangay)
+        && request.resource.data.barangay == resource.data.barangay
+        && request.resource.data.status in ["Active", "Rejected"];
       allow delete: if false;
     }
 
