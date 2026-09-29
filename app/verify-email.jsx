@@ -1,100 +1,215 @@
-import { useCallback, useEffect, useState } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { reload, sendEmailVerification } from "firebase/auth";
-import { StyleSheet, Text } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import AuthLayout from "../components/auth/AuthLayout";
-import AppButton from "../components/ui/AppButton";
-import FeedbackMessage from "../components/ui/FeedbackMessage";
+import BrandLogo from "../components/BrandLogo";
+import { COLORS, LIGHT_COLORS } from "../constants/design";
 import { auth } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
-import { getAuthErrorMessage, useCurrentUserProfile } from "../lib/session";
+import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 
+// Verify Your Email (email sign-up, part 2 of 2).
+// The person opens the link in their email, comes back, and taps "I verified my email".
+// Then they choose Resident or Driver (Choose Role) and fill in that form.
+
+const colors = LIGHT_COLORS;
 const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function VerifyEmail() {
   const router = useRouter();
-  const { authUser, profile, profileStatus } = useCurrentUserProfile();
-  const [isRefreshing, setIsRefreshing] = useState(true);
+  const insets = useSafeAreaInsets();
+  const { authUser, authStatus, profile, profileStatus } = useCurrentUserProfile();
+  const [isChecking, setIsChecking] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [emailVerified, setEmailVerified] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [cooldown, setCooldown] = useState(0);
+  // True while "Start over" is logging out, so the check below does not also send them away.
+  const leavingRef = useRef(false);
 
-  const refreshVerificationStatus = useCallback(async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
-    setIsRefreshing(true);
-    setErrorMessage("");
-    try {
-      await reload(currentUser);
-      setEmailVerified(Boolean(auth.currentUser?.emailVerified));
-    } catch (error) {
-      setErrorMessage(getAuthErrorMessage(error, "We could not refresh your email verification status. Try again."));
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, []);
-
+  // Nobody is signed in: nothing to verify, so go to the start page.
   useEffect(() => {
-    if (!authUser) {
-      router.replace("/login");
-      return;
+    if (authStatus === "ready" && !authUser && !leavingRef.current) {
+      router.replace("/");
     }
-    refreshVerificationStatus();
-  }, [authUser, refreshVerificationStatus, router]);
+  }, [authStatus, authUser, router]);
 
+  // Counts the "Resend in 45s" timer down by one every second.
   useEffect(() => {
     if (!cooldown) return undefined;
     const timer = setInterval(() => setCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => clearInterval(timer);
   }, [cooldown]);
 
+  // Old accounts (for example from the old Apply to Drive page) already have a profile.
+  const hasProfile = profileStatus === "ready" && Boolean(profile);
+  const homeRoute = hasProfile ? getPostAuthenticationRoute(profile) : null;
+
+  const handleVerified = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    setIsChecking(true);
+    setErrorMessage("");
+    setMessage("");
+    try {
+      // Ask Firebase again whether the link was opened (the phone does not find out by itself).
+      await reload(currentUser);
+      if (!auth.currentUser?.emailVerified) {
+        setErrorMessage("Your email is not verified yet. Open the link in the email we sent, then tap the button again.");
+        return;
+      }
+
+      // The app shows Firestore a login "ID card" (token) that still says "not verified".
+      // Getting a fresh one lets Firestore see the verified email right away.
+      await auth.currentUser.getIdToken(true);
+      router.replace(homeRoute ?? "/choose-role");
+    } catch (error) {
+      console.log("Email verification check failed:", error);
+      setErrorMessage(getAuthErrorMessage(error, "We could not check your email. Check your connection and try again."));
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   const handleResend = async () => {
     const currentUser = auth.currentUser;
     if (!currentUser || cooldown > 0) return;
+
     setIsSending(true);
     setErrorMessage("");
     setMessage("");
     try {
       await sendEmailVerification(currentUser);
       setCooldown(RESEND_COOLDOWN_SECONDS);
-      setMessage("A new verification email has been sent.");
+      setMessage("We sent a new email. Open the newest one.");
     } catch (error) {
-      setErrorMessage(getAuthErrorMessage(error, "We could not send a verification email. Please try again later."));
+      console.log("Resend verification failed:", error);
+      setErrorMessage(getAuthErrorMessage(error, "We could not send the email. Please try again later."));
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleContinue = () => {
-    const route = getPostAuthenticationRoute(profile);
-    if (profileStatus !== "ready" || !route) {
-      setErrorMessage("Your account is not ready yet. Please try again in a moment.");
-      return;
+  // Typed the wrong email? Log out and go back to Create Account.
+  const startOver = async () => {
+    leavingRef.current = true;
+    try {
+      await logoutCurrentUser();
+    } catch (error) {
+      console.log("Start over logout failed:", error);
     }
-    router.replace(route);
+    router.replace("/signup");
   };
 
+  const isBusy = isChecking || isSending;
+
   return (
-    <AuthLayout title="Verify Your Email">
-      <Text style={styles.message}>We sent a verification link to {authUser?.email || "your email address"}.</Text>
-      <Text style={styles.notice}>Email verification is available now but is not enforced for existing accounts during this migration.</Text>
-      <FeedbackMessage message={isRefreshing ? "Checking verification status..." : emailVerified ? "Email verified." : "Email not verified yet."} tone={emailVerified ? "success" : "info"} />
-      <FeedbackMessage message={message} tone="success" />
-      <FeedbackMessage message={errorMessage} tone="error" />
-      <AppButton label="I Verified My Email" onPress={refreshVerificationStatus} loading={isRefreshing} style={styles.primaryButton} />
-      <AppButton label={cooldown > 0 ? `Resend available in ${cooldown}s` : "Resend Verification Email"} variant="secondary" onPress={handleResend} loading={isSending} disabled={cooldown > 0} style={styles.secondaryButton} />
-      <AppButton label="Continue to SakayNa" variant="secondary" onPress={handleContinue} disabled={profileStatus !== "ready"} style={styles.continueButton} />
-    </AuthLayout>
+    <View style={[styles.page, { backgroundColor: colors.page }]}>
+      {/* Dark clock/battery icons so they stay visible on the white page. */}
+      <StatusBar style="dark" />
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <BrandLogo variant="main" height={40} style={styles.logo} accessibilityLabel="SakayNa" />
+
+        <View style={styles.middle}>
+          <View style={[styles.disc, { backgroundColor: colors.ripple }]}>
+            <MaterialCommunityIcons name="email-outline" size={52} color={COLORS.primary} />
+          </View>
+
+          <Text style={[styles.title, { color: colors.heading }]} accessibilityRole="header">
+            Verify Your Email
+          </Text>
+
+          <Text style={[styles.bodyText, { color: colors.heading }]}>
+            We sent a link to{"\n"}
+            <Text style={styles.email}>{authUser?.email || "your email"}</Text>.{"\n"}
+            Open it, then come back here.
+          </Text>
+
+          <Text style={[styles.helperText, { color: colors.muted }]}>Can&apos;t find it? Check your Spam folder.</Text>
+        </View>
+
+        {errorMessage ? (
+          <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            {errorMessage}
+          </Text>
+        ) : null}
+        {message ? (
+          <Text style={[styles.successText, { color: COLORS.primary }]} accessibilityLiveRegion="polite">
+            {message}
+          </Text>
+        ) : null}
+
+        <View style={styles.buttons}>
+          <Pressable
+            style={({ pressed }) => [styles.button, styles.filledButton, pressed && styles.pressed]}
+            onPress={handleVerified}
+            disabled={isBusy}
+            android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
+            accessibilityRole="button"
+            accessibilityState={{ busy: isChecking }}
+          >
+            <Text style={[styles.buttonText, { color: "#FFFFFF" }]}>{isChecking ? "Checking..." : "I verified my email"}</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.button, styles.outlinedButton, cooldown > 0 && styles.waitingButton, pressed && styles.pressed]}
+            onPress={handleResend}
+            disabled={isBusy || cooldown > 0}
+            android_ripple={{ color: colors.ripple }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: cooldown > 0, busy: isSending }}
+          >
+            <Text style={[styles.buttonText, { color: cooldown > 0 ? colors.muted : COLORS.primary }]}>
+              {isSending ? "Sending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend email"}
+            </Text>
+          </Pressable>
+
+          {homeRoute ? (
+            <Pressable onPress={() => router.replace(homeRoute)} disabled={isBusy} accessibilityRole="link" style={styles.textLink}>
+              <Text style={styles.textLinkText}>Continue to SakayNa</Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable onPress={startOver} disabled={isBusy} accessibilityRole="link" style={styles.textLink}>
+            <Text style={[styles.helperText, styles.noMargin, { color: colors.heading }]}>
+              Wrong email? <Text style={styles.textLinkText}>Start over</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  message: { fontSize: 16, lineHeight: 24, color: "#557166", textAlign: "center" },
-  notice: { marginTop: 12, fontSize: 14, lineHeight: 21, color: "#557166", textAlign: "center" },
-  primaryButton: { width: "100%", marginTop: 20 },
-  secondaryButton: { width: "100%", marginTop: 12 },
-  continueButton: { width: "100%", marginTop: 12 },
+  page: { flex: 1 },
+  content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
+  logo: { alignSelf: "center" },
+  // Takes the free space between the logo and the buttons and centers the message in it.
+  middle: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
+  disc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center" },
+  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center" },
+  bodyText: { marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center" },
+  email: { fontWeight: "800" },
+  helperText: { marginTop: 16, maxWidth: 420, fontSize: 16, lineHeight: 23, textAlign: "center" },
+  noMargin: { marginTop: 0 },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center", color: COLORS.emergency },
+  successText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center" },
+  buttons: { gap: 12 },
+  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  filledButton: { backgroundColor: COLORS.primary },
+  outlinedButton: { borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: "#FFFFFF" },
+  waitingButton: { borderColor: LIGHT_COLORS.outline },
+  pressed: { opacity: 0.88 },
+  buttonText: { fontSize: 17, fontWeight: "800", textAlign: "center" },
+  textLink: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  textLinkText: { fontSize: 16, lineHeight: 23, fontWeight: "800", color: COLORS.primary, textDecorationLine: "underline" },
 });

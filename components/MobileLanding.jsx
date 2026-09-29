@@ -146,7 +146,8 @@ export default function MobileLanding() {
     router.push("/login");
   };
 
-  const openChooseRole = async () => {
+  // Email sign-up: Create Account → Verify Your Email → Choose Role → form.
+  const openEmailSignup = async () => {
     setSheetOpen(false);
     // Someone who quit a Google sign-up halfway is still signed in, without a profile.
     // Sign them out first, so this email sign-up does not continue inside that Google account.
@@ -157,7 +158,7 @@ export default function MobileLanding() {
         console.log("Sign-out before email sign-up failed:", error);
       }
     }
-    router.push("/choose-role");
+    router.push("/signup");
   };
 
   return (
@@ -376,7 +377,7 @@ export default function MobileLanding() {
                   <View style={[styles.orLine, { backgroundColor: colors.line }]} />
                 </View>
 
-                <SheetOption icon="email-outline" label="Sign up with Email" colors={colors} onPress={openChooseRole} />
+                <SheetOption icon="email-outline" label="Sign up with Email" colors={colors} onPress={openEmailSignup} />
               </View>
 
               <Pressable style={styles.emailLink} onPress={openEmailLogin} accessibilityRole="link">

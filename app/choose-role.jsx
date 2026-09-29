@@ -9,42 +9,39 @@ import { auth } from "../firebase";
 
 // The two account types a person can create by themselves.
 // Dispatcher and Admin accounts are made by an Admin, so they are not here.
-// "route" is where each button goes for someone who is NOT signed in yet ("Sign up with Email").
-// Later steps of the login plan swap these for the new forms.
 const ROLE_CHOICES = [
   {
     key: "resident",
     title: "Resident",
     icon: "home-account",
     description: "You live in Toledo City and need a ride or emergency help.",
-    route: "/signup",
   },
   {
     key: "driver",
     title: "Driver",
     icon: "steering",
     description: "You want to drive a barangay vehicle for SakayNa.",
-    route: "/apply-to-drive",
   },
 ];
 
-// Opened from "Sign up with Email" in the Get Started sheet. Always light, like the landing page.
+// The only place where a new user chooses Resident or Driver. They are always signed in here:
+// Google users come straight after Google sign-in, email users come after Verify Your Email.
+// Always light, like the landing page.
 export default function ChooseRole() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = LIGHT_COLORS;
   const [resident, driver] = ROLE_CHOICES;
 
-  // Signed in already = a new Google user. They skip email + password and go straight to the form.
   const chooseRole = (choice) => {
-    const signedIn = Boolean(auth.currentUser);
-
-    if (!signedIn) {
-      router.push(choice.route);
+    if (!auth.currentUser) {
+      // Not signed in (should not happen): an account must be made first.
+      router.replace("/signup");
     } else if (choice.key === "resident") {
       router.push("/register-resident");
     } else {
-      Alert.alert("Coming soon", "Signing up as a Driver with Google is coming soon. For now, go back and use \"Sign up with Email\".");
+      // The new driver form comes in login-overhaul-plan.md Step 9.
+      Alert.alert("Coming soon", "Driver sign-up in the app is coming soon.");
     }
   };
 

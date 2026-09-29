@@ -31,10 +31,14 @@ service cloud.firestore {
     // unapproved (Pending) Driver applicant. Dispatcher and Admin accounts are
     // always provisioned by an Admin through the Firebase console, never by the
     // app itself, so self-signup can never produce one.
-    // A new Resident starts "Pending" until an Admin verifies their proof of residency.
-    // "Active" is only for the old email sign-up screen; login-overhaul-plan.md Step 5 removes it.
+    // A new Resident starts "Pending" until an Admin verifies their proof of residency,
+    // and needs a verified email (Google sign-ins are verified automatically).
+    // Drivers get the verified-email check in login-overhaul-plan.md Step 9, when the new
+    // driver form replaces the old Apply to Drive page (which saves before the email is verified).
     function selfCreateProfileIsSafe() {
-      return (request.resource.data.role == "Resident" && request.resource.data.accountStatus in ["Pending", "Active"])
+      return (request.resource.data.role == "Resident"
+          && request.resource.data.accountStatus == "Pending"
+          && request.auth.token.email_verified == true)
         || (request.resource.data.role == "Driver" && request.resource.data.accountStatus == "Pending");
     }
 

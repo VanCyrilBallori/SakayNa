@@ -29,6 +29,12 @@ export default function AuthRouteGate({ children }) {
       return;
     }
 
+    // Signed in but no profile yet = they stopped halfway through sign-up. Continue where they left off.
+    if (profileStatus === "missing") {
+      router.replace(authUser.emailVerified ? "/choose-role" : "/verify-email");
+      return;
+    }
+
     if (profileStatus === "ready" && (!isSupportedRole(profile?.role) || isDisabledProfile(profile))) {
       clearLocalSession({ uid: authUser.uid, email: authUser.email ?? "" });
       return;
@@ -62,7 +68,11 @@ export default function AuthRouteGate({ children }) {
     return <ScreenState loading message="Redirecting to login..." />;
   }
 
-  if (profileStatus === "missing" || profileStatus === "error") {
+  if (profileStatus === "missing") {
+    return <ScreenState loading message="Continuing your sign-up..." />;
+  }
+
+  if (profileStatus === "error") {
     return <ScreenState title="Account unavailable" message={profileError} actionLabel="Retry" onAction={retryProfile} secondaryActionLabel="Log Out" onSecondaryAction={() => handleLogout(router)} />;
   }
 

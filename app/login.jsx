@@ -40,10 +40,17 @@ export default function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
       const userDoc = await getDoc(doc(db, FIRESTORE_COLLECTIONS.USERS, userCredential.user.uid));
       const profile = userDoc.exists() ? userDoc.data() : null;
+
+      // No profile yet = they stopped halfway through sign-up. Continue where they left off.
+      if (!profile) {
+        router.replace(userCredential.user.emailVerified ? "/choose-role" : "/verify-email");
+        return;
+      }
+
       const destination = getPostAuthenticationRoute(profile);
       if (!destination) {
         await logoutCurrentUser();
-        setErrorMessage(profile ? "Your account is unavailable or has an invalid role. Please contact SakayNa support." : "Your SakayNa account profile could not be found. Please contact support.");
+        setErrorMessage("Your account is unavailable or has an invalid role. Please contact SakayNa support.");
         return;
       }
       router.replace(destination);

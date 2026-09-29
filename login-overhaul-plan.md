@@ -14,8 +14,8 @@
 - small link: "Already have an account? Log in with email"
 - Facebook button removed.
 
-Registration always starts with "Are you a Resident or a Driver?"
-- Email path:  choose role → email + password → verify email → role form
+Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
+- Email path:  email + password → verify email → choose role → role form
 - Google path: Google → (new user) choose role → role form (no email/password)
 - Existing accounts log in like before.
 
@@ -112,7 +112,10 @@ Registration always starts with "Are you a Resident or a Driver?"
    - Login + gatekeeper: signed in but no profile → Choose Role
      (instead of logging out).
    - Rules (closes the old door): a new Resident can no longer start
-     "Active"; a new profile needs a verified email.
+     "Active"; a new Resident needs a verified email.
+   - Drivers: verified-email rule waits for step 9 (old Apply to Drive
+     saves before the email is verified). Choose Role → Driver shows
+     "coming soon" until then.
 6. Pending resident limits + status names [UI] [Rules]
    - lib/roles.js: friendly status names (Pending Verification, Verified
      Resident, Pending Review, Verified Driver).
@@ -134,6 +137,7 @@ Registration always starts with "Are you a Resident or a Driver?"
    - Rules: the only status change a user may make is Rejected → Pending.
 9. Driver application form [UI] [Rules]
    - New app/register-driver.jsx (checks age 18+).
+   - Rules: a new Driver needs a verified email too (moved from step 5).
    - driver-status.jsx: new status names, rejection reason, "Fix and
      resubmit".
 10. Admin driver review (barangay admin only)
