@@ -1,14 +1,16 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { auth } from "../firebase";
 
 // The two account types a person can create by themselves.
 // Dispatcher and Admin accounts are made by an Admin, so they are not here.
-// "route" is where each button goes. Later steps of the login plan swap these for the new forms.
+// "route" is where each button goes for someone who is NOT signed in yet ("Sign up with Email").
+// Later steps of the login plan swap these for the new forms.
 const ROLE_CHOICES = [
   {
     key: "resident",
@@ -32,6 +34,19 @@ export default function ChooseRole() {
   const insets = useSafeAreaInsets();
   const colors = LIGHT_COLORS;
   const [resident, driver] = ROLE_CHOICES;
+
+  // Signed in already = a new Google user. They skip email + password and go straight to the form.
+  const chooseRole = (choice) => {
+    const signedIn = Boolean(auth.currentUser);
+
+    if (!signedIn) {
+      router.push(choice.route);
+    } else if (choice.key === "resident") {
+      router.push("/register-resident");
+    } else {
+      Alert.alert("Coming soon", "Signing up as a Driver with Google is coming soon. For now, go back and use \"Sign up with Email\".");
+    }
+  };
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -85,8 +100,8 @@ export default function ChooseRole() {
 
         {/* Resident is the filled green button because most people who sign up are residents. */}
         <View style={styles.buttons}>
-          <RoleButton choice={resident} filled colors={colors} onPress={() => router.push(resident.route)} />
-          <RoleButton choice={driver} colors={colors} onPress={() => router.push(driver.route)} />
+          <RoleButton choice={resident} filled colors={colors} onPress={() => chooseRole(resident)} />
+          <RoleButton choice={driver} colors={colors} onPress={() => chooseRole(driver)} />
         </View>
       </ScrollView>
     </View>

@@ -31,8 +31,10 @@ service cloud.firestore {
     // unapproved (Pending) Driver applicant. Dispatcher and Admin accounts are
     // always provisioned by an Admin through the Firebase console, never by the
     // app itself, so self-signup can never produce one.
+    // A new Resident starts "Pending" until an Admin verifies their proof of residency.
+    // "Active" is only for the old email sign-up screen; login-overhaul-plan.md Step 5 removes it.
     function selfCreateProfileIsSafe() {
-      return (request.resource.data.role == "Resident" && request.resource.data.accountStatus == "Active")
+      return (request.resource.data.role == "Resident" && request.resource.data.accountStatus in ["Pending", "Active"])
         || (request.resource.data.role == "Driver" && request.resource.data.accountStatus == "Pending");
     }
 
@@ -103,6 +105,17 @@ service cloud.firestore {
       // A new application must start as "Pending". Only an Admin may approve it.
       allow create: if signedIn()
         && request.resource.data.driverUid == request.auth.uid
+        && request.resource.data.status == "Pending";
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ---- Resident proof of residency (one per Resident, document id = their uid) ----
+    // Holds the document photo link, so only the Resident and Admins may read it.
+    // A Resident may only create their own, and only as "Pending". Only an Admin may change it.
+    match /residentVerifications/{uid} {
+      allow read:   if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.status == "Pending";
       allow update: if isAdmin();
       allow delete: if false;

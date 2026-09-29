@@ -61,6 +61,7 @@ export const FIRESTORE_COLLECTIONS = Object.freeze({
   DRIVER_ASSIGNMENTS: "driverAssignments",
   CALL_SESSIONS: "callSessions",
   DRIVER_APPLICATIONS: "Driver_Applications",
+  RESIDENT_VERIFICATIONS: "residentVerifications",
   VEHICLES: "vehicles",
   DRIVER_SCHEDULES: "driverSchedules",
   VEHICLE_MAINTENANCE: "vehicleMaintenance",

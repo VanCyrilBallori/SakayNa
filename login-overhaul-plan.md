@@ -99,18 +99,23 @@ Registration always starts with "Are you a Resident or a Driver?"
    - Tighten the upload preset in the Cloudinary dashboard (images only,
      small max file size, one folder).
    - Test it inside the current Apply to Drive page.
-4. Resident form + status names [UI] [Rules]
-   - New app/register-resident.jsx. Google new users can now finish
-     sign-up (replaces the "coming soon" message).
-   - lib/roles.js: status names; Pending/Rejected residents may open
-     resident home.
-   - Rules: new Resident starts "Pending"; residentVerifications rules.
-5. New email sign-up order
+4. Resident registration form [UI] [Rules]
+   - New app/register-resident.jsx (design-refs/resident-form.png,
+     screens 3-6): Details → Proof → Review → Submitted. Google new users
+     can now finish sign-up (replaces the "coming soon" message).
+   - lib/roles.js: Pending/Rejected residents may open resident home.
+   - Rules: a new Resident may start "Pending" (the old "Active" stays
+     until step 5); residentVerifications rules.
+5. New email sign-up order [Rules]
    - signup.jsx asks only email + password → verify email.
    - verify-email refreshes the login token → Choose Role → form.
    - Login + gatekeeper: signed in but no profile → Choose Role
      (instead of logging out).
-6. Pending resident limits [UI] [Rules]
+   - Rules (closes the old door): a new Resident can no longer start
+     "Active"; a new profile needs a verified email.
+6. Pending resident limits + status names [UI] [Rules]
+   - lib/roles.js: friendly status names (Pending Verification, Verified
+     Resident, Pending Review, Verified Driver).
    - Status banner on resident home.
    - Tap Emergency → "Your account is still being verified. For
      emergencies, call 911." + "Call 911" button (opens the dialer).
@@ -144,7 +149,7 @@ Registration always starts with "Are you a Resident or a Driver?"
 
 ## Release warning
 - Do not update the website or send out a new APK until step 11 is done.
-- Rules go live the moment they're deployed. After step 4, OLD APKs
+- Rules go live the moment they're deployed. After step 5, OLD APKs
   can't create new accounts (they save residents as "Active"). Existing
   users can still log in. Testers need the new APK.
 - Check that EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME and

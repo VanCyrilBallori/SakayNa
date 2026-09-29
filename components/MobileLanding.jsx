@@ -110,13 +110,10 @@ export default function MobileLanding() {
       const userDoc = await getDoc(doc(db, FIRESTORE_COLLECTIONS.USERS, user.uid));
       const profile = userDoc.exists() ? userDoc.data() : null;
 
-      // New Google user: creating the profile (Resident or Driver) comes in Phase 3. Until then, log them out again.
+      // New Google user: stay signed in and choose Resident or Driver, then fill in the form.
       if (!profile) {
-        await logoutCurrentUser();
-        Alert.alert(
-          "Coming soon",
-          "Your Google account works, but creating a new SakayNa account with Google is coming soon. For now, please use \"Sign up with Email\"."
-        );
+        setSheetOpen(false);
+        router.push("/choose-role");
         return;
       }
 
@@ -149,8 +146,17 @@ export default function MobileLanding() {
     router.push("/login");
   };
 
-  const openChooseRole = () => {
+  const openChooseRole = async () => {
     setSheetOpen(false);
+    // Someone who quit a Google sign-up halfway is still signed in, without a profile.
+    // Sign them out first, so this email sign-up does not continue inside that Google account.
+    if (auth.currentUser) {
+      try {
+        await logoutCurrentUser();
+      } catch (error) {
+        console.log("Sign-out before email sign-up failed:", error);
+      }
+    }
     router.push("/choose-role");
   };
 
