@@ -50,15 +50,16 @@ service cloud.firestore {
     // unapproved (Pending) Driver applicant. Dispatcher and Admin accounts are
     // always provisioned by an Admin through the Firebase console, never by the
     // app itself, so self-signup can never produce one.
-    // A new Resident starts "Pending" until an Admin verifies their proof of residency,
-    // and needs a verified email (Google sign-ins are verified automatically).
-    // Drivers get the verified-email check in login-overhaul-plan.md Step 9, when the new
-    // driver form replaces the old Apply to Drive page (which saves before the email is verified).
+    // A new Resident starts "Pending" until an Admin verifies their proof of residency.
+    // A new Driver starts "Pending" until an Admin reviews their application.
+    // Both need a verified email (Google sign-ins are verified automatically).
     function selfCreateProfileIsSafe() {
       return (request.resource.data.role == "Resident"
           && request.resource.data.accountStatus == "Pending"
           && request.auth.token.email_verified == true)
-        || (request.resource.data.role == "Driver" && request.resource.data.accountStatus == "Pending");
+        || (request.resource.data.role == "Driver"
+          && request.resource.data.accountStatus == "Pending"
+          && request.auth.token.email_verified == true);
     }
 
     // A self-update (by the profile's own owner) may never change these
@@ -126,7 +127,9 @@ service cloud.firestore {
     match /Driver_Applications/{applicationId} {
       allow read:   if isAdmin() || (signedIn() && resource.data.driverUid == request.auth.uid);
       // A new application must start as "Pending". Only an Admin may approve it.
+      // Its id must be the driver's own uid, so each driver has one application.
       allow create: if signedIn()
+        && applicationId == request.auth.uid
         && request.resource.data.driverUid == request.auth.uid
         && request.resource.data.status == "Pending";
       allow update: if isAdmin();

@@ -78,6 +78,12 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
 - Submit → Pending → admin of the SAME barangay approves, or rejects with
   a reason → driver fixes it and resubmits → Pending again.
 
+## Demo priority
+- Must-have for the demo: steps 1-7, 9-11.
+- After the demo: step 8 (resubmit) and step 12 (paperwork).
+- Last 3-4 days before the demo: feature freeze, preview APK, testing only.
+- If time runs out: drop the driver steps (9-11) before anything else.
+
 ## Steps (one at a time: plan → test on phone → commit)
 [UI] = design with Impeccable   [Build] = new EAS build   [Rules] = deploy rules
 

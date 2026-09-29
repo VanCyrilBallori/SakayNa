@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, LIGHT_COLORS } from "../constants/design";
@@ -40,8 +40,7 @@ export default function ChooseRole() {
     } else if (choice.key === "resident") {
       router.push("/register-resident");
     } else {
-      // The new driver form comes in login-overhaul-plan.md Step 9.
-      Alert.alert("Coming soon", "Driver sign-up in the app is coming soon.");
+      router.push("/register-driver");
     }
   };
 
