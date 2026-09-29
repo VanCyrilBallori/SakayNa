@@ -124,15 +124,22 @@ service cloud.firestore {
     }
 
     // ---- Driver applications ----
+    // Holds the document photo links, so only the Driver and the Admin of their barangay may read it.
     match /Driver_Applications/{applicationId} {
-      allow read:   if isAdmin() || (signedIn() && resource.data.driverUid == request.auth.uid);
-      // A new application must start as "Pending". Only an Admin may approve it.
+      // Only the Admin of the same barangay may read or review it.
+      // (Old applications with no barangay can only be read by their Driver.)
+      allow read:   if signedIn() && (resource.data.driverUid == request.auth.uid
+        || isAdminOf(resource.data.get("barangay", "")));
+      // A new application must start as "Pending".
       // Its id must be the driver's own uid, so each driver has one application.
       allow create: if signedIn()
         && applicationId == request.auth.uid
         && request.resource.data.driverUid == request.auth.uid
         && request.resource.data.status == "Pending";
-      allow update: if isAdmin();
+      // An Admin of that barangay may only Approve or Reject, and may not move it to another barangay.
+      allow update: if isAdminOf(resource.data.get("barangay", ""))
+        && request.resource.data.get("barangay", "") == resource.data.get("barangay", "")
+        && request.resource.data.status in ["Approved", "Rejected"];
       allow delete: if false;
     }
 

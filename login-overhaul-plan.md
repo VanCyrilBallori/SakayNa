@@ -181,7 +181,9 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
 - If a barangay has no admin, its residents and drivers stay Pending.
 - MUST FIX BEFORE A REAL PILOT: the old Users and Operations tools are
   still city-wide. Any admin can set any resident "Active" from any
-  barangay there, skipping the document review. (Step 7 only limits the
-  new Resident Verification list to the admin's own barangay.)
+  barangay there, skipping the document review. The same goes for drivers:
+  Users → Edit can set any driver "Approved". (Steps 7 and 10 only limit
+  the new Resident Verification and Driver Applications lists to the
+  admin's own barangay.)
 - If an admin changes a Pending resident's barangay in Users → Edit, the
   resident's verification stays with the old barangay's admin.
