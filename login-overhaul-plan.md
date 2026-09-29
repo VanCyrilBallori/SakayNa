@@ -116,7 +116,7 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
    - Drivers: verified-email rule waits for step 9 (old Apply to Drive
      saves before the email is verified). Choose Role → Driver shows
      "coming soon" until then.
-6. Pending resident limits + status names [UI] [Rules]
+6. Pending resident limits + status names [UI] [Rules] — DONE (deployed and tested 2026-09-29)
    - lib/roles.js: friendly status names (Pending Verification, Verified
      Resident, Pending Review, Verified Driver).
    - Status banner on resident home.
