@@ -4,6 +4,21 @@ Problems found but not fixed yet. Newest at the top.
 
 ---
 
+## Free map server has a fair-use rule
+
+- **Found:** Sept 29, 2026, while planning the map-first resident home
+  (resident-overhaul-plan.md).
+- **What it is:** The maps (components/LeafletMap.jsx) load their pictures
+  from the free OpenStreetMap server and look up addresses with the free
+  Nominatim server. Both have a fair-use rule: fine for small projects,
+  but they can slow down or block an app that sends too many requests.
+- **Fine for:** the Capstone and a small pilot.
+- **Before a real city rollout:** switch to a map provider plan (a paid or
+  sponsored map service).
+- **Status:** Not a bug yet. Nothing to fix for the Capstone.
+
+---
+
 ## 1. Emergency call error on Android
 
 - **Date found:** [Sept 26, 2026]
