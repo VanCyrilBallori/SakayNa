@@ -126,15 +126,36 @@ if already allowed (the once-per-install pop-ups stay as they are).
 [UI] = design with Impeccable. No step needs [Build] or [Rules].
 
 1. Driver + dispatcher see the right pin and the passenger info (#13,
-   #14). Works with today's data.
-   Files: app/driver-home.jsx, app/dispatcher-home.jsx
-2. New request form, ASAP only [UI]: new fields, Review screen, new
-   priority rule.
-   Files: ResidentRequestForm.jsx, requestOptions.js,
-   requestValidation.js, residentRequestService.js
+   #14) — DONE (tested 2026-09-29)
+   - Driver map uses the resident's pin. Driver sees a Passenger card:
+     name, tap-to-call phone, people, help needed, notes. "Vehicle" shows
+     the real vehicle name.
+   - Dispatcher map uses the resident's pin.
+2. New request form, ASAP only [UI] — DONE (tested 2026-09-29)
+   - Full-screen form like the resident registration: purpose, who is
+     riding, people − / + (max 6), pickup barangay + optional GPS / map
+     pin + landmark, destination, help needed, notes → Review → Sent.
+   - "Someone else" phone is optional; if empty, the driver gets the
+     resident's number.
+   - Priority: Medical / Health → Urgent, others → Non-Urgent.
+   - requestType stays "Community Transport Request".
 3. Other screens show the new fields.
-   3a. Dispatcher (+ list order) and driver
-   3b. Resident Latest Request, History, Details, and Admin
+   3a. Dispatcher and driver — DONE (tested 2026-09-29)
+       - Queue cards: priority + ASAP, title, people, barangay, "Needs
+         help" line. Longest-waiting request on top.
+       - New "Selected Request" box: passenger, big phone number
+         (0917 123 4567), booked-by line, pickup, landmark, destination,
+         help needed, notes.
+       - Assignments save the ride title ("Handling: …", driver History).
+       - Driver: landmark on the pickup card; "Patient Transfer" →
+         "Current Ride".
+       - Shared label helpers in features/resident/utils/requestMapper.js.
+   3b. Resident and Admin — DONE (tested 2026-09-29)
+       - Resident: Latest Request rows, History purpose filter, new
+         Request Details rows (incl. notes).
+       - Admin: 3 purpose overview cards (server counts) replace
+         "Total Emergency / Community Requests"; "Ride for" filter,
+         pills and details.
 4. Schedule for later: date/time dropdowns, dispatcher tag + warning,
    time shown to driver and resident.
 5. Side menu [UI]: slide-in pop-up from the left (no new package). Name +
@@ -155,6 +176,12 @@ if already allowed (the once-per-install pop-ups stay as they are).
 
 Release rule: don't update the website in the middle of steps 2–3b
 (dispatchers would see half-finished labels).
+
+## Releases
+- 2026-09-29: website released with Steps 1–3b (master → main → Vercel,
+  commit daa310a). Live checks passed (admin, dispatcher, resident).
+  Testers' phones still have the old form until a new preview APK is
+  built. That is safe: all screens still read old-form requests.
 
 Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
