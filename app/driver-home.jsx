@@ -8,7 +8,7 @@ import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollV
 import BrandLogo from "../components/BrandLogo";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
-import { getAssistanceText, getPassengerCountText, getPassengerName } from "../features/resident/utils/requestMapper";
+import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
@@ -710,6 +710,7 @@ export default function DriverHome() {
                         </View>
                       </View>
                       <Text style={styles.missionTitle}>{request.emergencyType ?? request.title}</Text>
+                      <Text style={styles.missionText}>When: {getWhenText(request)}</Text>
                       <Text style={styles.missionText}>Request: {request.summary}</Text>
                     </View>
 
@@ -806,6 +807,7 @@ export default function DriverHome() {
               <Text style={styles.reviewLine}>Assistance: {getAssistanceText(request)}</Text>
               {request?.additionalNotes ? <Text style={styles.reviewLine}>Notes: {request.additionalNotes}</Text> : null}
               <Text style={styles.reviewLine}>Request: {request?.emergencyType ?? request?.title ?? "Transport Request"}</Text>
+              <Text style={styles.reviewLine}>When: {getWhenText(request)}</Text>
               <Text style={styles.reviewLine}>Pickup: {request?.pickupLocation ?? "Pickup location pending"}</Text>
               <Text style={styles.reviewLine}>Destination: {request?.destination ?? "Nearest available response center"}</Text>
               <Text style={styles.reviewLine}>Vehicle: {getVehicleName(request, assignedTransfer)}</Text>

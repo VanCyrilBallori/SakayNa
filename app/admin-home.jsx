@@ -33,7 +33,7 @@ import useAdminCallSessions from "../features/admin/hooks/useAdminCallSessions";
 import useAdminDashboardData from "../features/admin/hooks/useAdminDashboardData";
 import { logAdminActivity } from "../features/admin/services/adminOperationsService";
 import { getApprovalStatus, getUserName } from "../features/admin/utils/userFormatters";
-import { getAssistanceText, getPassengerCountText, getPassengerName } from "../features/resident/utils/requestMapper";
+import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
 import { PURPOSE_OPTIONS } from "../features/resident/utils/requestOptions";
 import {
   formatDateTime,
@@ -926,6 +926,7 @@ export default function AdminHome() {
             <View style={[styles.detailBox, { backgroundColor: theme.surfaceMuted }]}>
               <Text style={[styles.detailLine, { color: theme.text }]}>Resident: {selectedRequestRecord?.residentName || "Resident"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Ride for: {selectedRequestRecord?.title || selectedRequestRecord?.emergencyType || "Not specified"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>When: {getWhenText(selectedRequestRecord)}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Passenger: {getPassengerName(selectedRequestRecord)}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Contact Number: {selectedRequestRecord?.contactNumber || "Not provided"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>People Riding: {getPassengerCountText(selectedRequestRecord)}</Text>

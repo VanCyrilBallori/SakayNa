@@ -2,6 +2,7 @@ import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
 import { formatDateTime } from "../../../lib/dates";
+import { getWhenText } from "../../resident/utils/requestMapper";
 
 export default function AdminRequestsSection({
   theme,
@@ -85,6 +86,7 @@ export default function AdminRequestsSection({
               <Text style={[styles.requestTitle, { color: theme.text }]}>{request.residentName || "Resident"}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Reference: {request.id}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Ride for: {request.title || request.emergencyType || "Not specified"}</Text>
+              <Text style={[styles.requestMeta, { color: theme.mutedText }]}>When: {getWhenText(request)}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Pickup: {request.pickupLocation || request.barangay || "Not available"}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Destination: {request.destination || "Not available"}</Text>
               <Text style={[styles.requestMeta, { color: theme.mutedText }]}>Assigned Driver: {request.assignedDriverName || "Unassigned"}</Text>

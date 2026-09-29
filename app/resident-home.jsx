@@ -18,7 +18,7 @@ import ResidentRequestForm from "../features/resident/components/ResidentRequest
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
-import { getPassengerCountText } from "../features/resident/utils/requestMapper";
+import { getPassengerCountText, getWhenText } from "../features/resident/utils/requestMapper";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
 // Firestore queues writes while offline and the promise simply stays pending, so an
@@ -687,6 +687,10 @@ export default function ResidentHome() {
                 <View style={styles.snapshotRow}>
                   <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Ride for</Text>
                   <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.title || latestRequest.serviceType || "Not set"}</Text>
+                </View>
+                <View style={styles.snapshotRow}>
+                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>When</Text>
+                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{getWhenText(latestRequest)}</Text>
                 </View>
                 <View style={styles.snapshotRow}>
                   <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>People riding</Text>
