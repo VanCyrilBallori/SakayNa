@@ -1,10 +1,12 @@
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import BrandLogo from "../components/BrandLogo";
+import LeafletMap from "../components/LeafletMap";
 import { ACCOUNT_STATUSES } from "../constants/app";
 import { COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
@@ -12,12 +14,13 @@ import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
 import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
+import LatestRequestCard from "../features/resident/components/LatestRequestCard";
+import ResidentRequestDetails from "../features/resident/components/ResidentRequestDetails";
 import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
-import { getPassengerCountText, getWhenText } from "../features/resident/utils/requestMapper";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
 // Firestore queues writes while offline and the promise simply stays pending, so an
@@ -28,39 +31,21 @@ const SEND_TIMEOUT_MS = 10_000;
 const ALERT_HEARTBEAT_MS = 20_000;
 const KEEP_AWAKE_TAG = "emergency-alert";
 
-const IDLE_RESIDENT_STATUS = {
-  title: "Current Ride Status",
-  description: "No active vehicle has been assigned yet. Once dispatch responds, you will see updates here.",
-  meta: "Waiting for your next request",
-  tag: "Tracking",
-};
-
-const getStatusTone = (value) => {
-  if (["Assigned", "In Progress", "Completed"].includes(value)) {
-    return styles.tagSuccess;
-  }
-
-  if (["Cancelled", "Error"].includes(value)) {
-    return styles.tagDanger;
-  }
-
-  if (["Pending", "Urgent", "Emergency", "Planned"].includes(value)) {
-    return styles.tagWarning;
-  }
-
-  return styles.tagNeutral;
-};
+// The bottom sheet's rounded top overlaps the map by this much.
+// The map moves its zoom buttons and OpenStreetMap credit up by the same amount, so they stay visible.
+const SHEET_OVERLAP = 24;
 
 export default function ResidentHome() {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const compact = width < 920;
   const { authUser, displayName: fallbackDisplayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
-  const [residentStatus, setResidentStatus] = useState(IDLE_RESIDENT_STATUS);
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
   const [profileOverride, setProfileOverride] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [latestDetailsOpen, setLatestDetailsOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -207,17 +192,6 @@ export default function ResidentHome() {
   }, [authUser?.uid, loadOfficePhone]);
 
   useEffect(() => {
-    if (sendPhase === "sent") {
-      setResidentStatus({
-        title: "Emergency alert sent",
-        description: "Dispatchers can see your alert now. Keep this screen open.",
-        meta: "Waiting for a dispatcher to accept",
-        tag: "Emergency",
-      });
-    }
-  }, [sendPhase]);
-
-  useEffect(() => {
     if (!settingsOpen) {
       return;
     }
@@ -262,27 +236,7 @@ export default function ResidentHome() {
         return;
       }
       setSosOpen(true);
-      return;
     }
-
-    if (latestRequest) {
-      setResidentStatus({
-        title: latestRequest.title || `${latestRequest.serviceType || latestRequest.emergencyType || "Transport"} Request`,
-        description: latestRequest.assignedDriverName
-          ? `${latestRequest.status || "Pending"} | Assigned to ${latestRequest.assignedDriverName}`
-          : `${latestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
-        meta: `${latestRequest.pickupLocation || "Pickup pending"} | ${latestRequest.assignedVehicleName || "Vehicle pending"}`,
-        tag: latestRequest.status || latestRequest.level || "Tracking",
-      });
-      return;
-    }
-
-    setResidentStatus({
-      title: "Current Ride Status",
-      description: "No active vehicle has been assigned yet. Once dispatch responds, you will see updates here.",
-      meta: "No recent request found",
-      tag: "Tracking",
-    });
   };
 
   // GPS is attached after the alert is already sent, so a slow or denied location never delays it.
@@ -372,13 +326,8 @@ export default function ResidentHome() {
       return;
     }
 
+    // Can't happen on this screen (only signed-in residents reach it), but never send an alert with no owner.
     if (!authUser?.uid) {
-      setResidentStatus({
-        title: "Login Required",
-        description: "Please log in before sending an emergency alert.",
-        meta: "Emergency alert not sent",
-        tag: "Action Needed",
-      });
       return;
     }
 
@@ -430,7 +379,6 @@ export default function ResidentHome() {
     setCallDispatcherPhone("");
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("idle");
-    setResidentStatus(IDLE_RESIDENT_STATUS);
   };
 
   // Hardware Back while an alert is still ringing asks first; a Back press on that
@@ -570,35 +518,72 @@ export default function ResidentHome() {
     }
   };
 
-  const displayResidentStatus = latestRequest ? {
-    title: latestRequest.title || `${latestRequest.serviceType || latestRequest.emergencyType || "Transport"} Request`,
-    description: latestRequest.assignedDriverName ? `${latestRequest.status || "Pending"} | Assigned to ${latestRequest.assignedDriverName}` : `${latestRequest.status || "Pending"} | Waiting for dispatcher assignment`,
-    meta: `${latestRequest.pickupLocation || "Pickup pending"} | ${latestRequest.assignedVehicleName || "Vehicle pending"}`,
-    tag: latestRequest.status || latestRequest.level || "Pending",
-  } : residentStatus;
-
   return (
     <>
-      <ScrollView style={[styles.page, { backgroundColor: theme.page }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
-          <View style={styles.headerLeft}>
-            <Pressable
-              style={({ pressed }) => [styles.menuButton, pressed && { backgroundColor: theme.surfaceMuted }]}
-              onPress={() => setMenuOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Open menu"
-            >
-              <MaterialCommunityIcons name="menu" size={30} color={theme.heading} />
-            </Pressable>
-            <BrandLogo variant="main" height={compact ? 30 : 36} />
-          </View>
+      <View style={[styles.home, { backgroundColor: theme.page }]}>
+        {/* The map is always light, so the phone's clock and battery icons are drawn dark. */}
+        <StatusBar style="dark" />
+
+        {/* Map on top. The sheet below overlaps its bottom edge by SHEET_OVERLAP. */}
+        <View style={[styles.mapArea, { marginBottom: -SHEET_OVERLAP }]}>
+          <LeafletMap title="Toledo City map" showPins={false} zoomPosition="bottomright" bottomSpace={SHEET_OVERLAP} />
         </View>
 
-        <View style={[styles.container, compact && styles.containerCompact]}>
+        {/* Fixed bottom sheet: it cannot be dragged away, so Emergency is always one tap away. */}
+        {/* It scrolls inside if it doesn't fit (for example with very large text). */}
+        <View style={[styles.sheet, { backgroundColor: theme.surface, shadowColor: theme.shadow }]}>
+          <ScrollView style={styles.sheetScroll} contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 16 }]} bounces={false} showsVerticalScrollIndicator={false}>
+            <Pressable
+              style={({ pressed }) => [styles.emergencyButton, pressed && styles.emergencyButtonPressed]}
+              onPress={() => handleQuickAction("emergency-call")}
+              android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+              accessibilityRole="button"
+              accessibilityLabel="Emergency. Send an alert to the dispatchers."
+            >
+              <View style={styles.emergencyIcon}>
+                <MaterialCommunityIcons name="alarm-light-outline" size={30} color={COLORS.emergency} />
+              </View>
+              <View style={styles.emergencyCopy}>
+                <Text style={styles.emergencyTitle}>Emergency</Text>
+                <Text style={styles.emergencySubtitle}>Send an alert to the dispatchers</Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.rideButton, pressed && styles.rideButtonPressed]}
+              onPress={() => handleQuickAction("transport")}
+              android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="car-outline" size={26} color="#FFFFFF" />
+              <Text style={styles.rideButtonText}>Request a Ride</Text>
+            </Pressable>
+
+            <LatestRequestCard
+              request={latestRequest}
+              loading={requestHistoryLoading}
+              error={requestHistoryError}
+              theme={theme}
+              onPress={() => setLatestDetailsOpen(true)}
+            />
+          </ScrollView>
+        </View>
+
+        {/* Floating on top of the map. box-none = taps between these items still reach the map. */}
+        <View style={[styles.mapOverlay, { top: insets.top + 12 }]} pointerEvents="box-none">
+          <Pressable
+            style={({ pressed }) => [styles.menuButton, { backgroundColor: pressed ? theme.surfaceMuted : theme.surface, shadowColor: theme.shadow }]}
+            onPress={() => setMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open menu"
+          >
+            <MaterialCommunityIcons name="menu" size={28} color={theme.heading} />
+          </Pressable>
+
           {notVerified ? (
             // Same light colors in Light and Dark mode on purpose, so the banner always stands out.
             <View style={[styles.statusBanner, isRejected ? styles.statusBannerRejected : styles.statusBannerPending]}>
-              <FontAwesome name={isRejected ? "times-circle" : "clock-o"} size={30} color={isRejected ? COLORS.emergency : COLORS.warning} />
+              <FontAwesome name={isRejected ? "times-circle" : "clock-o"} size={26} color={isRejected ? COLORS.emergency : COLORS.warning} />
               <View style={styles.statusBannerCopy}>
                 <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile)}</Text>
                 <Text style={styles.statusBannerText}>
@@ -609,99 +594,11 @@ export default function ResidentHome() {
               </View>
             </View>
           ) : null}
-
-          <View
-            style={[
-              styles.heroCard,
-              compact && styles.heroCardCompact,
-              { backgroundColor: theme.softSurface, borderColor: theme.softSurfaceBorder },
-            ]}
-          >
-            <View style={styles.heroCopy}>
-              <Text style={[styles.heroEyebrow, { color: theme.mutedText }]}>Resident Dashboard</Text>
-              <Text style={[styles.welcome, compact && styles.welcomeCompact, { color: theme.heading }]}>Help is one tap away.</Text>
-              <Text style={[styles.heroText, { color: theme.mutedText }]}>
-                Request transport, contact emergency responders, and track your latest ride status from one clean dashboard.
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.cardsGrid}>
-            <View style={[styles.featureCard, { backgroundColor: theme.emergencyCard }]}>
-              <FontAwesome name="warning" size={compact ? 32 : 38} color="#C70000" />
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Emergency</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Send an alert to the dispatchers. They will see your location and can call you back.</Text>
-              <TouchableOpacity style={styles.sosButton} onPress={() => handleQuickAction("emergency-call")} accessibilityRole="button" accessibilityLabel="Send emergency alert to dispatchers">
-                <Text style={styles.cardButtonText}>Send emergency alert</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.featureCard, { backgroundColor: theme.transportCard }]}>
-              <FontAwesome name="clipboard" size={compact ? 28 : 34} color="#D88400" />
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Transport Request</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Tell us who is riding, where to pick you up, and where you are going.</Text>
-              <TouchableOpacity style={styles.bookingButton} onPress={() => handleQuickAction("transport")}>
-                <Text style={styles.cardButtonText}>Open Request Form</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.featureCard, { backgroundColor: theme.statusCard }]}>
-              <FontAwesome name="map-marker" size={compact ? 32 : 38} color="#06774B" />
-              <Text style={[styles.cardTitle, { color: theme.text }]}>Current Ride Status</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.mutedText }]}>Check your latest request progress and see when a driver has been assigned.</Text>
-              <TouchableOpacity style={styles.statusButton} onPress={() => handleQuickAction("status")}>
-                <Text style={styles.cardButtonText}>View Status</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={[styles.statusPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <View style={styles.statusPanelHeader}>
-              <View>
-                <Text style={[styles.panelEyebrow, { color: theme.secondaryText }]}>Latest Request</Text>
-                <Text style={[styles.panelTitle, { color: theme.text }]}>{displayResidentStatus.title}</Text>
-              </View>
-
-              <View style={[styles.tag, getStatusTone(displayResidentStatus.tag)]}>
-                <Text style={[styles.tagText, { color: theme.accentText }]}>{displayResidentStatus.tag}</Text>
-              </View>
-            </View>
-
-            <Text style={[styles.statusDescription, { color: theme.mutedText }]}>{displayResidentStatus.description}</Text>
-            <Text style={[styles.statusMeta, { color: theme.secondaryText }]}>{displayResidentStatus.meta}</Text>
-
-            {latestRequest ? (
-              <View style={[styles.requestSnapshot, { backgroundColor: theme.surfaceMuted }]}>
-                <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Ride for</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.title || latestRequest.serviceType || "Not set"}</Text>
-                </View>
-                <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>When</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{getWhenText(latestRequest)}</Text>
-                </View>
-                <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>People riding</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{getPassengerCountText(latestRequest)}</Text>
-                </View>
-                <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Pickup</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.pickupLocation || "Not set"}</Text>
-                </View>
-                <View style={styles.snapshotRow}>
-                  <Text style={[styles.snapshotLabel, { color: theme.secondaryText }]}>Landmark</Text>
-                  <Text style={[styles.snapshotValue, { color: theme.text }]}>{latestRequest.pickupDetails || "Not provided"}</Text>
-                </View>
-              </View>
-            ) : (
-              <View style={[styles.emptyStatusCard, { backgroundColor: theme.emptySurface }]}>
-                <Text style={[styles.emptyStatusTitle, { color: theme.text }]}>No request yet</Text>
-                <Text style={[styles.emptyStatusText, { color: theme.secondaryText }]}>Your latest transport request details will appear here after submission.</Text>
-              </View>
-            )}
-          </View>
         </View>
-      </ScrollView>
+      </View>
+
+      {/* The latest request's details. It reads the live request, so the status updates while it is open. */}
+      <ResidentRequestDetails request={latestRequest} visible={latestDetailsOpen && Boolean(latestRequest)} onClose={() => setLatestDetailsOpen(false)} />
 
       <ResidentRequestForm
         visible={sosOpen}
@@ -709,7 +606,6 @@ export default function ResidentHome() {
         uid={authUser?.uid}
         residentName={displayName}
         profile={activeProfile}
-        onCreated={({ reference }) => setResidentStatus({ title: "Transport Request Sent", description: "Your request was sent to dispatch.", meta: `Reference: ${reference}`, tag: "Pending" })}
       />
       <Modal visible={Boolean(notVerifiedPopup)} transparent animationType="fade" onRequestClose={() => setNotVerifiedPopup("")}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
@@ -1111,53 +1007,93 @@ export default function ResidentHome() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#F5F7F6" },
-  content: { paddingBottom: 28 },
-  header: {
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#D8E2DD",
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-    flexWrap: "wrap",
+  home: { flex: 1 },
+  mapArea: { flex: 1 },
+  // Floating layer over the top of the map: the ☰ button and the Pending / Rejected banner.
+  mapOverlay: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    gap: 12,
+    alignItems: "flex-start",
   },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  // 48 x 48 so it is easy to tap.
+  // A round button, 52 x 52 so it is easy to tap.
   menuButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
+  },
+  sheet: {
+    width: "100%",
+    maxWidth: 640,
+    maxHeight: "68%",
+    alignSelf: "center",
+    borderTopLeftRadius: SHEET_OVERLAP,
+    borderTopRightRadius: SHEET_OVERLAP,
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 16,
+  },
+  sheetScroll: { flexGrow: 0 },
+  sheetContent: { paddingHorizontal: 16, paddingTop: 20, gap: 12 },
+  emergencyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    minHeight: 76,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: COLORS.emergency,
+  },
+  emergencyButtonPressed: { backgroundColor: "#8F1C13" },
+  emergencyIcon: {
     width: 48,
     height: 48,
-    marginLeft: -8,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
-  container: {
-    width: "100%",
-    maxWidth: 1180,
-    alignSelf: "center",
-    padding: 22,
-    gap: 18,
+  emergencyCopy: { flex: 1 },
+  emergencyTitle: { fontSize: 24, lineHeight: 30, fontWeight: "900", color: "#FFFFFF" },
+  emergencySubtitle: { marginTop: 2, fontSize: 15, lineHeight: 20, fontWeight: "600", color: "#FFE9E7" },
+  rideButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    minHeight: 60,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: COLORS.primary,
   },
-  containerCompact: {
-    padding: 14,
-    gap: 14,
-  },
+  rideButtonPressed: { backgroundColor: COLORS.primaryDark },
+  rideButtonText: { fontSize: 19, fontWeight: "800", color: "#FFFFFF" },
   // Account status banner (Pending or Rejected residents only). Big, dark text for seniors.
   statusBanner: {
+    alignSelf: "stretch",
+    maxWidth: 640,
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 14,
-    padding: 18,
+    gap: 12,
+    padding: 14,
     borderRadius: 18,
     borderWidth: 1,
+    shadowColor: "#000000",
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   statusBannerPending: {
     backgroundColor: COLORS.warningSurface,
@@ -1182,198 +1118,6 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontWeight: "600",
     color: COLORS.text,
-  },
-  heroCard: {
-    padding: 22,
-    borderRadius: 18,
-    backgroundColor: "#E6F1EB",
-    borderWidth: 1,
-    borderColor: "#D6E6DD",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 16,
-    flexWrap: "wrap",
-  },
-  heroCardCompact: {
-    padding: 18,
-  },
-  heroCopy: {
-    flex: 1,
-    minWidth: 250,
-  },
-  heroEyebrow: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#4E6A5F",
-  },
-  welcome: {
-    marginTop: 2,
-    fontSize: 36,
-    lineHeight: 42,
-    fontWeight: "900",
-    color: "#1C3E31",
-  },
-  welcomeCompact: {
-    fontSize: 28,
-    lineHeight: 34,
-  },
-  heroText: {
-    marginTop: 6,
-    maxWidth: 620,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "700",
-    color: "#4F655C",
-  },
-  cardsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 14,
-  },
-  featureCard: {
-    flexGrow: 1,
-    flexBasis: 240,
-    minHeight: 220,
-    padding: 18,
-    borderRadius: 16,
-  },
-  cardTitle: {
-    marginTop: 14,
-    fontSize: 21,
-    lineHeight: 27,
-    fontWeight: "800",
-    color: "#1A1F1C",
-  },
-  cardSubtitle: {
-    marginTop: 7,
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#31423B",
-  },
-  sosButton: {
-    marginTop: "auto",
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: "center",
-    backgroundColor: "#CF0000",
-  },
-  bookingButton: {
-    marginTop: "auto",
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: "center",
-    backgroundColor: "#A48C00",
-  },
-  statusButton: {
-    marginTop: "auto",
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: "center",
-    backgroundColor: "#06774B",
-  },
-  cardButtonText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#FFFFFF",
-  },
-  statusPanel: {
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#DCE5E0",
-  },
-  statusPanelHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  panelEyebrow: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: "#5A7267",
-  },
-  panelTitle: {
-    marginTop: 5,
-    fontSize: 24,
-    lineHeight: 30,
-    fontWeight: "800",
-    color: "#111111",
-  },
-  tag: {
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: "#F0F4F2",
-  },
-  tagNeutral: { backgroundColor: "#EEF2F0" },
-  tagWarning: { backgroundColor: "#FFF1CB" },
-  tagSuccess: { backgroundColor: "#DDF2E6" },
-  tagDanger: { backgroundColor: "#F8DEDE" },
-  tagText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#304941",
-  },
-  statusDescription: {
-    marginTop: 14,
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#34433D",
-  },
-  statusMeta: {
-    marginTop: 10,
-    fontSize: 13,
-    lineHeight: 19,
-    color: "#5B6D66",
-  },
-  requestSnapshot: {
-    marginTop: 18,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: "#EEF2F0",
-    gap: 10,
-  },
-  snapshotRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 14,
-    flexWrap: "wrap",
-  },
-  snapshotLabel: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#49655B",
-  },
-  snapshotValue: {
-    flex: 1,
-    minWidth: 180,
-    textAlign: "right",
-    fontSize: 13,
-    lineHeight: 19,
-    color: "#1D2A25",
-  },
-  emptyStatusCard: {
-    marginTop: 18,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: "#F4F7F5",
-  },
-  emptyStatusTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#23352E",
-  },
-  emptyStatusText: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 19,
-    color: "#62746D",
   },
   modalOverlay: {
     flex: 1,
