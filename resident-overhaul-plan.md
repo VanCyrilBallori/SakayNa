@@ -182,11 +182,11 @@ if already allowed (the once-per-install pop-ups stay as they are).
    - Menu code: features/resident/components/ResidentSideMenu.jsx.
    - Terms and Privacy pages get a "← Back" button (phone app only;
      the website stays as it is): components/PageBackButton.jsx.
-6. Map home, in two parts:
+6. Map home, in two parts — DONE (tested 2026-09-30)
    6a. Cancel pop-up moves from Request History into Request Details, so
        Details can cancel wherever it is opened — DONE (tested
        2026-09-30)
-   6b. The map home below. LeafletMap gets 3 optional settings (no pin,
+   6b. The map home below — DONE (tested 2026-09-30). LeafletMap gets 3 optional settings (no pin,
        zoom buttons bottom-right, space at the bottom) so the sheet does
        not hide the OpenStreetMap credit. Other maps stay the same.
    Map home layout [UI]: map on top, ☰ in the corner, Pending/Rejected
