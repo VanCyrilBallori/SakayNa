@@ -977,7 +977,6 @@ export default function ResidentHome() {
         requests={requestHistory}
         loading={requestHistoryLoading}
         error={requestHistoryError}
-        uid={authUser?.uid}
       />
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
