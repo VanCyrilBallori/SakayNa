@@ -212,6 +212,8 @@ if already allowed (the once-per-install pop-ups stay as they are).
        2026-09-30): 12 fixed, 5 partly fixed, 18 still open, 1 unclear.
    Later (after the release): admin.md, dispatcher.md, driver.md.
 9. Release: website (master → main → Vercel) + new preview APK.
+   - Website: DONE (released and checked 2026-09-30, see Releases).
+   - Preview APK: next.
 
 Release rule: don't update the website in the middle of steps 2–3b
 (dispatchers would see half-finished labels).
@@ -221,6 +223,13 @@ Release rule: don't update the website in the middle of steps 2–3b
   commit daa310a). Live checks passed (admin, dispatcher, resident).
   Testers' phones still have the old form until a new preview APK is
   built. That is safe: all screens still read old-form requests.
+- 2026-09-30: website released with Steps 4a–8b (master → main → Vercel,
+  fast-forward daa310a..5007787). No Firestore rules changes and no
+  emergency alert data changes, so old APKs still work with it. Live
+  checks passed: dispatcher (order, "Scheduled" tag, early-assign
+  warning), admin ("When" lines), Privacy page (Sep 30 draft, no Back
+  button on the website), emergency alert. Scheduled rides, the ☰ menu
+  and the map home reach testers with the new preview APK.
 
 Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
