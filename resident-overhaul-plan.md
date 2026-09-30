@@ -195,7 +195,13 @@ if already allowed (the once-per-install pop-ups stay as they are).
    details). Removes the welcome card and the 3 cards (the avatar
    is already gone in Step 5).
 7. Home map shows your location (only if already allowed) + the
-   "location off" / "GPS off" messages.
+   "location off" / "GPS off" messages — DONE (tested 2026-09-30)
+   - features/resident/hooks/useHomeLocation.js checks, never asks. It
+     checks again when you come back to the app or tap Try again.
+   - "Location is off" has an "Allow location" button: it shows the
+     permission pop-up if Android can still ask, otherwise it opens
+     SakayNa's page in the phone Settings.
+   - "You are here" pin uses LeafletMap's existing pin (no map change).
 8. Paperwork: Skills/resident.md, PRODUCT.md (request types), Privacy
    Policy draft note (drivers see the passenger's name and phone;
    requests can be scheduled).
