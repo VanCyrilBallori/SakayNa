@@ -173,15 +173,20 @@ if already allowed (the once-per-install pop-ups stay as they are).
          "Scheduled: ..." line on scheduled rides in Request History.
        - Admin: request cards (AdminRequestsSection.jsx) + request
          details pop-up (admin-home.jsx).
-5. Side menu [UI]: slide-in pop-up from the left (no new package). Name +
+5. Side menu [UI] — DONE (tested 2026-09-30): slide-in pop-up from the left (no new package). Name +
    status at the top, Request History, Profile, Settings, Help / Contact
    office, Terms & Privacy (existing /terms and /privacy), Log out.
    Help = office number (publicOfficePhone) + Call button + "For
    life-threatening emergencies, call 911."
+   - ☰ button left of the logo; the avatar pop-up is removed now.
+   - Menu code: features/resident/components/ResidentSideMenu.jsx.
+   - Terms and Privacy pages get a "← Back" button (phone app only;
+     the website stays as it is): components/PageBackButton.jsx.
 6. Map home layout [UI]: map on top, ☰ in the corner, Pending/Rejected
    banner floating on the map, fixed bottom sheet (like the Get Started
    sheet): big Emergency → Request a Ride → latest request card (tap →
-   details). Removes the welcome card, the 3 cards and the avatar.
+   details). Removes the welcome card and the 3 cards (the avatar
+   is already gone in Step 5).
 7. Home map shows your location (only if already allowed) + the
    "location off" / "GPS off" messages.
 8. Paperwork: Skills/resident.md, PRODUCT.md (request types), Privacy
