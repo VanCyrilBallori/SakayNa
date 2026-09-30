@@ -1,6 +1,8 @@
 import { Link } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
+import PageBackButton from "../components/PageBackButton";
+
 // Public page (no login needed): https://sakay-na-delta.vercel.app/privacy
 // DRAFT: the text below must be reviewed by the adviser before it is final.
 const sections = [
@@ -86,6 +88,8 @@ export default function PrivacyPolicy() {
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <View style={styles.card}>
+        <PageBackButton />
+
         <View style={styles.draftBox}>
           <Text style={styles.draftText}>DRAFT - for adviser review. This page is not final and is not legal advice.</Text>
         </View>

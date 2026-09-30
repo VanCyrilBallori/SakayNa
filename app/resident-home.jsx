@@ -1,21 +1,20 @@
-import { FontAwesome } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
-import ProfileAvatar from "../components/profile/ProfileAvatar";
 import { ACCOUNT_STATUSES } from "../constants/app";
 import { COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
-import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
+import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
+import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
 import { getPassengerCountText, getWhenText } from "../features/resident/utils/requestMapper";
@@ -53,17 +52,15 @@ const getStatusTone = (value) => {
 };
 
 export default function ResidentHome() {
-  const router = useRouter();
   const { width } = useWindowDimensions();
   const compact = width < 920;
-  const narrow = width < 560;
   const { authUser, displayName: fallbackDisplayName, profile } = useCurrentUserProfile();
   const { theme, toggleTheme } = useTheme();
   const [residentStatus, setResidentStatus] = useState(IDLE_RESIDENT_STATUS);
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
   const [profileOverride, setProfileOverride] = useState(null);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -107,11 +104,6 @@ export default function ResidentHome() {
   // until an Admin verifies them. Active (verified) residents are not affected.
   const isRejected = activeProfile?.accountStatus === ACCOUNT_STATUSES.REJECTED;
   const notVerified = isRejected || activeProfile?.accountStatus === ACCOUNT_STATUSES.PENDING;
-
-  const initials = useMemo(() => {
-    const words = displayName.split(" ").filter(Boolean);
-    return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "R";
-  }, [displayName]);
 
   useEffect(() => {
     if (!callSessionId) {
@@ -585,24 +577,20 @@ export default function ResidentHome() {
     tag: latestRequest.status || latestRequest.level || "Pending",
   } : residentStatus;
 
-  const menuItems = [
-    { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
-    { key: "history", label: "History", icon: "clock-o", action: () => { setProfileMenuOpen(false); setHistoryOpen(true); } },
-    { key: "settings", label: "Settings", icon: "cog", action: () => { setProfileMenuOpen(false); setSettingsOpen(true); } },
-  ];
-
   return (
     <>
       <ScrollView style={[styles.page, { backgroundColor: theme.page }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
-          <BrandLogo variant="main" height={compact ? 30 : 36} />
-
-          <View style={[styles.headerRight, narrow && styles.headerRightCompact]}>
-            <TouchableOpacity style={[styles.profileTrigger, { backgroundColor: theme.headerBg }]} onPress={() => setProfileMenuOpen(true)}>
-              <View style={[styles.avatarCircle, { backgroundColor: theme.avatarBg }]}>
-                <Text style={[styles.avatarText, { color: theme.avatarText }]}>{initials}</Text>
-              </View>
-            </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            <Pressable
+              style={({ pressed }) => [styles.menuButton, pressed && { backgroundColor: theme.surfaceMuted }]}
+              onPress={() => setMenuOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Open menu"
+            >
+              <MaterialCommunityIcons name="menu" size={30} color={theme.heading} />
+            </Pressable>
+            <BrandLogo variant="main" height={compact ? 30 : 36} />
           </View>
         </View>
 
@@ -934,43 +922,16 @@ export default function ResidentHome() {
         </View>
       </Modal>
 
-      <Modal visible={profileMenuOpen} transparent animationType="fade" onRequestClose={() => setProfileMenuOpen(false)}>
-        <Pressable style={[styles.menuOverlay, { backgroundColor: theme.menuOverlay }]} onPress={() => setProfileMenuOpen(false)}>
-          <Pressable style={[styles.profileMenuCard, { backgroundColor: theme.surface, shadowColor: theme.shadow }]} onPress={() => {}}>
-            <View style={[styles.profileMenuHeader, { borderBottomColor: theme.border }]}>
-              <ProfileAvatar name={displayName} backgroundColor={theme.avatarBg} color={theme.avatarText} />
-              <Text style={[styles.profileMenuName, { color: theme.text }]}>{displayName}</Text>
-              <Text style={[styles.profileMenuEmail, { color: theme.secondaryText }]}>{activeProfile?.email || authUser?.email || "Resident account"}</Text>
-            </View>
-
-            <View style={styles.profileMenuBody}>
-              {menuItems.map((item) => (
-                <TouchableOpacity key={item.key} style={styles.menuItem} onPress={item.action}>
-                  <View style={styles.menuItemLeft}>
-                    <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
-                    <Text style={[styles.menuItemText, { color: theme.text }]}>{item.label}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={styles.logoutMenuButton}
-              onPress={async () => {
-                try {
-                  await logoutCurrentUser();
-                  setProfileMenuOpen(false);
-                  router.replace("/login");
-                } catch (error) {
-                  Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
-                }
-              }}
-            >
-              <Text style={styles.logoutMenuButtonText}>Log Out</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ResidentSideMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        name={displayName}
+        profile={activeProfile}
+        officePhone={officePhone}
+        onOpenHistory={() => setHistoryOpen(true)}
+        onOpenProfile={() => setProfileEditorOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
@@ -1165,33 +1126,19 @@ const styles = StyleSheet.create({
     gap: 16,
     flexWrap: "wrap",
   },
-  headerRight: {
+  headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
-  headerRightCompact: {
-    width: "100%",
-    justifyContent: "space-between",
-  },
-  profileTrigger: {
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-  },
-  avatarCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#D8EBDD",
+  // 48 x 48 so it is easy to tap.
+  menuButton: {
+    width: 48,
+    height: 48,
+    marginLeft: -8,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#184534",
   },
   container: {
     width: "100%",
@@ -1684,68 +1631,6 @@ const styles = StyleSheet.create({
     color: "#CF0000",
     textAlign: "center",
   },
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.18)",
-    paddingTop: 86,
-    paddingRight: 18,
-    alignItems: "flex-end",
-  },
-  profileMenuCard: {
-    width: 320,
-    maxWidth: "92%",
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-  },
-  profileMenuHeader: {
-    alignItems: "center",
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E6ECE8",
-  },
-  profileMenuAvatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#D8EBDD",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileMenuAvatarText: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#184534",
-  },
-  profileMenuName: {
-    marginTop: 12,
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1A2E26",
-  },
-  profileMenuEmail: {
-    marginTop: 4,
-    fontSize: 13,
-    color: "#60716B",
-  },
-  profileMenuBody: {
-    paddingTop: 12,
-    gap: 4,
-  },
-  menuItem: {
-    minHeight: 48,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
   menuItemLeft: {
     flexDirection: "row",
     alignItems: "center",
@@ -1771,19 +1656,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     color: "#234335",
-  },
-  logoutMenuButton: {
-    marginTop: 14,
-    minHeight: 50,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0B7A4A",
-  },
-  logoutMenuButtonText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#FFFFFF",
   },
   profileEditorCard: {
     width: "100%",
