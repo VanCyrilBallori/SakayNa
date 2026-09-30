@@ -184,7 +184,8 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
    - PRODUCT.md, README.md, Skills/resident.md (still describe the old
      Apply to Drive page and driver-owned vehicles).
      PRODUCT.md and README.md: DONE 2026-09-30 (resident overhaul Step
-     8a). Skills/resident.md: resident overhaul Step 8b.
+     8a). Skills/resident.md: DONE 2026-09-30 (resident overhaul Step
+     8b).
 
 ## Release warning
 - Step 11 is done and the website was updated (2026-09-29). Testers need
