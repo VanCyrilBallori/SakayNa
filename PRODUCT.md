@@ -15,12 +15,12 @@ Android-first installed app. iOS is configured in `app.json` and must keep worki
 Operational roles, all serving the resident:
 
 - **Dispatcher** — city/barangay staff at a station. Answers in-app emergency calls, assigns pending requests to a driver and a vehicle, watches driver availability on a map.
-- **Driver** — operates a city/barangay vehicle or a vetted personally-owned vehicle. Runs a mission through Accept → En Route → Arrived → Picked Up → Completed, completes a pre-trip vehicle checklist, and posts availability windows.
-- **Admin** — oversight. Verifies driver applications, manages accounts and the vehicle fleet, monitors unanswered emergency calls, reads reports and the activity log.
+- **Driver** — operates a city/barangay vehicle. Runs a mission through Accept → En Route → Arrived → Picked Up → Completed, completes a pre-trip vehicle checklist, and posts availability windows.
+- **Admin** — oversight. Each Admin belongs to one barangay. Verifies the residents and driver applications of their own barangay, manages accounts and the vehicle fleet, monitors unanswered emergency calls, reads reports and the activity log.
 
 ## Product Purpose
 
-SakayNa coordinates transport for Toledo City residents using city and barangay vehicles (ambulances, vans, and vetted driver-owned vehicles). A resident requests a ride or triggers an emergency call from their phone; a human dispatcher assigns a real vehicle and driver; the whole trip is tracked from request to completion.
+SakayNa coordinates transport for Toledo City residents using city and barangay vehicles (ambulances and vans). A resident requests a ride (now or scheduled) or sends an emergency alert from their phone; a human dispatcher assigns a real vehicle and driver; the whole trip is tracked from request to completion.
 
 It exists because residents who most need a vehicle are the least able to get one on their own.
 
@@ -29,15 +29,16 @@ It exists because residents who most need a vehicle are the least able to get on
 
 ## Positioning
 
-A **public-service dispatch system, not a ride-hailing marketplace.** There are no fares, no payments, no surge pricing, and no independent gig drivers anywhere in the product — vehicles are city/barangay assets or resident-owned vehicles that an Admin has vetted, and a human dispatcher assigns every trip. A commercial ride-hailing product could not truthfully offer an in-app emergency call answered by a city dispatcher, accountable to the LGU, serving residents regardless of ability to pay.
+A **public-service dispatch system, not a ride-hailing marketplace.** There are no fares, no payments, no surge pricing, and no independent gig drivers anywhere in the product — vehicles are city/barangay assets driven by drivers an Admin has vetted, and a human dispatcher assigns every trip. A commercial ride-hailing product could not truthfully offer an in-app emergency call answered by a city dispatcher, accountable to the LGU, serving residents regardless of ability to pay.
 
 ## Operating Context
 
 - **Place:** Toledo City, Cebu, Philippines. Addresses are barangay-based; the app carries the official Toledo barangay list (`lib/barangays.js`). Dates use the `en-PH` locale.
-- **Vehicles:** city/barangay vehicles (e.g. "City Ambulance 1", type Ambulance) and driver-owned vehicles onboarded through an application that includes OR/CR documents and vehicle photos (uploaded to Cloudinary).
-- **Request types:** "Emergency Request" and "Community Transport Request"; priority levels Emergency / Urgent / Non-Urgent / Planned. Every request records the passenger's vulnerable-group flags and accessibility notes.
-- **Emergency call flow:** resident taps SOS → a call session rings at the dispatcher station → dispatcher answers or declines. The Admin console flags any call still ringing after 30 seconds.
-- **Driver onboarding:** apply in-app → account is Pending → Admin reviews (Approve / Reject / Under Review / Correction Requested) → an Approved driver reaches the driver dashboard. Dispatcher and Admin accounts are created by an Admin in the Firebase Console, never by self-signup.
+- **Vehicles:** city/barangay vehicles only (e.g. "City Ambulance 1", type Ambulance), added by an Admin. Drivers do not register vehicles.
+- **Transport requests:** one form. The resident picks what the ride is for (Medical / Health, Community / Personal Trip, or Other), when (as soon as possible, or scheduled 1 hour to 7 days ahead), who is riding (themselves or someone else), how many people (1–6), pickup, destination, and help needed (senior citizen, PWD / wheelchair user, pregnant, child, needs help getting in the vehicle, other). Priority is set automatically: scheduled → Planned, Medical / Health as soon as possible → Urgent, everything else → Non-Urgent. Older requests may still show the old types ("Emergency Request", "Community Transport Request") and the Emergency priority.
+- **Emergency alert flow:** emergencies do not use the request form. The resident taps the red Emergency button → an alert rings at the dispatcher station → a dispatcher answers or declines. The Admin console flags any alert still ringing after 30 seconds.
+- **Resident onboarding:** sign up (email or Google) → proof-of-residency photo → account is Pending → the Admin of the same barangay approves (Active) or rejects with a reason. Pending and Rejected residents can log in but cannot send emergency alerts or transport requests.
+- **Driver onboarding:** apply in-app with document photos (license, NBI or police clearance, medical certificate, optional drug test) → account is Pending → the Admin of the same barangay approves or rejects with a reason → an Approved driver reaches the driver dashboard. Dispatcher and Admin accounts are created by an Admin in the Firebase Console, never by self-signup.
 - **Evaluation ritual:** a User Acceptance Testing survey ("SakayNa User Acceptance Testing (UAT) Survey") is being run with test users.
 - **Who maintains it:** a non-engineer. The project was deliberately simplified so it can be set up and run from a README on the free Firebase tier with no server.
 
@@ -45,10 +46,10 @@ A **public-service dispatch system, not a ride-hailing marketplace.** There are 
 
 **Confirmed functionality**
 
-- Resident: sign up, submit and cancel transport requests, see request status and timeline, trigger an emergency call, edit profile.
-- Driver: apply with documents, wait on a status screen until approved, go online/offline, post availability schedules, accept/decline assignments, run the mission lifecycle, complete a vehicle readiness checklist.
-- Dispatcher: see pending requests on a map, assign request → driver + vehicle in one transaction, answer/decline emergency calls, manage driver schedules.
-- Admin: Overview stats (server-side counts for totals), live Emergency Calls panel with stale-call badge, Operations (account status/role changes with required reason and audit log, driver application review, vehicle maintenance records, reports + CSV export, operational settings, activity log), Requests/Users/Vehicles lists with filters, vehicle add/edit/archive, driver-vehicle sync.
+- Resident: sign up with proof of residency, request a ride now or schedule one, cancel it, see request status and timeline, send an emergency alert, edit profile. Home is a map (showing their location if already allowed) with a fixed bottom sheet (Emergency, Request a Ride, latest request) and a ☰ side menu.
+- Driver: apply with document photos, wait on a status screen until approved, go online/offline, post availability schedules, accept/decline assignments, run the mission lifecycle, complete a vehicle readiness checklist.
+- Dispatcher: see pending requests on a map (as soon as possible first, then scheduled rides soonest first), see the passenger's details and phone, assign request → driver + vehicle in one transaction, answer/decline emergency alerts, manage driver schedules.
+- Admin: Overview stats (server-side counts for totals, by ride purpose), live Emergency Calls panel with stale-call badge, Resident Verification and Driver Applications lists (own barangay only), Operations (account status/role changes with required reason and audit log, vehicle maintenance records, reports + CSV export, operational settings, activity log), Requests/Users/Vehicles lists with filters, vehicle add/edit/archive.
 
 **Technical constraints**
 
@@ -92,4 +93,4 @@ A **public-service dispatch system, not a ride-hailing marketplace.** There are 
 
 ## Accessibility & Inclusion
 
-The primary audience explicitly includes senior citizens, persons with disabilities, pregnant residents, and children; every request records these flags plus free-text accessibility notes. Future surfaces must stay usable by people with limited mobility, low vision, low tech familiarity, and basic Android phones, often under stress. No formal standard (e.g. a WCAG level) has been set — this is an open decision, not an inference.
+The primary audience explicitly includes senior citizens, persons with disabilities, pregnant residents, and children; every request records the help the passenger needs (these groups, plus help getting in the vehicle) and optional notes. Future surfaces must stay usable by people with limited mobility, low vision, low tech familiarity, and basic Android phones, often under stress. No formal standard (e.g. a WCAG level) has been set — this is an open decision, not an inference.

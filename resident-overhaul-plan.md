@@ -202,9 +202,14 @@ if already allowed (the once-per-install pop-ups stay as they are).
      permission pop-up if Android can still ask, otherwise it opens
      SakayNa's page in the phone Settings.
    - "You are here" pin uses LeafletMap's existing pin (no map change).
-8. Paperwork: Skills/resident.md, PRODUCT.md (request types), Privacy
-   Policy draft note (drivers see the passenger's name and phone;
-   requests can be scheduled).
+8. Paperwork, in two parts:
+   8a. PRODUCT.md, README.md, Privacy Policy draft (drivers see the
+       passenger's name and phone; requests can be scheduled; home map
+       location is not saved), Known-Issue.md, CLAUDE.md (only files
+       that exist) — DONE (reviewed 2026-09-30)
+   8b. Skills/resident.md: re-checked against the code, section 6
+       issues marked Fixed / Partly fixed / Still open.
+   Later (after the release): admin.md, dispatcher.md, driver.md.
 9. Release: website (master → main → Vercel) + new preview APK.
 
 Release rule: don't update the website in the middle of steps 2–3b

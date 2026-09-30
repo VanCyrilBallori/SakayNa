@@ -9,7 +9,7 @@ const sections = [
   {
     heading: "1. About this policy",
     lines: [
-      "SakayNa is a student Capstone project. It helps residents of Toledo City request community and emergency transport, and helps dispatchers and drivers respond.",
+      "SakayNa is a student Capstone project. It helps residents of Toledo City request transport and send emergency alerts, and helps dispatchers and drivers respond.",
       "This page explains what information SakayNa collects, why we collect it, and how we protect it. We follow the Data Privacy Act of 2012 (Republic Act No. 10173) of the Philippines.",
     ],
   },
@@ -18,12 +18,12 @@ const sections = [
     lines: [
       "When you sign up with email: your email address and a password. Your password is handled by Firebase Authentication. We never see or store your password.",
       "When you sign in with Google: only your name and email address from your Google account. We do not get your Google password, contacts, or any other Google data.",
-      "When you request transport: the pickup location (from your phone's GPS, a pin you place on the map, or an address you type), the destination, the passenger's name, a contact number, the type of service, and any notes you choose to add (for example, a description, accessibility needs, or whether the passenger needs extra care).",
+      "When you request transport: what the ride is for, when you need it (as soon as possible, or a day and time you schedule up to 7 days ahead), who is riding (you or someone else) with their name and contact number, how many people are riding, the pickup location (your barangay, and if you choose, your phone's GPS or a pin you place on the map), a landmark, the destination, any help the passenger needs (for example, senior citizen, PWD or wheelchair user, pregnant, child), and any notes you choose to add.",
       "When you send an emergency alert: your name, phone number, barangay, and your latest transport request. Right after the alert is sent, the app also attaches your GPS location (latitude, longitude, and address) so responders can find you, if your phone allows it.",
       "When you register as a resident: your full name, phone number, barangay, and address (house number, street, or purok). You also send one photo that proves you live in your barangay (a Barangay Certificate of Residency, a Barangay ID, or another government document that shows your address), and you say which document it is.",
       "When you apply to be a driver: your full name, date of birth, contact number, barangay, address, and a profile picture. You also send photos of your documents: your Professional Driver's License (front and back, with its number and expiration date), your NBI Clearance or Police Clearance, your Medical Certificate, and, if you choose to, your Drug Test Clearance. Some of these documents, like the medical certificate, contain sensitive personal information.",
       "SakayNa does not collect any vehicle information from drivers. Vehicles belong to the barangay.",
-      "Location: the app only gets your location when you use a feature that needs it, like filling in a pickup location or sending an emergency alert.",
+      "Location: the app only uses your location if you allowed it on your phone. The home screen map shows where you are, but that position is not saved. Your location is only saved when you choose to use it for a pickup, or when you send an emergency alert.",
     ],
   },
   {
@@ -41,6 +41,7 @@ const sections = [
     heading: "4. Who can see your information",
     lines: [
       "Only the people who need it to do their job in SakayNa: dispatchers, the driver assigned to your request, and system administrators.",
+      "The driver assigned to your request sees the passenger's name and contact number, the pickup location and landmark, the destination, the help the passenger needs, and your notes, so they can find and call the passenger.",
       "Your proof-of-residency photo and your driver documents can only be opened in SakayNa by you and by the administrator of your barangay, who reviews them. Dispatchers and drivers cannot see them.",
       "Please note: the photos are stored as web links. Anyone who has the exact link can open the photo, but SakayNa only shows these links to you and your barangay's administrator.",
       "We do not sell your information, and we do not share it for advertising.",
@@ -95,7 +96,7 @@ export default function PrivacyPolicy() {
         </View>
 
         <Text style={styles.title}>SakayNa Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: September 29, 2026 (draft)</Text>
+        <Text style={styles.updated}>Last updated: September 30, 2026 (draft)</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>

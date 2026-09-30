@@ -172,8 +172,9 @@ After every change, tell me exactly how to test it on my phone, then STOP. Do no
 ## 12. Installing packages
 Always use npx expo install to add packages, never plain npm install, so versions match my Expo SDK.
 
-Before starting work: role docs are in the Skills folder (resident.md,
-admin.md, etc.). Known problems are in known-issues.md.
+Before starting work: the resident role doc is Skills/resident.md (docs
+for the other roles don't exist yet). Known problems are in
+Known-Issue.md.
 
 ## EAS build checklist
 1. Commit first (git status must be clean).
