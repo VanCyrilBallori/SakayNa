@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollV
 
 import BrandLogo from "../components/BrandLogo";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
+import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
@@ -119,6 +120,8 @@ export default function DriverHome() {
   const [assignedTransfer, setAssignedTransfer] = useState(null);
   const [currentMissionRequest, setCurrentMissionRequest] = useState(null);
   const [missionMessage, setMissionMessage] = useState({ message: "", tone: "info" });
+  // Shown after a ride was cancelled by the resident and removed: { title, reason }.
+  const [cancelledNotice, setCancelledNotice] = useState(null);
   const [driverSchedules, setDriverSchedules] = useState([]);
   const [schedulePromptOpen, setSchedulePromptOpen] = useState(false);
   const [hasPromptedSchedule, setHasPromptedSchedule] = useState(false);
@@ -283,6 +286,26 @@ export default function DriverHome() {
     const unsubscribe = onSnapshot(doc(db, "transportRequests", assignedTransfer.requestId), (snapshot) => setCurrentMissionRequest(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null), () => setCurrentMissionRequest(null));
     return unsubscribe;
   }, [accessStatus, assignedTransfer?.requestId]);
+
+  // The resident cancelled this ride while it was still "Assigned" (Skills/resident.md #1).
+  // Free the driver and the vehicle right away, so the dispatcher can use them again,
+  // and keep a note so the driver knows why the ride disappeared.
+  // No internet: it tries again the next time the app opens and sees the cancelled ride.
+  const cancelledAssignmentId =
+    assignedTransfer?.id && currentMissionRequest?.status === "Cancelled" && currentMissionRequest.id === assignedTransfer.requestId
+      ? assignedTransfer.id
+      : null;
+  const cancelledTitle = currentMissionRequest?.title || "Transport request";
+  const cancelledReason = currentMissionRequest?.cancellationReason || "";
+  useEffect(() => {
+    if (!cancelledAssignmentId) return;
+    // If this runs twice, the second run finds nothing left to free and shows nothing.
+    clearCancelledRide({ assignmentId: cancelledAssignmentId })
+      .then((freed) => {
+        if (freed) setCancelledNotice({ title: cancelledTitle, reason: cancelledReason });
+      })
+      .catch((error) => console.log("Free cancelled ride warning:", error));
+  }, [cancelledAssignmentId, cancelledTitle, cancelledReason]);
   useEffect(() => {
     if (!authUser?.uid || accessStatus !== "approved") {
       setAssignmentHistory([]);
@@ -699,6 +722,20 @@ export default function DriverHome() {
 
               <Text style={[styles.assignmentTitle, compact && styles.assignmentTitleCompact]}>Current Ride</Text>
 
+              {cancelledNotice ? (
+                <View style={styles.cancelledNotice} accessibilityRole="alert">
+                  <FontAwesome name="ban" size={24} color="#B42318" />
+                  <View style={styles.cancelledNoticeCopy}>
+                    <Text style={styles.cancelledNoticeTitle}>The resident cancelled this ride: {cancelledNotice.title}</Text>
+                    {cancelledNotice.reason ? <Text style={styles.cancelledNoticeText}>Reason: {cancelledNotice.reason}</Text> : null}
+                    <Text style={styles.cancelledNoticeText}>It was removed from your rides. You and the vehicle are free again.</Text>
+                    <TouchableOpacity style={styles.cancelledNoticeButton} onPress={() => setCancelledNotice(null)} accessibilityRole="button">
+                      <Text style={styles.cancelledNoticeButtonText}>OK</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : null}
+
               {request ? (
                 <View style={styles.assignmentGrid}>
                   <View style={styles.leftColumn}>
@@ -772,7 +809,12 @@ export default function DriverHome() {
                     </View>
 
                     <FeedbackMessage message={missionMessage.message} tone={missionMessage.tone} />
-                    <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
+                    {/* A ride the resident just cancelled has no Accept / Decline: it is being removed (see cancelledAssignmentId). */}
+                    {request.status === "Cancelled" ? (
+                      <FeedbackMessage message="The resident cancelled this ride. Removing it..." tone="error" />
+                    ) : (
+                      <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
+                    )}
                     <TouchableOpacity style={[styles.driverActionButton, styles.reviewButton]} onPress={() => setReviewOpen(true)}>
                       <Text style={styles.driverActionButtonText}>Review details</Text>
                     </TouchableOpacity>
@@ -1186,6 +1228,12 @@ const styles = StyleSheet.create({
   assignmentTitleCompact: { fontSize: 30 },
   assignmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "stretch" },
   leftColumn: { flex: 1, minWidth: 260, gap: 14 },
+  cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 16, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },
+  cancelledNoticeCopy: { flex: 1 },
+  cancelledNoticeTitle: { fontSize: 17, lineHeight: 23, fontWeight: "800", color: "#7A1A12" },
+  cancelledNoticeText: { marginTop: 4, fontSize: 15, lineHeight: 21, color: "#7A1A12" },
+  cancelledNoticeButton: { alignSelf: "flex-start", minHeight: 48, marginTop: 10, paddingHorizontal: 24, borderRadius: 12, backgroundColor: "#B42318", alignItems: "center", justifyContent: "center" },
+  cancelledNoticeButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
   missionCard: { padding: 18, borderRadius: 18, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E2DD" },
   missionCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
   missionEyebrow: { fontSize: 12, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase", color: "#5A7267" },

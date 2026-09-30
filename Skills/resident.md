@@ -498,7 +498,9 @@ works the same from History and from the home card (`requestCancellation` in
    `cancelResidentRequest` (`cancelResidentRequest` in
    `residentRequestService.js:64-94`).
 3. The request becomes `status: "Cancelled"` and the app saves the reason,
-   `previousStatus`, `cancelledBy` and `cancelledAt`. Details closes.
+   `previousStatus`, `cancelledBy` and `cancelledAt`. Details closes. If a
+   driver was already assigned, the driver's app frees the driver and the
+   vehicle and shows the driver the reason (section 5.2, #1).
 4. If the request has already moved past Assigned, the resident sees: "This
    request has already moved beyond the cancellation stage."
 
@@ -780,6 +782,12 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
   - **Declined** → request goes back to `status: "Pending"`, the driver fields
     are cleared, and `lastDeclinedDriverId` is set. The Dispatcher then sees it
     as "Reassignment needed".
+  - If the resident already **cancelled** the ride, none of these steps is
+    saved; the driver sees "The resident cancelled this ride."
+- **The resident cancels while the ride is still Assigned:** the driver's
+  app frees the driver and the vehicle by itself (`clearCancelledRide` in
+  `features/driver/services/driverMissionService.js`) and shows a red note
+  with the ride and the reason. See #1 for the one limit.
 - The resident's timeline reads these timestamps (`getRequestTimeline` in
   `features/resident/utils/requestMapper.js:83-98`).
 
@@ -854,15 +862,23 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 
 ### Bigger problems
 
-1. **Still open — Cancelling an "Assigned" request does not tell the
-   driver.** `cancelResidentRequest` only changes the request
-   (`cancelResidentRequest` in `residentRequestService.js:83-90`). The
-   `driverAssignments` document and the vehicle stay "Assigned", so the
-   driver still sees the ride. If the driver then taps Accept,
-   `transitionMission` changes the request back to **"In Progress"**, because
-   it never checks for "Cancelled" (`transitionMission` in
-   `driverMissionService.js:35-100`). The dispatcher also still sees that
-   driver as busy.
+1. **Fixed (one limit left) — Cancelling an "Assigned" request now tells
+   the driver** (fixed 2026-09-30). `cancelResidentRequest` still only
+   changes the request (the resident may not change assignments or
+   vehicles). The driver's side now handles it:
+   - `transitionMission` reads the ride first and refuses to save if it is
+     "Cancelled" ("The resident cancelled this ride."), so Accept or
+     Decline can no longer turn it back into In Progress or Pending
+     (`transitionMission` in `features/driver/services/driverMissionService.js`).
+   - The driver's app sees the cancel live and runs `clearCancelledRide`
+     (same file): the assignment becomes "Cancelled" and the vehicle goes
+     back to "Available", in one transaction that only acts if the ride
+     really is cancelled. The driver sees a red note with the ride and the
+     resident's reason (`cancelledNotice` in `app/driver-home.jsx`).
+   - **Limit:** this only happens while the driver's app is open, or the
+     next time it opens. Until then the dispatcher still sees that driver
+     and vehicle as busy. A dispatcher "Free driver" button is an optional
+     follow-up (Known-Issue.md).
 2. **Partly fixed — "Suspended" and "Disabled" do not lock a resident out.**
    `isDisabledProfile` only checks `"Deactivated"` (`lib/roles.js:7`), so a
    Suspended or Disabled resident can still log in and look around. **New:**

@@ -11,6 +11,23 @@ Skills/resident.md section 6.
 
 ## Open
 
+### Cancelled ride: driver stays "busy" until the driver's app is opened
+
+- **Found:** Sept 30, 2026, while fixing Skills/resident.md issue #1.
+- **What it is:** When a resident cancels a ride that was still
+  "Assigned", the driver's app now frees the driver and the vehicle by
+  itself and tells the driver (features/driver/services/
+  driverMissionService.js, `clearCancelledRide`). But this only happens
+  while the driver's app is open, or the next time it opens. Until then,
+  the dispatcher still sees that driver as "Handling" the ride and the
+  vehicle as taken.
+- **Optional follow-up:** a "Free driver" button on the dispatcher screen.
+  No Firestore rules change is needed (a Dispatcher may already update
+  driverAssignments and vehicles). The dispatcher screen would need to
+  watch the rides behind the busy drivers' assignments, show the button
+  when one is "Cancelled", and run the same `clearCancelledRide`.
+- **Status:** Open. Left out on purpose to keep the fix small.
+
 ### Scheduled rides: no reminders, and assigning early keeps the vehicle busy
 
 - **Found:** Sept 29, 2026, while planning "Schedule for later"
