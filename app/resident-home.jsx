@@ -20,6 +20,7 @@ import ResidentRequestForm from "../features/resident/components/ResidentRequest
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
+import useHomeLocation from "../features/resident/hooks/useHomeLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
@@ -71,6 +72,8 @@ export default function ResidentHome() {
   // True once a snapshot without pending writes proves the alert reached the server.
   const serverConfirmedRef = useRef(false);
   const { detectLocation } = useCurrentLocation();
+  // Only for the home map. It never asks for permission by itself (see useHomeLocation.js).
+  const homeLocation = useHomeLocation();
   const [settingsForm, setSettingsForm] = useState({
     fullName: "",
     phoneNumber: "",
@@ -526,7 +529,15 @@ export default function ResidentHome() {
 
         {/* Map on top. The sheet below overlaps its bottom edge by SHEET_OVERLAP. */}
         <View style={[styles.mapArea, { marginBottom: -SHEET_OVERLAP }]}>
-          <LeafletMap title="Toledo City map" showPins={false} zoomPosition="bottomright" bottomSpace={SHEET_OVERLAP} />
+          {/* With your position: the map centers on you with a "You are here" pin. Without it: Toledo City, no pin. */}
+          <LeafletMap
+            title="Toledo City map"
+            showPins={Boolean(homeLocation.coordinates)}
+            pickupCoordinates={homeLocation.coordinates}
+            pickupLabel="You are here"
+            zoomPosition="bottomright"
+            bottomSpace={SHEET_OVERLAP}
+          />
         </View>
 
         {/* Fixed bottom sheet: it cannot be dragged away, so Emergency is always one tap away. */}
@@ -594,6 +605,8 @@ export default function ResidentHome() {
               </View>
             </View>
           ) : null}
+
+          <LocationNote location={homeLocation} theme={theme} />
         </View>
       </View>
 
@@ -1006,6 +1019,52 @@ export default function ResidentHome() {
   );
 }
 
+// The small card on the map when your location can't be shown. location = what useHomeLocation() returns.
+// Nothing shows when your location was found, is still being checked the first time, or on the website.
+function LocationNote({ location, theme }) {
+  let icon = "map-marker-off-outline";
+  let message = "";
+  let buttonLabel = "";
+  let onPress = null;
+
+  if (location.status === "denied") {
+    message = "Location is off. You can still pin your pickup or type a landmark.";
+    // Blocked = Android won't show the pop-up again, so the button opens the phone's Settings.
+    if (location.blocked) message += " In Settings, choose Permissions → Location → Allow.";
+    buttonLabel = "Allow location";
+    onPress = location.allowLocation;
+  } else if (location.status === "gps-off") {
+    icon = "crosshairs-off";
+    message = "Turn on Location (GPS) to see where you are on the map.";
+    buttonLabel = "Try again";
+    onPress = location.retry;
+  } else if (location.status === "error") {
+    icon = "crosshairs-question";
+    message = "We couldn't find your location right now.";
+    buttonLabel = "Try again";
+    onPress = location.retry;
+  }
+
+  if (!message) return null;
+
+  return (
+    <View style={[styles.locationNote, { backgroundColor: theme.surface, shadowColor: theme.shadow }]}>
+      <MaterialCommunityIcons name={icon} size={24} color={theme.mutedText} />
+      <View style={styles.locationNoteCopy}>
+        <Text style={[styles.locationNoteText, { color: theme.text }]}>{message}</Text>
+        <Pressable
+          style={({ pressed }) => [styles.locationNoteButton, { borderColor: theme.border }, pressed && { backgroundColor: theme.surfaceMuted }]}
+          onPress={onPress}
+          disabled={location.checking}
+          accessibilityRole="button"
+        >
+          <Text style={[styles.locationNoteButtonText, { color: theme.heading }]}>{location.checking ? "Checking…" : buttonLabel}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   home: { flex: 1 },
   mapArea: { flex: 1 },
@@ -1029,6 +1088,32 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 6,
   },
+  locationNote: {
+    alignSelf: "stretch",
+    maxWidth: 640,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  locationNoteCopy: { flex: 1 },
+  locationNoteText: { fontSize: 16, lineHeight: 22, fontWeight: "600" },
+  locationNoteButton: {
+    alignSelf: "flex-start",
+    minHeight: 48,
+    marginTop: 10,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationNoteButtonText: { fontSize: 16, fontWeight: "800" },
   sheet: {
     width: "100%",
     maxWidth: 640,
