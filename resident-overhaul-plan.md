@@ -1,5 +1,8 @@
 # Resident UI Overhaul Plan
 
+**Status: DONE (2026-09-30).** All 9 steps finished, tested and released
+(website + preview APK, tag demo-ready-3). See "Releases" below.
+
 ## Goal
 1. A new, simpler transport request form.
 2. A side menu (☰) instead of the avatar pop-up.
@@ -211,9 +214,11 @@ if already allowed (the once-per-install pop-ups stay as they are).
        issues marked Fixed / Partly fixed / Still open — DONE (reviewed
        2026-09-30): 12 fixed, 5 partly fixed, 18 still open, 1 unclear.
    Later (after the release): admin.md, dispatcher.md, driver.md.
-9. Release: website (master → main → Vercel) + new preview APK.
+9. Release: website (master → main → Vercel) + new preview APK — DONE
+   (2026-09-30)
    - Website: DONE (released and checked 2026-09-30, see Releases).
-   - Preview APK: next.
+   - Preview APK: DONE (built, fingerprint matches, tested on phone
+     2026-09-30, see Releases).
 
 Release rule: don't update the website in the middle of steps 2–3b
 (dispatchers would see half-finished labels).
@@ -230,6 +235,13 @@ Release rule: don't update the website in the middle of steps 2–3b
   warning), admin ("When" lines), Privacy page (Sep 30 draft, no Back
   button on the website), emergency alert. Scheduled rides, the ☰ menu
   and the map home reach testers with the new preview APK.
+- 2026-09-30: preview APK with Steps 1–8b (EAS build
+  e3e67c33-3140-4573-bd00-fe328932998b, profile preview, app version
+  1.0.0, built from commit 12a3ebf, tagged demo-ready-3). Dependencies
+  up to date; all 10 EAS "preview" variables present; `eas
+  fingerprint:compare` says "matches". Installed and tested on the
+  phone (old app uninstalled first). Testers need this APK for
+  scheduled rides, the ☰ menu and the map home.
 
 Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
