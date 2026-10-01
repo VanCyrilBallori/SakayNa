@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
@@ -77,7 +77,9 @@ export default function Signup() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.page, { backgroundColor: colors.page }]}>
+    // "padding" on Android too: the app is edge-to-edge, so Android no longer shrinks the screen for the keyboard.
+    // This adds the space instead, and the page scrolls so the box being typed in stays visible.
+    <KeyboardAvoidingView behavior="padding" style={[styles.page, { backgroundColor: colors.page }]}>
       {/* Dark clock/battery icons so they stay visible on the white page. */}
       <StatusBar style="dark" />
       <ScrollView

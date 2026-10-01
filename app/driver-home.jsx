@@ -3,7 +3,8 @@ import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
@@ -107,6 +108,7 @@ function TimeSpinner({ label, value, onChange, compact = false }) {
 export default function DriverHome() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const compact = width < 980;
   const narrow = width < 560;
   const { authUser, displayName, profile } = useCurrentUserProfile();
@@ -1017,147 +1019,153 @@ export default function DriverHome() {
           </View>
         </Modal>
 
-        <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
-          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-            <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setSettingsOpen(false)}>
-                <Text style={styles.modalCloseCircleText}>X</Text>
-              </TouchableOpacity>
-
-              <Text style={[styles.reviewTitle, { color: theme.text }]}>Settings</Text>
-              <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your driver account details, email, and theme mode.</Text>
-
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={settingsForm.fullName}
-                onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
-                placeholder="Full name"
-                placeholderTextColor={theme.subtleText}
-              />
-
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={settingsForm.phoneNumber}
-                onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
-                placeholder="Phone number"
-                placeholderTextColor={theme.subtleText}
-                keyboardType="phone-pad"
-              />
-
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Email Address</Text>
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={settingsForm.email}
-                onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
-                placeholder="Email address"
-                placeholderTextColor={theme.subtleText}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
-              {/* Read-only: the barangay is locked after sign-up. Only an Admin can change it. */}
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.surfaceMuted, borderColor: theme.border, color: theme.mutedText }]}
-                value={settingsForm.barangay || "Not set"}
-                editable={false}
-              />
-              <Text style={[styles.profileFieldHint, { color: theme.mutedText }]}>Only an admin can change your barangay.</Text>
-
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={settingsForm.address}
-                onChangeText={(value) => setSettingsForm((current) => ({ ...current, address: value }))}
-                placeholder="Street or landmark"
-                placeholderTextColor={theme.subtleText}
-              />
-
-              <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
-                <View style={styles.menuItemLeft}>
-                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
-                  <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
-                </View>
-                <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
-                  <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
+        <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)} statusBarTranslucent navigationBarTranslucent>
+          {/* The keyboard helper adds space for the keyboard; the card gets shorter and scrolls,
+              so the box being typed in stays visible. Full-screen (translucent) so the space is measured correctly. */}
+          <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+            <View style={[styles.profileEditorCard, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setSettingsOpen(false)}>
+                  <Text style={styles.modalCloseCircleText}>X</Text>
                 </TouchableOpacity>
-              </View>
 
-              <TouchableOpacity
-                style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
-                onPress={() => setChangePasswordOpen(true)}
-              >
-                <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
-              </TouchableOpacity>
+                <Text style={[styles.reviewTitle, { color: theme.text }]}>Settings</Text>
+                <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your driver account details, email, and theme mode.</Text>
 
-              {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
-              {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={settingsForm.fullName}
+                  onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
+                  placeholder="Full name"
+                  placeholderTextColor={theme.subtleText}
+                />
 
-              <TouchableOpacity
-                style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
-                onPress={saveDriverSettings}
-                disabled={savingProfile}
-              >
-                <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Save Settings"}</Text>
-              </TouchableOpacity>
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={settingsForm.phoneNumber}
+                  onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
+                  placeholder="Phone number"
+                  placeholderTextColor={theme.subtleText}
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Email Address</Text>
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={settingsForm.email}
+                  onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
+                  placeholder="Email address"
+                  placeholderTextColor={theme.subtleText}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
+                {/* Read-only: the barangay is locked after sign-up. Only an Admin can change it. */}
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.surfaceMuted, borderColor: theme.border, color: theme.mutedText }]}
+                  value={settingsForm.barangay || "Not set"}
+                  editable={false}
+                />
+                <Text style={[styles.profileFieldHint, { color: theme.mutedText }]}>Only an admin can change your barangay.</Text>
+
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={settingsForm.address}
+                  onChangeText={(value) => setSettingsForm((current) => ({ ...current, address: value }))}
+                  placeholder="Street or landmark"
+                  placeholderTextColor={theme.subtleText}
+                />
+
+                <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
+                  <View style={styles.menuItemLeft}>
+                    <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
+                    <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
+                  </View>
+                  <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
+                    <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
+                  onPress={() => setChangePasswordOpen(true)}
+                >
+                  <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
+                </TouchableOpacity>
+
+                {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
+                {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
+
+                <TouchableOpacity
+                  style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
+                  onPress={saveDriverSettings}
+                  disabled={savingProfile}
+                >
+                  <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Save Settings"}</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
-        <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)}>
-          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-            <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setChangePasswordOpen(false)}>
-                <Text style={styles.modalCloseCircleText}>X</Text>
-              </TouchableOpacity>
+        <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)} statusBarTranslucent navigationBarTranslucent>
+          <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+            <View style={[styles.profileEditorCard, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setChangePasswordOpen(false)}>
+                  <Text style={styles.modalCloseCircleText}>X</Text>
+                </TouchableOpacity>
 
-              <Text style={[styles.reviewTitle, { color: theme.text }]}>Change Password</Text>
-              <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
+                <Text style={[styles.reviewTitle, { color: theme.text }]}>Change Password</Text>
+                <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
 
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Current Password</Text>
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder="Enter current password"
-                placeholderTextColor={theme.subtleText}
-                secureTextEntry
-              />
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Current Password</Text>
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder="Enter current password"
+                  placeholderTextColor={theme.subtleText}
+                  secureTextEntry
+                />
 
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>New Password</Text>
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="Enter new password"
-                placeholderTextColor={theme.subtleText}
-                secureTextEntry
-              />
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>New Password</Text>
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Enter new password"
+                  placeholderTextColor={theme.subtleText}
+                  secureTextEntry
+                />
 
-              <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Confirm New Password</Text>
-              <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirm new password"
-                placeholderTextColor={theme.subtleText}
-                secureTextEntry
-              />
+                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Confirm New Password</Text>
+                <TextInput
+                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirm new password"
+                  placeholderTextColor={theme.subtleText}
+                  secureTextEntry
+                />
 
-              {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
-              {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
+                {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
+                {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
 
-              <TouchableOpacity
-                style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
-                onPress={saveDriverPassword}
-                disabled={savingProfile}
-              >
-                <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Update Password"}</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
+                  onPress={saveDriverPassword}
+                  disabled={savingProfile}
+                >
+                  <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Update Password"}</Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       </ScrollView>
     </>
@@ -1331,6 +1339,10 @@ const styles = StyleSheet.create({
   themePillText: { fontSize: 12, fontWeight: "800" },
   logoutMenuButton: { marginTop: 14, minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#0B7A4A" },
   logoutMenuButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
+  // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
+  // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
+  editorCardFit: { flexShrink: 1 },
+  editorScroll: { flexGrow: 0 },
   profileEditorCard: { width: "100%", maxWidth: 520, borderRadius: 20, borderWidth: 1, padding: 22 },
   modalCloseCircle: { alignSelf: "flex-end", width: 42, height: 42, borderRadius: 21, backgroundColor: "#F51D1D", alignItems: "center", justifyContent: "center" },
   modalCloseCircleText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },

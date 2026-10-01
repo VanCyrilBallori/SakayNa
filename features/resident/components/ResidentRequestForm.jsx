@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomSheetPicker from "../../../components/BottomSheetPicker";
@@ -173,7 +173,9 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
   return (
     <>
       <Modal visible={visible} animationType="slide" onRequestClose={handleBack} statusBarTranslucent navigationBarTranslucent>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
+        {/* "padding" on Android too: the app is edge-to-edge, so Android no longer shrinks the screen for the keyboard.
+            This adds the space instead, and the page scrolls so the box being typed in stays visible. */}
+        <KeyboardAvoidingView behavior="padding" style={styles.page}>
           {/* Dark clock/battery icons so they stay visible on the white page. */}
           <StatusBar style="dark" />
           <ScrollView

@@ -1,4 +1,4 @@
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import BrandLogo from "../BrandLogo";
 import IconButton from "../ui/IconButton";
@@ -6,7 +6,9 @@ import { COLORS, RADIUS } from "../../constants/design";
 
 export default function AuthLayout({ title, children, footer, onBack, maxWidth = 470 }) {
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.page}>
+    // "padding" on Android too: the app is edge-to-edge, so Android no longer shrinks the screen for the keyboard.
+    // This adds the space instead, and the page scrolls so the box being typed in stays visible.
+    <KeyboardAvoidingView behavior="padding" style={styles.page}>
       {onBack ? <IconButton icon="arrow-left" label="Back to home" onPress={onBack} style={styles.backButton} /> : null}
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <View style={[styles.card, { maxWidth }]}>

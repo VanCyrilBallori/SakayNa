@@ -3,7 +3,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePas
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LeafletMap from "../components/LeafletMap";
@@ -907,133 +907,139 @@ export default function ResidentHome() {
         loading={requestHistoryLoading}
         error={requestHistoryError}
       />
-      <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.profileEditorCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <TouchableOpacity style={styles.modalClose} onPress={() => setSettingsOpen(false)}>
-              <Text style={styles.modalCloseText}>X</Text>
-            </TouchableOpacity>
-
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Update your resident account details, password, and theme mode.</Text>
-
-            <Text style={[styles.modalLabel, { color: theme.text }]}>Username</Text>
-            <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Full name"
-              placeholderTextColor={theme.subtleText}
-              value={settingsForm.fullName}
-              onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
-            />
-
-            <Text style={[styles.modalLabel, { color: theme.text }]}>Phone Number</Text>
-            <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Phone number"
-              placeholderTextColor={theme.subtleText}
-              value={settingsForm.phoneNumber}
-              onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
-              keyboardType="phone-pad"
-            />
-
-            <Text style={[styles.modalLabel, { color: theme.text }]}>Email Address</Text>
-            <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Email address"
-              placeholderTextColor={theme.subtleText}
-              value={settingsForm.email}
-              onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
-              <View style={styles.menuItemLeft}>
-                <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
-                <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
-              </View>
-              <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
-                <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
+      <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)} statusBarTranslucent navigationBarTranslucent>
+        {/* The keyboard helper adds space for the keyboard; the card gets shorter and scrolls,
+            so the box being typed in stays visible. Full-screen (translucent) so the space is measured correctly. */}
+        <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+          <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+            <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <TouchableOpacity style={styles.modalClose} onPress={() => setSettingsOpen(false)}>
+                <Text style={styles.modalCloseText}>X</Text>
               </TouchableOpacity>
-            </View>
 
-            <TouchableOpacity
-              style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
-              onPress={() => setChangePasswordOpen(true)}
-            >
-              <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
-            </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
+              <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Update your resident account details, password, and theme mode.</Text>
 
-            {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
-            {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Username</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                placeholder="Full name"
+                placeholderTextColor={theme.subtleText}
+                value={settingsForm.fullName}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
+              />
 
-            <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
-              onPress={saveResidentSettings}
-              disabled={savingSettings}
-            >
-              <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
-                {savingSettings ? "Saving..." : "Save Settings"}
-              </Text>
-            </TouchableOpacity>
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Phone Number</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                placeholder="Phone number"
+                placeholderTextColor={theme.subtleText}
+                value={settingsForm.phoneNumber}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
+                keyboardType="phone-pad"
+              />
+
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Email Address</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                placeholder="Email address"
+                placeholderTextColor={theme.subtleText}
+                value={settingsForm.email}
+                onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
+                <View style={styles.menuItemLeft}>
+                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
+                  <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
+                </View>
+                <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
+                  <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
+                onPress={() => setChangePasswordOpen(true)}
+              >
+                <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
+              </TouchableOpacity>
+
+              {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
+              {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
+
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
+                onPress={saveResidentSettings}
+                disabled={savingSettings}
+              >
+                <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
+                  {savingSettings ? "Saving..." : "Save Settings"}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.profileEditorCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <TouchableOpacity style={styles.modalClose} onPress={() => setChangePasswordOpen(false)}>
-              <Text style={styles.modalCloseText}>X</Text>
-            </TouchableOpacity>
+      <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)} statusBarTranslucent navigationBarTranslucent>
+        <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+          <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+            <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <TouchableOpacity style={styles.modalClose} onPress={() => setChangePasswordOpen(false)}>
+                <Text style={styles.modalCloseText}>X</Text>
+              </TouchableOpacity>
 
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
+              <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
 
-            <Text style={[styles.modalLabel, { color: theme.text }]}>Current Password</Text>
-            <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Enter current password"
-              placeholderTextColor={theme.subtleText}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-            />
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Current Password</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                placeholder="Enter current password"
+                placeholderTextColor={theme.subtleText}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+              />
 
-            <Text style={[styles.modalLabel, { color: theme.text }]}>New Password</Text>
-            <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Enter new password"
-              placeholderTextColor={theme.subtleText}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
+              <Text style={[styles.modalLabel, { color: theme.text }]}>New Password</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                placeholder="Enter new password"
+                placeholderTextColor={theme.subtleText}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+              />
 
-            <Text style={[styles.modalLabel, { color: theme.text }]}>Confirm New Password</Text>
-            <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Confirm new password"
-              placeholderTextColor={theme.subtleText}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
+              <Text style={[styles.modalLabel, { color: theme.text }]}>Confirm New Password</Text>
+              <TextInput
+                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                placeholder="Confirm new password"
+                placeholderTextColor={theme.subtleText}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
 
-            {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
-            {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
+              {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
+              {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
 
-            <TouchableOpacity
-              style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
-              onPress={saveResidentPassword}
-              disabled={savingSettings}
-            >
-              <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
-                {savingSettings ? "Saving..." : "Update Password"}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
+                onPress={saveResidentPassword}
+                disabled={savingSettings}
+              >
+                <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
+                  {savingSettings ? "Saving..." : "Update Password"}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -1505,6 +1511,10 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#234335",
   },
+  // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
+  // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
+  editorCardFit: { flexShrink: 1 },
+  editorScroll: { flexGrow: 0 },
   profileEditorCard: {
     width: "100%",
     maxWidth: 560,

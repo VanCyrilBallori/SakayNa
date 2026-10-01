@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
-import { BackHandler, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { BackHandler, Image, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomSheetPicker from "../components/BottomSheetPicker";
@@ -302,7 +302,9 @@ export default function RegisterDriver() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.page, { backgroundColor: colors.page }]}>
+    // "padding" on Android too: the app is edge-to-edge, so Android no longer shrinks the screen for the keyboard.
+    // This adds the space instead, and the page scrolls so the box being typed in stays visible.
+    <KeyboardAvoidingView behavior="padding" style={[styles.page, { backgroundColor: colors.page }]}>
       {/* Dark clock/battery icons so they stay visible on the white page. */}
       <StatusBar style="dark" />
       <ScrollView
