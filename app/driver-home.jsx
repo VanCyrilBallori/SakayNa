@@ -10,6 +10,7 @@ import DriverMissionActions from "../features/driver/components/DriverMissionAct
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
+import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
@@ -566,6 +567,13 @@ export default function DriverHome() {
       return;
     }
 
+    // Same phone check as sign-up. A valid number is saved in one standard style (+639171234567).
+    const nextPhone = normalizePhilippinePhone(settingsForm.phoneNumber);
+    if (!nextPhone) {
+      setProfileError("Enter a mobile number like 0917 123 4567.");
+      return;
+    }
+
     setSavingProfile(true);
     setProfileError("");
     setProfileMessage("");
@@ -580,8 +588,8 @@ export default function DriverHome() {
 
       await updateDoc(doc(db, "users", authUser.uid), {
         fullName: settingsForm.fullName.trim(),
-        phoneNumber: settingsForm.phoneNumber.trim(),
-        phone: settingsForm.phoneNumber.trim(),
+        phoneNumber: nextPhone,
+        phone: nextPhone,
         // Barangay is not saved here: it is locked after sign-up. Only an Admin can change it.
         address: settingsForm.address.trim(),
         email: nextEmail,
@@ -593,8 +601,8 @@ export default function DriverHome() {
         email: nextEmail,
         fullName: settingsForm.fullName.trim(),
         barangay: profile?.barangay || "",
-        phoneNumber: settingsForm.phoneNumber.trim(),
-        phone: settingsForm.phoneNumber.trim(),
+        phoneNumber: nextPhone,
+        phone: nextPhone,
         role: "Driver",
         accountStatus: "Approved",
       });

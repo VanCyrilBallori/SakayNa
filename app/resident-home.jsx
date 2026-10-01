@@ -22,6 +22,7 @@ import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useHomeLocation from "../features/resident/hooks/useHomeLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
+import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
 // Firestore queues writes while offline and the promise simply stays pending, so an
@@ -419,6 +420,13 @@ export default function ResidentHome() {
       return;
     }
 
+    // Same phone check as sign-up. A valid number is saved in one standard style (+639171234567).
+    const nextPhone = normalizePhilippinePhone(settingsForm.phoneNumber);
+    if (!nextPhone) {
+      setSettingsError("Enter a mobile number like 0917 123 4567.");
+      return;
+    }
+
     setSavingSettings(true);
     setSettingsError("");
     setSettingsMessage("");
@@ -433,8 +441,8 @@ export default function ResidentHome() {
 
       await updateDoc(doc(db, "users", authUser.uid), {
         fullName: settingsForm.fullName.trim(),
-        phoneNumber: settingsForm.phoneNumber.trim(),
-        phone: settingsForm.phoneNumber.trim(),
+        phoneNumber: nextPhone,
+        phone: nextPhone,
         email: nextEmail,
         updatedAt: serverTimestamp(),
       });
@@ -444,8 +452,8 @@ export default function ResidentHome() {
         email: nextEmail,
         fullName: settingsForm.fullName.trim(),
         barangay: activeProfile?.barangay || "",
-        phoneNumber: settingsForm.phoneNumber.trim(),
-        phone: settingsForm.phoneNumber.trim(),
+        phoneNumber: nextPhone,
+        phone: nextPhone,
         role: activeProfile?.role || "Resident",
         accountStatus: activeProfile?.accountStatus || "Active",
       });
@@ -454,8 +462,8 @@ export default function ResidentHome() {
         ...activeProfile,
         email: nextEmail,
         fullName: settingsForm.fullName.trim(),
-        phoneNumber: settingsForm.phoneNumber.trim(),
-        phone: settingsForm.phoneNumber.trim(),
+        phoneNumber: nextPhone,
+        phone: nextPhone,
       });
 
       setSettingsMessage("Settings updated successfully.");

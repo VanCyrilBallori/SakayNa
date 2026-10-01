@@ -526,10 +526,15 @@ works the same from History and from the home card (`requestCancellation` in
 - **Save Settings** → `saveResidentSettings` (`saveResidentSettings` in
   `app/resident-home.jsx:407-475`):
   1. All three fields must be filled in.
-  2. If the email changed, it updates the login email in Firebase
+  2. The phone must be a real mobile number (same check as sign-up,
+     `normalizePhilippinePhone` in
+     `features/resident/utils/requestValidation.js:5`), or it shows "Enter a
+     mobile number like 0917 123 4567." It is saved in one standard style,
+     for example `+639171234567`.
+  3. If the email changed, it updates the login email in Firebase
      Authentication (`updateEmail`).
-  3. Updates `users/{uid}` with `fullName`, `phoneNumber`, `phone`, `email`
-     (`app/resident-home.jsx:430-436`).
+  4. Updates `users/{uid}` with `fullName`, `phoneNumber`, `phone`, `email`
+     (`saveResidentSettings` in `app/resident-home.jsx`).
 - **Change Password** → another pop-up (`ResidentHome` in
   `app/resident-home.jsx:963-1020`) → `saveResidentPassword`
   (`saveResidentPassword` in `app/resident-home.jsx:477`):
@@ -1038,11 +1043,13 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 24. **Fixed — Address is asked at sign-up.** Resident Registration asks for
     it (`checkPage` in `app/register-resident.jsx:45`), so the Profile pop-up
     shows it.
-25. **Still open — Settings does not check the phone number format**
-    (`saveResidentSettings` in `app/resident-home.jsx:413`). This matters more
-    now: "Me" in the request form needs a valid profile phone, so a badly
-    typed number blocks booking with "Your profile has no phone number. Add
-    it in Settings first."
+25. **Fixed — Settings checks the phone number format** (fixed 2026-10-01).
+    `saveResidentSettings` in `app/resident-home.jsx` now uses the same
+    checker as sign-up and the request form (`normalizePhilippinePhone`). A
+    bad number shows "Enter a mobile number like 0917 123 4567." and nothing
+    is saved; a good one is saved as `+639…`. So a typo in Settings can no
+    longer block booking for "Me". Driver Settings (`saveDriverSettings` in
+    `app/driver-home.jsx`) got the same check.
 
 ### Sign Up
 
