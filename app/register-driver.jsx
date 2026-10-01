@@ -4,16 +4,16 @@ import { StatusBar } from "expo-status-bar";
 import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 import { BackHandler, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { Dropdown } from "react-native-element-dropdown";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import BottomSheetPicker from "../components/BottomSheetPicker";
 import BrandLogo from "../components/BrandLogo";
 import ScreenState from "../components/ui/ScreenState";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app";
 import { COLORS, LIGHT_COLORS } from "../constants/design";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import { auth, db } from "../firebase";
-import { TOLEDO_BARANGAY_OPTIONS } from "../lib/barangays";
+import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../lib/barangays";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, useCurrentUserProfile } from "../lib/session";
 import { pickPhoto, uploadPhotos } from "../lib/uploadPhoto";
@@ -442,22 +442,15 @@ function PersonalPage({ form, updateField, photos, onAddPhoto }) {
       </Field>
 
       <Field icon="home-outline" label="Barangay">
-        <Dropdown
+        <BottomSheetPicker
           style={styles.input}
-          containerStyle={styles.dropdownList}
-          placeholderStyle={[styles.dropdownText, { color: colors.muted }]}
-          selectedTextStyle={[styles.dropdownText, { color: colors.heading }]}
-          itemTextStyle={[styles.dropdownText, { color: colors.heading }]}
-          inputSearchStyle={styles.dropdownText}
-          maxHeight={320}
-          search
-          searchPlaceholder="Search barangay..."
-          data={TOLEDO_BARANGAY_OPTIONS}
-          labelField="label"
-          valueField="value"
+          title="Choose your barangay"
+          searchable
+          searchPlaceholder="Search barangay"
+          options={TOLEDO_BARANGAY_PICKER_OPTIONS}
           placeholder="Select your barangay"
           value={form.barangay}
-          onChange={(item) => updateField("barangay", item.value)}
+          onChange={(value) => updateField("barangay", value)}
           accessibilityLabel="Barangay"
         />
       </Field>
@@ -710,19 +703,13 @@ function DateInput({ form, updateField, prefix, label }) {
 
   return (
     <View style={styles.dateBlock}>
-      <Dropdown
+      <BottomSheetPicker
         style={styles.input}
-        containerStyle={styles.dropdownList}
-        placeholderStyle={[styles.dropdownText, { color: colors.muted }]}
-        selectedTextStyle={[styles.dropdownText, { color: colors.heading }]}
-        itemTextStyle={[styles.dropdownText, { color: colors.heading }]}
-        maxHeight={320}
-        data={MONTH_OPTIONS}
-        labelField="label"
-        valueField="value"
+        title={`${label}: month`}
+        options={MONTH_OPTIONS}
         placeholder="Month"
         value={form[`${prefix}Month`]}
-        onChange={(item) => updateField(`${prefix}Month`, item.value)}
+        onChange={(value) => updateField(`${prefix}Month`, value)}
         accessibilityLabel={`${label}, month`}
       />
       <View style={styles.dateRow}>
@@ -836,8 +823,6 @@ const styles = StyleSheet.create({
     color: LIGHT_COLORS.heading,
     backgroundColor: "#FFFFFF",
   },
-  dropdownText: { fontSize: 17 },
-  dropdownList: { borderRadius: 12, borderWidth: 1.5, borderColor: LIGHT_COLORS.outline, overflow: "hidden" },
   dateBlock: { gap: 10 },
   dateRow: { flexDirection: "row", gap: 10 },
   dateDay: { flex: 1 },

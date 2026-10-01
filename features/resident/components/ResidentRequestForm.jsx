@@ -2,11 +2,11 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { Dropdown } from "react-native-element-dropdown";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import BottomSheetPicker from "../../../components/BottomSheetPicker";
 import { COLORS, LIGHT_COLORS } from "../../../constants/design";
-import { TOLEDO_BARANGAY_OPTIONS } from "../../../lib/barangays";
+import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import useCurrentLocation from "../hooks/useCurrentLocation";
 import { createResidentRequest } from "../services/residentRequestService";
 import { formatClockTime, formatShortDay } from "../../../lib/dates";
@@ -360,22 +360,15 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
       </Field>
 
       <Field icon="home-outline" label="Pickup barangay" error={errors.barangay}>
-        <Dropdown
+        <BottomSheetPicker
           style={[styles.input, errors.barangay && styles.inputError]}
-          containerStyle={styles.dropdownList}
-          placeholderStyle={[styles.dropdownText, { color: colors.muted }]}
-          selectedTextStyle={[styles.dropdownText, { color: colors.heading }]}
-          itemTextStyle={[styles.dropdownText, { color: colors.heading }]}
-          inputSearchStyle={styles.dropdownText}
-          maxHeight={320}
-          search
-          searchPlaceholder="Search barangay..."
-          data={TOLEDO_BARANGAY_OPTIONS}
-          labelField="label"
-          valueField="value"
+          title="Pickup barangay"
+          searchable
+          searchPlaceholder="Search barangay"
+          options={TOLEDO_BARANGAY_PICKER_OPTIONS}
           placeholder="Select the barangay"
           value={form.barangay}
-          onChange={(item) => setValue("barangay", item.value)}
+          onChange={(value) => setValue("barangay", value)}
           accessibilityLabel="Pickup barangay"
         />
       </Field>
@@ -500,7 +493,7 @@ const scheduleText = (form) => {
   return `${formatShortDay(date)}, ${formatClockTime(date)}`;
 };
 
-// The Day and Time dropdowns under "Schedule for later". Only times that can be booked are listed.
+// The Day and Time pickers under "Schedule for later". Only times that can be booked are listed.
 function SchedulePicker({ form, hasError, setScheduleDay, setScheduleMinutes }) {
   const dayOptions = getScheduleDayOptions();
   const timeOptions = form.scheduleDay ? getScheduleTimeOptions(form.scheduleDay) : [];
@@ -508,37 +501,25 @@ function SchedulePicker({ form, hasError, setScheduleDay, setScheduleMinutes }) 
   return (
     <View style={styles.schedulePicker}>
       <Text style={styles.subLabel}>Day</Text>
-      <Dropdown
+      <BottomSheetPicker
         style={[styles.input, hasError && !form.scheduleDay && styles.inputError]}
-        containerStyle={styles.dropdownList}
-        placeholderStyle={[styles.dropdownText, { color: colors.muted }]}
-        selectedTextStyle={[styles.dropdownText, { color: colors.heading }]}
-        itemTextStyle={[styles.dropdownText, { color: colors.heading }]}
-        maxHeight={320}
-        data={dayOptions}
-        labelField="label"
-        valueField="value"
+        title="Day of the ride"
+        options={dayOptions}
         placeholder="Choose the day"
         value={form.scheduleDay}
-        onChange={(item) => setScheduleDay(item.value)}
+        onChange={(value) => setScheduleDay(value)}
         accessibilityLabel="Day of the ride"
       />
 
       <Text style={[styles.subLabel, styles.subLabelSpaced]}>Time</Text>
-      <Dropdown
+      <BottomSheetPicker
         style={[styles.input, hasError && styles.inputError, !form.scheduleDay && styles.inputDisabled]}
-        containerStyle={styles.dropdownList}
-        placeholderStyle={[styles.dropdownText, { color: colors.muted }]}
-        selectedTextStyle={[styles.dropdownText, { color: colors.heading }]}
-        itemTextStyle={[styles.dropdownText, { color: colors.heading }]}
-        maxHeight={320}
-        data={timeOptions}
-        labelField="label"
-        valueField="value"
+        title="Time of the ride"
+        options={timeOptions}
         placeholder={form.scheduleDay ? "Choose the time" : "Choose the day first"}
         value={form.scheduleMinutes}
-        onChange={(item) => setScheduleMinutes(item.value)}
-        disable={!form.scheduleDay}
+        onChange={(value) => setScheduleMinutes(value)}
+        disabled={!form.scheduleDay}
         accessibilityLabel="Time of the ride"
       />
 
@@ -691,8 +672,6 @@ const styles = StyleSheet.create({
   subLabel: { marginBottom: 8, fontSize: 16, fontWeight: "600", color: colors.heading },
   subLabelSpaced: { marginTop: 14 },
   multiline: { minHeight: 96, paddingTop: 14, paddingBottom: 14 },
-  dropdownText: { fontSize: 17 },
-  dropdownList: { borderRadius: 12, borderWidth: 1.5, borderColor: colors.outline, overflow: "hidden" },
   choiceList: { gap: 10 },
   choiceListBelow: { marginTop: 10 },
   choice: {
