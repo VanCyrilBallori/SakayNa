@@ -242,6 +242,19 @@ Release rule: don't update the website in the middle of steps 2–3b
   fingerprint:compare` says "matches". Installed and tested on the
   phone (old app uninstalled first). Testers need this APK for
   scheduled rides, the ☰ menu and the map home.
+- 2026-10-01: website released with fixes #1, #2 and #25 from
+  Skills/resident.md (master → main → Vercel, fast-forward
+  5007787..da35f31). No Firestore rules changes and no emergency alert
+  data changes, so old APKs still work with it. Live checks passed
+  (Settings phone check for resident and driver, "on hold" banner and
+  pop-ups for a Suspended resident, driver told when a resident cancels).
+- 2026-10-01: preview APK with fixes #1, #2 and #25 (EAS build
+  c848d54b-11cc-43a7-8ada-8877bf5fd625, profile preview, app version
+  1.0.0, built from commit da35f31, tagged demo-ready-4). Dependencies
+  up to date; all 10 EAS "preview" variables present; `eas
+  fingerprint:compare` says "matches". Installed and tested on the
+  phone. Not in this APK or on the website yet: the smaller map credit
+  (commit b6b6323), which goes out with the next release.
 
 Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
