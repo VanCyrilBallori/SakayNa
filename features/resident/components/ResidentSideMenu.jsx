@@ -50,9 +50,9 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
     }
   };
 
-  // Green dot = verified, yellow = waiting for an admin, red = not accepted.
+  // Green dot = verified (Active), yellow = waiting for an admin, red = anything else (Rejected, Suspended, ...).
   const status = profile?.accountStatus;
-  const statusDotColor = status === ACCOUNT_STATUSES.REJECTED ? COLORS.emergency : status === ACCOUNT_STATUSES.PENDING ? "#D99A00" : "#1FA56B";
+  const statusDotColor = status === ACCOUNT_STATUSES.ACTIVE ? "#1FA56B" : status === ACCOUNT_STATUSES.PENDING ? "#D99A00" : COLORS.emergency;
 
   return (
     <>

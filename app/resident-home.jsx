@@ -88,10 +88,14 @@ export default function ResidentHome() {
 
   const activeProfile = profileOverride ?? profile;
   const displayName = activeProfile?.fullName?.trim() || fallbackDisplayName;
-  // Pending and Rejected residents can open this screen, but cannot send alerts or requests
-  // until an Admin verifies them. Active (verified) residents are not affected.
+  // Only Active residents can send alerts or requests (same as isActiveResident in firestore.rules).
+  // Everyone else can open this screen but gets a pop-up instead. While the profile is still
+  // loading we don't know the status yet, so nothing is blocked.
+  const notActive = Boolean(activeProfile) && activeProfile.accountStatus !== ACCOUNT_STATUSES.ACTIVE;
   const isRejected = activeProfile?.accountStatus === ACCOUNT_STATUSES.REJECTED;
-  const notVerified = isRejected || activeProfile?.accountStatus === ACCOUNT_STATUSES.PENDING;
+  const isPending = activeProfile?.accountStatus === ACCOUNT_STATUSES.PENDING;
+  // Any other non-Active status (for example Suspended or Disabled) means the account is on hold.
+  const isOnHold = notActive && !isRejected && !isPending;
 
   useEffect(() => {
     if (!callSessionId) {
@@ -225,7 +229,7 @@ export default function ResidentHome() {
 
   const handleQuickAction = (type) => {
     if (type === "emergency-call") {
-      if (notVerified) {
+      if (notActive) {
         setNotVerifiedPopup("emergency");
         return;
       }
@@ -234,7 +238,7 @@ export default function ResidentHome() {
     }
 
     if (type === "transport") {
-      if (notVerified) {
+      if (notActive) {
         setNotVerifiedPopup("transport");
         return;
       }
@@ -591,16 +595,22 @@ export default function ResidentHome() {
             <MaterialCommunityIcons name="menu" size={28} color={theme.heading} />
           </Pressable>
 
-          {notVerified ? (
+          {notActive ? (
             // Same light colors in Light and Dark mode on purpose, so the banner always stands out.
-            <View style={[styles.statusBanner, isRejected ? styles.statusBannerRejected : styles.statusBannerPending]}>
-              <FontAwesome name={isRejected ? "times-circle" : "clock-o"} size={26} color={isRejected ? COLORS.emergency : COLORS.warning} />
+            <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
+              <FontAwesome
+                name={isPending ? "clock-o" : isRejected ? "times-circle" : "pause-circle"}
+                size={26}
+                color={isPending ? COLORS.warning : COLORS.emergency}
+              />
               <View style={styles.statusBannerCopy}>
-                <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile)}</Text>
+                <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
                 <Text style={styles.statusBannerText}>
-                  {isRejected
-                    ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
-                    : "An admin from your barangay is checking your proof of residency. You can send emergency alerts and transport requests after you are verified."}
+                  {isPending
+                    ? "An admin from your barangay is checking your proof of residency. You can send emergency alerts and transport requests after you are verified."
+                    : isRejected
+                      ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
+                      : "Your account is on hold, so you cannot send emergency alerts or transport requests. Please contact the office (☰ → Help / Contact office)."}
                 </Text>
               </View>
             </View>
@@ -628,7 +638,7 @@ export default function ResidentHome() {
                 <FontAwesome name="warning" size={52} color="#CF0000" />
                 <Text style={[styles.callTitle, { color: theme.text }]}>Emergency</Text>
                 <Text style={[styles.notVerifiedText, { color: theme.text }]}>
-                  {isRejected ? "Your account was not verified." : "Your account is still being verified."} For emergencies, call 911.
+                  {isOnHold ? "Your account is on hold." : isRejected ? "Your account was not verified." : "Your account is still being verified."} For emergencies, call 911.
                 </Text>
                 {/* Opens the dialer with 911 typed in. The person still presses call, so a wrong tap never calls 911.
                     (startPhoneCall is not used here because it can start the call right away.) */}
@@ -654,9 +664,11 @@ export default function ResidentHome() {
                 <FontAwesome name="clipboard" size={48} color="#D88400" />
                 <Text style={[styles.callTitle, { color: theme.text }]}>Transport Request</Text>
                 <Text style={[styles.notVerifiedText, { color: theme.text }]}>
-                  {isRejected
-                    ? "Your account was not verified, so you cannot send transport requests."
-                    : "Your account is still being verified. You can send transport requests after an admin from your barangay approves your account."}
+                  {isOnHold
+                    ? "Your account is on hold, so you cannot send transport requests. Please contact the office (☰ → Help / Contact office)."
+                    : isRejected
+                      ? "Your account was not verified, so you cannot send transport requests."
+                      : "Your account is still being verified. You can send transport requests after an admin from your barangay approves your account."}
                 </Text>
                 <TouchableOpacity style={styles.callNowButton} onPress={() => setNotVerifiedPopup("")} accessibilityRole="button">
                   <Text style={styles.callNowButtonText}>OK</Text>
@@ -1068,7 +1080,7 @@ function LocationNote({ location, theme }) {
 const styles = StyleSheet.create({
   home: { flex: 1 },
   mapArea: { flex: 1 },
-  // Floating layer over the top of the map: the ☰ button and the Pending / Rejected banner.
+  // Floating layer over the top of the map: the ☰ button and the account status banner (not Active only).
   mapOverlay: {
     position: "absolute",
     left: 16,
@@ -1164,7 +1176,7 @@ const styles = StyleSheet.create({
   },
   rideButtonPressed: { backgroundColor: COLORS.primaryDark },
   rideButtonText: { fontSize: 19, fontWeight: "800", color: "#FFFFFF" },
-  // Account status banner (Pending or Rejected residents only). Big, dark text for seniors.
+  // Account status banner (residents who are not Active only). Big, dark text for seniors.
   statusBanner: {
     alignSelf: "stretch",
     maxWidth: 640,
@@ -1381,7 +1393,7 @@ const styles = StyleSheet.create({
     color: "#4A5C55",
     textAlign: "center",
   },
-  // "Not verified yet" pop-up (Pending or Rejected residents). Bigger, darker text than callSubtitle for seniors.
+  // "Not verified yet" / "on hold" pop-up (residents who are not Active). Bigger, darker text than callSubtitle for seniors.
   notVerifiedText: {
     marginTop: 10,
     fontSize: 17,

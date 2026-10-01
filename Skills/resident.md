@@ -24,9 +24,10 @@ a ride. They can:
 
 **Signing up is a check, not just a form.** A new resident sends a photo that
 proves they live in their barangay. Their account stays **Pending** until the
-Admin of that same barangay approves it (section 2.2). Pending and Rejected
-residents can log in and look around, but they **cannot send emergency alerts
-or transport requests** (sections 2.5 and 4.1).
+Admin of that same barangay approves it (section 2.2). Only **Active**
+residents can send. Pending, Rejected and "on hold" residents (for example
+Suspended) can log in and look around, but they **cannot send emergency
+alerts or transport requests** (sections 2.5 and 4.1).
 
 The home screen is a **map** with a fixed bottom sheet (big Emergency button,
 Request a Ride, latest request) and a **☰ side menu** (section 2.5).
@@ -255,11 +256,16 @@ permissions, one after another:
 
 - **A round ☰ button** at the top left (`ResidentHome` in
   `app/resident-home.jsx:585-593`) → the side menu (section 2.5 d).
-- **Pending / Rejected banner** floating on the map, same light colors in
-  Light and Dark mode (`ResidentHome` in `app/resident-home.jsx:594-607`):
-  - Pending: "Pending Verification — An admin from your barangay is checking
-    your proof of residency…"
-  - Rejected: "Rejected — Your proof of residency was not accepted…"
+- **Account status banner** floating on the map for any resident who is
+  not Active, same light colors in Light and Dark mode (`ResidentHome` in
+  `app/resident-home.jsx`, the `notActive` banner):
+  - Pending (yellow): "Pending Verification — An admin from your barangay is
+    checking your proof of residency…"
+  - Rejected (red): "Rejected — Your proof of residency was not accepted…"
+  - Any other status, "on hold" (red, title = the status, e.g. "Suspended"):
+    "Your account is on hold, so you cannot send emergency alerts or
+    transport requests. Please contact the office (☰ → Help / Contact
+    office)."
 - **A fixed bottom sheet** that cannot be dragged away
   (`ResidentHome` in `app/resident-home.jsx:545-581`). It scrolls inside if
   it does not fit (for example with very large text). It holds:
@@ -268,14 +274,20 @@ permissions, one after another:
   2. A green **Request a Ride** button (`app/resident-home.jsx:563-571`)
   3. The **latest request card** (section 2.5 c)
 
-**Pending or Rejected residents** who tap Emergency or Request a Ride get a
-pop-up instead (`handleQuickAction` in `app/resident-home.jsx:226-235`,
-not-verified pop-up in `623-668`):
+**Residents who are not Active** (`notActive` in `app/resident-home.jsx`,
+the same check as `isActiveResident` in `firestore.rules`) who tap Emergency
+or Request a Ride get a pop-up instead (`handleQuickAction` and the
+not-verified pop-up in `app/resident-home.jsx`):
 
-- Emergency: "Your account is still being verified." (or "was not verified.")
-  "For emergencies, call 911." + **Call 911** (opens the dialer with 911
-  typed in; the person still presses call) + **Close**.
-- Request a Ride: a similar message + **OK**.
+- Emergency: "Your account is still being verified." (or "was not
+  verified." / "is on hold.") "For emergencies, call 911." + **Call 911**
+  (opens the dialer with 911 typed in; the person still presses call) +
+  **Close**.
+- Request a Ride: a similar message + **OK**. On hold: "Your account is on
+  hold, so you cannot send transport requests. Please contact the office
+  (☰ → Help / Contact office)."
+- While the profile is still loading, nothing is blocked (the status is not
+  known yet).
 
 #### a) Emergency — `handleQuickAction("emergency-call")` in `app/resident-home.jsx:226`
 
@@ -438,7 +450,8 @@ Slides in from the left (`ResidentSideMenu.jsx:31-36`). Closes by tapping the
 dark area, the ✕, or the phone's Back button.
 
 - **Top:** initials, name, and account status with a colored dot (green =
-  Verified Resident, yellow = Pending Verification, red = Rejected)
+  Active / Verified Resident, yellow = Pending Verification, red = anything
+  else, e.g. Rejected or Suspended)
   (`getAccountStatusLabel` in `lib/roles.js:13-29`).
 - **Request History** → section 2.6.
 - **Profile** → a **read-only** pop-up showing Full Name, Email, Phone,
@@ -621,12 +634,14 @@ works the same from History and from the home card (`requestCancellation` in
 
   | `accountStatus` | Shown as | What happens to a resident |
   |---|---|---|
-  | `Pending` (new sign-ups) | Pending Verification | Allowed in, sees a banner; **cannot** send emergency alerts or transport requests (app pop-up + Firestore rules) |
+  | `Active` (approved by the barangay Admin) | Verified Resident | Allowed in, can use everything (green dot) |
+  | `Pending` (new sign-ups) | Pending Verification | Allowed in, yellow banner; **cannot** send emergency alerts or transport requests (app pop-up + Firestore rules) |
   | `Rejected` | Rejected | Same as Pending, with a red banner. Cannot upload a new proof yet (#35) |
-  | `Active` (approved by the barangay Admin) | Verified Resident | Allowed in, can use everything |
-  | `Approved` | Approved | Allowed in (the app treats it like Active on screen), but the Firestore rules only let **Active** residents send (`isActiveResident` in `firestore.rules:32-35`) |
+  | `Suspended`, `Disabled`, `Approved` or any other non-Active status | the status itself (e.g. Suspended) | **"On hold":** allowed in, red banner "Your account is on hold… contact the office"; **cannot** send (app pop-up + `isActiveResident` in `firestore.rules:32-35`) |
   | `Deactivated` | — | Blocked: login shows an error; a remembered resident who opens the phone app sees the landing page; if already inside, they see "Account disabled" (`AuthRouteGate.jsx:83-85`) |
-  | `Suspended` or `Disabled` | — | **Allowed in, but cannot send** (the rules need Active), see #2 |
+
+  The app's "can send" check (`notActive` in `app/resident-home.jsx`) is the
+  same as the rules: only `Active` can send.
 
 - The profile is watched **live** (`useCurrentUserProfile` in
   `lib/session.js:91`, listener at `116`), so when the Admin approves a
@@ -879,16 +894,17 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
      next time it opens. Until then the dispatcher still sees that driver
      and vehicle as busy. A dispatcher "Free driver" button is an optional
      follow-up (Known-Issue.md).
-2. **Partly fixed — "Suspended" and "Disabled" do not lock a resident out.**
-   `isDisabledProfile` only checks `"Deactivated"` (`lib/roles.js:7`), so a
-   Suspended or Disabled resident can still log in and look around. **New:**
-   they can no longer send emergency alerts or transport requests, because
-   the rules only allow Active residents (`isActiveResident` in
-   `firestore.rules:32-35`). But the app does not show them a banner or the
-   "not verified" pop-up (`notVerified` in `app/resident-home.jsx` only
-   checks Pending/Rejected). So Emergency ends in "Alert not confirmed", and
-   Request a Ride says "Your request could not be sent. Check your internet",
-   which is misleading.
+2. **Fixed — Suspended and Disabled residents get a clear message**
+   (fixed 2026-10-01). They can still log in and look around
+   (`isDisabledProfile` only blocks `"Deactivated"`, `lib/roles.js:7`), and
+   the rules still stop them from sending (`isActiveResident` in
+   `firestore.rules:32-35`). The app now uses the same check: any resident
+   who is not Active cannot send (`notActive` in `app/resident-home.jsx`).
+   Pending and Rejected look the same as before. Any other status is "on
+   hold": a red banner titled with the status, and the Emergency / Request
+   a Ride pop-ups say the account is on hold and to contact the office
+   (Emergency still offers **Call 911**). The side menu dot is red. They no
+   longer see "Alert not confirmed" or "Check your internet".
 3. **Partly fixed — The Firestore rules let a resident change any field of
    their own request, and of their own emergency alert.** **New:** only an
    Active resident can **create** one (`firestore.rules:88`, `121`). Still
