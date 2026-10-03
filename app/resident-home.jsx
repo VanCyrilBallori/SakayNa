@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LeafletMap from "../components/LeafletMap";
 import { ACCOUNT_STATUSES } from "../constants/app";
-import { COLORS, DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
@@ -597,12 +597,12 @@ export default function ResidentHome() {
           {/* Floating on top of the map, just under the strip. box-none = taps between these items still reach the map. */}
           <View style={styles.mapOverlay} pointerEvents="box-none">
             {notActive ? (
-              // Same light colors in Light and Dark mode on purpose, so the banner always stands out.
+              // A flat sign: amber while waiting, red when the account can't send emergency alerts.
               <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
-                <FontAwesome
-                  name={isPending ? "clock-o" : isRejected ? "times-circle" : "pause-circle"}
-                  size={26}
-                  color={isPending ? COLORS.warning : COLORS.emergency}
+                <MaterialCommunityIcons
+                  name={isPending ? "clock-outline" : isRejected ? "close-circle-outline" : "pause-circle-outline"}
+                  size={28}
+                  color={isPending ? DESIGN_COLORS.waitingAmber : DESIGN_COLORS.emergencyRed}
                 />
                 <View style={styles.statusBannerCopy}>
                   <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
@@ -617,7 +617,7 @@ export default function ResidentHome() {
               </View>
             ) : null}
 
-            <LocationNote location={homeLocation} theme={theme} />
+            <LocationNote location={homeLocation} />
           </View>
         </View>
 
@@ -1090,7 +1090,7 @@ export default function ResidentHome() {
 
 // The small card on the map when your location can't be shown. location = what useHomeLocation() returns.
 // Nothing shows when your location was found, is still being checked the first time, or on the website.
-function LocationNote({ location, theme }) {
+function LocationNote({ location }) {
   let icon = "map-marker-off-outline";
   let message = "";
   let buttonLabel = "";
@@ -1117,17 +1117,17 @@ function LocationNote({ location, theme }) {
   if (!message) return null;
 
   return (
-    <View style={[styles.locationNote, { backgroundColor: theme.surface, shadowColor: theme.shadow }]}>
-      <MaterialCommunityIcons name={icon} size={24} color={theme.mutedText} />
+    <View style={styles.locationNote}>
+      <MaterialCommunityIcons name={icon} size={26} color={DESIGN_COLORS.inkMuted} />
       <View style={styles.locationNoteCopy}>
-        <Text style={[styles.locationNoteText, { color: theme.text }]}>{message}</Text>
+        <Text style={styles.locationNoteText}>{message}</Text>
         <Pressable
-          style={({ pressed }) => [styles.locationNoteButton, { borderColor: theme.border }, pressed && { backgroundColor: theme.surfaceMuted }]}
+          style={({ pressed }) => [styles.locationNoteButton, pressed && styles.locationNoteButtonPressed]}
           onPress={onPress}
           disabled={location.checking}
           accessibilityRole="button"
         >
-          <Text style={[styles.locationNoteButtonText, { color: theme.heading }]}>{location.checking ? "Checking…" : buttonLabel}</Text>
+          <Text style={styles.locationNoteButtonText}>{location.checking ? "Checking…" : buttonLabel}</Text>
         </Pressable>
       </View>
     </View>
@@ -1168,6 +1168,7 @@ const styles = StyleSheet.create({
     gap: 12,
     alignItems: "flex-start",
   },
+  // Flat sign (DESIGN.md "Flat Board Rule"): white with a grey edge, no shadow.
   locationNote: {
     alignSelf: "stretch",
     maxWidth: 640,
@@ -1175,25 +1176,27 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 14,
-    borderRadius: 18,
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
   },
   locationNoteCopy: { flex: 1 },
-  locationNoteText: { fontSize: 16, lineHeight: 22, fontWeight: "600" },
+  locationNoteText: { fontSize: 17, lineHeight: 24, fontWeight: "600", color: DESIGN_COLORS.ink },
+  // Outline button: the edge is dark enough to see where the button starts and ends.
   locationNoteButton: {
     alignSelf: "flex-start",
     minHeight: 48,
     marginTop: 10,
     paddingHorizontal: 18,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
     alignItems: "center",
     justifyContent: "center",
   },
-  locationNoteButtonText: { fontSize: 16, fontWeight: "800" },
+  locationNoteButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  locationNoteButtonText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   sheet: {
     width: "100%",
     maxWidth: 640,
@@ -1245,6 +1248,7 @@ const styles = StyleSheet.create({
   // "Title" size from DESIGN.md: the home screen's second big action.
   rideButtonText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
   // Account status banner (residents who are not Active only). Big, dark text for seniors.
+  // Flat sign (DESIGN.md "Flat Board Rule"): tinted background and a 2dp colored edge, no shadow.
   statusBanner: {
     alignSelf: "stretch",
     maxWidth: 640,
@@ -1252,37 +1256,32 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    shadowColor: "#000000",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    borderRadius: 8,
+    borderWidth: 2,
   },
   statusBannerPending: {
-    backgroundColor: COLORS.warningSurface,
-    borderColor: COLORS.warning,
+    backgroundColor: DESIGN_COLORS.amberTint,
+    borderColor: DESIGN_COLORS.waitingAmber,
   },
   statusBannerRejected: {
-    backgroundColor: COLORS.emergencySurface,
-    borderColor: COLORS.emergency,
+    backgroundColor: DESIGN_COLORS.redTint,
+    borderColor: DESIGN_COLORS.emergencyRed,
   },
   statusBannerCopy: {
     flex: 1,
   },
   statusBannerTitle: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "800",
-    color: COLORS.text,
+    color: DESIGN_COLORS.ink,
   },
   statusBannerText: {
     marginTop: 4,
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: "600",
-    color: COLORS.text,
+    color: DESIGN_COLORS.ink,
   },
   modalOverlay: {
     flex: 1,
