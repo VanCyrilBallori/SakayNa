@@ -1,14 +1,15 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { arrayUnion, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
 import { startPhoneCall } from "../lib/phoneCall";
 import LeafletMap from "../components/LeafletMap";
+import { DESIGN_COLORS } from "../constants/design";
 import { db } from "../firebase";
 import { getTimestampMillis } from "../lib/dates";
 import {
@@ -42,6 +43,63 @@ const formatPhoneForDialing = (phone = "") => {
   const match = /^\+63(9\d{2})(\d{3})(\d{4})$/.exec(phone);
   return match ? `0${match[1]} ${match[2]} ${match[3]}` : phone;
 };
+
+// Opens the resident's GPS position in Google Maps (the app on a phone, a new tab on the website).
+const openLocationInMaps = async (location) => {
+  const url = `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
+  try {
+    await Linking.openURL(url);
+  } catch (error) {
+    console.log("Open location warning:", error);
+    Alert.alert("Map not opened", "The map could not be opened on this device.");
+  }
+};
+
+// Who sent an emergency alert and how to reach them: big tap-to-call phone, barangay or place, and the map link.
+// call = the alert (callSessions document). It updates by itself when the resident's location arrives a few seconds later.
+function EmergencyCallerDetails({ call }) {
+  const phone = call?.residentPhone || "";
+  const location = call?.location;
+  const hasLocation = typeof location?.latitude === "number" && typeof location?.longitude === "number";
+  // pickupLocation starts as the resident's barangay and becomes the GPS address once the location arrives.
+  const place = call?.pickupLocation || "Not provided";
+
+  return (
+    <View style={styles.callerDetails}>
+      {phone ? (
+        <Pressable
+          style={({ pressed }) => [styles.callerPhoneButton, pressed && styles.callerPhoneButtonPressed]}
+          onPress={() => startPhoneCall(phone)}
+          accessibilityRole="button"
+          accessibilityLabel={`Call ${formatPhoneForDialing(phone)}`}
+        >
+          <MaterialCommunityIcons name="phone" size={28} color="#FFFFFF" />
+          <Text style={styles.callerPhoneText}>{formatPhoneForDialing(phone)}</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.callerLine}>No phone number on file.</Text>
+      )}
+
+      <Text style={styles.callerLine}>
+        <Text style={styles.callerLabel}>Barangay / place: </Text>
+        {place}
+      </Text>
+
+      {hasLocation ? (
+        <Pressable
+          style={({ pressed }) => [styles.callerMapButton, pressed && styles.callerMapButtonPressed]}
+          onPress={() => openLocationInMaps(location)}
+          accessibilityRole="button"
+        >
+          <MaterialCommunityIcons name="map-marker-outline" size={24} color={DESIGN_COLORS.hallGreen} />
+          <Text style={styles.callerMapText}>Open location in Maps</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.callerLine}>Location not sent (yet). Use the barangay above.</Text>
+      )}
+    </View>
+  );
+}
 
 // Rides scheduled more than this far ahead get the "Assign it closer to the time" warning.
 const ASSIGN_EARLY_WARNING_MS = 2 * 60 * 60_000;
@@ -821,6 +879,7 @@ export default function DispatcherHome() {
           <View style={[styles.modalCard, compact && styles.modalCardCompact]}>
             <Text style={styles.modalTitle}>Incoming Emergency Call</Text>
             <Text style={styles.modalSubtitle}>{incomingCall?.residentName || "Resident"} is calling the dispatcher station.</Text>
+            <EmergencyCallerDetails call={incomingCall} />
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.modalButton, styles.declineButton]} onPress={declineIncomingCall}>
@@ -968,6 +1027,35 @@ const styles = StyleSheet.create({
   },
   assignButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 22 },
+  // Emergency caller details (DESIGN.md look): big tap-to-call number, then barangay and the map link.
+  callerDetails: { marginTop: 16, gap: 12 },
+  callerPhoneButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    minHeight: 64,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: DESIGN_COLORS.hallGreen,
+  },
+  callerPhoneButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  callerPhoneText: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: "#FFFFFF" },
+  callerLine: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  callerLabel: { fontWeight: "700" },
+  callerMapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+  },
+  callerMapButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  callerMapText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   modalButton: {
     flex: 1,
     minHeight: 54,
