@@ -67,6 +67,34 @@ export const getDestinationLabel = (request = {}) =>
 
 export const getRequestStatusMeta = (status) => statusMeta[status] || { label: status || "Pending review", tone: "neutral", icon: "info-circle" };
 
+// The 7 steps of a ride, in order. The home "Your ride" card shows "Step 4 of 7 · En route".
+export const RIDE_STEPS = ["Pending", "Driver assigned", "Accepted", "En route", "Arrived", "Picked up", "Completed"];
+
+// Which step (1 to 7) a ride is on, and the words for the card's status band.
+// step 0 = Cancelled or Rejected: the card shows no progress bar.
+// Old requests may have "In Progress" with no missionStatus: they count as Accepted.
+export const getRideProgress = (request = {}) => {
+  const status = request.status || REQUEST_STATUSES.PENDING;
+  const missionStatus = request.missionStatus || "";
+
+  if (status === REQUEST_STATUSES.CANCELLED) return { step: 0, title: "Cancelled" };
+  if (status === "Rejected") return { step: 0, title: "Rejected" };
+  if (status === REQUEST_STATUSES.COMPLETED || missionStatus === "Completed") return { step: 7, title: "Ride completed" };
+  if (missionStatus === "Picked Up") return { step: 6, title: "Picked up" };
+  if (missionStatus === "Arrived") return { step: 5, title: "Your driver is here!" };
+  if (missionStatus === "En Route") return { step: 4, title: "Driver on the way" };
+  if (missionStatus === "Accepted" || status === REQUEST_STATUSES.IN_PROGRESS) return { step: 3, title: "Driver accepted" };
+  if (status === REQUEST_STATUSES.ASSIGNED) return { step: 2, title: "Driver assigned" };
+  // Pending. If a driver declined it before, the dispatcher is now finding someone else.
+  return { step: 1, title: request.lastDeclinedDriverId ? "Finding another driver" : "Waiting for a driver" };
+};
+
+// The ride for the home "Your ride" card. requests = newest first (from useResidentRequests).
+// A ride a driver is on right now (Assigned or In Progress) comes first, so a newer ride scheduled
+// for tomorrow never hides a driver who is on the way. If there is none, the newest ride.
+export const getHomeRide = (requests = []) =>
+  requests.find((request) => [REQUEST_STATUSES.ASSIGNED, REQUEST_STATUSES.IN_PROGRESS].includes(request.status)) ?? requests[0] ?? null;
+
 export const canResidentCancel = (request = {}) => RESIDENT_CANCELLABLE_STATUSES.includes(request.status || REQUEST_STATUSES.PENDING);
 
 export const normalizeResidentRequest = (id, data = {}) => ({

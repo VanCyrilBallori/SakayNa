@@ -20,6 +20,7 @@ import ResidentRequestHistory from "../features/resident/components/ResidentRequ
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
+import { getHomeRide } from "../features/resident/utils/requestMapper";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
@@ -39,6 +40,8 @@ export default function ResidentHome() {
   const { theme } = useTheme();
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
+  // The ride on the "Your ride" card: a ride a driver is on right now first, otherwise the newest one.
+  const homeRide = getHomeRide(requestHistory);
   const [menuOpen, setMenuOpen] = useState(false);
   // A Rejected resident's reason from the proof-of-residency review. null = not read (yet), or the read failed.
   const [verificationReason, setVerificationReason] = useState(null);
@@ -658,8 +661,11 @@ export default function ResidentHome() {
             <Text style={styles.rideButtonText}>Request a Ride</Text>
           </Pressable>
 
+          <Text style={styles.yourRideHeading} accessibilityRole="header">
+            Your ride
+          </Text>
           <LatestRequestCard
-            request={latestRequest}
+            request={homeRide}
             loading={requestHistoryLoading}
             error={requestHistoryError}
             onPress={() => setLatestDetailsOpen(true)}
@@ -667,8 +673,8 @@ export default function ResidentHome() {
         </ScrollView>
       </View>
 
-      {/* The latest request's details. It reads the live request, so the status updates while it is open. */}
-      <ResidentRequestDetails request={latestRequest} visible={latestDetailsOpen && Boolean(latestRequest)} onClose={() => setLatestDetailsOpen(false)} />
+      {/* The details of the ride on the "Your ride" card. It reads the live request, so the status updates while it is open. */}
+      <ResidentRequestDetails request={homeRide} visible={latestDetailsOpen && Boolean(homeRide)} onClose={() => setLatestDetailsOpen(false)} />
 
       <ResidentRequestForm
         visible={sosOpen}
@@ -1154,6 +1160,8 @@ const styles = StyleSheet.create({
   rideButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   // "Title" size from DESIGN.md: the home screen's second big action.
   rideButtonText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
+  // "Your ride" above the card. The extra space on top separates it from the two big buttons.
+  yourRideHeading: { marginTop: 12, fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
   // Account status banner (residents who are not Active only). Big, dark text for seniors.
   // Flat sign (DESIGN.md "Flat Board Rule"): tinted background and a 2dp colored edge, no shadow.
   statusBanner: {
