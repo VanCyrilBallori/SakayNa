@@ -162,7 +162,8 @@ Soft, round corners. Two corner sizes, plus fully round for a few small things:
 - **Card corner (24dp):** cards, banners, info boxes, and the top corners of
   bottom sheets.
 - **Fully round:** small tags and count badges, status dots, the destination
-  dot, profile pictures. Main buttons are never pill-shaped.
+  dot, profile pictures, the logo disc on the landing page. Main buttons are
+  never pill-shaped.
 
 A status band at the top of a card follows the card's 24dp top corners.
 
