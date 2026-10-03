@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { auth } from "../firebase";
 
 // The two account types a person can create by themselves.
@@ -27,10 +27,21 @@ const ROLE_CHOICES = [
 // The only place where a new user chooses Resident or Driver. They are always signed in here:
 // Google users come straight after Google sign-in, email users come after Verify Your Email.
 // Always light, like the landing page.
+// DESIGN.md colors, under the short names this page already uses.
+const colors = {
+  page: DESIGN_COLORS.paperWhite,
+  heading: DESIGN_COLORS.ink,
+  muted: DESIGN_COLORS.inkMuted,
+  link: DESIGN_COLORS.hallGreen,
+  card: DESIGN_COLORS.boardTint,
+  line: DESIGN_COLORS.rule,
+  outline: DESIGN_COLORS.controlOutline,
+  ripple: "rgba(11, 122, 75, 0.12)",
+};
+
 export default function ChooseRole() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = LIGHT_COLORS;
   const [resident, driver] = ROLE_CHOICES;
 
   const chooseRole = (choice) => {
@@ -83,7 +94,7 @@ export default function ChooseRole() {
         <View style={styles.explanations} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {ROLE_CHOICES.map((choice) => (
             <View key={choice.key} style={styles.explanationRow}>
-              <View style={[styles.iconDisc, { backgroundColor: colors.ripple }]}>
+              <View style={[styles.iconDisc, { backgroundColor: colors.card }]}>
                 <MaterialCommunityIcons name={choice.icon} size={28} color={colors.link} />
               </View>
               <View style={styles.explanationText}>
@@ -113,7 +124,7 @@ function RoleButton({ choice, filled = false, colors, onPress }) {
       style={({ pressed }) => [
         styles.button,
         filled ? styles.buttonFilled : { backgroundColor: colors.card, borderColor: colors.outline },
-        pressed && styles.buttonPressed,
+        pressed && (filled ? styles.buttonFilledPressed : styles.buttonPressed),
       ]}
       onPress={onPress}
       android_ripple={{ color: filled ? "rgba(255, 255, 255, 0.24)" : colors.ripple }}
@@ -152,7 +163,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
   },
-  buttonFilled: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  buttonFilled: { backgroundColor: DESIGN_COLORS.hallGreen, borderColor: DESIGN_COLORS.hallGreen },
+  buttonFilledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep, borderColor: DESIGN_COLORS.hallGreenDeep },
   buttonPressed: { opacity: 0.88 },
   buttonText: { fontSize: 18, fontWeight: "800" },
 });

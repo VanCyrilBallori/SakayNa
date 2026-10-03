@@ -10,7 +10,7 @@ import BottomSheetPicker from "../components/BottomSheetPicker";
 import BrandLogo from "../components/BrandLogo";
 import ScreenState from "../components/ui/ScreenState";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app";
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../lib/barangays";
@@ -25,7 +25,17 @@ import { pickPhoto, uploadPhoto } from "../lib/uploadPhoto";
 // - residentVerifications/{uid}: the same details plus the photo link. Only the Resident and
 //   Admins can read it (dispatchers can read users/, so the photo link never goes there).
 
-const colors = LIGHT_COLORS;
+// DESIGN.md colors, under the short names this page already uses.
+const colors = {
+  page: DESIGN_COLORS.paperWhite,
+  heading: DESIGN_COLORS.ink,
+  muted: DESIGN_COLORS.inkMuted,
+  link: DESIGN_COLORS.hallGreen,
+  card: DESIGN_COLORS.boardTint,
+  line: DESIGN_COLORS.rule,
+  outline: DESIGN_COLORS.controlOutline,
+  ripple: "rgba(11, 122, 75, 0.12)",
+};
 
 const STEP_NAMES = ["Details", "Proof", "Review"];
 
@@ -245,10 +255,10 @@ export default function RegisterResident() {
                 android_ripple={{ color: colors.ripple }}
                 accessibilityRole="button"
               >
-                <Text style={[styles.buttonText, { color: COLORS.primary }]}>Back</Text>
+                <Text style={[styles.buttonText, { color: DESIGN_COLORS.hallGreen }]}>Back</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [styles.button, styles.nextButton, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.button, styles.nextButton, pressed && styles.filledPressed]}
                 onPress={step === 3 ? handleSubmit : goNext}
                 disabled={isSubmitting}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
@@ -278,7 +288,7 @@ function StepBar({ step }) {
           <View key={name} style={styles.stepItem}>
             <View style={styles.stepCircleRow}>
               {/* The line on each side of the circle. The first and last hide their outer line. */}
-              <View style={[styles.stepLine, { backgroundColor: index === 0 ? "transparent" : number <= step ? COLORS.primary : colors.line }]} />
+              <View style={[styles.stepLine, { backgroundColor: index === 0 ? "transparent" : number <= step ? DESIGN_COLORS.hallGreen : colors.line }]} />
               <View style={[styles.stepCircle, done || current ? styles.stepCircleActive : { borderColor: colors.outline }]}>
                 {done ? (
                   <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
@@ -286,7 +296,7 @@ function StepBar({ step }) {
                   <Text style={[styles.stepNumber, { color: current ? "#FFFFFF" : colors.muted }]}>{number}</Text>
                 )}
               </View>
-              <View style={[styles.stepLine, { backgroundColor: index === STEP_NAMES.length - 1 ? "transparent" : number < step ? COLORS.primary : colors.line }]} />
+              <View style={[styles.stepLine, { backgroundColor: index === STEP_NAMES.length - 1 ? "transparent" : number < step ? DESIGN_COLORS.hallGreen : colors.line }]} />
             </View>
             <Text style={[styles.stepName, { color: current ? colors.heading : colors.muted }, current && styles.stepNameCurrent]}>{name}</Text>
           </View>
@@ -309,7 +319,7 @@ function DetailsPage({ form, updateField }) {
           value={form.fullName}
           onChangeText={(value) => updateField("fullName", value)}
           placeholder="Juan Dela Cruz"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           autoCapitalize="words"
           accessibilityLabel="Full Name"
         />
@@ -321,7 +331,7 @@ function DetailsPage({ form, updateField }) {
           value={form.phone}
           onChangeText={(value) => updateField("phone", value)}
           placeholder="09XX XXX XXXX"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           keyboardType="phone-pad"
           maxLength={16}
           accessibilityLabel="Phone Number"
@@ -348,7 +358,7 @@ function DetailsPage({ form, updateField }) {
           value={form.address}
           onChangeText={(value) => updateField("address", value)}
           placeholder="e.g. 123 Mabini St., Purok 3"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           accessibilityLabel="House number, street, or purok"
         />
       </Field>
@@ -377,7 +387,7 @@ function ProofPage({ form, updateField, photo, onAddPhoto }) {
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
               >
-                <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={26} color={selected ? COLORS.primary : colors.outline} />
+                <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={26} color={selected ? DESIGN_COLORS.hallGreen : colors.outline} />
                 <Text style={[styles.choiceText, { color: colors.heading }]}>{type}</Text>
               </Pressable>
             );
@@ -394,7 +404,7 @@ function ProofPage({ form, updateField, photo, onAddPhoto }) {
             android_ripple={{ color: colors.ripple }}
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name="camera-outline" size={22} color={COLORS.primary} />
+            <MaterialCommunityIcons name="camera-outline" size={22} color={DESIGN_COLORS.hallGreen} />
             <Text style={styles.changePhotoText}>Change photo</Text>
           </Pressable>
         </View>
@@ -406,7 +416,7 @@ function ProofPage({ form, updateField, photo, onAddPhoto }) {
           accessibilityRole="button"
           accessibilityLabel="Take a photo or choose from gallery"
         >
-          <MaterialCommunityIcons name="camera-outline" size={36} color={COLORS.primary} />
+          <MaterialCommunityIcons name="camera-outline" size={36} color={DESIGN_COLORS.hallGreen} />
           <Text style={styles.photoBoxText}>Take a photo or choose from gallery</Text>
         </Pressable>
       )}
@@ -438,7 +448,7 @@ function ReviewPage({ form, email, photo, confirmed, onToggleConfirmed }) {
       <View style={[styles.summary, { backgroundColor: colors.card }]}>
         {rows.map(([icon, label, value]) => (
           <View key={label} style={styles.summaryRow} accessible accessibilityLabel={`${label}: ${value}`}>
-            <MaterialCommunityIcons name={icon} size={22} color={COLORS.primary} style={styles.summaryIcon} />
+            <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} style={styles.summaryIcon} />
             <View style={styles.summaryText}>
               <Text style={[styles.summaryLabel, { color: colors.muted }]}>{label}</Text>
               <Text style={[styles.summaryValue, { color: colors.heading }]}>{value}</Text>
@@ -456,7 +466,7 @@ function ReviewPage({ form, email, photo, confirmed, onToggleConfirmed }) {
         accessibilityRole="checkbox"
         accessibilityState={{ checked: confirmed }}
       >
-        <MaterialCommunityIcons name={confirmed ? "checkbox-marked" : "checkbox-blank-outline"} size={30} color={confirmed ? COLORS.primary : colors.outline} />
+        <MaterialCommunityIcons name={confirmed ? "checkbox-marked" : "checkbox-blank-outline"} size={30} color={confirmed ? DESIGN_COLORS.hallGreen : colors.outline} />
         <Text style={[styles.confirmText, { color: colors.heading }]}>I confirm the information is true and correct.</Text>
       </Pressable>
     </>
@@ -466,8 +476,8 @@ function ReviewPage({ form, email, photo, confirmed, onToggleConfirmed }) {
 function SubmittedPage({ onGoHome }) {
   return (
     <View style={styles.submitted}>
-      <View style={[styles.submittedDisc, { backgroundColor: colors.ripple }]}>
-        <MaterialCommunityIcons name="check" size={56} color={COLORS.primary} />
+      <View style={[styles.submittedDisc, { backgroundColor: colors.card }]}>
+        <MaterialCommunityIcons name="check" size={56} color={DESIGN_COLORS.hallGreen} />
       </View>
       <Text style={[styles.submittedTitle, { color: colors.heading }]} accessibilityRole="header">
         Submitted
@@ -480,7 +490,7 @@ function SubmittedPage({ onGoHome }) {
       <View style={styles.spacer} />
 
       <Pressable
-        style={({ pressed }) => [styles.button, styles.nextButton, styles.homeButton, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.button, styles.nextButton, styles.homeButton, pressed && styles.filledPressed]}
         onPress={onGoHome}
         android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
         accessibilityRole="button"
@@ -496,7 +506,7 @@ function Field({ icon, label, children }) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
-        <MaterialCommunityIcons name={icon} size={22} color={COLORS.primary} />
+        <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} />
         <Text style={[styles.label, { color: colors.heading }]}>{label}</Text>
       </View>
       {children}
@@ -526,7 +536,7 @@ const styles = StyleSheet.create({
   stepCircleRow: { flexDirection: "row", alignItems: "center", width: "100%" },
   stepLine: { flex: 1, height: 2 },
   stepCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
-  stepCircleActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  stepCircleActive: { backgroundColor: DESIGN_COLORS.hallGreen, borderColor: DESIGN_COLORS.hallGreen },
   stepNumber: { fontSize: 16, fontWeight: "800" },
   stepName: { marginTop: 6, fontSize: 14, fontWeight: "600" },
   stepNameCurrent: { fontWeight: "800" },
@@ -539,10 +549,10 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: LIGHT_COLORS.outline,
-    borderRadius: 12,
+    borderColor: DESIGN_COLORS.controlOutline,
+    borderRadius: 16,
     fontSize: 17,
-    color: LIGHT_COLORS.heading,
+    color: DESIGN_COLORS.ink,
     backgroundColor: "#FFFFFF",
   },
   choiceList: { gap: 10 },
@@ -551,14 +561,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     backgroundColor: "#FFFFFF",
   },
-  choiceSelected: { borderWidth: 2, borderColor: COLORS.primary, backgroundColor: LIGHT_COLORS.card },
+  choiceSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
   choiceText: { flex: 1, fontSize: 17, lineHeight: 23 },
   photoBox: {
     minHeight: 128,
@@ -566,33 +576,33 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: COLORS.primary,
+    borderColor: DESIGN_COLORS.hallGreen,
     borderRadius: 16,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: LIGHT_COLORS.card,
+    backgroundColor: DESIGN_COLORS.boardTint,
   },
-  photoBoxText: { fontSize: 17, lineHeight: 23, fontWeight: "700", textAlign: "center", color: COLORS.primary },
+  photoBoxText: { fontSize: 17, lineHeight: 23, fontWeight: "700", textAlign: "center", color: DESIGN_COLORS.hallGreen },
   photoPreviewBlock: { marginTop: 20, gap: 10 },
-  photoPreview: { width: "100%", maxHeight: 240, borderRadius: 12 },
+  photoPreview: { width: "100%", maxHeight: 240, borderRadius: 16 },
   changePhotoButton: {
     minHeight: 48,
     alignSelf: "flex-start",
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: 12,
+    borderColor: DESIGN_COLORS.hallGreen,
+    borderRadius: 16,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  changePhotoText: { fontSize: 16, fontWeight: "700", color: COLORS.primary },
+  changePhotoText: { fontSize: 16, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   hintRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   hintText: { flex: 1, fontSize: 16, lineHeight: 23 },
-  summary: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 6 },
+  summary: { borderRadius: 24, paddingHorizontal: 16, paddingVertical: 6 },
   summaryRow: { flexDirection: "row", gap: 12, paddingVertical: 10 },
   summaryIcon: { marginTop: 2 },
   summaryText: { flex: 1 },
@@ -602,13 +612,14 @@ const styles = StyleSheet.create({
   confirmRow: { minHeight: 56, marginTop: 16, flexDirection: "row", alignItems: "center", gap: 12 },
   confirmText: { flex: 1, fontSize: 16, lineHeight: 23 },
   spacer: { flexGrow: 1, minHeight: 24 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: COLORS.emergency },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: DESIGN_COLORS.emergencyRed },
   buttonRow: { flexDirection: "row", gap: 12 },
-  button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  backButton: { borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: "#FFFFFF" },
-  nextButton: { backgroundColor: COLORS.primary },
+  button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  backButton: { borderWidth: 1.5, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: "#FFFFFF" },
+  nextButton: { backgroundColor: DESIGN_COLORS.hallGreen },
   homeButton: { flex: 0, alignSelf: "stretch" },
   pressed: { opacity: 0.88 },
+  filledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   buttonText: { fontSize: 17, fontWeight: "800", textAlign: "center" },
   submitted: { flexGrow: 1, alignItems: "center", paddingTop: 24 },
   submittedDisc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center" },

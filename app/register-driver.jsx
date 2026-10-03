@@ -10,7 +10,7 @@ import BottomSheetPicker from "../components/BottomSheetPicker";
 import BrandLogo from "../components/BrandLogo";
 import ScreenState from "../components/ui/ScreenState";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app";
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../lib/barangays";
@@ -26,7 +26,17 @@ import { pickPhoto, uploadPhotos } from "../lib/uploadPhoto";
 //   can read it (dispatchers can read users/, so the photo links never go there).
 // Drivers have no vehicle info here: vehicles belong to the barangay.
 
-const colors = LIGHT_COLORS;
+// DESIGN.md colors, under the short names this page already uses.
+const colors = {
+  page: DESIGN_COLORS.paperWhite,
+  heading: DESIGN_COLORS.ink,
+  muted: DESIGN_COLORS.inkMuted,
+  link: DESIGN_COLORS.hallGreen,
+  card: DESIGN_COLORS.boardTint,
+  line: DESIGN_COLORS.rule,
+  outline: DESIGN_COLORS.controlOutline,
+  ripple: "rgba(11, 122, 75, 0.12)",
+};
 
 const STEP_NAMES = ["Personal", "License", "Clearances", "Review"];
 
@@ -348,10 +358,10 @@ export default function RegisterDriver() {
                 android_ripple={{ color: colors.ripple }}
                 accessibilityRole="button"
               >
-                <Text style={[styles.buttonText, { color: COLORS.primary }]}>Back</Text>
+                <Text style={[styles.buttonText, { color: DESIGN_COLORS.hallGreen }]}>Back</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [styles.button, styles.nextButton, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.button, styles.nextButton, pressed && styles.filledPressed]}
                 onPress={step === 4 ? handleSubmit : goNext}
                 disabled={isSubmitting}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
@@ -381,7 +391,7 @@ function StepBar({ step }) {
           <View key={name} style={styles.stepItem}>
             <View style={styles.stepCircleRow}>
               {/* The line on each side of the circle. The first and last hide their outer line. */}
-              <View style={[styles.stepLine, { backgroundColor: index === 0 ? "transparent" : number <= step ? COLORS.primary : colors.line }]} />
+              <View style={[styles.stepLine, { backgroundColor: index === 0 ? "transparent" : number <= step ? DESIGN_COLORS.hallGreen : colors.line }]} />
               <View style={[styles.stepCircle, done || current ? styles.stepCircleActive : { borderColor: colors.outline }]}>
                 {done ? (
                   <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
@@ -389,7 +399,7 @@ function StepBar({ step }) {
                   <Text style={[styles.stepNumber, { color: current ? "#FFFFFF" : colors.muted }]}>{number}</Text>
                 )}
               </View>
-              <View style={[styles.stepLine, { backgroundColor: index === STEP_NAMES.length - 1 ? "transparent" : number < step ? COLORS.primary : colors.line }]} />
+              <View style={[styles.stepLine, { backgroundColor: index === STEP_NAMES.length - 1 ? "transparent" : number < step ? DESIGN_COLORS.hallGreen : colors.line }]} />
             </View>
             <Text style={[styles.stepName, { color: current ? colors.heading : colors.muted }, current && styles.stepNameCurrent]} numberOfLines={1}>
               {name}
@@ -419,7 +429,7 @@ function PersonalPage({ form, updateField, photos, onAddPhoto }) {
           value={form.fullName}
           onChangeText={(value) => updateField("fullName", value)}
           placeholder="Juan Dela Cruz"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           autoCapitalize="words"
           accessibilityLabel="Full Name"
         />
@@ -436,7 +446,7 @@ function PersonalPage({ form, updateField, photos, onAddPhoto }) {
           value={form.phone}
           onChangeText={(value) => updateField("phone", value)}
           placeholder="09XX XXX XXXX"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           keyboardType="phone-pad"
           maxLength={16}
           accessibilityLabel="Contact Number"
@@ -463,7 +473,7 @@ function PersonalPage({ form, updateField, photos, onAddPhoto }) {
           value={form.address}
           onChangeText={(value) => updateField("address", value)}
           placeholder="e.g. 123 Rizal St., Purok 2"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           accessibilityLabel="House number, street, or purok"
         />
       </Field>
@@ -493,7 +503,7 @@ function LicensePage({ form, updateField, photos, onAddPhoto }) {
           value={form.licenseNumber}
           onChangeText={(value) => updateField("licenseNumber", value)}
           placeholder="e.g. N01-12-345678"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={20}
@@ -605,7 +615,7 @@ function ReviewPage({ form, email, photos, confirmed, onToggleConfirmed }) {
         accessibilityRole="checkbox"
         accessibilityState={{ checked: confirmed }}
       >
-        <MaterialCommunityIcons name={confirmed ? "checkbox-marked" : "checkbox-blank-outline"} size={30} color={confirmed ? COLORS.primary : colors.outline} />
+        <MaterialCommunityIcons name={confirmed ? "checkbox-marked" : "checkbox-blank-outline"} size={30} color={confirmed ? DESIGN_COLORS.hallGreen : colors.outline} />
         <Text style={[styles.confirmText, { color: colors.heading }]}>
           The information I gave is true, and I allow SakayNa admins to review these documents. My name, phone number and vehicle will be
           shown to the residents I&apos;m assigned to.
@@ -620,7 +630,7 @@ function ReviewSection({ icon, title, rows, thumbs }) {
   return (
     <View style={[styles.summary, { backgroundColor: colors.card }]}>
       <View style={styles.summaryHeading}>
-        <MaterialCommunityIcons name={icon} size={22} color={COLORS.primary} />
+        <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} />
         <Text style={[styles.summaryTitle, { color: colors.heading }]} accessibilityRole="header">
           {title}
         </Text>
@@ -653,8 +663,8 @@ function ReviewSection({ icon, title, rows, thumbs }) {
 function SubmittedPage({ onGoHome }) {
   return (
     <View style={styles.submitted}>
-      <View style={[styles.submittedDisc, { backgroundColor: colors.ripple }]}>
-        <MaterialCommunityIcons name="check" size={56} color={COLORS.primary} />
+      <View style={[styles.submittedDisc, { backgroundColor: colors.card }]}>
+        <MaterialCommunityIcons name="check" size={56} color={DESIGN_COLORS.hallGreen} />
       </View>
       <Text style={[styles.submittedTitle, { color: colors.heading }]} accessibilityRole="header">
         Submitted
@@ -665,7 +675,7 @@ function SubmittedPage({ onGoHome }) {
       <View style={styles.spacer} />
 
       <Pressable
-        style={({ pressed }) => [styles.button, styles.nextButton, styles.homeButton, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.button, styles.nextButton, styles.homeButton, pressed && styles.filledPressed]}
         onPress={onGoHome}
         android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
         accessibilityRole="button"
@@ -681,7 +691,7 @@ function Field({ icon, label, children }) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
-        <MaterialCommunityIcons name={icon} size={22} color={COLORS.primary} />
+        <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} />
         <Text style={[styles.label, { color: colors.heading }]}>{label}</Text>
       </View>
       {children}
@@ -721,7 +731,7 @@ function DateInput({ form, updateField, prefix, label }) {
           value={form[`${prefix}Day`]}
           onChangeText={(value) => updateField(`${prefix}Day`, onlyNumbers(value))}
           placeholder="Day"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           keyboardType="number-pad"
           maxLength={2}
           accessibilityLabel={`${label}, day`}
@@ -731,7 +741,7 @@ function DateInput({ form, updateField, prefix, label }) {
           value={form[`${prefix}Year`]}
           onChangeText={(value) => updateField(`${prefix}Year`, onlyNumbers(value))}
           placeholder="Year"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={DESIGN_COLORS.placeholder}
           keyboardType="number-pad"
           maxLength={4}
           accessibilityLabel={`${label}, year`}
@@ -754,7 +764,7 @@ function PhotoSlot({ photo, onPress, onRemove, name }) {
         accessibilityRole="button"
         accessibilityLabel={`Add a photo of ${name}. Take a photo or choose from gallery`}
       >
-        <MaterialCommunityIcons name="camera-outline" size={36} color={COLORS.primary} />
+        <MaterialCommunityIcons name="camera-outline" size={36} color={DESIGN_COLORS.hallGreen} />
         <Text style={styles.photoBoxText}>Take a photo or choose from gallery</Text>
       </Pressable>
     );
@@ -777,7 +787,7 @@ function PhotoSlot({ photo, onPress, onRemove, name }) {
           accessibilityRole="button"
           accessibilityLabel={`Change photo of ${name}`}
         >
-          <MaterialCommunityIcons name="camera-outline" size={22} color={COLORS.primary} />
+          <MaterialCommunityIcons name="camera-outline" size={22} color={DESIGN_COLORS.hallGreen} />
           <Text style={styles.smallButtonText}>Change photo</Text>
         </Pressable>
         {onRemove ? (
@@ -788,7 +798,7 @@ function PhotoSlot({ photo, onPress, onRemove, name }) {
             accessibilityRole="button"
             accessibilityLabel={`Remove photo of ${name}`}
           >
-            <MaterialCommunityIcons name="trash-can-outline" size={22} color={COLORS.primary} />
+            <MaterialCommunityIcons name="trash-can-outline" size={22} color={DESIGN_COLORS.hallGreen} />
             <Text style={styles.smallButtonText}>Remove</Text>
           </Pressable>
         ) : null}
@@ -806,7 +816,7 @@ const styles = StyleSheet.create({
   stepCircleRow: { flexDirection: "row", alignItems: "center", width: "100%" },
   stepLine: { flex: 1, height: 2 },
   stepCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
-  stepCircleActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  stepCircleActive: { backgroundColor: DESIGN_COLORS.hallGreen, borderColor: DESIGN_COLORS.hallGreen },
   stepNumber: { fontSize: 16, fontWeight: "800" },
   stepName: { marginTop: 6, fontSize: 14, fontWeight: "600" },
   stepNameCurrent: { fontWeight: "800" },
@@ -820,10 +830,10 @@ const styles = StyleSheet.create({
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: LIGHT_COLORS.outline,
-    borderRadius: 12,
+    borderColor: DESIGN_COLORS.controlOutline,
+    borderRadius: 16,
     fontSize: 17,
-    color: LIGHT_COLORS.heading,
+    color: DESIGN_COLORS.ink,
     backgroundColor: "#FFFFFF",
   },
   dateBlock: { gap: 10 },
@@ -837,7 +847,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
@@ -845,7 +855,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: "#FFFFFF",
   },
-  clearanceChoiceSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.primary },
+  clearanceChoiceSelected: { borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.hallGreen },
   clearanceChoiceText: { flexShrink: 1, fontSize: 16, lineHeight: 21, fontWeight: "700" },
   slotGap: { marginTop: 12 },
   photoBox: {
@@ -853,33 +863,33 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: COLORS.primary,
+    borderColor: DESIGN_COLORS.hallGreen,
     borderRadius: 16,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: LIGHT_COLORS.card,
+    backgroundColor: DESIGN_COLORS.boardTint,
   },
-  photoBoxText: { fontSize: 17, lineHeight: 23, fontWeight: "700", textAlign: "center", color: COLORS.primary },
+  photoBoxText: { fontSize: 17, lineHeight: 23, fontWeight: "700", textAlign: "center", color: DESIGN_COLORS.hallGreen },
   photoPreviewBlock: { gap: 10 },
-  photoPreview: { width: "100%", maxHeight: 240, borderRadius: 12 },
+  photoPreview: { width: "100%", maxHeight: 240, borderRadius: 16 },
   photoButtons: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   smallButton: {
     minHeight: 48,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: 12,
+    borderColor: DESIGN_COLORS.hallGreen,
+    borderRadius: 16,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  smallButtonText: { fontSize: 16, fontWeight: "700", color: COLORS.primary },
+  smallButtonText: { fontSize: 16, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   hintRow: { flexDirection: "row", gap: 10, marginTop: 10 },
   hintText: { flex: 1, fontSize: 16, lineHeight: 23 },
-  summary: { marginBottom: 12, borderRadius: 16, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
+  summary: { marginBottom: 12, borderRadius: 24, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
   summaryHeading: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
   summaryTitle: { flexShrink: 1, fontSize: 18, fontWeight: "800" },
   summaryRow: { paddingVertical: 6 },
@@ -887,18 +897,19 @@ const styles = StyleSheet.create({
   summaryValue: { marginTop: 2, fontSize: 17, lineHeight: 23 },
   thumbRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
   thumb: { width: 96 },
-  thumbImage: { width: 96, height: 72, borderRadius: 8, backgroundColor: "#FFFFFF" },
+  thumbImage: { width: 96, height: 72, borderRadius: 16, backgroundColor: "#FFFFFF" },
   thumbCaption: { marginTop: 4, fontSize: 14, fontWeight: "600" },
   confirmRow: { minHeight: 56, marginTop: 8, flexDirection: "row", alignItems: "center", gap: 12 },
   confirmText: { flex: 1, fontSize: 16, lineHeight: 23 },
   spacer: { flexGrow: 1, minHeight: 24 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: COLORS.emergency },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: DESIGN_COLORS.emergencyRed },
   buttonRow: { flexDirection: "row", gap: 12 },
-  button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  backButton: { borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: "#FFFFFF" },
-  nextButton: { backgroundColor: COLORS.primary },
+  button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  backButton: { borderWidth: 1.5, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: "#FFFFFF" },
+  nextButton: { backgroundColor: DESIGN_COLORS.hallGreen },
   homeButton: { flex: 0, alignSelf: "stretch" },
   pressed: { opacity: 0.88 },
+  filledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   buttonText: { fontSize: 17, fontWeight: "800", textAlign: "center" },
   submitted: { flexGrow: 1, alignItems: "center", paddingTop: 24 },
   submittedDisc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center" },
