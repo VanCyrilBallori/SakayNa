@@ -2,8 +2,8 @@ import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, KeyboardAvoidingView, LayoutAnimation, Linking, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LeafletMap from "../components/LeafletMap";
@@ -47,6 +47,9 @@ export default function ResidentHome() {
   const latestRequest = requestHistory[0] ?? null;
   const [profileOverride, setProfileOverride] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // false = the bottom sheet is open (all buttons). true = "peek": only Emergency shows, so the map is almost all visible.
+  // It starts open every time the home screen opens.
+  const [sheetPeek, setSheetPeek] = useState(false);
   const [latestDetailsOpen, setLatestDetailsOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -533,6 +536,26 @@ export default function ResidentHome() {
     }
   };
 
+  // Moves the sheet to open or peek. LayoutAnimation makes the change glide instead of jump.
+  const moveSheet = useCallback((peek) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSheetPeek(peek);
+  }, []);
+
+  // Watches a finger on the sheet's grey bar. Swipe down = peek, swipe up = open.
+  // "Capture" lets this take the finger away from the bar's tap once it moves up or down, so a swipe doesn't also count as a tap.
+  const sheetSwipe = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponderCapture: (event, gesture) => Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+        onPanResponderRelease: (event, gesture) => {
+          if (gesture.dy > 30) moveSheet(true);
+          else if (gesture.dy < -30) moveSheet(false);
+        },
+      }),
+    [moveSheet]
+  );
+
   return (
     <>
       <View style={[styles.home, { backgroundColor: theme.page }]}>
@@ -552,9 +575,22 @@ export default function ResidentHome() {
           />
         </View>
 
-        {/* Fixed bottom sheet: it cannot be dragged away, so Emergency is always one tap away. */}
+        {/* Bottom sheet with two positions: open, or "peek" (pulled down). Emergency shows in both, so it is always one tap away. */}
         {/* It scrolls inside if it doesn't fit (for example with very large text). */}
         <View style={[styles.sheet, { backgroundColor: theme.surface, shadowColor: theme.shadow }]}>
+          {/* Grey bar: swipe it down or up, or tap it, to switch between open and peek. */}
+          {/* It sits outside the scroll list below so the swipe and the scrolling don't fight. */}
+          <View {...sheetSwipe.panHandlers}>
+            <Pressable
+              style={styles.sheetGrabArea}
+              onPress={() => moveSheet(!sheetPeek)}
+              accessibilityRole="button"
+              accessibilityLabel={sheetPeek ? "Show more. Shows Request a Ride and your latest request." : "Show less. Makes the map bigger."}
+            >
+              <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
+            </Pressable>
+          </View>
+
           <ScrollView style={styles.sheetScroll} contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 16 }]} bounces={false} showsVerticalScrollIndicator={false}>
             <Pressable
               style={({ pressed }) => [styles.emergencyButton, pressed && styles.emergencyButtonPressed]}
@@ -572,23 +608,28 @@ export default function ResidentHome() {
               </View>
             </Pressable>
 
-            <Pressable
-              style={({ pressed }) => [styles.rideButton, pressed && styles.rideButtonPressed]}
-              onPress={() => handleQuickAction("transport")}
-              android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons name="car-outline" size={26} color="#FFFFFF" />
-              <Text style={styles.rideButtonText}>Request a Ride</Text>
-            </Pressable>
+            {/* Peek shows only the Emergency button above. */}
+            {sheetPeek ? null : (
+              <>
+                <Pressable
+                  style={({ pressed }) => [styles.rideButton, pressed && styles.rideButtonPressed]}
+                  onPress={() => handleQuickAction("transport")}
+                  android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="car-outline" size={26} color="#FFFFFF" />
+                  <Text style={styles.rideButtonText}>Request a Ride</Text>
+                </Pressable>
 
-            <LatestRequestCard
-              request={latestRequest}
-              loading={requestHistoryLoading}
-              error={requestHistoryError}
-              theme={theme}
-              onPress={() => setLatestDetailsOpen(true)}
-            />
+                <LatestRequestCard
+                  request={latestRequest}
+                  loading={requestHistoryLoading}
+                  error={requestHistoryError}
+                  theme={theme}
+                  onPress={() => setLatestDetailsOpen(true)}
+                />
+              </>
+            )}
           </ScrollView>
         </View>
 
@@ -1153,7 +1194,10 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   sheetScroll: { flexGrow: 0 },
-  sheetContent: { paddingHorizontal: 16, paddingTop: 20, gap: 12 },
+  sheetContent: { paddingHorizontal: 16, paddingTop: 4, gap: 12 },
+  // The whole top strip of the sheet can be swiped or tapped, not just the small bar, so it is easy to hit.
+  sheetGrabArea: { alignItems: "center", justifyContent: "center", minHeight: 40, paddingVertical: 12 },
+  sheetHandle: { width: 44, height: 5, borderRadius: 3 },
   emergencyButton: {
     flexDirection: "row",
     alignItems: "center",

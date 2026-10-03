@@ -62,7 +62,8 @@ if already allowed (the once-per-install pop-ups stay as they are).
 
 ### Emergency stays one tap
 - Big red button always visible at the top of the bottom sheet. The sheet
-  cannot be dragged away.
+  can be pulled down to "peek" (2026-10-03), but Emergency still shows
+  there and stays one tap.
 - It is a normal app button, not inside the map, so a broken map can
   never block it.
 - Flow stays: tap Emergency → "Send emergency alert?" → Send alert. The
