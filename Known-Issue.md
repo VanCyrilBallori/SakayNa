@@ -117,8 +117,10 @@ Skills/resident.md section 6.
 - **Landing page, Get Started sheet and Choose Role:** Always light. They
   do NOT change with the phone's theme or the app's Dark / Light switch.
   This is on purpose.
-- **Rest of the app:** Already starts in light mode (lib/theme.js). Users
-  can still switch to Dark in ☰ menu → Settings.
+- **Rest of the app:** Always light (lib/theme.js). Dark mode was removed
+  on 2026-10-03 for the redesign (the Dark / Light switch in resident
+  Settings, driver Settings and the admin menu). It can come back after
+  the demo as its own plan; the old code is in git history.
 - **Status:** Done (login-overhaul-plan.md step 2b). Nothing else needs
   building.
 

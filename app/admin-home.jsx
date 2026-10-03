@@ -264,7 +264,7 @@ export default function AdminHome() {
     return Math.max(540, height - 210);
   }, [compact, height]);
   const { authUser, displayName, profile, profileStatus } = useCurrentUserProfile();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   const initials = useMemo(() => {
     const words = displayName.split(" ").filter(Boolean);
@@ -1174,16 +1174,6 @@ export default function AdminHome() {
                   {item.key === "profile" ? null : <Text style={[styles.menuItemSoon, { color: theme.secondaryText }]}>Upcoming</Text>}
                 </TouchableOpacity>
               ))}
-
-              <View style={styles.menuItem}>
-                <View style={styles.menuItemLeft}>
-                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
-                  <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
-                </View>
-                <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
-                  <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             <TouchableOpacity
@@ -1473,8 +1463,6 @@ const styles = StyleSheet.create({
   menuItemText: { fontSize: 15, fontWeight: "700" },
   menuItemDisabled: { opacity: 0.58 },
   menuItemSoon: { fontSize: 12, fontWeight: "800" },
-  themePill: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999 },
-  themePillText: { fontSize: 12, fontWeight: "800" },
   logoutMenuButton: { marginTop: 14, minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#0B7A4A" },
   logoutMenuButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
   profileEditorCard: { width: "100%", maxWidth: 560, backgroundColor: "#FFFFFF", borderRadius: 20, borderWidth: 1, padding: 22 },

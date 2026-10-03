@@ -112,7 +112,7 @@ export default function DriverHome() {
   const compact = width < 980;
   const narrow = width < 560;
   const { authUser, displayName, profile } = useCurrentUserProfile();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   const initials = useMemo(() => {
     const words = displayName.split(" ").filter(Boolean);
@@ -1080,16 +1080,6 @@ export default function DriverHome() {
                   placeholderTextColor={theme.subtleText}
                 />
 
-                <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
-                  <View style={styles.menuItemLeft}>
-                    <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
-                    <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
-                  </View>
-                  <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
-                    <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
-                  </TouchableOpacity>
-                </View>
-
                 <TouchableOpacity
                   style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
                   onPress={() => setChangePasswordOpen(true)}
@@ -1335,8 +1325,6 @@ const styles = StyleSheet.create({
   menuItem: { minHeight: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   menuItemText: { fontSize: 15, fontWeight: "700" },
-  themePill: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999 },
-  themePillText: { fontSize: 12, fontWeight: "800" },
   logoutMenuButton: { marginTop: 14, minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#0B7A4A" },
   logoutMenuButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
   // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
@@ -1358,7 +1346,6 @@ const styles = StyleSheet.create({
   historyHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
   historyTitle: { flex: 1, minWidth: 180, fontSize: 16, lineHeight: 22, fontWeight: "800" },
   historyText: { fontSize: 14, lineHeight: 20 },
-  settingsThemeRow: { marginTop: 22, minHeight: 56, borderRadius: 14, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   secondaryActionButton: { marginTop: 16, minHeight: 52, borderRadius: 13, borderWidth: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   secondaryActionButtonText: { fontSize: 15, fontWeight: "800" },
   primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },

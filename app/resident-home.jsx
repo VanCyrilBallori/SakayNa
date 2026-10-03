@@ -42,7 +42,7 @@ export default function ResidentHome() {
   const insets = useSafeAreaInsets();
   const compact = width < 920;
   const { authUser, displayName: fallbackDisplayName, profile } = useCurrentUserProfile();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
   const [profileOverride, setProfileOverride] = useState(null);
@@ -992,16 +992,6 @@ export default function ResidentHome() {
                 autoCapitalize="none"
               />
 
-              <View style={[styles.settingsThemeRow, { backgroundColor: theme.surfaceMuted }]}>
-                <View style={styles.menuItemLeft}>
-                  <FontAwesome name={theme.mode === "Dark" ? "moon-o" : "sun-o"} size={18} color={theme.mutedText} />
-                  <Text style={[styles.menuItemText, { color: theme.text }]}>Dark / Light</Text>
-                </View>
-                <TouchableOpacity style={[styles.themePill, { backgroundColor: theme.themePillBg }]} onPress={toggleTheme}>
-                  <Text style={[styles.themePillText, { color: theme.themePillText }]}>{theme.mode}</Text>
-                </TouchableOpacity>
-              </View>
-
               <TouchableOpacity
                 style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
                 onPress={() => setChangePasswordOpen(true)}
@@ -1527,31 +1517,10 @@ const styles = StyleSheet.create({
     color: "#CF0000",
     textAlign: "center",
   },
-  menuItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  menuItemText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1C2D27",
-  },
   menuItemSoon: {
     fontSize: 12,
     fontWeight: "800",
     color: "#7B8E86",
-  },
-  themePill: {
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "#EFF5F1",
-  },
-  themePillText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#234335",
   },
   // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
   // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
@@ -1626,16 +1595,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FCFCFC",
     fontSize: 15,
     color: "#111111",
-  },
-  settingsThemeRow: {
-    marginTop: 22,
-    minHeight: 56,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
   },
   secondaryActionButton: {
     marginTop: 16,
