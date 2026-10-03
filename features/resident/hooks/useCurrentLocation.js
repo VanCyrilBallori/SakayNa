@@ -1,5 +1,30 @@
 import { useCallback, useState } from "react";
+import { Platform } from "react-native";
 import * as Location from "expo-location";
+
+// For the pin picker: the phone's location, but only if SakayNa is already allowed to use it and GPS is on.
+// It never shows the permission pop-up. Returns [latitude, longitude], or null when it is not allowed,
+// GPS is off, the phone takes longer than waitMs, or on the website.
+export const getLocationIfAllowed = async (waitMs = 4000) => {
+  if (Platform.OS === "web") return null;
+  try {
+    const permission = await Location.getForegroundPermissionsAsync();
+    if (!permission.granted) return null;
+    if (!(await Location.hasServicesEnabledAsync())) return null;
+
+    // A position from the last 5 minutes is ready right away. Otherwise ask the GPS, but stop waiting after waitMs.
+    const recent = await Location.getLastKnownPositionAsync({ maxAge: 5 * 60 * 1000 });
+    const position =
+      recent ||
+      (await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise((resolve) => setTimeout(() => resolve(null), waitMs)),
+      ]));
+    return position ? [position.coords.latitude, position.coords.longitude] : null;
+  } catch {
+    return null;
+  }
+};
 
 const toAddress = (place, latitude, longitude) => {
   if (!place) return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
