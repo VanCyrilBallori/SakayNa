@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
   title: { marginTop: 4, marginBottom: 12, fontSize: 28, lineHeight: 36, fontWeight: "800" },
   field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  label: { flexShrink: 1, fontSize: 16, fontWeight: "700" },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700" },
   fieldNote: { marginBottom: 10, fontSize: 16, lineHeight: 23 },
   input: {
     minHeight: 56,
