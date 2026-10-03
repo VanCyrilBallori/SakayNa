@@ -280,6 +280,35 @@ Release rule: don't update the website in the middle of steps 2–3b
   Firestore rules changes and no changes to how alerts are saved, so the
   demo-ready-5 APK still works with it. Live checks passed. No preview
   APK yet: testers stay on demo-ready-5 (old look) until the next one.
+- 2026-10-03: website (master → main → Vercel, fast-forward
+  d84be64..309e7af). Contains: the landing page redesign (signboard),
+  the Get Started sheet and the "barangay vehicles" wording. No
+  Firestore rules changes and no changes to how alerts are saved. Live
+  checks: not recorded.
+- 2026-10-03: preview APK with the same changes (EAS build
+  9e4eacb7-2db0-4ce0-9429-4bf1c46a3107, profile preview, app version
+  1.0.0, built from commit 309e7af, tagged demo-ready-6 and pushed to
+  GitHub). Fingerprint check and phone test: not recorded.
+- 2026-10-03: website (master → main → Vercel, fast-forward
+  309e7af..7e35934). Contains: the color update (brighter green,
+  orange / peach, rounder corners), the landing page phone + van
+  drawing, the driver's phone saved on rides (plate and phone cleared
+  when a driver declines; driver application checkbox and Privacy
+  Policy say residents see the driver's name, phone and vehicle), the
+  resident home without the map, and the "Your ride" card (progress
+  bar, driver name / vehicle / plate, Call driver, the ride in progress
+  shown first). No Firestore rules changes and no changes to how alerts
+  are saved, so older APKs still work with it. Live checks: not
+  recorded.
+- 2026-10-03: preview APK with the same changes (EAS build
+  cd0bd36b-968b-42d8-b653-719b4fd7ec41, profile preview, app version
+  1.0.0, built from commit 7e35934, tagged demo-ready-7 and pushed to
+  GitHub). Dependencies up to date; all 10 EAS "preview" variables
+  present; `eas fingerprint:compare` says "matches". Phone test: not
+  recorded.
+- Not released yet: the map fix (commit 5714a4f: address searches only
+  inside Toledo City, the pin picker opens on your pin, your location
+  or the Poblacion). It needs the website and a new APK.
 
 Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
