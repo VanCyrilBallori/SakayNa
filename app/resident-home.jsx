@@ -632,6 +632,7 @@ export default function ResidentHome() {
             pickupLabel="You are here"
             zoomPosition="bottomright"
             bottomSpace={SHEET_OVERLAP}
+            minHeight={0}
           />
 
           {/* Floating on top of the map, just under the strip. box-none = taps between these items still reach the map. */}

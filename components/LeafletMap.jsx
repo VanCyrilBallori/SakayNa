@@ -22,7 +22,9 @@ const render=async()=>{if(!${Boolean(showPins)}){map.setView(fallbackCenter,13);
 //   so something drawn over the bottom of the map (like the home screen's sheet) doesn't hide them.
 // The credit only shows "© OpenStreetMap contributors" (required by the OpenStreetMap license):
 // setPrefix(false) hides Leaflet's own "Leaflet" name and flag, and the style rule makes the box small and see-through.
-export default function LeafletMap({ title = "Toledo City Map", markerLabel = "Toledo City, Cebu", pickupLabel = "", destinationLabel = "", pickupCoordinates = null, destinationCoordinates = null, selectable = false, onLocationSelect, showPins = true, zoomPosition = "topleft", bottomSpace = 0 }) {
+// minHeight = the map is never shorter than this (280 by default). The home screen passes 0, so on a small phone
+//   the map is exactly the visible space and its credit and zoom buttons never end up under the sheet.
+export default function LeafletMap({ title = "Toledo City Map", markerLabel = "Toledo City, Cebu", pickupLabel = "", destinationLabel = "", pickupCoordinates = null, destinationCoordinates = null, selectable = false, onLocationSelect, showPins = true, zoomPosition = "topleft", bottomSpace = 0, minHeight = 280 }) {
   const html = useMemo(() => createMapHtml({ title, markerLabel, pickupLabel, destinationLabel, pickupCoordinates, destinationCoordinates, selectable, showPins, zoomPosition, bottomSpace }), [bottomSpace, destinationCoordinates, destinationLabel, markerLabel, pickupCoordinates, pickupLabel, selectable, showPins, title, zoomPosition]);
   const receiveLocation = useCallback((event) => {
     try {
@@ -38,9 +40,9 @@ export default function LeafletMap({ title = "Toledo City Map", markerLabel = "T
     return () => window.removeEventListener("message", handler);
   }, [receiveLocation, selectable]);
 
-  if (Platform.OS === "web") return <View style={styles.frame}>{createElement("iframe", { title, srcDoc: html, style: styles.webFrame })}</View>;
+  if (Platform.OS === "web") return <View style={[styles.frame, { minHeight }]}>{createElement("iframe", { title, srcDoc: html, style: { ...styles.webFrame, minHeight } })}</View>;
   const { WebView } = require("react-native-webview");
-  return <View style={styles.frame}><WebView originWhitelist={["*"]} source={{ html }} style={styles.nativeFrame} onMessage={receiveLocation} /></View>;
+  return <View style={[styles.frame, { minHeight }]}><WebView originWhitelist={["*"]} source={{ html }} style={styles.nativeFrame} onMessage={receiveLocation} /></View>;
 }
 
-const styles = StyleSheet.create({ frame: { flex: 1, minHeight: 280, overflow: "hidden", backgroundColor: "#EDF3F0" }, nativeFrame: { flex: 1, backgroundColor: "#EDF3F0" }, webFrame: { width: "100%", height: "100%", minHeight: 280, borderWidth: 0, borderStyle: "none" } });
+const styles = StyleSheet.create({ frame: { flex: 1, overflow: "hidden", backgroundColor: "#EDF3F0" }, nativeFrame: { flex: 1, backgroundColor: "#EDF3F0" }, webFrame: { width: "100%", height: "100%", borderWidth: 0, borderStyle: "none" } });
