@@ -255,6 +255,17 @@ Release rule: don't update the website in the middle of steps 2–3b
   fingerprint:compare` says "matches". Installed and tested on the
   phone. Not in this APK or on the website yet: the smaller map credit
   (commit b6b6323), which goes out with the next release.
+- 2026-10-03: website released with the bottom-sheet picker for
+  barangay, month, day and time, the keyboard fix (keyboard no longer
+  covers text boxes in forms and Settings) and the smaller map credit
+  (master → main → Vercel, fast-forward da35f31..8149ca5). No Firestore
+  rules changes and no emergency alert data changes, so old APKs still
+  work with it. Live checks passed.
+- 2026-10-03: preview APK with the same changes (EAS build
+  3578ba8a-781e-4ceb-b83c-b63f67d62218, profile preview, app version
+  1.0.0, built from commit 8149ca5, tagged demo-ready-5 and pushed to
+  GitHub). `eas fingerprint:compare` says "matches". Installed and
+  tested on the phone.
 
 Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
