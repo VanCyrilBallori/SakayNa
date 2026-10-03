@@ -429,6 +429,8 @@ export default function DispatcherHome() {
             publicDisplayName: data.publicDisplayName ?? "",
             publicPhone: data.publicPhone ?? "",
             operationalPhone: data.operationalPhone ?? "",
+            // The driver's own phone. Copied onto the ride when assigned, so the resident can call the driver.
+            phoneNumber: data.phoneNumber || data.phone || "",
             barangay: data.barangay ?? "No barangay set",
             availability: data.availability ?? "Unavailable",
             presence: data.presence ?? "Offline",

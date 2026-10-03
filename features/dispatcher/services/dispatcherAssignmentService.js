@@ -57,6 +57,8 @@ export const assignDispatcherRequest = async ({ requestId, driver, vehicle, disp
       missionStatus: "Assigned",
       assignedDriverId: driver.id,
       assignedDriverName: driverName,
+      // The resident can't open the driver's profile (firestore.rules), so the phone is copied here for "Call driver".
+      assignedDriverPhone: driver.phoneNumber || "",
       assignedVehicleId: vehicle.id,
       assignedVehicleName: vehicleName,
       vehiclePlateNumber: vehicle.plateNumber || "",

@@ -84,8 +84,10 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
       requestPatch.missionStatus = null;
       requestPatch.assignedDriverId = null;
       requestPatch.assignedDriverName = null;
+      requestPatch.assignedDriverPhone = null;
       requestPatch.assignedVehicleId = null;
       requestPatch.assignedVehicleName = null;
+      requestPatch.vehiclePlateNumber = null;
       requestPatch.lastDeclinedDriverId = assignment.driverId || null;
       requestPatch.lastDeclineReason = notes;
       if (assignment.vehicleId) {

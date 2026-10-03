@@ -42,6 +42,7 @@ const sections = [
     lines: [
       "Only the people who need it to do their job in SakayNa: dispatchers, the driver assigned to your request, and system administrators.",
       "The driver assigned to your request sees the passenger's name and contact number, the pickup location and landmark, the destination, the help the passenger needs, and your notes, so they can find and call the passenger.",
+      "When a driver is assigned to your request, you see the driver's name and phone number and the vehicle's name and plate number, so you know who is coming and can call the driver.",
       "Your proof-of-residency photo and your driver documents can only be opened in SakayNa by you and by the administrator of your barangay, who reviews them. Dispatchers and drivers cannot see them.",
       "Please note: the photos are stored as web links. Anyone who has the exact link can open the photo, but SakayNa only shows these links to you and your barangay's administrator.",
       "We do not sell your information, and we do not share it for advertising.",
@@ -96,7 +97,7 @@ export default function PrivacyPolicy() {
         </View>
 
         <Text style={styles.title}>SakayNa Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: September 30, 2026 (draft)</Text>
+        <Text style={styles.updated}>Last updated: October 3, 2026 (draft)</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>

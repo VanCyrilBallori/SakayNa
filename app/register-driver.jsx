@@ -607,7 +607,8 @@ function ReviewPage({ form, email, photos, confirmed, onToggleConfirmed }) {
       >
         <MaterialCommunityIcons name={confirmed ? "checkbox-marked" : "checkbox-blank-outline"} size={30} color={confirmed ? COLORS.primary : colors.outline} />
         <Text style={[styles.confirmText, { color: colors.heading }]}>
-          The information I gave is true, and I allow SakayNa admins to review these documents.
+          The information I gave is true, and I allow SakayNa admins to review these documents. My name, phone number and vehicle will be
+          shown to the residents I&apos;m assigned to.
         </Text>
       </Pressable>
     </>
