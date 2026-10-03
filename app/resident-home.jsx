@@ -7,7 +7,7 @@ import { ActivityIndicator, KeyboardAvoidingView, LayoutAnimation, Linking, Moda
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LeafletMap from "../components/LeafletMap";
-import { ACCOUNT_STATUSES } from "../constants/app";
+import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
 import { DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
@@ -52,6 +52,8 @@ export default function ResidentHome() {
   const [sheetPeek, setSheetPeek] = useState(false);
   // Height of the map area (0 until it is measured). Used to keep the banners above the sheet.
   const [mapHeight, setMapHeight] = useState(0);
+  // A Rejected resident's reason from the proof-of-residency review. null = not read (yet), or the read failed.
+  const [verificationReason, setVerificationReason] = useState(null);
   const [latestDetailsOpen, setLatestDetailsOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -102,6 +104,16 @@ export default function ResidentHome() {
   const isPending = activeProfile?.accountStatus === ACCOUNT_STATUSES.PENDING;
   // For the place strip. The profile saves "Poblacion, Toledo City"; the strip already says Toledo City, so drop that part.
   const barangayName = (activeProfile?.barangay || "").replace(/,\s*Toledo City$/i, "").trim();
+  // Why the account is Rejected or on hold, in the admin's own words.
+  // Rejected: from the proof-of-residency review first, then from an Operations status change (accountStatusReason).
+  // On hold (Suspended, Disabled): only from an Operations status change.
+  const savedStatusReason = activeProfile?.accountStatusReason || "";
+  let statusReason = "";
+  if (isRejected) {
+    statusReason = verificationReason || savedStatusReason || (verificationReason === null ? "" : "No reason was given.");
+  } else if (notActive && !isPending) {
+    statusReason = savedStatusReason || "No reason was given.";
+  }
   // Any other non-Active status (for example Suspended or Disabled) means the account is on hold.
   const isOnHold = notActive && !isRejected && !isPending;
 
@@ -539,6 +551,23 @@ export default function ResidentHome() {
     }
   };
 
+  // A Rejected resident: read the admin's reason once from their own verification record.
+  // (Firestore lets a resident read their own residentVerifications document.) If the read fails, no reason line shows.
+  useEffect(() => {
+    if (!isRejected || !authUser?.uid) return undefined;
+
+    let cancelled = false;
+    getDoc(doc(db, FIRESTORE_COLLECTIONS.RESIDENT_VERIFICATIONS, authUser.uid))
+      .then((snapshot) => {
+        if (!cancelled) setVerificationReason(snapshot.data()?.rejectionReason || "");
+      })
+      .catch((error) => console.log("Rejection reason warning:", error));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRejected, authUser?.uid]);
+
   // Moves the sheet to open or peek. LayoutAnimation makes the change glide instead of jump.
   const moveSheet = useCallback((peek) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -620,13 +649,38 @@ export default function ResidentHome() {
                   />
                   <View style={styles.statusBannerCopy}>
                     <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
-                    <Text style={styles.statusBannerText}>
-                      {isPending
-                        ? "Your barangay admin is checking your proof of residency. You can send emergency alerts and ride requests once approved."
-                        : isRejected
-                          ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
-                          : "Your account is on hold, so you cannot send emergency alerts or transport requests. Please contact the office (☰ → Help / Contact office)."}
-                    </Text>
+                    {isPending ? (
+                      <Text style={styles.statusBannerText}>
+                        Your barangay admin is checking your proof of residency. You can send emergency alerts and ride requests once approved.
+                      </Text>
+                    ) : isRejected ? (
+                      <>
+                        <Text style={styles.statusBannerText}>Your proof of residency was not accepted.</Text>
+                        <StatusReason reason={statusReason} />
+                        <Text style={styles.statusBannerText}>You cannot send emergency alerts or ride requests.</Text>
+                        {officePhone ? (
+                          <Pressable
+                            style={({ pressed }) => [styles.bannerCallButton, pressed && styles.bannerCallButtonPressed]}
+                            onPress={() => openPhone(officePhone)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Call the office"
+                          >
+                            <MaterialCommunityIcons name="phone-outline" size={22} color={DESIGN_COLORS.ink} />
+                            <Text style={styles.bannerCallText}>Call the office</Text>
+                          </Pressable>
+                        ) : (
+                          <Text style={styles.statusBannerText}>Please contact your barangay office.</Text>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Text style={styles.statusBannerText}>
+                          Your account is on hold, so you cannot send emergency alerts or ride requests. Please contact the office (☰ → Help /
+                          Contact office).
+                        </Text>
+                        <StatusReason reason={statusReason} />
+                      </>
+                    )}
                   </View>
                 </View>
               ) : null}
@@ -743,13 +797,13 @@ export default function ResidentHome() {
             ) : (
               <>
                 <FontAwesome name="clipboard" size={48} color="#D88400" />
-                <Text style={[styles.callTitle, { color: theme.text }]}>Transport Request</Text>
+                <Text style={[styles.callTitle, { color: theme.text }]}>Request a Ride</Text>
                 <Text style={[styles.notVerifiedText, { color: theme.text }]}>
                   {isOnHold
-                    ? "Your account is on hold, so you cannot send transport requests. Please contact the office (☰ → Help / Contact office)."
+                    ? "Your account is on hold, so you cannot send ride requests. Please contact the office (☰ → Help / Contact office)."
                     : isRejected
-                      ? "Your account was not verified, so you cannot send transport requests."
-                      : "Your account is still being verified. You can send transport requests after an admin from your barangay approves your account."}
+                      ? "Your account was not verified, so you cannot send ride requests."
+                      : "Your account is still being verified. You can send ride requests after an admin from your barangay approves your account."}
                 </Text>
                 <TouchableOpacity style={styles.callNowButton} onPress={() => setNotVerifiedPopup("")} accessibilityRole="button">
                   <Text style={styles.callNowButtonText}>OK</Text>
@@ -1118,6 +1172,17 @@ export default function ResidentHome() {
 
 // The small card on the map when your location can't be shown. location = what useHomeLocation() returns.
 // Nothing shows when your location was found, is still being checked the first time, or on the website.
+// "Reason: …" line in the Rejected / on-hold banner. Shows nothing when there is no reason to show.
+function StatusReason({ reason }) {
+  if (!reason) return null;
+  return (
+    <Text style={styles.statusBannerText}>
+      <Text style={styles.statusBannerReasonLabel}>Reason: </Text>
+      {reason}
+    </Text>
+  );
+}
+
 function LocationNote({ location }) {
   let icon = "map-marker-off-outline";
   let message = "";
@@ -1315,6 +1380,23 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: DESIGN_COLORS.ink,
   },
+  statusBannerReasonLabel: { fontWeight: "800" },
+  // "Call the office" in the Rejected banner: white outline button, 48 tall.
+  bannerCallButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 48,
+    marginTop: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  bannerCallButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  bannerCallText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.28)",

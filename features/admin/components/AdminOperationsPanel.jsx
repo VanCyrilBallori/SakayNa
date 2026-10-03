@@ -198,6 +198,10 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
         <Text style={[styles.title, { color: theme.text }]}>{selectedUser ? getProfileName(selectedUser) : "Account"}</Text>
         <Text style={[styles.copy, { color: theme.mutedText }]}>Authentication is not disabled by this client. Deactivation changes only the Firestore profile access state and preserves operational history.</Text>
         <Text style={[styles.label, { color: theme.text }]}>Administrative reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reason} onChangeText={setReason} multiline placeholder="Required for lifecycle and role changes" placeholderTextColor={theme.subtleText} />
+        {/* A Resident sees the reason on their home screen when their account is Rejected, Suspended or Disabled. */}
+        {selectedUser?.role === ROLES.RESIDENT && [ACCOUNT_STATUSES.REJECTED, ACCOUNT_STATUSES.SUSPENDED, ACCOUNT_STATUSES.DISABLED].includes(nextStatus) ? (
+          <Text style={[styles.copy, { color: theme.mutedText }]}>The resident will see this reason.</Text>
+        ) : null}
         <Text style={[styles.label, { color: theme.text }]}>Account status</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{Object.values(ACCOUNT_STATUSES).map((item) => chip(item, nextStatus === item, () => setNextStatus(item)))}</ScrollView>
         <AppButton label={`Apply status: ${nextStatus}`} loading={busy} onPress={() => confirm("Confirm account status", `Update this profile to ${nextStatus}? Active Driver missions must be resolved first.`, () => run(() => changeAccountStatus({ adminId, targetUser: selectedUser, nextStatus, reason, activeAssignments: assignments }), "Account status updated."))} style={styles.button} />
         <Text style={[styles.label, { color: theme.text }]}>Role</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{ROLE_OPTIONS.map((item) => chip(item, nextRole === item, () => setNextRole(item)))}</ScrollView>

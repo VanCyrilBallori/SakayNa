@@ -207,6 +207,7 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
                     maxLength={300}
                     editable={!saving}
                   />
+                  <Text style={[styles.reasonHint, { color: theme.mutedText }]}>The resident will see this reason.</Text>
                   <View style={styles.actionRow}>
                     <TouchableOpacity style={[styles.actionButton, styles.cancelButton, { borderColor: theme.mutedText }]} onPress={() => setMode("review")} disabled={saving} accessibilityRole="button">
                       <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
@@ -271,6 +272,7 @@ const styles = StyleSheet.create({
   decisionBox: { gap: 12 },
   decisionText: { fontSize: 16, lineHeight: 23, fontWeight: "700" },
   reasonInput: { minHeight: 96, borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 16, lineHeight: 22, textAlignVertical: "top" },
+  reasonHint: { fontSize: 15, lineHeight: 20 },
   fullPhotoPage: { flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center", padding: 8 },
   fullPhoto: { width: "100%", height: "90%" },
   fullPhotoHint: { marginTop: 8, fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
