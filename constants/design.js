@@ -45,12 +45,15 @@ export const LIGHT_COLORS = Object.freeze({
 // The colors from DESIGN.md (the "Barangay Hall + route board" look). Screens move to these one piece at a time.
 // Light only: they do not change with the Dark / Light switch.
 export const DESIGN_COLORS = Object.freeze({
-  hallGreen: "#3B6255", // the logo's green: main buttons, place strip, links
-  hallGreenDeep: "#2B4A40", // pressed buttons, "Assigned" / "On the way"
-  emergencyRed: "#B42318", // Emergency and "can't be undone" only
+  hallGreen: "#0B7A4B", // main buttons, place strip, links
+  hallGreenDeep: "#0B5A37", // pressed buttons, "Assigned" / "On the way"
+  emergencyRed: "#B42318", // Emergency and "can't be undone" only. Red has white words.
   redTint: "#FCE9E7",
-  waitingAmber: "#8A5A00", // Pending / Waiting / Scheduled
-  amberTint: "#FFF4D6",
+  sakayOrange: "#F97316", // highlights: bands, badges, destination dot. Orange has dark words (never white).
+  orangeDeep: "#B34D00", // small orange words on white or peach only (e.g. a scheduled time)
+  peachTint: "#FDECD3", // background of important info boxes
+  waitingAmber: "#8A5A00", // OLD: being replaced by sakayOrange / orangeDeep (color update Step 2)
+  amberTint: "#FFF4D6", // OLD: being replaced by peachTint (color update Step 2)
   paperWhite: "#FFFFFF",
   boardTint: "#EEF3F0",
   ink: "#14211C", // main text
