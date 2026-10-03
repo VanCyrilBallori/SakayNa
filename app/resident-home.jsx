@@ -739,27 +739,32 @@ export default function ResidentHome() {
 
       <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.callCard, styles.callCardContent, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <FontAwesome name="warning" size={52} color="#CF0000" />
-            <Text style={[styles.callTitle, { color: theme.text }]}>Send emergency alert?</Text>
-            <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>Dispatchers will see your name and phone number. We will try to send your location.</Text>
+          {/* DESIGN.md look: same siren icon as the Emergency button, big dark text, */}
+          {/* the main action on top at full width and Cancel underneath, so they are hard to mix up. */}
+          <View style={styles.confirmCard}>
+            <MaterialCommunityIcons name="alarm-light-outline" size={52} color={DESIGN_COLORS.emergencyRed} />
+            <Text style={styles.confirmTitle}>Send emergency alert?</Text>
+            <Text style={styles.confirmText}>Dispatchers will see your name and phone number. We will try to send your location.</Text>
 
-            <View style={styles.callActionRow}>
-              <TouchableOpacity style={[styles.modalButton, styles.callActionButton, styles.cancelButton]} onPress={() => setCallConfirmOpen(false)} accessibilityRole="button">
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.callActionButton, styles.callConfirmButton]}
-                onPress={() => {
-                  setCallConfirmOpen(false);
-                  sendEmergencyAlert();
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Send the emergency alert"
-              >
-                <Text style={styles.callConfirmButtonText}>Send alert</Text>
-              </TouchableOpacity>
-            </View>
+            <Pressable
+              style={({ pressed }) => [styles.confirmSendButton, pressed && styles.emergencyButtonPressed]}
+              onPress={() => {
+                setCallConfirmOpen(false);
+                sendEmergencyAlert();
+              }}
+              android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+              accessibilityRole="button"
+              accessibilityLabel="Send the emergency alert"
+            >
+              <Text style={styles.confirmSendText}>Send alert</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.confirmCancelButton, pressed && styles.confirmCancelPressed]}
+              onPress={() => setCallConfirmOpen(false)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.confirmCancelText}>Cancel</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -1389,51 +1394,52 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 28,
   },
-  callActionRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 16,
-    marginTop: 28,
-    flexWrap: "wrap",
-  },
-  modalButton: {
-    flex: 1,
-    minHeight: 52,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  callActionButton: {
-    flex: 0,
-    minWidth: 116,
-    paddingHorizontal: 22,
-  },
-  cancelButton: {
-    backgroundColor: "#D9D9D9",
-  },
   sendButton: {
     backgroundColor: "#06774B",
-  },
-  callConfirmButton: {
-    backgroundColor: "#CF0000",
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#111111",
   },
   sendButtonText: {
     fontSize: 15,
     fontWeight: "800",
     color: "#FFFFFF",
   },
-  callConfirmButtonText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#FFFFFF",
+  // "Send emergency alert?" pop-up (DESIGN.md look). Its own styles, so the other pop-ups don't change yet.
+  confirmCard: {
+    width: "100%",
+    maxWidth: 440,
+    alignItems: "center",
+    padding: 24,
+    borderRadius: 8,
+    backgroundColor: DESIGN_COLORS.paperWhite,
   },
+  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  confirmText: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
+  // Same height and red as the Emergency button on home.
+  confirmSendButton: {
+    alignSelf: "stretch",
+    minHeight: 76,
+    marginTop: 20,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: DESIGN_COLORS.emergencyRed,
+  },
+  confirmSendText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
+  confirmCancelButton: {
+    alignSelf: "stretch",
+    minHeight: 56,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  confirmCancelPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  confirmCancelText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
   callCard: {
     width: "100%",
     maxWidth: 440,
