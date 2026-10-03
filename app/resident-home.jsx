@@ -2,11 +2,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, LayoutAnimation, Linking, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import LeafletMap from "../components/LeafletMap";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
 import { DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
@@ -20,7 +19,6 @@ import ResidentRequestForm from "../features/resident/components/ResidentRequest
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
-import useHomeLocation from "../features/resident/hooks/useHomeLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 
@@ -33,10 +31,6 @@ const SEND_TIMEOUT_MS = 10_000;
 const ALERT_HEARTBEAT_MS = 20_000;
 const KEEP_AWAKE_TAG = "emergency-alert";
 
-// The bottom sheet's rounded top overlaps the map by this much (24 = DESIGN.md's card corner).
-// The map moves its zoom buttons and OpenStreetMap credit up by the same amount, so they stay visible.
-const SHEET_OVERLAP = 24;
-
 export default function ResidentHome() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -46,11 +40,6 @@ export default function ResidentHome() {
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
   const [menuOpen, setMenuOpen] = useState(false);
-  // false = the bottom sheet is open (all buttons). true = "peek": only Emergency shows, so the map is almost all visible.
-  // It starts open every time the home screen opens.
-  const [sheetPeek, setSheetPeek] = useState(false);
-  // Height of the map area (0 until it is measured). Used to keep the banners above the sheet.
-  const [mapHeight, setMapHeight] = useState(0);
   // A Rejected resident's reason from the proof-of-residency review. null = not read (yet), or the read failed.
   const [verificationReason, setVerificationReason] = useState(null);
   const [latestDetailsOpen, setLatestDetailsOpen] = useState(false);
@@ -79,8 +68,6 @@ export default function ResidentHome() {
   // True once a snapshot without pending writes proves the alert reached the server.
   const serverConfirmedRef = useRef(false);
   const { detectLocation } = useCurrentLocation();
-  // Only for the home map. It never asks for permission by itself (see useHomeLocation.js).
-  const homeLocation = useHomeLocation();
   const [settingsForm, setSettingsForm] = useState({
     fullName: "",
     phoneNumber: "",
@@ -563,29 +550,9 @@ export default function ResidentHome() {
     };
   }, [isRejected, authUser?.uid]);
 
-  // Moves the sheet to open or peek. LayoutAnimation makes the change glide instead of jump.
-  const moveSheet = useCallback((peek) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSheetPeek(peek);
-  }, []);
-
-  // Watches a finger on the sheet's grey bar. Swipe down = peek, swipe up = open.
-  // "Capture" lets this take the finger away from the bar's tap once it moves up or down, so a swipe doesn't also count as a tap.
-  const sheetSwipe = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponderCapture: (event, gesture) => Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-        onPanResponderRelease: (event, gesture) => {
-          if (gesture.dy > 30) moveSheet(true);
-          else if (gesture.dy < -30) moveSheet(false);
-        },
-      }),
-    [moveSheet]
-  );
-
   return (
     <>
-      <View style={[styles.home, { backgroundColor: theme.page }]}>
+      <View style={[styles.home, { backgroundColor: DESIGN_COLORS.paperWhite }]}>
         {/* The place strip at the top is green, so the phone's clock and battery icons are drawn white. */}
         <StatusBar style="light" />
 
@@ -604,7 +571,7 @@ export default function ResidentHome() {
           {/* Two pieces in a wrapping row: one line when both fit, otherwise "Barangay …" moves down as a whole. */}
           <View style={styles.placeNames} accessible accessibilityRole="header" accessibilityLabel={barangayName ? `Toledo City, Barangay ${barangayName}` : "Toledo City"}>
             {/* maxFontSizeMultiplier: the strip grows with the phone's text size only up to 1.3x, so it stays 1-2 lines */}
-            {/* and the map is not squeezed. Emergency, the buttons and the card still grow fully. */}
+            {/* and Emergency stays near the top. Emergency, the buttons and the card still grow fully. */}
             <Text style={styles.placeText} maxFontSizeMultiplier={1.3}>
               {barangayName ? "Toledo City · " : "Toledo City"}
             </Text>
@@ -616,139 +583,88 @@ export default function ResidentHome() {
           </View>
         </View>
 
-        {/* Map below the strip. The sheet below overlaps its bottom edge by SHEET_OVERLAP. */}
-        {/* onLayout tells us how tall the map area is, so the banners below never slide under the sheet. */}
-        <View style={[styles.mapArea, { marginBottom: -SHEET_OVERLAP }]} onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)}>
-          {/* With your position: the map centers on you with a "You are here" pin. Without it: Toledo City, no pin. */}
-          <LeafletMap
-            title="Toledo City map"
-            showPins={Boolean(homeLocation.coordinates)}
-            pickupCoordinates={homeLocation.coordinates}
-            pickupLabel="You are here"
-            zoomPosition="bottomright"
-            bottomSpace={SHEET_OVERLAP}
-            minHeight={0}
-          />
-
-          {/* Floating on top of the map, just under the strip. box-none = taps between these items still reach the map. */}
-          {/* On a small phone the banner + location note can be taller than the map you can see. Then they scroll */}
-          {/* inside that space (maxHeight) instead of sliding under the sheet, so "Allow location" can always be tapped. */}
-          <View style={[styles.mapOverlay, mapHeight ? { maxHeight: Math.max(mapHeight - SHEET_OVERLAP - 24, 0) } : null]} pointerEvents="box-none">
-            <ScrollView style={styles.mapOverlayScroll} contentContainerStyle={styles.mapOverlayContent} bounces={false} persistentScrollbar>
-              {notActive ? (
-                // A flat sign: peach and orange while waiting, red when the account can't send emergency alerts.
-                <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
-                  <MaterialCommunityIcons
-                    name={isPending ? "clock-outline" : isRejected ? "close-circle-outline" : "pause-circle-outline"}
-                    size={28}
-                    color={isPending ? DESIGN_COLORS.orangeDeep : DESIGN_COLORS.emergencyRed}
-                  />
-                  <View style={styles.statusBannerCopy}>
-                    <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
-                    {isPending ? (
-                      <Text style={styles.statusBannerText}>
-                        Your barangay admin is checking your proof of residency. You can send emergency alerts and ride requests once approved.
-                      </Text>
-                    ) : isRejected ? (
-                      <>
-                        <Text style={styles.statusBannerText}>Your proof of residency was not accepted.</Text>
-                        <StatusReason reason={statusReason} />
-                        <Text style={styles.statusBannerText}>You cannot send emergency alerts or ride requests.</Text>
-                        {officePhone ? (
-                          <Pressable
-                            style={({ pressed }) => [styles.bannerCallButton, pressed && styles.bannerCallButtonPressed]}
-                            onPress={() => openPhone(officePhone)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Call the office"
-                          >
-                            <MaterialCommunityIcons name="phone-outline" size={22} color={DESIGN_COLORS.ink} />
-                            <Text style={styles.bannerCallText}>Call the office</Text>
-                          </Pressable>
-                        ) : (
-                          <Text style={styles.statusBannerText}>Please contact your barangay office.</Text>
-                        )}
-                      </>
+        {/* Everything under the place strip scrolls, so with very large text nothing is cut off. */}
+        {/* persistentScrollbar: on Android the scroll bar stays visible, so it shows there is more below. */}
+        <ScrollView style={styles.homeScroll} contentContainerStyle={[styles.homeContent, { paddingBottom: insets.bottom + 16 }]} bounces={false} persistentScrollbar>
+          {notActive ? (
+            // A flat sign: peach and orange while waiting, red when the account can't send emergency alerts.
+            <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
+              <MaterialCommunityIcons
+                name={isPending ? "clock-outline" : isRejected ? "close-circle-outline" : "pause-circle-outline"}
+                size={28}
+                color={isPending ? DESIGN_COLORS.orangeDeep : DESIGN_COLORS.emergencyRed}
+              />
+              <View style={styles.statusBannerCopy}>
+                <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
+                {isPending ? (
+                  <Text style={styles.statusBannerText}>
+                    Your barangay admin is checking your proof of residency. You can send emergency alerts and ride requests once approved.
+                  </Text>
+                ) : isRejected ? (
+                  <>
+                    <Text style={styles.statusBannerText}>Your proof of residency was not accepted.</Text>
+                    <StatusReason reason={statusReason} />
+                    <Text style={styles.statusBannerText}>You cannot send emergency alerts or ride requests.</Text>
+                    {officePhone ? (
+                      <Pressable
+                        style={({ pressed }) => [styles.bannerCallButton, pressed && styles.bannerCallButtonPressed]}
+                        onPress={() => openPhone(officePhone)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Call the office"
+                      >
+                        <MaterialCommunityIcons name="phone-outline" size={22} color={DESIGN_COLORS.ink} />
+                        <Text style={styles.bannerCallText}>Call the office</Text>
+                      </Pressable>
                     ) : (
-                      <>
-                        <Text style={styles.statusBannerText}>
-                          Your account is on hold, so you cannot send emergency alerts or ride requests. Please contact the office (☰ → Help /
-                          Contact office).
-                        </Text>
-                        <StatusReason reason={statusReason} />
-                      </>
+                      <Text style={styles.statusBannerText}>Please contact your barangay office.</Text>
                     )}
-                  </View>
-                </View>
-              ) : null}
-
-              <LocationNote location={homeLocation} />
-            </ScrollView>
-          </View>
-        </View>
-
-        {/* Bottom sheet with two positions: open, or "peek" (pulled down). Emergency shows in both, so it is always one tap away. */}
-        {/* It scrolls inside if it doesn't fit (for example with very large text). */}
-        <View style={styles.sheet}>
-          {/* Grey bar: swipe it down or up, or tap it, to switch between open and peek. */}
-          {/* It sits outside the scroll list below so the swipe and the scrolling don't fight. */}
-          <View {...sheetSwipe.panHandlers}>
-            <Pressable
-              style={styles.sheetGrabArea}
-              onPress={() => moveSheet(!sheetPeek)}
-              accessibilityRole="button"
-              accessibilityLabel={sheetPeek ? "Show more. Shows Request a Ride and your latest request." : "Show less. Makes the map bigger."}
-            >
-              <View style={styles.sheetHandle} />
-              {/* Says what a tap does, so nobody wonders where Request a Ride went in peek. */}
-              <View style={styles.sheetHint}>
-                <MaterialCommunityIcons name={sheetPeek ? "chevron-up" : "chevron-down"} size={20} color={DESIGN_COLORS.inkMuted} />
-                <Text style={styles.sheetHintText} maxFontSizeMultiplier={1.3}>
-                  {sheetPeek ? "Show more" : "Show less"}
-                </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.statusBannerText}>
+                      Your account is on hold, so you cannot send emergency alerts or ride requests. Please contact the office (☰ → Help /
+                      Contact office).
+                    </Text>
+                    <StatusReason reason={statusReason} />
+                  </>
+                )}
               </View>
-            </Pressable>
-          </View>
+            </View>
+          ) : null}
 
-          {/* persistentScrollbar: on Android the scroll bar stays visible, so with big text it shows there is more below. */}
-          <ScrollView style={styles.sheetScroll} contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 16 }]} bounces={false} persistentScrollbar>
-            <Pressable
-              style={({ pressed }) => [styles.emergencyButton, pressed && styles.emergencyButtonPressed]}
-              onPress={() => handleQuickAction("emergency-call")}
-              android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
-              accessibilityRole="button"
-              accessibilityLabel="Emergency. Send an alert to the dispatchers."
-            >
-              <MaterialCommunityIcons name="alarm-light-outline" size={36} color="#FFFFFF" />
-              <View style={styles.emergencyCopy}>
-                <Text style={styles.emergencyTitle}>Emergency</Text>
-                <Text style={styles.emergencySubtitle}>Send an alert to the dispatchers</Text>
-              </View>
-            </Pressable>
+          {/* Emergency is always the first button under the place strip (and the banner), so it is always one tap away. */}
+          <Pressable
+            style={({ pressed }) => [styles.emergencyButton, pressed && styles.emergencyButtonPressed]}
+            onPress={() => handleQuickAction("emergency-call")}
+            android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+            accessibilityRole="button"
+            accessibilityLabel="Emergency. Send an alert to the dispatchers."
+          >
+            <MaterialCommunityIcons name="alarm-light-outline" size={36} color="#FFFFFF" />
+            <View style={styles.emergencyCopy}>
+              <Text style={styles.emergencyTitle}>Emergency</Text>
+              <Text style={styles.emergencySubtitle}>Send an alert to the dispatchers</Text>
+            </View>
+          </Pressable>
 
-            {/* Peek shows only the Emergency button above. */}
-            {sheetPeek ? null : (
-              <>
-                <Pressable
-                  style={({ pressed }) => [styles.rideButton, pressed && styles.rideButtonPressed]}
-                  onPress={() => handleQuickAction("transport")}
-                  android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
-                  accessibilityRole="button"
-                >
-                  {/* A van, not a car: the city's vehicles are vans and ambulances. */}
-                  <MaterialCommunityIcons name="van-passenger" size={30} color="#FFFFFF" />
-                  <Text style={styles.rideButtonText}>Request a Ride</Text>
-                </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.rideButton, pressed && styles.rideButtonPressed]}
+            onPress={() => handleQuickAction("transport")}
+            android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+            accessibilityRole="button"
+          >
+            {/* A van, not a car: the city's vehicles are vans and ambulances. */}
+            <MaterialCommunityIcons name="van-passenger" size={30} color="#FFFFFF" />
+            <Text style={styles.rideButtonText}>Request a Ride</Text>
+          </Pressable>
 
-                <LatestRequestCard
-                  request={latestRequest}
-                  loading={requestHistoryLoading}
-                  error={requestHistoryError}
-                  onPress={() => setLatestDetailsOpen(true)}
-                />
-              </>
-            )}
-          </ScrollView>
-        </View>
+          <LatestRequestCard
+            request={latestRequest}
+            loading={requestHistoryLoading}
+            error={requestHistoryError}
+            onPress={() => setLatestDetailsOpen(true)}
+          />
+        </ScrollView>
       </View>
 
       {/* The latest request's details. It reads the live request, so the status updates while it is open. */}
@@ -1171,8 +1087,6 @@ export default function ResidentHome() {
   );
 }
 
-// The small card on the map when your location can't be shown. location = what useHomeLocation() returns.
-// Nothing shows when your location was found, is still being checked the first time, or on the website.
 // "Reason: …" line in the Rejected / on-hold banner. Shows nothing when there is no reason to show.
 function StatusReason({ reason }) {
   if (!reason) return null;
@@ -1184,53 +1098,11 @@ function StatusReason({ reason }) {
   );
 }
 
-function LocationNote({ location }) {
-  let icon = "map-marker-off-outline";
-  let message = "";
-  let buttonLabel = "";
-  let onPress = null;
-
-  if (location.status === "denied") {
-    message = "Location is off. You can still pin your pickup or type a landmark.";
-    // Blocked = Android won't show the pop-up again, so the button opens the phone's Settings.
-    if (location.blocked) message += " In Settings, choose Permissions → Location → Allow.";
-    buttonLabel = "Allow location";
-    onPress = location.allowLocation;
-  } else if (location.status === "gps-off") {
-    icon = "crosshairs-off";
-    message = "Turn on Location (GPS) to see where you are on the map.";
-    buttonLabel = "Try again";
-    onPress = location.retry;
-  } else if (location.status === "error") {
-    icon = "crosshairs-question";
-    message = "We couldn't find your location right now.";
-    buttonLabel = "Try again";
-    onPress = location.retry;
-  }
-
-  if (!message) return null;
-
-  return (
-    <View style={styles.locationNote}>
-      <MaterialCommunityIcons name={icon} size={26} color={DESIGN_COLORS.inkMuted} />
-      <View style={styles.locationNoteCopy}>
-        <Text style={styles.locationNoteText}>{message}</Text>
-        <Pressable
-          style={({ pressed }) => [styles.locationNoteButton, pressed && styles.locationNoteButtonPressed]}
-          onPress={onPress}
-          disabled={location.checking}
-          accessibilityRole="button"
-        >
-          <Text style={styles.locationNoteButtonText}>{location.checking ? "Checking…" : buttonLabel}</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   home: { flex: 1 },
-  mapArea: { flex: 1 },
+  // Everything under the place strip. One column, as wide as a phone, centered on a wide screen (the website).
+  homeScroll: { flex: 1 },
+  homeContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 16, gap: 12 },
   // Place strip: Hall Green across the top, white text. The ☰ button sits at its left.
   placeStrip: {
     flexDirection: "row",
@@ -1252,69 +1124,6 @@ const styles = StyleSheet.create({
   menuButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   placeNames: { flex: 1, flexDirection: "row", flexWrap: "wrap", paddingVertical: 10 },
   placeText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: "#FFFFFF" },
-  // Floating layer over the top of the map, just under the strip: the account status banner (not Active only)
-  // and the "Location is off" note.
-  mapOverlay: {
-    position: "absolute",
-    top: 12,
-    left: 16,
-    right: 16,
-  },
-  // flexGrow 0 = only as tall as the banners, so the rest of the map can still be touched.
-  mapOverlayScroll: { flexGrow: 0 },
-  mapOverlayContent: { gap: 12 },
-  // Flat sign (DESIGN.md "Flat Board Rule"): white with a grey edge, no shadow.
-  locationNote: {
-    alignSelf: "stretch",
-    maxWidth: 640,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    padding: 14,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
-  },
-  locationNoteCopy: { flex: 1 },
-  locationNoteText: { fontSize: 17, lineHeight: 24, fontWeight: "600", color: DESIGN_COLORS.ink },
-  // Outline button: the edge is dark enough to see where the button starts and ends.
-  locationNoteButton: {
-    alignSelf: "flex-start",
-    minHeight: 48,
-    marginTop: 10,
-    paddingHorizontal: 18,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  locationNoteButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  locationNoteButtonText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
-  sheet: {
-    width: "100%",
-    maxWidth: 640,
-    maxHeight: "68%",
-    alignSelf: "center",
-    borderTopLeftRadius: SHEET_OVERLAP,
-    borderTopRightRadius: SHEET_OVERLAP,
-    // Flat like a printed sign (DESIGN.md "Flat Board Rule"): a green line on top instead of a soft shadow.
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderRightWidth: 2,
-    borderColor: DESIGN_COLORS.hallGreen,
-    backgroundColor: DESIGN_COLORS.paperWhite,
-  },
-  sheetScroll: { flexGrow: 0 },
-  sheetContent: { paddingHorizontal: 16, paddingTop: 4, gap: 12 },
-  // The whole top strip of the sheet can be swiped or tapped, not just the small bar, so it is easy to hit.
-  // At least 48 tall (DESIGN.md touch size): the grey bar plus the "Show more / Show less" word.
-  sheetGrabArea: { alignItems: "center", justifyContent: "center", gap: 4, minHeight: 48, paddingTop: 10, paddingBottom: 6 },
-  sheetHint: { flexDirection: "row", alignItems: "center", gap: 4 },
-  sheetHintText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.inkMuted },
-  // Dark enough to see (4.2:1 on white). Square ends: DESIGN.md has no pill shapes.
-  sheetHandle: { width: 48, height: 5, backgroundColor: DESIGN_COLORS.controlOutline },
   emergencyButton: {
     flexDirection: "row",
     alignItems: "center",
