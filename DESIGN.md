@@ -187,3 +187,19 @@ A status band at the top of a card follows the card's 24dp top corners.
 - Don't use any corner size besides 16dp, 24dp and fully round.
 - Don't put white text on orange, and don't use orange for danger or errors.
 - Don't use tiny spaced-out ALL-CAPS labels, even if a reference picture has them.
+
+## Website exception
+
+The website landing page (app/index.jsx) and the green left panel of the
+website Log In and Create Account pages (wide screens only,
+components/WebAuthPanel.jsx) may use the landing page style:
+
+- the landing green (#0F6B4F) instead of Hall Green, and
+- its two soft see-through circles in the corners.
+
+On those two website pages, the top-right "Back to home" button may be a
+house icon without a word, because there is a screen-reader label
+("Back to home") and the button is at least 48px.
+
+Everything else on those pages, and every phone screen, follows the rules
+above.

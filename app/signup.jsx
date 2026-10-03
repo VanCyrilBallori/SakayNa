@@ -91,13 +91,8 @@ export default function Signup() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Wide screens: a "Back to home" link that goes to the home page. Phones: the back arrow, as before. */}
-        {wide ? (
-          <Pressable style={({ pressed }) => [styles.homeLink, pressed && styles.linkPressed]} onPress={() => router.replace("/")} accessibilityRole="link">
-            <MaterialCommunityIcons name="arrow-left" size={22} color={DESIGN_COLORS.hallGreen} />
-            <Text style={styles.homeLinkText}>Back to home</Text>
-          </Pressable>
-        ) : (
+        {/* Phones: the back arrow, as before. Wide screens use the house button in the top-right corner instead (below). */}
+        {wide ? null : (
           <Pressable
             style={styles.backArrow}
             onPress={goBack}
@@ -169,6 +164,18 @@ export default function Signup() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Wide screens: house button in the top-right corner that goes to the home page. */}
+      {wide ? (
+        <Pressable
+          style={({ pressed }) => [styles.homeButton, pressed && styles.linkPressed]}
+          onPress={() => router.replace("/")}
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
+        >
+          <MaterialCommunityIcons name="home-outline" size={26} color={DESIGN_COLORS.ink} />
+        </Pressable>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -260,9 +267,21 @@ const styles = StyleSheet.create({
   // Wide screens (website on a computer): two halves side by side, form in the middle of the right half.
   widePage: { flexDirection: "row" },
   wideRight: { flex: 1 },
-  wideContent: { maxWidth: 440, justifyContent: "center", paddingTop: 32, paddingBottom: 32 },
-  homeLink: { alignSelf: "flex-start", minHeight: 48, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16, paddingRight: 8, borderRadius: 16 },
+  // Extra room at the top so the form never slides under the house button.
+  wideContent: { maxWidth: 440, justifyContent: "center", paddingTop: 80, paddingBottom: 32 },
+  homeButton: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    borderRadius: 16,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
   linkPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  homeLinkText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   wideSpacer: { height: 28 },
 });
