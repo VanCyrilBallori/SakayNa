@@ -93,8 +93,8 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14 },
   routeLine: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   routeLabel: { width: LABEL_WIDTH, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.inkMuted },
-  // "Title" size (22). We may try 17 after testing on a small phone.
-  routePlace: { flex: 1, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // 17 (not 22) so the card leaves more room for the map. The big version belongs in Request Details.
+  routePlace: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
   // The short green line between From and To, under the place names' left edge.
   routeJoin: { width: 2, height: 14, marginLeft: LABEL_WIDTH + 8 + 6, marginVertical: 2, backgroundColor: DESIGN_COLORS.hallGreen },
   bottomLine: { marginTop: 10, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted },
