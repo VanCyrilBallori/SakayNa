@@ -73,7 +73,7 @@ A **public-service dispatch system, not a ride-hailing marketplace.** There are 
 
 - **Name:** SakayNa (app slug `sakayna`).
 - **Logo assets (binding):** `Photos_/Logo (main).png` (wide lockup, 871×286) and `Photos_/Logo (Secondary).png` (near-square mark, 324×354; used as app icon, favicon, and splash). Rendered through `components/BrandLogo.jsx`.
-- **Incumbent tokens:** `constants/design.js` defines the existing color, spacing, radius, and type scale. It is the current visual authority; this record does not describe or extend it.
+- **Design rulebook:** `DESIGN.md` is the visual authority (colors, type, shapes, rules). `constants/design.js` still holds the color, spacing, radius, and type values in the code until each screen is rebuilt to match DESIGN.md.
 - **Voice (observed in code, not separately confirmed):** plain, direct, public-service; fallbacks read "Not available" / "Not provided"; no marketing language.
 
 ## Evidence on Hand
