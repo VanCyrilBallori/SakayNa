@@ -267,6 +267,19 @@ Release rule: don't update the website in the middle of steps 2–3b
   1.0.0, built from commit 8149ca5, tagged demo-ready-5 and pushed to
   GitHub). `eas fingerprint:compare` says "matches". Installed and
   tested on the phone.
+- 2026-10-03: website only (master → main → Vercel, fast-forward
+  8149ca5..d84be64). Contains: the DESIGN.md redesign of the resident
+  home (place strip, sheet with open/peek and "Show more / Show less",
+  latest-request card with status band and From/To, flat banners),
+  emergency confirm and alert screens in the new look, Dark mode
+  removed (always light), dispatcher emergency pop-up with phone,
+  barangay and "Open location in Maps" plus an "Active emergency" card
+  with "End emergency" (issue #6), Rejected / on-hold reason with "Call
+  the office", "ride requests" wording, small-phone fixes (map credit,
+  banners, scroll bar) and the frozen-status fix after Settings. No
+  Firestore rules changes and no changes to how alerts are saved, so the
+  demo-ready-5 APK still works with it. Live checks passed. No preview
+  APK yet: testers stay on demo-ready-5 (old look) until the next one.
 
 Order: form first (it changes the data every role reads), then menu
 (the new home removes the avatar, so History / Profile / Settings need a
