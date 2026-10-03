@@ -1,4 +1,4 @@
-import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { StatusBar } from "expo-status-bar";
@@ -768,12 +768,13 @@ export default function ResidentHome() {
       />
       <Modal visible={Boolean(notVerifiedPopup)} transparent animationType="fade" onRequestClose={() => setNotVerifiedPopup("")}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.callCard, styles.callCardContent, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+          {/* DESIGN.md look, like the "Send emergency alert?" pop-up. Same words and buttons as before. */}
+          <View style={[styles.callCard, styles.callCardContent]}>
             {notVerifiedPopup === "emergency" ? (
               <>
-                <FontAwesome name="warning" size={52} color="#CF0000" />
-                <Text style={[styles.callTitle, { color: theme.text }]}>Emergency</Text>
-                <Text style={[styles.notVerifiedText, { color: theme.text }]}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={52} color={DESIGN_COLORS.emergencyRed} />
+                <Text style={styles.callTitle}>Emergency</Text>
+                <Text style={styles.notVerifiedText}>
                   {isOnHold ? "Your account is on hold." : isRejected ? "Your account was not verified." : "Your account is still being verified."} For emergencies, call 911.
                 </Text>
                 {/* Opens the dialer with 911 typed in. The person still presses call, so a wrong tap never calls 911.
@@ -784,22 +785,23 @@ export default function ResidentHome() {
                   accessibilityRole="button"
                   accessibilityLabel="Call 911. Opens the phone dialer."
                 >
-                  <FontAwesome name="phone" size={22} color="#FFFFFF" />
+                  <MaterialCommunityIcons name="phone" size={24} color="#FFFFFF" />
                   <Text style={styles.endCallButtonText}>Call 911</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.notVerifiedCloseButton, { borderColor: theme.mutedText }]}
+                  style={styles.alertDoneButton}
                   onPress={() => setNotVerifiedPopup("")}
                   accessibilityRole="button"
                 >
-                  <Text style={[styles.notVerifiedCloseText, { color: theme.text }]}>Close</Text>
+                  <Text style={styles.alertDoneText}>Close</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <FontAwesome name="clipboard" size={48} color="#D88400" />
-                <Text style={[styles.callTitle, { color: theme.text }]}>Request a Ride</Text>
-                <Text style={[styles.notVerifiedText, { color: theme.text }]}>
+                {/* The same van as the Request a Ride button. */}
+                <MaterialCommunityIcons name="van-passenger" size={52} color={DESIGN_COLORS.inkMuted} />
+                <Text style={styles.callTitle}>Request a Ride</Text>
+                <Text style={styles.notVerifiedText}>
                   {isOnHold
                     ? "Your account is on hold, so you cannot send ride requests. Please contact the office (☰ → Help / Contact office)."
                     : isRejected
@@ -849,18 +851,19 @@ export default function ResidentHome() {
 
       <Modal visible={callOpen} transparent animationType="fade" onRequestClose={handleAlertBack}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          {/* DESIGN.md look, like the "Send emergency alert?" pop-up. Same states, words and buttons as before. */}
           <ScrollView
-            style={[styles.callCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}
+            style={styles.callCard}
             contentContainerStyle={styles.callCardContent}
             showsVerticalScrollIndicator={false}
           >
             {cancelAlertConfirmOpen ? (
               <>
-                <FontAwesome name="exclamation-circle" size={52} color="#CF0000" />
-                <Text style={[styles.callTitle, { color: theme.text }]} accessibilityLiveRegion="polite">
+                <MaterialCommunityIcons name="alert-circle-outline" size={52} color={DESIGN_COLORS.emergencyRed} />
+                <Text style={styles.callTitle} accessibilityLiveRegion="polite">
                   Cancel your emergency alert?
                 </Text>
-                <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>
+                <Text style={styles.callSubtitle}>
                   {sendPhase === "sent" ? "Dispatchers will stop seeing it." : "It will be cancelled, even if it is still sending."}
                 </Text>
 
@@ -885,8 +888,8 @@ export default function ResidentHome() {
               // bottom button cancels and goes through the confirmation question.
               const stillLive = sending || sendFailed || waitingForAnswer || unanswered;
 
-              const icon = accepted ? "check-circle" : sending || waitingForAnswer ? "bell" : "exclamation-circle";
-              const iconColor = accepted ? "#06774B" : "#CF0000";
+              const icon = accepted ? "check-circle-outline" : sending || waitingForAnswer ? "bell-ring-outline" : "alert-circle-outline";
+              const iconColor = accepted ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.emergencyRed;
               const title = sending
                 ? "Sending alert…"
                 : sendFailed
@@ -937,22 +940,24 @@ export default function ResidentHome() {
               const showCallDispatcher = accepted && Boolean(callDispatcherPhone);
               const showCallOffice = showOfficeFallback && Boolean(officePhone);
               const closeLabel = accepted ? "Done" : stillLive ? "Cancel alert" : "Close";
+              // Cancel alert = white with a red edge. Done / Close = white with a grey edge.
               const onClosePress = stillLive ? handleAlertBack : closeEmergencyAlert;
 
               return (
                 <>
-                  <FontAwesome name={icon} size={52} color={iconColor} />
-                  <Text style={[styles.callTitle, { color: theme.text }]} accessibilityLiveRegion="polite">
+                  <MaterialCommunityIcons name={icon} size={52} color={iconColor} />
+                  <Text style={styles.callTitle} accessibilityLiveRegion="polite">
                     {title}
                   </Text>
-                  <Text style={[styles.callSubtitle, { color: theme.mutedText }]}>{body}</Text>
+                  <Text style={styles.callSubtitle}>{body}</Text>
+                  {/* The most important instruction while waiting, so it gets its own light strip. */}
                   {sending || waitingForAnswer || unanswered ? (
-                    <Text style={[styles.callSubtitle, { color: theme.text, fontWeight: "700" }]}>Keep this screen open until a dispatcher accepts.</Text>
+                    <View style={styles.keepOpenStrip}>
+                      <Text style={styles.keepOpenText}>Keep this screen open until a dispatcher accepts.</Text>
+                    </View>
                   ) : null}
-                  {sending || waitingForAnswer ? <ActivityIndicator color="#CF0000" style={styles.alertSpinner} /> : null}
-                  {locationLine && (sending || waitingForAnswer || unanswered || accepted) ? (
-                    <Text style={[styles.callSubtitle, { color: theme.secondaryText }]}>{locationLine}</Text>
-                  ) : null}
+                  {sending || waitingForAnswer ? <ActivityIndicator color={DESIGN_COLORS.emergencyRed} style={styles.alertSpinner} /> : null}
+                  {locationLine && (sending || waitingForAnswer || unanswered || accepted) ? <Text style={styles.alertLocationText}>{locationLine}</Text> : null}
 
                   {sendFailed ? (
                     <TouchableOpacity style={styles.callNowButton} onPress={retryEmergencyAlert} accessibilityRole="button" accessibilityLabel="Try sending the alert again">
@@ -973,12 +978,12 @@ export default function ResidentHome() {
                   ) : null}
 
                   <TouchableOpacity
-                    style={stillLive ? styles.cancelAlertButton : styles.endCallButton}
+                    style={stillLive ? styles.cancelAlertButton : styles.alertDoneButton}
                     onPress={onClosePress}
                     accessibilityRole="button"
                     accessibilityLabel={closeLabel}
                   >
-                    <Text style={stillLive ? styles.cancelAlertButtonText : styles.endCallButtonText}>{closeLabel}</Text>
+                    <Text style={stillLive ? styles.cancelAlertButtonText : styles.alertDoneText}>{closeLabel}</Text>
                   </TouchableOpacity>
                 </>
               );
@@ -1550,110 +1555,88 @@ const styles = StyleSheet.create({
   },
   confirmCancelPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   confirmCancelText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  // Alert screen and "not verified" pop-ups (DESIGN.md look, like the "Send emergency alert?" pop-up).
   callCard: {
     width: "100%",
     maxWidth: 440,
     maxHeight: "90%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderRadius: 8,
     padding: 24,
   },
   // Centering lives here, not in callCard: a ScrollView only accepts it through contentContainerStyle.
   callCardContent: {
     alignItems: "center",
   },
-  callTitle: {
-    marginTop: 14,
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#111111",
-    textAlign: "center",
-  },
-  callSubtitle: {
-    marginTop: 8,
-    fontSize: 15,
-    lineHeight: 23,
-    color: "#4A5C55",
-    textAlign: "center",
-  },
-  // "Not verified yet" / "on hold" pop-up (residents who are not Active). Bigger, darker text than callSubtitle for seniors.
-  notVerifiedText: {
-    marginTop: 10,
-    fontSize: 17,
-    lineHeight: 25,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  call911Button: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  notVerifiedCloseButton: {
-    width: "100%",
-    marginTop: 12,
-    minHeight: 58,
-    borderRadius: 18,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  notVerifiedCloseText: {
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  endCallButton: {
-    width: "100%",
-    marginTop: 24,
-    minHeight: 58,
-    borderRadius: 18,
-    backgroundColor: "#CF0000",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  endCallButtonText: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#FFFFFF",
-  },
-  callNowButton: {
-    width: "100%",
-    marginTop: 24,
-    minHeight: 58,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: "#06774B",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  callNowButtonText: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#FFFFFF",
-    textAlign: "center",
-  },
+  callTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  callSubtitle: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
+  notVerifiedText: { marginTop: 8, fontSize: 17, lineHeight: 24, fontWeight: "500", color: DESIGN_COLORS.ink, textAlign: "center" },
+  // "Keep this screen open…": the most important line while waiting, on a light strip.
+  keepOpenStrip: { alignSelf: "stretch", marginTop: 12, padding: 12, borderRadius: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  keepOpenText: { fontSize: 17, lineHeight: 24, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  alertLocationText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   alertSpinner: {
     marginTop: 14,
   },
+  // Solid red: "Call 911" and the final "Cancel alert" (it can't be undone).
+  endCallButton: {
+    width: "100%",
+    marginTop: 16,
+    minHeight: 56,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: DESIGN_COLORS.emergencyRed,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  endCallButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF", textAlign: "center" },
+  // "Call 911" is as tall as the Emergency button on home.
+  call911Button: {
+    flexDirection: "row",
+    gap: 10,
+    minHeight: 76,
+  },
+  // Hall Green: Try again, Call {dispatcher}, Call the office, Keep alert, OK.
+  callNowButton: {
+    width: "100%",
+    marginTop: 16,
+    minHeight: 56,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: DESIGN_COLORS.hallGreen,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  callNowButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF", textAlign: "center" },
   // Low-emphasis on purpose: while an alert is live, the solid green "Keep alert" /
   // "Call" actions should win the eye over cancelling.
   cancelAlertButton: {
     width: "100%",
-    marginTop: 24,
-    minHeight: 58,
+    marginTop: 12,
+    minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 18,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: "#CF0000",
-    backgroundColor: "transparent",
+    borderColor: DESIGN_COLORS.emergencyRed,
+    backgroundColor: DESIGN_COLORS.paperWhite,
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelAlertButtonText: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#CF0000",
-    textAlign: "center",
+  cancelAlertButtonText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.emergencyRed, textAlign: "center" },
+  // "Done" / "Close" (the alert is over), and "Close" in the not-verified pop-up: white with a grey edge.
+  alertDoneButton: {
+    width: "100%",
+    marginTop: 12,
+    minHeight: 56,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+    alignItems: "center",
+    justifyContent: "center",
   },
+  alertDoneText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink, textAlign: "center" },
   menuItemSoon: {
     fontSize: 12,
     fontWeight: "800",
