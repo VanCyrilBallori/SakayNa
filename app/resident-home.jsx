@@ -649,6 +649,13 @@ export default function ResidentHome() {
               accessibilityLabel={sheetPeek ? "Show more. Shows Request a Ride and your latest request." : "Show less. Makes the map bigger."}
             >
               <View style={styles.sheetHandle} />
+              {/* Says what a tap does, so nobody wonders where Request a Ride went in peek. */}
+              <View style={styles.sheetHint}>
+                <MaterialCommunityIcons name={sheetPeek ? "chevron-up" : "chevron-down"} size={20} color={DESIGN_COLORS.inkMuted} />
+                <Text style={styles.sheetHintText} maxFontSizeMultiplier={1.3}>
+                  {sheetPeek ? "Show more" : "Show less"}
+                </Text>
+              </View>
             </Pressable>
           </View>
 
@@ -1236,7 +1243,10 @@ const styles = StyleSheet.create({
   sheetScroll: { flexGrow: 0 },
   sheetContent: { paddingHorizontal: 16, paddingTop: 4, gap: 12 },
   // The whole top strip of the sheet can be swiped or tapped, not just the small bar, so it is easy to hit.
-  sheetGrabArea: { alignItems: "center", justifyContent: "center", minHeight: 40, paddingVertical: 12 },
+  // At least 48 tall (DESIGN.md touch size): the grey bar plus the "Show more / Show less" word.
+  sheetGrabArea: { alignItems: "center", justifyContent: "center", gap: 4, minHeight: 48, paddingTop: 10, paddingBottom: 6 },
+  sheetHint: { flexDirection: "row", alignItems: "center", gap: 4 },
+  sheetHintText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.inkMuted },
   // Dark enough to see (4.2:1 on white). Square ends: DESIGN.md has no pill shapes.
   sheetHandle: { width: 48, height: 5, backgroundColor: DESIGN_COLORS.controlOutline },
   emergencyButton: {
