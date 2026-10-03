@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import {
   Alert,
   Animated,
+  Easing,
   Image,
   Modal,
   PanResponder,
@@ -55,8 +56,12 @@ export default function MobileLanding() {
 
   // The sheet always takes half of the screen.
   const sheetHeight = height * 0.5;
-  // How far the sheet has been dragged down from its open position (0 = fully open).
+  // How far the sheet is pushed down from its open position (0 = fully open, sheetHeight = hidden below the screen).
+  // It moves when the sheet slides in, slides out, or is dragged.
   const [dragY] = useState(() => new Animated.Value(0));
+  // The dark background follows the sheet: fully dark when the sheet is open, invisible when it is hidden.
+  // So when the sheet slides, the background fades instead of sliding with it.
+  const backdropOpacity = dragY.interpolate({ inputRange: [0, sheetHeight], outputRange: [1, 0], extrapolate: "clamp" });
 
   // Watches a finger on the sheet's top part (grey bar + title) and moves the sheet with it.
   const sheetDrag = useMemo(() => {
@@ -136,9 +141,21 @@ export default function MobileLanding() {
   };
 
   const openSheet = () => {
-    // Start fully open, even if the sheet was dragged closed last time.
-    dragY.setValue(0);
+    // Start hidden below the screen. slideSheetIn moves it up once the sheet is on the screen.
+    dragY.setValue(sheetHeight);
     setSheetOpen(true);
+  };
+
+  const slideSheetIn = () => {
+    Animated.timing(dragY, { toValue: 0, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  };
+
+  // Slide the sheet down (the background fades with it), and remove it only after that.
+  // "finished" is false when the slide was interrupted (for example by a second tap), so we don't remove it twice.
+  const closeSheet = () => {
+    Animated.timing(dragY, { toValue: sheetHeight, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setSheetOpen(false);
+    });
   };
 
   const openEmailLogin = () => {
@@ -325,18 +342,21 @@ export default function MobileLanding() {
       </ScrollView>
 
       {/* Slide-up sheet: a layer on top of the page. Back button or tapping the dark area closes it. */}
+      {/* animationType="none": we move the sheet and fade the background ourselves (dragY above). */}
       <Modal
         visible={sheetOpen}
         transparent
-        animationType="slide"
+        animationType="none"
         statusBarTranslucent
         navigationBarTranslucent
-        onRequestClose={() => setSheetOpen(false)}
+        onShow={slideSheetIn}
+        onRequestClose={closeSheet}
       >
-        <View style={[styles.sheetBackdrop, { backgroundColor: colors.backdrop }]}>
+        <View style={styles.sheetBackdrop}>
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.backdrop, opacity: backdropOpacity }]} pointerEvents="none" />
           <Pressable
             style={styles.sheetDismissArea}
-            onPress={() => setSheetOpen(false)}
+            onPress={closeSheet}
             accessibilityRole="button"
             accessibilityLabel="Close"
           />

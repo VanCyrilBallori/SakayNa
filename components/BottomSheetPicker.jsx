@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { FlatList, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Animated, Easing, FlatList, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLORS, LIGHT_COLORS } from "../constants/design";
@@ -41,13 +41,33 @@ export default function BottomSheetPicker({
   // With a search box it always uses that height, so it doesn't jump around while the list gets shorter.
   const sheetHeight = height * 0.75;
 
+  // How far the sheet is pushed down from its open position (0 = fully open, sheetHeight = hidden below the screen).
+  const [sheetY] = useState(() => new Animated.Value(0));
+  // The dark background follows the sheet: fully dark when the sheet is open, invisible when it is hidden.
+  // So when the sheet slides, the background fades instead of sliding with it.
+  const backdropOpacity = sheetY.interpolate({ inputRange: [0, sheetHeight], outputRange: [1, 0], extrapolate: "clamp" });
+
   const openSheet = () => {
     setSearch("");
+    // Start hidden below the screen. slideSheetIn moves it up once the sheet is on the screen.
+    sheetY.setValue(sheetHeight);
     setOpen(true);
   };
 
+  const slideSheetIn = () => {
+    Animated.timing(sheetY, { toValue: 0, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  };
+
+  // Slide the sheet down (the background fades with it), and remove it only after that.
+  // "finished" is false when the slide was interrupted (for example by a second tap), so we don't remove it twice.
+  const closeSheet = () => {
+    Animated.timing(sheetY, { toValue: sheetHeight, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setOpen(false);
+    });
+  };
+
   const choose = (option) => {
-    setOpen(false);
+    closeSheet();
     onChange(option.value);
   };
 
@@ -68,19 +88,24 @@ export default function BottomSheetPicker({
         <MaterialCommunityIcons name="chevron-down" size={26} color={colors.muted} />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={() => setOpen(false)}>
+      {/* animationType="none": we move the sheet and fade the background ourselves (sheetY above). */}
+      <Modal visible={open} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onShow={slideSheetIn} onRequestClose={closeSheet}>
         {/* "padding" makes room for the keyboard when the search box is used, so the list stays above it. */}
         <KeyboardAvoidingView behavior="padding" style={[styles.backdrop, { paddingTop: insets.top + 24 }]}>
-          <Pressable style={styles.dismissArea} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel="Close" />
+          <Animated.View style={[StyleSheet.absoluteFill, styles.backdropColor, { opacity: backdropOpacity }]} pointerEvents="none" />
+          <Pressable style={styles.dismissArea} onPress={closeSheet} accessibilityRole="button" accessibilityLabel="Close" />
 
-          <View style={[styles.sheet, searchable ? { height: sheetHeight } : { maxHeight: sheetHeight }]} accessibilityViewIsModal>
+          <Animated.View
+            style={[styles.sheet, searchable ? { height: sheetHeight } : { maxHeight: sheetHeight }, { transform: [{ translateY: sheetY }] }]}
+            accessibilityViewIsModal
+          >
             <View style={styles.header}>
               <Text style={styles.title} accessibilityRole="header">
                 {title}
               </Text>
               <Pressable
                 style={({ pressed }) => [styles.closeButton, pressed && { backgroundColor: colors.card }]}
-                onPress={() => setOpen(false)}
+                onPress={closeSheet}
                 accessibilityRole="button"
                 accessibilityLabel="Close"
               >
@@ -135,7 +160,7 @@ export default function BottomSheetPicker({
                 );
               }}
             />
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
     </>
@@ -146,7 +171,8 @@ const styles = StyleSheet.create({
   box: { flexDirection: "row", alignItems: "center", gap: 10 },
   boxPressed: { backgroundColor: colors.card },
   boxText: { flex: 1, fontSize: 17 },
-  backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: colors.backdrop },
+  backdrop: { flex: 1, justifyContent: "flex-end" },
+  backdropColor: { backgroundColor: colors.backdrop },
   dismissArea: { flex: 1 },
   // flexShrink lets the sheet get shorter (instead of going off the top) when the keyboard is open.
   sheet: { flexShrink: 1, width: "100%", backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
