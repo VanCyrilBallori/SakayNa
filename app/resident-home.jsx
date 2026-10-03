@@ -50,6 +50,8 @@ export default function ResidentHome() {
   // false = the bottom sheet is open (all buttons). true = "peek": only Emergency shows, so the map is almost all visible.
   // It starts open every time the home screen opens.
   const [sheetPeek, setSheetPeek] = useState(false);
+  // Height of the map area (0 until it is measured). Used to keep the banners above the sheet.
+  const [mapHeight, setMapHeight] = useState(0);
   const [latestDetailsOpen, setLatestDetailsOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -577,13 +579,22 @@ export default function ResidentHome() {
 
           {/* Two pieces in a wrapping row: one line when both fit, otherwise "Barangay …" moves down as a whole. */}
           <View style={styles.placeNames} accessible accessibilityRole="header" accessibilityLabel={barangayName ? `Toledo City, Barangay ${barangayName}` : "Toledo City"}>
-            <Text style={styles.placeText}>{barangayName ? "Toledo City · " : "Toledo City"}</Text>
-            {barangayName ? <Text style={styles.placeText}>Barangay {barangayName}</Text> : null}
+            {/* maxFontSizeMultiplier: the strip grows with the phone's text size only up to 1.3x, so it stays 1-2 lines */}
+            {/* and the map is not squeezed. Emergency, the buttons and the card still grow fully. */}
+            <Text style={styles.placeText} maxFontSizeMultiplier={1.3}>
+              {barangayName ? "Toledo City · " : "Toledo City"}
+            </Text>
+            {barangayName ? (
+              <Text style={styles.placeText} maxFontSizeMultiplier={1.3}>
+                Barangay {barangayName}
+              </Text>
+            ) : null}
           </View>
         </View>
 
         {/* Map below the strip. The sheet below overlaps its bottom edge by SHEET_OVERLAP. */}
-        <View style={[styles.mapArea, { marginBottom: -SHEET_OVERLAP }]}>
+        {/* onLayout tells us how tall the map area is, so the banners below never slide under the sheet. */}
+        <View style={[styles.mapArea, { marginBottom: -SHEET_OVERLAP }]} onLayout={(event) => setMapHeight(event.nativeEvent.layout.height)}>
           {/* With your position: the map centers on you with a "You are here" pin. Without it: Toledo City, no pin. */}
           <LeafletMap
             title="Toledo City map"
@@ -595,29 +606,33 @@ export default function ResidentHome() {
           />
 
           {/* Floating on top of the map, just under the strip. box-none = taps between these items still reach the map. */}
-          <View style={styles.mapOverlay} pointerEvents="box-none">
-            {notActive ? (
-              // A flat sign: amber while waiting, red when the account can't send emergency alerts.
-              <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
-                <MaterialCommunityIcons
-                  name={isPending ? "clock-outline" : isRejected ? "close-circle-outline" : "pause-circle-outline"}
-                  size={28}
-                  color={isPending ? DESIGN_COLORS.waitingAmber : DESIGN_COLORS.emergencyRed}
-                />
-                <View style={styles.statusBannerCopy}>
-                  <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
-                  <Text style={styles.statusBannerText}>
-                    {isPending
-                      ? "An admin from your barangay is checking your proof of residency. You can send emergency alerts and transport requests after you are verified."
-                      : isRejected
-                        ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
-                        : "Your account is on hold, so you cannot send emergency alerts or transport requests. Please contact the office (☰ → Help / Contact office)."}
-                  </Text>
+          {/* On a small phone the banner + location note can be taller than the map you can see. Then they scroll */}
+          {/* inside that space (maxHeight) instead of sliding under the sheet, so "Allow location" can always be tapped. */}
+          <View style={[styles.mapOverlay, mapHeight ? { maxHeight: Math.max(mapHeight - SHEET_OVERLAP - 24, 0) } : null]} pointerEvents="box-none">
+            <ScrollView style={styles.mapOverlayScroll} contentContainerStyle={styles.mapOverlayContent} bounces={false} persistentScrollbar>
+              {notActive ? (
+                // A flat sign: amber while waiting, red when the account can't send emergency alerts.
+                <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
+                  <MaterialCommunityIcons
+                    name={isPending ? "clock-outline" : isRejected ? "close-circle-outline" : "pause-circle-outline"}
+                    size={28}
+                    color={isPending ? DESIGN_COLORS.waitingAmber : DESIGN_COLORS.emergencyRed}
+                  />
+                  <View style={styles.statusBannerCopy}>
+                    <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
+                    <Text style={styles.statusBannerText}>
+                      {isPending
+                        ? "Your barangay admin is checking your proof of residency. You can send emergency alerts and ride requests once approved."
+                        : isRejected
+                          ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
+                          : "Your account is on hold, so you cannot send emergency alerts or transport requests. Please contact the office (☰ → Help / Contact office)."}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            ) : null}
+              ) : null}
 
-            <LocationNote location={homeLocation} />
+              <LocationNote location={homeLocation} />
+            </ScrollView>
           </View>
         </View>
 
@@ -637,7 +652,8 @@ export default function ResidentHome() {
             </Pressable>
           </View>
 
-          <ScrollView style={styles.sheetScroll} contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 16 }]} bounces={false} showsVerticalScrollIndicator={false}>
+          {/* persistentScrollbar: on Android the scroll bar stays visible, so with big text it shows there is more below. */}
+          <ScrollView style={styles.sheetScroll} contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 16 }]} bounces={false} persistentScrollbar>
             <Pressable
               style={({ pressed }) => [styles.emergencyButton, pressed && styles.emergencyButtonPressed]}
               onPress={() => handleQuickAction("emergency-call")}
@@ -1170,9 +1186,10 @@ const styles = StyleSheet.create({
     top: 12,
     left: 16,
     right: 16,
-    gap: 12,
-    alignItems: "flex-start",
   },
+  // flexGrow 0 = only as tall as the banners, so the rest of the map can still be touched.
+  mapOverlayScroll: { flexGrow: 0 },
+  mapOverlayContent: { gap: 12 },
   // Flat sign (DESIGN.md "Flat Board Rule"): white with a grey edge, no shadow.
   locationNote: {
     alignSelf: "stretch",
