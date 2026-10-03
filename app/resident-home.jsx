@@ -45,7 +45,6 @@ export default function ResidentHome() {
   const { theme } = useTheme();
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
-  const [profileOverride, setProfileOverride] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // false = the bottom sheet is open (all buttons). true = "peek": only Emergency shows, so the map is almost all visible.
   // It starts open every time the home screen opens.
@@ -94,7 +93,9 @@ export default function ResidentHome() {
   const [settingsError, setSettingsError] = useState("");
   const [settingsMessage, setSettingsMessage] = useState("");
 
-  const activeProfile = profileOverride ?? profile;
+  // Always the live profile from Firestore (useCurrentUserProfile listens for changes), so an admin approving or
+  // suspending the resident updates the banners and the Emergency button right away, even after a Settings save.
+  const activeProfile = profile;
   const displayName = activeProfile?.fullName?.trim() || fallbackDisplayName;
   // Only Active residents can send alerts or requests (same as isActiveResident in firestore.rules).
   // Everyone else can open this screen but gets a pop-up instead. While the profile is still
@@ -476,13 +477,7 @@ export default function ResidentHome() {
         accountStatus: activeProfile?.accountStatus || "Active",
       });
 
-      setProfileOverride({
-        ...activeProfile,
-        email: nextEmail,
-        fullName: settingsForm.fullName.trim(),
-        phoneNumber: nextPhone,
-        phone: nextPhone,
-      });
+      // No local copy of the profile here: the live profile listener already picks up this save right away.
 
       // Settings stays open so the resident sees this message. They close it with the X.
       setSettingsMessage("Settings updated successfully.");
