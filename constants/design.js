@@ -42,6 +42,24 @@ export const LIGHT_COLORS = Object.freeze({
   outline: "#6B8A7D",
 });
 
+// The colors from DESIGN.md (the "Barangay Hall + route board" look). Screens move to these one piece at a time.
+// Light only: they do not change with the Dark / Light switch.
+export const DESIGN_COLORS = Object.freeze({
+  hallGreen: "#3B6255", // the logo's green: main buttons, place strip, links
+  hallGreenDeep: "#2B4A40", // pressed buttons, "Assigned" / "On the way"
+  emergencyRed: "#B42318", // Emergency and "can't be undone" only
+  redTint: "#FCE9E7",
+  waitingAmber: "#8A5A00", // Pending / Waiting / Scheduled
+  amberTint: "#FFF4D6",
+  paperWhite: "#FFFFFF",
+  boardTint: "#EEF3F0",
+  ink: "#14211C", // main text
+  inkMuted: "#4A5C55", // secondary text
+  controlOutline: "#6B8079", // edges of inputs and outline buttons
+  placeholder: "#5E6E68",
+  rule: "#C5D1CB", // thin divider lines only
+});
+
 export const SPACING = Object.freeze({ xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 });
 export const RADIUS = Object.freeze({ sm: 8, md: 12, lg: 16, xl: 20, pill: 999 });
 export const TYPE = Object.freeze({ label: 12, body: 14, bodyLarge: 16, title: 24, heading: 30 });

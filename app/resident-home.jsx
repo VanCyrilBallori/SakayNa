@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LeafletMap from "../components/LeafletMap";
 import { ACCOUNT_STATUSES } from "../constants/app";
-import { COLORS } from "../constants/design";
+import { COLORS, DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
@@ -33,9 +33,9 @@ const SEND_TIMEOUT_MS = 10_000;
 const ALERT_HEARTBEAT_MS = 20_000;
 const KEEP_AWAKE_TAG = "emergency-alert";
 
-// The bottom sheet's rounded top overlaps the map by this much.
+// The bottom sheet's rounded top overlaps the map by this much (16 = DESIGN.md's sheet corner).
 // The map moves its zoom buttons and OpenStreetMap credit up by the same amount, so they stay visible.
-const SHEET_OVERLAP = 24;
+const SHEET_OVERLAP = 16;
 
 export default function ResidentHome() {
   const { width } = useWindowDimensions();
@@ -576,7 +576,7 @@ export default function ResidentHome() {
 
         {/* Bottom sheet with two positions: open, or "peek" (pulled down). Emergency shows in both, so it is always one tap away. */}
         {/* It scrolls inside if it doesn't fit (for example with very large text). */}
-        <View style={[styles.sheet, { backgroundColor: theme.surface, shadowColor: theme.shadow }]}>
+        <View style={styles.sheet}>
           {/* Grey bar: swipe it down or up, or tap it, to switch between open and peek. */}
           {/* It sits outside the scroll list below so the swipe and the scrolling don't fight. */}
           <View {...sheetSwipe.panHandlers}>
@@ -586,7 +586,7 @@ export default function ResidentHome() {
               accessibilityRole="button"
               accessibilityLabel={sheetPeek ? "Show more. Shows Request a Ride and your latest request." : "Show less. Makes the map bigger."}
             >
-              <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
+              <View style={styles.sheetHandle} />
             </Pressable>
           </View>
 
@@ -598,9 +598,7 @@ export default function ResidentHome() {
               accessibilityRole="button"
               accessibilityLabel="Emergency. Send an alert to the dispatchers."
             >
-              <View style={styles.emergencyIcon}>
-                <MaterialCommunityIcons name="alarm-light-outline" size={30} color={COLORS.emergency} />
-              </View>
+              <MaterialCommunityIcons name="alarm-light-outline" size={36} color="#FFFFFF" />
               <View style={styles.emergencyCopy}>
                 <Text style={styles.emergencyTitle}>Emergency</Text>
                 <Text style={styles.emergencySubtitle}>Send an alert to the dispatchers</Text>
@@ -616,7 +614,8 @@ export default function ResidentHome() {
                   android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
                   accessibilityRole="button"
                 >
-                  <MaterialCommunityIcons name="car-outline" size={26} color="#FFFFFF" />
+                  {/* A van, not a car: the city's vehicles are vans and ambulances. */}
+                  <MaterialCommunityIcons name="van-passenger" size={30} color="#FFFFFF" />
                   <Text style={styles.rideButtonText}>Request a Ride</Text>
                 </Pressable>
 
@@ -1190,52 +1189,49 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     borderTopLeftRadius: SHEET_OVERLAP,
     borderTopRightRadius: SHEET_OVERLAP,
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 16,
+    // Flat like a printed sign (DESIGN.md "Flat Board Rule"): a green line on top instead of a soft shadow.
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: DESIGN_COLORS.hallGreen,
+    backgroundColor: DESIGN_COLORS.paperWhite,
   },
   sheetScroll: { flexGrow: 0 },
   sheetContent: { paddingHorizontal: 16, paddingTop: 4, gap: 12 },
   // The whole top strip of the sheet can be swiped or tapped, not just the small bar, so it is easy to hit.
   sheetGrabArea: { alignItems: "center", justifyContent: "center", minHeight: 40, paddingVertical: 12 },
-  sheetHandle: { width: 44, height: 5, borderRadius: 3 },
+  // Dark enough to see (4.2:1 on white). Square ends: DESIGN.md has no pill shapes.
+  sheetHandle: { width: 48, height: 5, backgroundColor: DESIGN_COLORS.controlOutline },
   emergencyButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     minHeight: 76,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 18,
+    borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: COLORS.emergency,
+    backgroundColor: DESIGN_COLORS.emergencyRed,
   },
   emergencyButtonPressed: { backgroundColor: "#8F1C13" },
-  emergencyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
   emergencyCopy: { flex: 1 },
-  emergencyTitle: { fontSize: 24, lineHeight: 30, fontWeight: "900", color: "#FFFFFF" },
-  emergencySubtitle: { marginTop: 2, fontSize: 15, lineHeight: 20, fontWeight: "600", color: "#FFE9E7" },
+  // "Board" size from DESIGN.md: the biggest text in the app.
+  emergencyTitle: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: "#FFFFFF" },
+  emergencySubtitle: { marginTop: 2, fontSize: 17, lineHeight: 22, fontWeight: "600", color: "#FFE9E7" },
   rideButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 12,
     minHeight: 60,
     paddingHorizontal: 16,
-    borderRadius: 18,
+    borderRadius: 8,
     overflow: "hidden",
-    backgroundColor: COLORS.primary,
+    backgroundColor: DESIGN_COLORS.hallGreen,
   },
-  rideButtonPressed: { backgroundColor: COLORS.primaryDark },
-  rideButtonText: { fontSize: 19, fontWeight: "800", color: "#FFFFFF" },
+  rideButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  // "Title" size from DESIGN.md: the home screen's second big action.
+  rideButtonText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
   // Account status banner (residents who are not Active only). Big, dark text for seniors.
   statusBanner: {
     alignSelf: "stretch",
