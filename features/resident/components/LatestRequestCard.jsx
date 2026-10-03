@@ -1,77 +1,105 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { COLORS } from "../../../constants/design";
-import { getPickupLabel, getRequestStatusMeta, getWhenText } from "../utils/requestMapper";
+import { REQUEST_STATUSES } from "../../../constants/app";
+import { DESIGN_COLORS } from "../../../constants/design";
+import { getDestinationLabel, getPickupLabel, getRequestStatusMeta, getWhenText } from "../utils/requestMapper";
 
-// Light pill colors in Light and Dark mode on purpose (the same pills as Request History and Details).
-const PILL_COLORS = {
-  danger: { backgroundColor: COLORS.emergencySurface, color: "#7A1A12" },
-  success: { backgroundColor: "#E7F5ED", color: "#0B5A38" },
-  warning: { backgroundColor: COLORS.warningSurface, color: "#5C3F00" },
+// The color of the status band at the top of the card (DESIGN.md "Status band").
+// Waiting = amber, a driver is on it = deep green, finished = grey. Never red: red is only for emergencies.
+const BAND_COLORS = {
+  [REQUEST_STATUSES.PENDING]: DESIGN_COLORS.waitingAmber,
+  [REQUEST_STATUSES.ASSIGNED]: DESIGN_COLORS.hallGreenDeep,
+  [REQUEST_STATUSES.IN_PROGRESS]: DESIGN_COLORS.hallGreenDeep,
 };
 
 // The resident's newest request, on the home screen's bottom sheet. Tapping it opens Request Details.
 // request = the newest request (null if there is none), loading / error = from useResidentRequests.
-export default function LatestRequestCard({ request, loading, error, theme, onPress }) {
-  if (loading || error || !request) {
-    const message = loading ? "Loading your latest request…" : error || "No rides yet. Your latest request will show here.";
+export default function LatestRequestCard({ request, loading, error, onPress }) {
+  if (error) {
     return (
-      <View style={[styles.card, styles.emptyCard, { borderColor: theme.border }]}>
-        <Text style={[styles.emptyText, { color: theme.mutedText }]}>{message}</Text>
+      <View style={[styles.messageBox, styles.errorBox]}>
+        <Text style={[styles.messageText, styles.errorText]}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (loading || !request) {
+    return (
+      <View style={styles.messageBox}>
+        <Text style={styles.messageText}>{loading ? "Loading your latest request…" : "No rides yet. Your latest request will show here."}</Text>
       </View>
     );
   }
 
   const status = getRequestStatusMeta(request.status);
-  const pill = PILL_COLORS[status.tone] || PILL_COLORS.warning;
-  const title = request.title || request.serviceType || "Transport request";
-  const driverLine = request.assignedDriverName ? [request.assignedDriverName, request.assignedVehicleName].filter(Boolean).join(" · ") : "";
+  const bandColor = BAND_COLORS[request.status] || DESIGN_COLORS.inkMuted;
+  const from = getPickupLabel(request);
+  const to = getDestinationLabel(request);
+  // Small line at the bottom: when, then who is driving and which vehicle (DESIGN.md "Named Place Rule").
+  const bottomLine = [getWhenText(request), request.assignedDriverName, request.assignedVehicleName].filter(Boolean).join(" · ");
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, { borderColor: theme.border, backgroundColor: pressed ? theme.surfaceMuted : theme.surface }]}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Latest request: ${title}, ${status.label}. Open details.`}
+      accessibilityLabel={`Latest request: ${status.label}. From ${from}. To ${to}. ${bottomLine}. Open details.`}
     >
-      <View style={styles.topRow}>
-        <View style={[styles.pill, { backgroundColor: pill.backgroundColor }]}>
-          <Text style={[styles.pillText, { color: pill.color }]}>{status.label}</Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-right" size={28} color={theme.mutedText} />
+      <View style={[styles.band, { backgroundColor: bandColor }]}>
+        <Text style={styles.bandText}>{status.label}</Text>
+        <MaterialCommunityIcons name="chevron-right" size={26} color="#FFFFFF" />
       </View>
 
-      <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
-        {title}
-      </Text>
+      {/* Route board: From and To like a jeepney signboard, joined by a short green line. */}
+      <View style={styles.body}>
+        <RouteLine label="From" place={from} />
+        <View style={styles.routeJoin} />
+        <RouteLine label="To" place={to} />
 
-      <InfoLine icon="clock-outline" text={getWhenText(request)} theme={theme} />
-      <InfoLine icon="map-marker-outline" text={getPickupLabel(request)} theme={theme} />
-      {driverLine ? <InfoLine icon="car-outline" text={driverLine} theme={theme} /> : null}
+        <Text style={styles.bottomLine}>{bottomLine}</Text>
+      </View>
     </Pressable>
   );
 }
 
-function InfoLine({ icon, text, theme }) {
+// One line of the route board. Long places wrap to 2 lines; the full address is in Request Details.
+function RouteLine({ label, place }) {
   return (
-    <View style={styles.infoLine}>
-      <MaterialCommunityIcons name={icon} size={20} color={theme.mutedText} />
-      <Text style={[styles.infoText, { color: theme.mutedText }]} numberOfLines={1}>
-        {text}
+    <View style={styles.routeLine}>
+      <Text style={styles.routeLabel}>{label}</Text>
+      <Text style={styles.routePlace} numberOfLines={2}>
+        {place}
       </Text>
     </View>
   );
 }
 
+// "From" and "To" share one column width, so the place names line up.
+const LABEL_WIDTH = 52;
+
 const styles = StyleSheet.create({
-  card: { padding: 16, borderRadius: 16, borderWidth: 1 },
-  emptyCard: { borderStyle: "dashed" },
-  emptyText: { fontSize: 16, lineHeight: 22 },
-  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  pill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  pillText: { fontSize: 14, fontWeight: "800" },
-  title: { marginTop: 10, marginBottom: 4, fontSize: 19, lineHeight: 25, fontWeight: "800" },
-  infoLine: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
-  infoText: { flex: 1, fontSize: 16, lineHeight: 22 },
+  card: {
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+    // Keeps the band's corners inside the card's rounded corners.
+    overflow: "hidden",
+  },
+  cardPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  band: { flexDirection: "row", alignItems: "center", gap: 8, minHeight: 44, paddingLeft: 14, paddingRight: 8, paddingVertical: 8 },
+  bandText: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: "800", color: "#FFFFFF" },
+  body: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14 },
+  routeLine: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  routeLabel: { width: LABEL_WIDTH, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.inkMuted },
+  // "Title" size (22). We may try 17 after testing on a small phone.
+  routePlace: { flex: 1, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // The short green line between From and To, under the place names' left edge.
+  routeJoin: { width: 2, height: 14, marginLeft: LABEL_WIDTH + 8 + 6, marginVertical: 2, backgroundColor: DESIGN_COLORS.hallGreen },
+  bottomLine: { marginTop: 10, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted },
+  messageBox: { padding: 16, borderRadius: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  messageText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  errorBox: { backgroundColor: DESIGN_COLORS.redTint },
+  errorText: { color: DESIGN_COLORS.emergencyRed },
 });

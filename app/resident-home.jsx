@@ -623,7 +623,6 @@ export default function ResidentHome() {
                   request={latestRequest}
                   loading={requestHistoryLoading}
                   error={requestHistoryError}
-                  theme={theme}
                   onPress={() => setLatestDetailsOpen(true)}
                 />
               </>
