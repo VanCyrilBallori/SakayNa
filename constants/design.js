@@ -52,8 +52,6 @@ export const DESIGN_COLORS = Object.freeze({
   sakayOrange: "#F97316", // highlights: bands, badges, destination dot. Orange has dark words (never white).
   orangeDeep: "#B34D00", // small orange words on white or peach only (e.g. a scheduled time)
   peachTint: "#FDECD3", // background of important info boxes
-  waitingAmber: "#8A5A00", // OLD: being replaced by sakayOrange / orangeDeep (color update Step 2)
-  amberTint: "#FFF4D6", // OLD: being replaced by peachTint (color update Step 2)
   paperWhite: "#FFFFFF",
   boardTint: "#EEF3F0",
   ink: "#14211C", // main text

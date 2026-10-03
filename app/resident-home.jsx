@@ -636,12 +636,12 @@ export default function ResidentHome() {
           <View style={[styles.mapOverlay, mapHeight ? { maxHeight: Math.max(mapHeight - SHEET_OVERLAP - 24, 0) } : null]} pointerEvents="box-none">
             <ScrollView style={styles.mapOverlayScroll} contentContainerStyle={styles.mapOverlayContent} bounces={false} persistentScrollbar>
               {notActive ? (
-                // A flat sign: amber while waiting, red when the account can't send emergency alerts.
+                // A flat sign: peach and orange while waiting, red when the account can't send emergency alerts.
                 <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
                   <MaterialCommunityIcons
                     name={isPending ? "clock-outline" : isRejected ? "close-circle-outline" : "pause-circle-outline"}
                     size={28}
-                    color={isPending ? DESIGN_COLORS.waitingAmber : DESIGN_COLORS.emergencyRed}
+                    color={isPending ? DESIGN_COLORS.orangeDeep : DESIGN_COLORS.emergencyRed}
                   />
                   <View style={styles.statusBannerCopy}>
                     <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
@@ -1358,8 +1358,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   statusBannerPending: {
-    backgroundColor: DESIGN_COLORS.amberTint,
-    borderColor: DESIGN_COLORS.waitingAmber,
+    backgroundColor: DESIGN_COLORS.peachTint,
+    borderColor: DESIGN_COLORS.sakayOrange,
   },
   statusBannerRejected: {
     backgroundColor: DESIGN_COLORS.redTint,
