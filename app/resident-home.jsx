@@ -98,6 +98,8 @@ export default function ResidentHome() {
   const notActive = Boolean(activeProfile) && activeProfile.accountStatus !== ACCOUNT_STATUSES.ACTIVE;
   const isRejected = activeProfile?.accountStatus === ACCOUNT_STATUSES.REJECTED;
   const isPending = activeProfile?.accountStatus === ACCOUNT_STATUSES.PENDING;
+  // For the place strip. The profile saves "Poblacion, Toledo City"; the strip already says Toledo City, so drop that part.
+  const barangayName = (activeProfile?.barangay || "").replace(/,\s*Toledo City$/i, "").trim();
   // Any other non-Active status (for example Suspended or Disabled) means the account is on hold.
   const isOnHold = notActive && !isRejected && !isPending;
 
@@ -558,10 +560,29 @@ export default function ResidentHome() {
   return (
     <>
       <View style={[styles.home, { backgroundColor: theme.page }]}>
-        {/* The map is always light, so the phone's clock and battery icons are drawn dark. */}
-        <StatusBar style="dark" />
+        {/* The place strip at the top is green, so the phone's clock and battery icons are drawn white. */}
+        <StatusBar style="light" />
 
-        {/* Map on top. The sheet below overlaps its bottom edge by SHEET_OVERLAP. */}
+        {/* Place strip (DESIGN.md): names the place, like the sign on a barangay hall. It also holds the ☰ button. */}
+        {/* paddingTop = the height of the phone's clock area, so the green goes behind the clock. */}
+        <View style={[styles.placeStrip, { paddingTop: insets.top + 4 }]}>
+          <Pressable
+            style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
+            onPress={() => setMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open menu"
+          >
+            <MaterialCommunityIcons name="menu" size={30} color="#FFFFFF" />
+          </Pressable>
+
+          {/* Two pieces in a wrapping row: one line when both fit, otherwise "Barangay …" moves down as a whole. */}
+          <View style={styles.placeNames} accessible accessibilityRole="header" accessibilityLabel={barangayName ? `Toledo City, Barangay ${barangayName}` : "Toledo City"}>
+            <Text style={styles.placeText}>{barangayName ? "Toledo City · " : "Toledo City"}</Text>
+            {barangayName ? <Text style={styles.placeText}>Barangay {barangayName}</Text> : null}
+          </View>
+        </View>
+
+        {/* Map below the strip. The sheet below overlaps its bottom edge by SHEET_OVERLAP. */}
         <View style={[styles.mapArea, { marginBottom: -SHEET_OVERLAP }]}>
           {/* With your position: the map centers on you with a "You are here" pin. Without it: Toledo City, no pin. */}
           <LeafletMap
@@ -572,6 +593,32 @@ export default function ResidentHome() {
             zoomPosition="bottomright"
             bottomSpace={SHEET_OVERLAP}
           />
+
+          {/* Floating on top of the map, just under the strip. box-none = taps between these items still reach the map. */}
+          <View style={styles.mapOverlay} pointerEvents="box-none">
+            {notActive ? (
+              // Same light colors in Light and Dark mode on purpose, so the banner always stands out.
+              <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
+                <FontAwesome
+                  name={isPending ? "clock-o" : isRejected ? "times-circle" : "pause-circle"}
+                  size={26}
+                  color={isPending ? COLORS.warning : COLORS.emergency}
+                />
+                <View style={styles.statusBannerCopy}>
+                  <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
+                  <Text style={styles.statusBannerText}>
+                    {isPending
+                      ? "An admin from your barangay is checking your proof of residency. You can send emergency alerts and transport requests after you are verified."
+                      : isRejected
+                        ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
+                        : "Your account is on hold, so you cannot send emergency alerts or transport requests. Please contact the office (☰ → Help / Contact office)."}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            <LocationNote location={homeLocation} theme={theme} />
+          </View>
         </View>
 
         {/* Bottom sheet with two positions: open, or "peek" (pulled down). Emergency shows in both, so it is always one tap away. */}
@@ -628,41 +675,6 @@ export default function ResidentHome() {
               </>
             )}
           </ScrollView>
-        </View>
-
-        {/* Floating on top of the map. box-none = taps between these items still reach the map. */}
-        <View style={[styles.mapOverlay, { top: insets.top + 12 }]} pointerEvents="box-none">
-          <Pressable
-            style={({ pressed }) => [styles.menuButton, { backgroundColor: pressed ? theme.surfaceMuted : theme.surface, shadowColor: theme.shadow }]}
-            onPress={() => setMenuOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Open menu"
-          >
-            <MaterialCommunityIcons name="menu" size={28} color={theme.heading} />
-          </Pressable>
-
-          {notActive ? (
-            // Same light colors in Light and Dark mode on purpose, so the banner always stands out.
-            <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
-              <FontAwesome
-                name={isPending ? "clock-o" : isRejected ? "times-circle" : "pause-circle"}
-                size={26}
-                color={isPending ? COLORS.warning : COLORS.emergency}
-              />
-              <View style={styles.statusBannerCopy}>
-                <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
-                <Text style={styles.statusBannerText}>
-                  {isPending
-                    ? "An admin from your barangay is checking your proof of residency. You can send emergency alerts and transport requests after you are verified."
-                    : isRejected
-                      ? "Your proof of residency was not accepted. You cannot send emergency alerts or transport requests."
-                      : "Your account is on hold, so you cannot send emergency alerts or transport requests. Please contact the office (☰ → Help / Contact office)."}
-                </Text>
-              </View>
-            </View>
-          ) : null}
-
-          <LocationNote location={homeLocation} theme={theme} />
         </View>
       </View>
 
@@ -1125,25 +1137,36 @@ function LocationNote({ location, theme }) {
 const styles = StyleSheet.create({
   home: { flex: 1 },
   mapArea: { flex: 1 },
-  // Floating layer over the top of the map: the ☰ button and the account status banner (not Active only).
+  // Place strip: Hall Green across the top, white text. The ☰ button sits at its left.
+  placeStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingLeft: 4,
+    paddingRight: 16,
+    paddingBottom: 4,
+    backgroundColor: DESIGN_COLORS.hallGreen,
+  },
+  // 48 x 48 so it is easy to tap. Square with 8 corners (DESIGN.md), darker green while pressed.
+  menuButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  placeNames: { flex: 1, flexDirection: "row", flexWrap: "wrap", paddingVertical: 10 },
+  placeText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: "#FFFFFF" },
+  // Floating layer over the top of the map, just under the strip: the account status banner (not Active only)
+  // and the "Location is off" note.
   mapOverlay: {
     position: "absolute",
+    top: 12,
     left: 16,
     right: 16,
     gap: 12,
     alignItems: "flex-start",
-  },
-  // A round button, 52 x 52 so it is easy to tap.
-  menuButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
   },
   locationNote: {
     alignSelf: "stretch",
