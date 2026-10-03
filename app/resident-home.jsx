@@ -202,11 +202,9 @@ export default function ResidentHome() {
     }
   }, [authUser?.uid, loadOfficePhone]);
 
-  useEffect(() => {
-    if (!settingsOpen) {
-      return;
-    }
-
+  // Clears old messages and fills the form, once, when Settings opens.
+  // (Not every time the profile changes: saving changes the profile, and that would wipe the "updated successfully" message.)
+  const openSettings = () => {
     setSettingsError("");
     setSettingsMessage("");
     setCurrentPassword("");
@@ -217,7 +215,8 @@ export default function ResidentHome() {
       phoneNumber: activeProfile?.phoneNumber || activeProfile?.phone || "",
       email: activeProfile?.email || authUser?.email || "",
     });
-  }, [activeProfile?.email, activeProfile?.fullName, activeProfile?.phone, activeProfile?.phoneNumber, authUser?.email, displayName, settingsOpen]);
+    setSettingsOpen(true);
+  };
 
   useEffect(() => {
     if (!changePasswordOpen) {
@@ -469,8 +468,8 @@ export default function ResidentHome() {
         phone: nextPhone,
       });
 
+      // Settings stays open so the resident sees this message. They close it with the X.
       setSettingsMessage("Settings updated successfully.");
-      setSettingsOpen(false);
     } catch (error) {
       console.log("Resident settings save failed:", error);
 
@@ -820,9 +819,12 @@ export default function ResidentHome() {
                   ? "We could not confirm the alert reached dispatch. It may still go through if you keep this screen open. Try again, or call the office."
                   : "We could not confirm the alert reached dispatch. It may still go through if you keep this screen open. Try again, or ask someone nearby to call for help.";
               } else if (accepted) {
+                // Only say "can see where you are" once the location really was sent.
+                // This is worked out again every time the screen redraws, so it updates by itself when "sending" turns into "sent".
+                const hasAlert = alertLocationStatus === "sent" ? "has your alert and can see where you are." : "has your alert.";
                 body = callDispatcherPhone
-                  ? `${dispatcherLabel} has your alert and can see where you are.`
-                  : `${dispatcherLabel} has your alert and can see where you are. No phone number is on file for them.`;
+                  ? `${dispatcherLabel} ${hasAlert}`
+                  : `${dispatcherLabel} ${hasAlert} No phone number is on file for them.`;
               } else if (waitingForAnswer) {
                 body = "Waiting for a dispatcher to accept.";
               } else if (showOfficeFallback) {
@@ -900,7 +902,7 @@ export default function ResidentHome() {
         officePhone={officePhone}
         onOpenHistory={() => setHistoryOpen(true)}
         onOpenProfile={() => setProfileEditorOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={openSettings}
       />
 
       <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
