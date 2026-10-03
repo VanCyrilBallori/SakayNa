@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
 import { FIRESTORE_COLLECTIONS, TERMS_URL } from "../constants/app";
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { DESIGN_COLORS, LIGHT_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
@@ -32,24 +32,11 @@ import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
 // Google's official "G" logo, cut from Google's sign-in button files. Do not recolor or stretch it.
 const GOOGLE_G_LOGO = require("../assets/images/google-g.png");
 
-// Faint city skyline behind the phone and van: [left, width, height] in the 320-wide drawing.
-const BUILDINGS = [
-  [0, 34, 70],
-  [30, 28, 112],
-  [62, 40, 84],
-  [104, 30, 142],
-  [138, 46, 96],
-  [188, 26, 126],
-  [218, 42, 78],
-  [262, 30, 132],
-  [292, 28, 88],
-];
-const GROUND_Y = 200;
-
 export default function MobileLanding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  // The Get Started sheet still uses the older LIGHT_COLORS (shared with other screens) until it is redesigned too.
   const colors = LIGHT_COLORS;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -86,10 +73,8 @@ export default function MobileLanding() {
     });
   }, [dragY, sheetHeight]);
 
-  // The illustration is drawn on a 320 x 230 grid and scaled to fit small and large phones.
-  const scale = Math.min((width - 48) / 320, (height * 0.36) / 230, 1.2);
-  const u = (value) => value * scale;
-  const logoSize = Math.min(96, height * 0.12);
+  // The wide SakayNa logo: 240 wide, smaller on narrow phones.
+  const logoWidth = Math.min(240, width - 64);
 
   const openTerms = () => {
     WebBrowser.openBrowserAsync(TERMS_URL).catch((error) => console.log("Terms page warning:", error));
@@ -179,163 +164,63 @@ export default function MobileLanding() {
   };
 
   return (
-    <View style={[styles.page, { backgroundColor: colors.page }]}>
+    <View style={styles.page}>
       {/* Dark clock/battery icons so they stay visible on the white page, even when the phone is in dark mode. */}
       <StatusBar style="dark" />
-      <View style={[styles.arcTop, { backgroundColor: colors.arc }]} />
-      <View style={[styles.arcBottom, { backgroundColor: colors.arc }]} />
 
+      {/* DESIGN.md look: a barangay signboard, not a ride-hailing poster. Scrolls on small phones and with big text. */}
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View
-          style={[styles.logoDisc, { width: logoSize, height: logoSize, borderRadius: logoSize / 2 }]}
-          accessible
-          accessibilityRole="image"
-          accessibilityLabel="SakayNa"
-        >
-          <BrandLogo variant="secondary" height={logoSize * 0.56} style={styles.logoMark} />
-        </View>
+        <View style={styles.column}>
+          {/* The service named in words: the wide SakayNa logo. */}
+          <BrandLogo variant="main" width={logoWidth} style={styles.logo} accessible accessibilityRole="image" accessibilityLabel="SakayNa" />
+          <Text style={styles.purpose}>Transport and emergency help for Toledo City</Text>
 
-        <View style={styles.artArea}>
-          <View
-            style={{ width: u(320), height: u(230) }}
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel="A phone requesting a SakayNa van in Toledo City"
-          >
-            {BUILDINGS.map(([left, buildingWidth, buildingHeight]) => (
-              <View
-                key={left}
-                style={{
-                  position: "absolute",
-                  left: u(left),
-                  top: u(GROUND_Y - buildingHeight),
-                  width: u(buildingWidth),
-                  height: u(buildingHeight),
-                  borderTopLeftRadius: u(3),
-                  borderTopRightRadius: u(3),
-                  backgroundColor: colors.building,
-                }}
-              />
-            ))}
-
-            <View
-              style={{
-                position: "absolute",
-                left: u(20),
-                top: u(GROUND_Y - 6),
-                width: u(290),
-                height: u(14),
-                borderRadius: u(7),
-                backgroundColor: colors.groundShadow,
-              }}
-            />
-
-            {/* Phone showing a mini map and a pickup pin */}
-            <View
-              style={{
-                position: "absolute",
-                left: u(28),
-                top: u(20),
-                width: u(100),
-                height: u(184),
-                padding: u(5),
-                borderRadius: u(18),
-                backgroundColor: colors.phoneFrame,
-              }}
-            >
-              <View style={{ flex: 1, borderRadius: u(14), overflow: "hidden", backgroundColor: colors.phoneScreen }}>
-                <View style={{ height: u(18), justifyContent: "center", paddingHorizontal: u(7) }}>
-                  <BrandLogo variant="secondary" height={u(10)} style={{ tintColor: colors.link }} />
-                </View>
-
-                <View style={{ height: u(88), marginHorizontal: u(5), borderRadius: u(8), overflow: "hidden", backgroundColor: colors.map }}>
-                  <View style={[styles.road, { top: u(30), height: u(3), backgroundColor: colors.road, transform: [{ rotate: "-24deg" }] }]} />
-                  <View style={[styles.road, { top: u(58), height: u(3), backgroundColor: colors.road, transform: [{ rotate: "18deg" }] }]} />
-                  <View style={styles.mapCenter}>
-                    <MaterialCommunityIcons name="map-marker" size={u(26)} color={colors.link} />
-                    <Text allowFontScaling={false} style={{ fontSize: u(7), fontWeight: "700", color: colors.heading }}>
-                      Toledo City
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ marginHorizontal: u(7), marginTop: u(7) }}>
-                  <Text allowFontScaling={false} style={{ fontSize: u(6), color: colors.muted }}>
-                    Pickup
-                  </Text>
-                  <Text allowFontScaling={false} style={{ fontSize: u(7.5), fontWeight: "700", color: colors.heading }}>
-                    Poblacion
-                  </Text>
-                </View>
-
-                <View
-                  style={{
-                    height: u(16),
-                    marginHorizontal: u(5),
-                    marginTop: u(8),
-                    borderRadius: u(8),
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: COLORS.primary,
-                  }}
-                >
-                  <Text allowFontScaling={false} style={{ fontSize: u(6.5), fontWeight: "800", color: "#FFFFFF" }}>
-                    Request a Ride
-                  </Text>
-                </View>
-              </View>
+          {/* Route board (DESIGN.md): a painted sign, like a jeepney signboard. It is NOT a button or a text box: */}
+          {/* no arrows, no box edges, nothing happens when you tap it. TalkBack reads it as one sentence. */}
+          <View style={styles.routeBoard} accessible accessibilityLabel="From your barangay to where you need to go.">
+            <View style={styles.routeLine}>
+              <Text style={styles.routeLabel}>From</Text>
+              <Text style={styles.routePlace}>Your barangay</Text>
             </View>
-
-            {/* SakayNa van, wheels resting on the ground line */}
-            <View style={{ position: "absolute", left: u(150), top: u(GROUND_Y - 119) }}>
-              <MaterialCommunityIcons name="van-passenger" size={u(150)} color={colors.van} />
-              <View
-                style={{
-                  position: "absolute",
-                  left: u(62),
-                  top: u(71),
-                  width: u(26),
-                  height: u(26),
-                  borderRadius: u(13),
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: "#FFFFFF",
-                }}
-              >
-                <BrandLogo variant="secondary" height={u(15)} style={{ tintColor: COLORS.primary }} />
-              </View>
+            <View style={styles.routeJoin} />
+            <View style={styles.routeLine}>
+              <Text style={styles.routeLabel}>To</Text>
+              <Text style={styles.routePlace}>Where you need to go</Text>
             </View>
           </View>
-        </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.heading, { color: colors.heading }]}>Request a Ride now</Text>
+          <View style={styles.vehicleLine}>
+            <MaterialCommunityIcons name="van-passenger" size={30} color={DESIGN_COLORS.hallGreen} />
+            <Text style={styles.vehicleText}>Barangay vehicles, sent by a dispatcher.</Text>
+          </View>
+
+          {/* Pushes the buttons down to the thumb when there is room. */}
+          <View style={styles.spacer} />
 
           <Pressable
-            style={styles.primaryButton}
+            style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
             android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
             onPress={openSheet}
             accessibilityRole="button"
             accessibilityLabel="Get Started. Choose how to log in or create an account."
           >
             <Text style={styles.primaryButtonText}>Get Started</Text>
-            <MaterialCommunityIcons name="arrow-right" size={22} color="#FFFFFF" />
+            <MaterialCommunityIcons name="arrow-right" size={24} color="#FFFFFF" />
           </Pressable>
 
           <Pressable style={styles.textLink} onPress={() => router.push("/login")} accessibilityRole="link">
-            <Text style={[styles.textLinkText, { color: colors.muted }]}>
-              Already have an account? <Text style={[styles.linkStrong, { color: colors.link }]}>Log In</Text>
+            <Text style={styles.textLinkText}>
+              Already have an account? <Text style={styles.linkStrong}>Log In</Text>
             </Text>
           </Pressable>
 
           <Pressable style={styles.termsLink} onPress={openTerms} accessibilityRole="link">
-            <Text style={[styles.termsText, { color: colors.muted }]}>
-              By continuing, you agree to SakayNa&apos;s{" "}
-              <Text style={[styles.termsStrong, { color: colors.link }]}>Terms of Service</Text>
+            <Text style={styles.termsText}>
+              By continuing, you agree to SakayNa&apos;s <Text style={styles.termsStrong}>Terms of Service</Text>
             </Text>
           </Pressable>
         </View>
@@ -436,47 +321,42 @@ function SheetOption({ icon, image, label, colors, onPress }) {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
-  arcTop: { position: "absolute", top: -190, left: -150, width: 300, height: 300, borderRadius: 150 },
-  arcBottom: { position: "absolute", bottom: -130, right: -150, width: 280, height: 280, borderRadius: 140 },
+  page: { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite },
   content: { flexGrow: 1, alignItems: "center", paddingHorizontal: 16 },
-  logoDisc: { alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primary },
-  logoMark: { tintColor: "#FFFFFF" },
-  artArea: { flex: 1, width: "100%", minHeight: 160, alignItems: "center", justifyContent: "center", paddingVertical: 16 },
-  road: { position: "absolute", left: -20, right: -20 },
-  mapCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: {
-    width: "100%",
-    maxWidth: 480,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 12,
-    borderRadius: 24,
-    elevation: 2,
-    shadowColor: "#000000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  heading: { fontSize: 26, lineHeight: 32, fontWeight: "800", textAlign: "center" },
+  column: { flex: 1, width: "100%", maxWidth: 480 },
+  logo: { alignSelf: "center" },
+  purpose: { marginTop: 12, fontSize: 17, lineHeight: 24, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  // Route board: a solid Hall Green sign with white letters (6.85:1). 8 corners, flat.
+  routeBoard: { marginTop: 28, paddingHorizontal: 20, paddingVertical: 20, borderRadius: 8, backgroundColor: DESIGN_COLORS.hallGreen },
+  routeLine: { flexDirection: "row", alignItems: "baseline", gap: 12 },
+  routeLabel: { width: 52, fontSize: 17, lineHeight: 22, fontWeight: "700", color: "#FFFFFF" },
+  // "Board" size from DESIGN.md: the biggest text on the page.
+  routePlace: { flex: 1, fontSize: 28, lineHeight: 34, fontWeight: "800", color: "#FFFFFF" },
+  // Short white line joining From and To, under the place names' left edge (label 52 + gap 12).
+  routeJoin: { width: 2, height: 18, marginLeft: 66, marginVertical: 6, backgroundColor: "#FFFFFF" },
+  vehicleLine: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 16, paddingHorizontal: 4 },
+  vehicleText: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: "600", color: DESIGN_COLORS.ink },
+  spacer: { flex: 1, minHeight: 24 },
   primaryButton: {
     minHeight: 56,
-    marginTop: 20,
-    borderRadius: 16,
+    marginTop: 16,
+    borderRadius: 8,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: COLORS.primary,
+    backgroundColor: DESIGN_COLORS.hallGreen,
   },
-  primaryButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
+  primaryButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  primaryButtonText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
   textLink: { minHeight: 48, marginTop: 8, alignItems: "center", justifyContent: "center" },
-  textLinkText: { fontSize: 15, textAlign: "center" },
-  linkStrong: { fontWeight: "800" },
+  textLinkText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  linkStrong: { fontWeight: "800", color: DESIGN_COLORS.hallGreen },
   termsLink: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
-  termsText: { fontSize: 12.5, lineHeight: 18, textAlign: "center" },
-  termsStrong: { fontWeight: "700", textDecorationLine: "underline" },
+  // 15 = the smallest text size in DESIGN.md (was 12.5).
+  termsText: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  termsStrong: { fontWeight: "700", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
   sheetDismissArea: { flex: 1 },
   sheet: { width: "100%", borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
