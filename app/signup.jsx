@@ -7,7 +7,7 @@ import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInpu
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { auth } from "../firebase";
 import { getAuthErrorMessage } from "../lib/session";
 
@@ -15,8 +15,6 @@ import { getAuthErrorMessage } from "../lib/session";
 // This page only makes the login (email + password) and sends the verification email.
 // It does NOT save a profile. After the email is verified, the person chooses Resident or Driver
 // and fills in that form, the same way Google users do.
-
-const colors = LIGHT_COLORS;
 
 // Firebase does not accept passwords shorter than this.
 const MIN_PASSWORD_LENGTH = 6;
@@ -79,7 +77,7 @@ export default function Signup() {
   return (
     // "padding" on Android too: the app is edge-to-edge, so Android no longer shrinks the screen for the keyboard.
     // This adds the space instead, and the page scrolls so the box being typed in stays visible.
-    <KeyboardAvoidingView behavior="padding" style={[styles.page, { backgroundColor: colors.page }]}>
+    <KeyboardAvoidingView behavior="padding" style={styles.page}>
       {/* Dark clock/battery icons so they stay visible on the white page. */}
       <StatusBar style="dark" />
       <ScrollView
@@ -90,17 +88,17 @@ export default function Signup() {
         <Pressable
           style={styles.backArrow}
           onPress={goBack}
-          android_ripple={{ color: colors.ripple, borderless: true }}
+          android_ripple={{ color: "rgba(11, 122, 75, 0.12)", borderless: true }}
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={8}
         >
-          <MaterialCommunityIcons name="arrow-left" size={28} color={colors.heading} />
+          <MaterialCommunityIcons name="arrow-left" size={28} color={DESIGN_COLORS.ink} />
         </Pressable>
 
         <BrandLogo variant="main" height={40} style={styles.logo} accessibilityLabel="SakayNa" />
 
-        <Text style={[styles.title, { color: colors.heading }]} accessibilityRole="header">
+        <Text style={styles.title} accessibilityRole="header">
           Create Account
         </Text>
 
@@ -110,7 +108,7 @@ export default function Signup() {
             value={email}
             onChangeText={setEmail}
             placeholder="juan@example.com"
-            placeholderTextColor={colors.muted}
+            placeholderTextColor={DESIGN_COLORS.placeholder}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -122,7 +120,7 @@ export default function Signup() {
 
         <Field icon="lock-outline" label="Password">
           <PasswordBox value={password} onChangeText={setPassword} placeholder="Create a password" label="Password" editable={!isSubmitting} />
-          <Text style={[styles.helperText, { color: colors.muted }]}>At least {MIN_PASSWORD_LENGTH} characters.</Text>
+          <Text style={styles.helperText}>At least {MIN_PASSWORD_LENGTH} characters.</Text>
         </Field>
 
         <Field icon="lock-check-outline" label="Confirm Password">
@@ -150,7 +148,7 @@ export default function Signup() {
         </Pressable>
 
         <View style={styles.loginRow}>
-          <Text style={[styles.loginText, { color: colors.heading }]}>Already have an account?</Text>
+          <Text style={styles.loginText}>Already have an account?</Text>
           <Pressable onPress={() => router.replace("/login")} disabled={isSubmitting} accessibilityRole="link" hitSlop={12} style={styles.loginLink}>
             <Text style={[styles.loginText, styles.loginLinkText]}>Log in</Text>
           </Pressable>
@@ -165,8 +163,8 @@ function Field({ icon, label, children }) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
-        <MaterialCommunityIcons name={icon} size={22} color={COLORS.primary} />
-        <Text style={[styles.label, { color: colors.heading }]}>{label}</Text>
+        <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} />
+        <Text style={styles.label}>{label}</Text>
       </View>
       {children}
     </View>
@@ -184,7 +182,7 @@ function PasswordBox({ value, onChangeText, placeholder, label, editable }) {
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.muted}
+        placeholderTextColor={DESIGN_COLORS.placeholder}
         secureTextEntry={!visible}
         autoCapitalize="none"
         autoCorrect={false}
@@ -194,54 +192,54 @@ function PasswordBox({ value, onChangeText, placeholder, label, editable }) {
       <Pressable
         style={styles.eyeButton}
         onPress={() => setVisible(!visible)}
-        android_ripple={{ color: colors.ripple, borderless: true }}
+        android_ripple={{ color: "rgba(11, 122, 75, 0.12)", borderless: true }}
         accessibilityRole="button"
         accessibilityLabel={visible ? `Hide ${label}` : `Show ${label}`}
       >
-        <MaterialCommunityIcons name={visible ? "eye-off-outline" : "eye-outline"} size={24} color={colors.muted} />
+        <MaterialCommunityIcons name={visible ? "eye-off-outline" : "eye-outline"} size={24} color={DESIGN_COLORS.inkMuted} />
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
+  page: { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite },
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   backArrow: { width: 48, height: 48, marginLeft: -8, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   logo: { alignSelf: "center", marginTop: 4, marginBottom: 28 },
-  title: { marginBottom: 8, fontSize: 28, lineHeight: 36, fontWeight: "800" },
+  title: { marginBottom: 8, fontSize: 28, lineHeight: 36, fontWeight: "800", color: DESIGN_COLORS.ink },
   field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  label: { flexShrink: 1, fontSize: 16, fontWeight: "700" },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
   input: {
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: LIGHT_COLORS.outline,
-    borderRadius: 12,
+    borderColor: DESIGN_COLORS.controlOutline,
+    borderRadius: 16,
     fontSize: 17,
-    color: LIGHT_COLORS.heading,
-    backgroundColor: "#FFFFFF",
+    color: DESIGN_COLORS.ink,
+    backgroundColor: DESIGN_COLORS.paperWhite,
   },
   passwordBox: {
     minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: LIGHT_COLORS.outline,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
+    borderColor: DESIGN_COLORS.controlOutline,
+    borderRadius: 16,
+    backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  passwordInput: { flex: 1, minHeight: 56, paddingLeft: 14, paddingRight: 4, fontSize: 17, color: LIGHT_COLORS.heading },
+  passwordInput: { flex: 1, minHeight: 56, paddingLeft: 14, paddingRight: 4, fontSize: 17, color: DESIGN_COLORS.ink },
   eyeButton: { width: 52, height: 52, alignItems: "center", justifyContent: "center", borderRadius: 26 },
-  helperText: { marginTop: 8, fontSize: 16, lineHeight: 23 },
+  helperText: { marginTop: 8, fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.inkMuted },
   spacer: { flexGrow: 1, minHeight: 28 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: COLORS.emergency },
-  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primary },
-  pressed: { opacity: 0.88 },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: DESIGN_COLORS.emergencyRed },
+  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
+  pressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   buttonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
   loginRow: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", columnGap: 6 },
-  loginText: { fontSize: 16, lineHeight: 23 },
+  loginText: { fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.ink },
   loginLink: { minHeight: 48, justifyContent: "center" },
-  loginLinkText: { fontWeight: "800", color: COLORS.primary, textDecorationLine: "underline" },
+  loginLinkText: { fontWeight: "800", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
 });

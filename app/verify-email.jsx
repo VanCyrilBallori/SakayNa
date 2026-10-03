@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { auth } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
@@ -15,8 +15,6 @@ import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from ".
 // Verify Your Email (email sign-up, part 2 of 2).
 // The person opens the link in their email, comes back, and taps "I verified my email".
 // Then they choose Resident or Driver (Choose Role) and fill in that form.
-
-const colors = LIGHT_COLORS;
 const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function VerifyEmail() {
@@ -109,7 +107,7 @@ export default function VerifyEmail() {
   const isBusy = isChecking || isSending;
 
   return (
-    <View style={[styles.page, { backgroundColor: colors.page }]}>
+    <View style={styles.page}>
       {/* Dark clock/battery icons so they stay visible on the white page. */}
       <StatusBar style="dark" />
       <ScrollView
@@ -119,21 +117,21 @@ export default function VerifyEmail() {
         <BrandLogo variant="main" height={40} style={styles.logo} accessibilityLabel="SakayNa" />
 
         <View style={styles.middle}>
-          <View style={[styles.disc, { backgroundColor: colors.ripple }]}>
-            <MaterialCommunityIcons name="email-outline" size={52} color={COLORS.primary} />
+          <View style={styles.disc}>
+            <MaterialCommunityIcons name="email-outline" size={52} color={DESIGN_COLORS.hallGreen} />
           </View>
 
-          <Text style={[styles.title, { color: colors.heading }]} accessibilityRole="header">
+          <Text style={styles.title} accessibilityRole="header">
             Verify Your Email
           </Text>
 
-          <Text style={[styles.bodyText, { color: colors.heading }]}>
+          <Text style={styles.bodyText}>
             We sent a link to{"\n"}
             <Text style={styles.email}>{authUser?.email || "your email"}</Text>.{"\n"}
             Open it, then come back here.
           </Text>
 
-          <Text style={[styles.helperText, { color: colors.muted }]}>Can&apos;t find it? Check your Spam folder.</Text>
+          <Text style={styles.helperText}>Can&apos;t find it? Check your Spam folder.</Text>
         </View>
 
         {errorMessage ? (
@@ -142,14 +140,14 @@ export default function VerifyEmail() {
           </Text>
         ) : null}
         {message ? (
-          <Text style={[styles.successText, { color: COLORS.primary }]} accessibilityLiveRegion="polite">
+          <Text style={styles.successText} accessibilityLiveRegion="polite">
             {message}
           </Text>
         ) : null}
 
         <View style={styles.buttons}>
           <Pressable
-            style={({ pressed }) => [styles.button, styles.filledButton, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.button, styles.filledButton, pressed && styles.filledPressed]}
             onPress={handleVerified}
             disabled={isBusy}
             android_ripple={{ color: "rgba(255, 255, 255, 0.24)" }}
@@ -160,14 +158,14 @@ export default function VerifyEmail() {
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.button, styles.outlinedButton, cooldown > 0 && styles.waitingButton, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.button, styles.outlinedButton, cooldown > 0 && styles.waitingButton, pressed && styles.outlinedPressed]}
             onPress={handleResend}
             disabled={isBusy || cooldown > 0}
-            android_ripple={{ color: colors.ripple }}
+            android_ripple={{ color: "rgba(11, 122, 75, 0.12)" }}
             accessibilityRole="button"
             accessibilityState={{ disabled: cooldown > 0, busy: isSending }}
           >
-            <Text style={[styles.buttonText, { color: cooldown > 0 ? colors.muted : COLORS.primary }]}>
+            <Text style={[styles.buttonText, { color: cooldown > 0 ? DESIGN_COLORS.inkMuted : DESIGN_COLORS.hallGreen }]}>
               {isSending ? "Sending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend email"}
             </Text>
           </Pressable>
@@ -179,7 +177,7 @@ export default function VerifyEmail() {
           ) : null}
 
           <Pressable onPress={startOver} disabled={isBusy} accessibilityRole="link" style={styles.textLink}>
-            <Text style={[styles.helperText, styles.noMargin, { color: colors.heading }]}>
+            <Text style={[styles.helperText, styles.noMargin, styles.inkText]}>
               Wrong email? <Text style={styles.textLinkText}>Start over</Text>
             </Text>
           </Pressable>
@@ -190,26 +188,29 @@ export default function VerifyEmail() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
+  page: { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite },
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   logo: { alignSelf: "center" },
   // Takes the free space between the logo and the buttons and centers the message in it.
   middle: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
-  disc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center" },
-  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center" },
-  bodyText: { marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center" },
+  disc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
+  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center", color: DESIGN_COLORS.ink },
+  bodyText: { marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center", color: DESIGN_COLORS.ink },
   email: { fontWeight: "800" },
-  helperText: { marginTop: 16, maxWidth: 420, fontSize: 16, lineHeight: 23, textAlign: "center" },
+  helperText: { marginTop: 16, maxWidth: 420, fontSize: 16, lineHeight: 23, textAlign: "center", color: DESIGN_COLORS.inkMuted },
   noMargin: { marginTop: 0 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center", color: COLORS.emergency },
-  successText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center" },
+  inkText: { color: DESIGN_COLORS.ink },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center", color: DESIGN_COLORS.emergencyRed },
+  successText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center", color: DESIGN_COLORS.hallGreen },
   buttons: { gap: 12 },
-  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  filledButton: { backgroundColor: COLORS.primary },
-  outlinedButton: { borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: "#FFFFFF" },
-  waitingButton: { borderColor: LIGHT_COLORS.outline },
-  pressed: { opacity: 0.88 },
+  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  filledButton: { backgroundColor: DESIGN_COLORS.hallGreen },
+  outlinedButton: { borderWidth: 1.5, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.paperWhite },
+  waitingButton: { borderColor: DESIGN_COLORS.controlOutline },
+  // Pressed: darker green (filled) or Board Tint behind the words (outlined), like Log In.
+  filledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  outlinedPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   buttonText: { fontSize: 17, fontWeight: "800", textAlign: "center" },
   textLink: { minHeight: 48, alignItems: "center", justifyContent: "center" },
-  textLinkText: { fontSize: 16, lineHeight: 23, fontWeight: "800", color: COLORS.primary, textDecorationLine: "underline" },
+  textLinkText: { fontSize: 16, lineHeight: 23, fontWeight: "800", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
 });
