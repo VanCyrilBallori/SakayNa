@@ -325,8 +325,8 @@ const styles = StyleSheet.create({
   column: { flex: 1, width: "100%", maxWidth: 480 },
   logo: { alignSelf: "center" },
   purpose: { marginTop: 12, fontSize: 17, lineHeight: 24, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  // Route board: a solid Hall Green sign with white letters (6.85:1). 8 corners, flat.
-  routeBoard: { marginTop: 28, paddingHorizontal: 20, paddingVertical: 20, borderRadius: 8, backgroundColor: DESIGN_COLORS.hallGreen },
+  // Route board: a solid Hall Green sign with white letters (5.39:1). 24 corners, flat.
+  routeBoard: { marginTop: 28, paddingHorizontal: 20, paddingVertical: 20, borderRadius: 24, backgroundColor: DESIGN_COLORS.hallGreen },
   routeLine: { flexDirection: "row", alignItems: "baseline", gap: 12 },
   routeLabel: { width: 52, fontSize: 17, lineHeight: 22, fontWeight: "700", color: "#FFFFFF" },
   // "Board" size from DESIGN.md: the biggest text on the page.
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     minHeight: 56,
     marginTop: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
@@ -358,11 +358,11 @@ const styles = StyleSheet.create({
   termsStrong: { fontWeight: "700", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
   sheetDismissArea: { flex: 1 },
-  // DESIGN.md sheet: white, 16 corners on top, a thin Hall Green line along the top instead of a shadow.
+  // DESIGN.md sheet: white, 24 corners on top, a thin Hall Green line along the top instead of a shadow.
   sheet: {
     width: "100%",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderTopWidth: 2,
     borderLeftWidth: 2,
     borderRightWidth: 2,
@@ -377,13 +377,13 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
   sheetSubtitle: { marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   sheetOptions: { gap: 10 },
-  // White buttons with a clear grey edge (4.2:1) and 8 corners.
+  // White buttons with a clear grey edge (4.2:1) and 16 corners.
   option: {
     minHeight: 56,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderWidth: 1.5,
-    borderRadius: 8,
+    borderRadius: 16,
     borderColor: DESIGN_COLORS.controlOutline,
     overflow: "hidden",
     flexDirection: "row",

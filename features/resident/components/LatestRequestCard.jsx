@@ -90,7 +90,7 @@ const LABEL_WIDTH = 52;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   routeJoin: { width: 2, height: 14, marginLeft: LABEL_WIDTH + 8 + 6, marginVertical: 2, backgroundColor: DESIGN_COLORS.hallGreen },
   bottomLine: { marginTop: 10, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted },
   scheduledWhen: { fontWeight: "700", color: DESIGN_COLORS.orangeDeep },
-  messageBox: { padding: 16, borderRadius: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  messageBox: { padding: 16, borderRadius: 24, backgroundColor: DESIGN_COLORS.boardTint },
   messageText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   errorBox: { backgroundColor: DESIGN_COLORS.redTint },
   errorText: { color: DESIGN_COLORS.emergencyRed },

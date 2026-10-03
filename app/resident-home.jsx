@@ -33,9 +33,9 @@ const SEND_TIMEOUT_MS = 10_000;
 const ALERT_HEARTBEAT_MS = 20_000;
 const KEEP_AWAKE_TAG = "emergency-alert";
 
-// The bottom sheet's rounded top overlaps the map by this much (16 = DESIGN.md's sheet corner).
+// The bottom sheet's rounded top overlaps the map by this much (24 = DESIGN.md's card corner).
 // The map moves its zoom buttons and OpenStreetMap credit up by the same amount, so they stay visible.
-const SHEET_OVERLAP = 16;
+const SHEET_OVERLAP = 24;
 
 export default function ResidentHome() {
   const { width } = useWindowDimensions();
@@ -1241,11 +1241,11 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
-  // 48 x 48 so it is easy to tap. Square with 8 corners (DESIGN.md), darker green while pressed.
+  // 48 x 48 so it is easy to tap. 16 corners (DESIGN.md button corner), darker green while pressed.
   menuButton: {
     width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1271,7 +1271,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
@@ -1284,7 +1284,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     marginTop: 10,
     paddingHorizontal: 18,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     alignItems: "center",
@@ -1322,7 +1322,7 @@ const styles = StyleSheet.create({
     minHeight: 76,
     paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: "hidden",
     backgroundColor: DESIGN_COLORS.emergencyRed,
   },
@@ -1338,7 +1338,7 @@ const styles = StyleSheet.create({
     gap: 12,
     minHeight: 60,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: "hidden",
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
@@ -1354,7 +1354,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 24,
     borderWidth: 2,
   },
   statusBannerPending: {
@@ -1391,7 +1391,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     marginTop: 10,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
@@ -1518,7 +1518,7 @@ const styles = StyleSheet.create({
     maxWidth: 440,
     alignItems: "center",
     padding: 24,
-    borderRadius: 8,
+    borderRadius: 24,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
@@ -1529,7 +1529,7 @@ const styles = StyleSheet.create({
     minHeight: 76,
     marginTop: 20,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
@@ -1541,7 +1541,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
     marginTop: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     alignItems: "center",
@@ -1556,7 +1556,7 @@ const styles = StyleSheet.create({
     maxWidth: 440,
     maxHeight: "90%",
     backgroundColor: DESIGN_COLORS.paperWhite,
-    borderRadius: 8,
+    borderRadius: 24,
     padding: 24,
   },
   // Centering lives here, not in callCard: a ScrollView only accepts it through contentContainerStyle.
@@ -1567,7 +1567,7 @@ const styles = StyleSheet.create({
   callSubtitle: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
   notVerifiedText: { marginTop: 8, fontSize: 17, lineHeight: 24, fontWeight: "500", color: DESIGN_COLORS.ink, textAlign: "center" },
   // "Keep this screen open…": the most important line while waiting, on a light strip.
-  keepOpenStrip: { alignSelf: "stretch", marginTop: 12, padding: 12, borderRadius: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  keepOpenStrip: { alignSelf: "stretch", marginTop: 12, padding: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
   keepOpenText: { fontSize: 17, lineHeight: 24, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
   alertLocationText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   alertSpinner: {
@@ -1579,7 +1579,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: DESIGN_COLORS.emergencyRed,
     alignItems: "center",
     justifyContent: "center",
@@ -1597,7 +1597,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: DESIGN_COLORS.hallGreen,
     alignItems: "center",
     justifyContent: "center",
@@ -1610,7 +1610,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: DESIGN_COLORS.emergencyRed,
     backgroundColor: DESIGN_COLORS.paperWhite,
@@ -1624,7 +1624,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
