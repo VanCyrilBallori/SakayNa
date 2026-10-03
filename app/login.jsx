@@ -4,10 +4,11 @@ import { StatusBar } from "expo-status-bar";
 import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useState } from "react";
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
+import WebAuthPanel from "../components/WebAuthPanel";
 import { FIRESTORE_COLLECTIONS } from "../constants/app";
 import { DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
@@ -21,6 +22,9 @@ const resetSuccessMessage = "If an account matches that email address, password 
 export default function Login() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  // Website on a computer: green panel on the left, form on the right. Phones keep the one-column layout.
+  const wide = Platform.OS === "web" && width >= 960;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -88,27 +92,37 @@ export default function Login() {
   return (
     // "padding" on Android too: the app is edge-to-edge, so Android no longer shrinks the screen for the keyboard.
     // This adds the space instead, and the page scrolls so the box being typed in stays visible.
-    <KeyboardAvoidingView behavior="padding" style={styles.page}>
+    <KeyboardAvoidingView behavior="padding" style={[styles.page, wide && styles.widePage]}>
       {/* Dark clock/battery icons so they stay visible on the white page. */}
       <StatusBar style="dark" />
+      {wide ? <WebAuthPanel /> : null}
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}
+        style={wide ? styles.wideRight : undefined}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }, wide && styles.wideContent]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back to the landing page, as before. */}
-        <Pressable
-          style={styles.backArrow}
-          onPress={() => router.replace("/")}
-          android_ripple={{ color: "rgba(11, 122, 75, 0.12)", borderless: true }}
-          accessibilityRole="button"
-          accessibilityLabel="Back to home"
-          hitSlop={8}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={28} color={DESIGN_COLORS.ink} />
-        </Pressable>
+        {/* Back to the landing page, as before. Wide screens show it as a "Back to home" link. */}
+        {wide ? (
+          <Pressable style={({ pressed }) => [styles.homeLink, pressed && styles.linkPressed]} onPress={() => router.replace("/")} accessibilityRole="link">
+            <MaterialCommunityIcons name="arrow-left" size={22} color={DESIGN_COLORS.hallGreen} />
+            <Text style={styles.homeLinkText}>Back to home</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={styles.backArrow}
+            onPress={() => router.replace("/")}
+            android_ripple={{ color: "rgba(11, 122, 75, 0.12)", borderless: true }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to home"
+            hitSlop={8}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={28} color={DESIGN_COLORS.ink} />
+          </Pressable>
+        )}
 
-        <BrandLogo variant="main" height={40} style={styles.logo} accessibilityLabel="SakayNa" />
+        {/* Wide screens skip the logo: the green panel already says "SakayNa". */}
+        {wide ? null : <BrandLogo variant="main" height={40} style={styles.logo} accessibilityLabel="SakayNa" />}
 
         <Text style={styles.title} accessibilityRole="header">
           Log In
@@ -145,8 +159,8 @@ export default function Login() {
           </Pressable>
         </Field>
 
-        {/* Pushes the button to the bottom when the page is short. */}
-        <View style={styles.spacer} />
+        {/* Pushes the button to the bottom when the page is short. Wide screens keep the form together instead. */}
+        <View style={wide ? styles.wideSpacer : styles.spacer} />
 
         {errorMessage ? (
           <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">
@@ -272,4 +286,11 @@ const styles = StyleSheet.create({
   signupText: { fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.ink },
   signupLink: { minHeight: 48, justifyContent: "center" },
   signupLinkText: { fontWeight: "800", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
+  // Wide screens (website on a computer): two halves side by side, form in the middle of the right half.
+  widePage: { flexDirection: "row" },
+  wideRight: { flex: 1 },
+  wideContent: { maxWidth: 440, justifyContent: "center", paddingTop: 32, paddingBottom: 32 },
+  homeLink: { alignSelf: "flex-start", minHeight: 48, flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16, paddingRight: 8, borderRadius: 16 },
+  homeLinkText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  wideSpacer: { height: 28 },
 });
