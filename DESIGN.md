@@ -10,7 +10,7 @@ description: Toledo City transport and emergency dispatch: a barangay-hall notic
 
 **Barangay Hall + Route Board.** SakayNa looks like the plain, named, accountable
 signs residents already trust (the barangay hall notice board, the painted door
-of a city vehicle) and reads like a jeepney route board: one big word, high
+of a barangay vehicle) and reads like a jeepney route board: one big word, high
 contrast, readable at arm's length by a 70-year-old.
 
 - **Scene:** a senior at home in daylight or under a fluorescent tube, phone held
@@ -33,8 +33,8 @@ contrast, readable at arm's length by a 70-year-old.
 - **Status band:** the top of a request card is one solid colored band with one
   status in white Board or Title text ("Waiting for a driver", "Driver on the
   way"). Band color follows the state (see Colors).
-- **City vehicle:** vehicles are named ("City Ambulance 1") and drawn like a city
-  van with a Hall Green stripe, never as a sedan. [Illustration to be made
+- **Barangay vehicle:** vehicles are named ("Barangay Van 1") and drawn like a
+  barangay van with a Hall Green stripe, never as a sedan. [Illustration to be made
   during the build]
 
 **The Named Place Rule.** Every main screen says where and who: the barangay,

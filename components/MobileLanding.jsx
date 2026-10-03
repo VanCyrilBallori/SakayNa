@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
 import { FIRESTORE_COLLECTIONS, TERMS_URL } from "../constants/app";
-import { DESIGN_COLORS, LIGHT_COLORS } from "../constants/design";
+import { DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
@@ -32,12 +32,14 @@ import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
 // Google's official "G" logo, cut from Google's sign-in button files. Do not recolor or stretch it.
 const GOOGLE_G_LOGO = require("../assets/images/google-g.png");
 
+// The dark see-through layer behind the Get Started sheet, and the press ripple on its buttons (Hall Green, faint).
+const BACKDROP_COLOR = "rgba(0, 0, 0, 0.4)";
+const RIPPLE_COLOR = "rgba(59, 98, 85, 0.12)";
+
 export default function MobileLanding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  // The Get Started sheet still uses the older LIGHT_COLORS (shared with other screens) until it is redesigned too.
-  const colors = LIGHT_COLORS;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
 
@@ -238,7 +240,7 @@ export default function MobileLanding() {
         onRequestClose={closeSheet}
       >
         <View style={styles.sheetBackdrop}>
-          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.backdrop, opacity: backdropOpacity }]} pointerEvents="none" />
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: BACKDROP_COLOR, opacity: backdropOpacity }]} pointerEvents="none" />
           <Pressable
             style={styles.sheetDismissArea}
             onPress={closeSheet}
@@ -247,18 +249,16 @@ export default function MobileLanding() {
           />
 
           <Animated.View
-            style={[styles.sheet, { height: sheetHeight, backgroundColor: colors.card, transform: [{ translateY: dragY }] }]}
+            style={[styles.sheet, { height: sheetHeight, transform: [{ translateY: dragY }] }]}
           >
             {/* Drag area: the finger grabs the sheet here. It is kept out of the scroll list below so they don't fight. */}
             <View style={styles.sheetGrabArea} {...sheetDrag.panHandlers}>
-              <View style={[styles.sheetHandle, { backgroundColor: colors.handle }]} />
+              <View style={styles.sheetHandle} />
 
-              <Text style={[styles.sheetTitle, { color: colors.heading }]} accessibilityRole="header">
-                Let&apos;s Continue with
+              <Text style={styles.sheetTitle} accessibilityRole="header">
+                Log in or sign up
               </Text>
-              <Text style={[styles.sheetSubtitle, { color: colors.muted }]}>
-                Select an Option to Log in or Create an Account
-              </Text>
+              <Text style={styles.sheetSubtitle}>Choose how you want to continue.</Text>
             </View>
 
             {/* Scrolls when the buttons don't fit in half the screen (for example with large text). */}
@@ -272,22 +272,21 @@ export default function MobileLanding() {
                 <SheetOption
                   image={GOOGLE_G_LOGO}
                   label={googleBusy ? "Signing in..." : "Continue with Google"}
-                  colors={colors}
                   onPress={signInWithGoogle}
                 />
 
                 <View style={styles.orRow}>
-                  <View style={[styles.orLine, { backgroundColor: colors.line }]} />
-                  <Text style={[styles.orText, { color: colors.muted }]}>or</Text>
-                  <View style={[styles.orLine, { backgroundColor: colors.line }]} />
+                  <View style={styles.orLine} />
+                  <Text style={styles.orText}>or</Text>
+                  <View style={styles.orLine} />
                 </View>
 
-                <SheetOption icon="email-outline" label="Sign up with Email" colors={colors} onPress={openEmailSignup} />
+                <SheetOption icon="email-outline" label="Sign up with Email" onPress={openEmailSignup} />
               </View>
 
               <Pressable style={styles.emailLink} onPress={openEmailLogin} accessibilityRole="link">
-                <Text style={[styles.emailLinkText, { color: colors.muted }]}>
-                  Already have an account? <Text style={[styles.linkStrong, { color: colors.link }]}>Log in with email</Text>
+                <Text style={styles.emailLinkText}>
+                  Already have an account? <Text style={styles.linkStrong}>Log in with email</Text>
                 </Text>
               </Pressable>
             </ScrollView>
@@ -300,22 +299,22 @@ export default function MobileLanding() {
 
 // One row button in the sheet.
 // "image" shows a picture (like Google's colored G) instead of a one-color icon.
-function SheetOption({ icon, image, label, colors, onPress }) {
+function SheetOption({ icon, image, label, onPress }) {
   return (
     <Pressable
-      style={[styles.option, { borderColor: colors.outline }]}
+      style={styles.option}
       onPress={onPress}
-      android_ripple={{ color: colors.ripple }}
+      android_ripple={{ color: RIPPLE_COLOR }}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
       {image ? (
         <Image source={image} style={styles.optionImage} accessibilityIgnoresInvertColors />
       ) : (
-        <MaterialCommunityIcons name={icon} size={26} color={colors.heading} />
+        <MaterialCommunityIcons name={icon} size={26} color={DESIGN_COLORS.ink} />
       )}
-      <Text style={[styles.optionText, { color: colors.heading }]}>{label}</Text>
-      <MaterialCommunityIcons name="chevron-right" size={24} color={colors.muted} />
+      <Text style={styles.optionText}>{label}</Text>
+      <MaterialCommunityIcons name="chevron-right" size={24} color={DESIGN_COLORS.inkMuted} />
     </Pressable>
   );
 }
@@ -359,30 +358,44 @@ const styles = StyleSheet.create({
   termsStrong: { fontWeight: "700", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
   sheetDismissArea: { flex: 1 },
-  sheet: { width: "100%", borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
+  // DESIGN.md sheet: white, 16 corners on top, a thin Hall Green line along the top instead of a shadow.
+  sheet: {
+    width: "100%",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderColor: DESIGN_COLORS.hallGreen,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+    overflow: "hidden",
+  },
   sheetGrabArea: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 },
   sheetContent: { paddingHorizontal: 24 },
-  sheetHandle: { alignSelf: "center", width: 44, height: 5, borderRadius: 3, marginBottom: 16 },
-  sheetTitle: { fontSize: 24, lineHeight: 30, fontWeight: "800", textAlign: "center" },
-  sheetSubtitle: { marginTop: 6, fontSize: 15, lineHeight: 21, textAlign: "center" },
+  // Dark enough to see (4.2:1). Square ends: DESIGN.md has no pill shapes.
+  sheetHandle: { alignSelf: "center", width: 48, height: 5, marginBottom: 16, backgroundColor: DESIGN_COLORS.controlOutline },
+  sheetTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  sheetSubtitle: { marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   sheetOptions: { gap: 10 },
+  // White buttons with a clear grey edge (4.2:1) and 8 corners.
   option: {
-    minHeight: 54,
+    minHeight: 56,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderWidth: 1,
-    borderRadius: 20,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    borderColor: DESIGN_COLORS.controlOutline,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
   },
-  optionText: { flex: 1, fontSize: 17, fontWeight: "700" },
+  optionText: { flex: 1, fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
   // Same space as the 26-wide icons, so all labels line up. The G itself is 24 x 24.
   optionImage: { width: 24, height: 24, marginHorizontal: 1 },
   orRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  orLine: { flex: 1, height: 1 },
-  orText: { fontSize: 15, fontWeight: "600" },
+  orLine: { flex: 1, height: 1, backgroundColor: DESIGN_COLORS.rule },
+  orText: { fontSize: 15, fontWeight: "600", color: DESIGN_COLORS.inkMuted },
   emailLink: { minHeight: 48, marginTop: 4, alignItems: "center", justifyContent: "center" },
-  emailLinkText: { fontSize: 15, textAlign: "center" },
+  emailLinkText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
 });

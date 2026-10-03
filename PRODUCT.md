@@ -10,17 +10,17 @@ Android-first installed app. iOS is configured in `app.json` and must keep worki
 
 ## Users
 
-**Primary: residents of Toledo City, Cebu, who need transport and have no easy way to get a vehicle** — especially senior citizens, persons with disabilities, pregnant residents, children, and medical or emergency cases. They are at home or somewhere in their barangay, often on a basic Android phone, and need a city or barangay vehicle sent to them. In an emergency they need to reach a dispatcher immediately. Every other role exists to serve them.
+**Primary: residents of Toledo City, Cebu, who need transport and have no easy way to get a vehicle** — especially senior citizens, persons with disabilities, pregnant residents, children, and medical or emergency cases. They are at home or somewhere in their barangay, often on a basic Android phone, and need a barangay vehicle sent to them. In an emergency they need to reach a dispatcher immediately. Every other role exists to serve them.
 
 Operational roles, all serving the resident:
 
 - **Dispatcher** — city/barangay staff at a station. Answers in-app emergency calls, assigns pending requests to a driver and a vehicle, watches driver availability on a map.
-- **Driver** — operates a city/barangay vehicle. Runs a mission through Accept → En Route → Arrived → Picked Up → Completed, completes a pre-trip vehicle checklist, and posts availability windows.
+- **Driver** — operates a barangay vehicle. Runs a mission through Accept → En Route → Arrived → Picked Up → Completed, completes a pre-trip vehicle checklist, and posts availability windows.
 - **Admin** — oversight. Each Admin belongs to one barangay. Verifies the residents and driver applications of their own barangay, manages accounts and the vehicle fleet, monitors unanswered emergency calls, reads reports and the activity log.
 
 ## Product Purpose
 
-SakayNa coordinates transport for Toledo City residents using city and barangay vehicles (ambulances and vans). A resident requests a ride (now or scheduled) or sends an emergency alert from their phone; a human dispatcher assigns a real vehicle and driver; the whole trip is tracked from request to completion.
+SakayNa coordinates transport for Toledo City residents using barangay vehicles (vans, and ambulances where a barangay has one). A resident requests a ride (now or scheduled) or sends an emergency alert from their phone; a human dispatcher assigns a real vehicle and driver; the whole trip is tracked from request to completion.
 
 It exists because residents who most need a vehicle are the least able to get one on their own.
 
@@ -29,12 +29,12 @@ It exists because residents who most need a vehicle are the least able to get on
 
 ## Positioning
 
-A **public-service dispatch system, not a ride-hailing marketplace.** There are no fares, no payments, no surge pricing, and no independent gig drivers anywhere in the product — vehicles are city/barangay assets driven by drivers an Admin has vetted, and a human dispatcher assigns every trip. A commercial ride-hailing product could not truthfully offer an in-app emergency call answered by a city dispatcher, accountable to the LGU, serving residents regardless of ability to pay.
+A **public-service dispatch system, not a ride-hailing marketplace.** There are no fares, no payments, no surge pricing, and no independent gig drivers anywhere in the product — vehicles are barangay assets driven by drivers an Admin has vetted, and a human dispatcher assigns every trip. A commercial ride-hailing product could not truthfully offer an in-app emergency call answered by a city dispatcher, accountable to the LGU, serving residents regardless of ability to pay.
 
 ## Operating Context
 
 - **Place:** Toledo City, Cebu, Philippines. Addresses are barangay-based; the app carries the official Toledo barangay list (`lib/barangays.js`). Dates use the `en-PH` locale.
-- **Vehicles:** city/barangay vehicles only (e.g. "City Ambulance 1", type Ambulance), added by an Admin. Drivers do not register vehicles.
+- **Vehicles:** barangay vehicles only (owned by the barangay, not the city; not every barangay has an ambulance), added and named by an Admin (e.g. "Barangay Van 1", type Van). Drivers do not register vehicles.
 - **Transport requests:** one form. The resident picks what the ride is for (Medical / Health, Community / Personal Trip, or Other), when (as soon as possible, or scheduled 1 hour to 7 days ahead), who is riding (themselves or someone else), how many people (1–6), pickup, destination, and help needed (senior citizen, PWD / wheelchair user, pregnant, child, needs help getting in the vehicle, other). Priority is set automatically: scheduled → Planned, Medical / Health as soon as possible → Urgent, everything else → Non-Urgent. Older requests may still show the old types ("Emergency Request", "Community Transport Request") and the Emergency priority.
 - **Emergency alert flow:** emergencies do not use the request form. The resident taps the red Emergency button → an alert rings at the dispatcher station → a dispatcher answers or declines. The Admin console flags any alert still ringing after 30 seconds.
 - **Resident onboarding:** sign up (email or Google) → proof-of-residency photo → account is Pending → the Admin of the same barangay approves (Active) or rejects with a reason. Pending and Rejected residents can log in but cannot send emergency alerts or transport requests.
