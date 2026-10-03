@@ -216,6 +216,11 @@ export default function DispatcherHome() {
   const [activeAssignments, setActiveAssignments] = useState([]);
   const [incomingCall, setIncomingCall] = useState(null);
   const [ringingCalls, setRingingCalls] = useState([]);
+  // Alerts this dispatcher answered that are still going ("Active emergency" cards).
+  const [activeCalls, setActiveCalls] = useState([]);
+  // The alert whose "End this emergency?" question is open (null = closed), and its error message.
+  const [endingCall, setEndingCall] = useState(null);
+  const [endError, setEndError] = useState("");
   const [now, setNow] = useState(() => Date.now());
   // For each ringing alert: its last lastActiveAt value, and when THIS device saw it change.
   // Using only this device's own clock means a wrong clock on any phone or PC can't hide a live alert.
@@ -531,6 +536,21 @@ export default function DispatcherHome() {
     return unsubscribe;
   }, [authUser?.uid]);
 
+  // Answered alerts stay on screen until they end: the resident taps Done, or this dispatcher taps "End emergency".
+  // That way the phone number and location are still at hand after the "Incoming Emergency Call" pop-up closes.
+  useEffect(() => {
+    if (!authUser?.uid) return undefined;
+
+    const activeQuery = query(collection(db, "callSessions"), where("dispatcherId", "==", authUser.uid), where("status", "==", "connected"));
+    const unsubscribe = onSnapshot(
+      activeQuery,
+      (snapshot) => setActiveCalls(snapshot.docs.map((callDoc) => ({ id: callDoc.id, ...callDoc.data() }))),
+      (error) => console.log("Active emergency listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, [authUser?.uid]);
+
   // A crashed app sends no more updates, so nothing would trigger a re-check. This clock does.
   useEffect(() => {
     const intervalId = setInterval(() => setNow(Date.now()), STUCK_CHECK_INTERVAL_MS);
@@ -615,6 +635,23 @@ export default function DispatcherHome() {
     }
   };
 
+  // "End emergency": marks the alert "ended", so its card closes.
+  // If the resident's alert screen is still open, it shows "Alert closed".
+  const endEmergency = async () => {
+    if (!endingCall) return;
+
+    try {
+      await updateDoc(doc(db, "callSessions", endingCall.id), {
+        status: "ended",
+        updatedAt: serverTimestamp(),
+      });
+      setEndingCall(null);
+    } catch (error) {
+      console.log("End emergency failed:", error);
+      setEndError("The emergency could not be ended. Check the internet connection and try again.");
+    }
+  };
+
   const declineIncomingCall = async () => {
     if (!incomingCall) {
       return;
@@ -644,6 +681,26 @@ export default function DispatcherHome() {
         }} />
 
         <View style={[styles.container, compact && styles.containerCompact]}>
+          {/* One card per answered emergency that is still going, above everything else. */}
+          {activeCalls.map((call) => (
+            <View key={call.id} style={styles.activeCard}>
+              <Text style={styles.activeTitle} accessibilityRole="header">
+                Active emergency · {call.residentName || "Resident"}
+              </Text>
+              <EmergencyCallerDetails call={call} />
+              <Pressable
+                style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
+                onPress={() => {
+                  setEndError("");
+                  setEndingCall(call);
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.outlineButtonText}>End emergency</Text>
+              </Pressable>
+            </View>
+          ))}
+
           <View style={styles.sectionLabels}>
             <View style={styles.sectionLabelLeft}>
               <Text style={styles.sectionLabelText}>Pending Requests</Text>
@@ -874,6 +931,34 @@ export default function DispatcherHome() {
         </View>
       </Modal>
 
+      {/* An in-app question instead of Alert.alert: Alert.alert does nothing on the website, where dispatchers work. */}
+      <Modal visible={Boolean(endingCall)} transparent animationType="fade" onRequestClose={() => setEndingCall(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.endCard}>
+            <Text style={styles.endTitle}>End this emergency?</Text>
+            <Text style={styles.endText}>
+              The card for {endingCall?.residentName || "this resident"} will close. If their alert screen is still open, it will say
+              &quot;Alert closed&quot;.
+            </Text>
+            {endError ? <Text style={styles.endError}>{endError}</Text> : null}
+            <Pressable
+              style={({ pressed }) => [styles.endConfirmButton, pressed && styles.endConfirmButtonPressed]}
+              onPress={endEmergency}
+              accessibilityRole="button"
+            >
+              <Text style={styles.endConfirmText}>End emergency</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
+              onPress={() => setEndingCall(null)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.outlineButtonText}>Keep it open</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={Boolean(incomingCall)} transparent animationType="fade" onRequestClose={declineIncomingCall}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, compact && styles.modalCardCompact]}>
@@ -1056,6 +1141,47 @@ const styles = StyleSheet.create({
   },
   callerMapButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   callerMapText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  // "Active emergency" card: flat sign with a red edge (it is an emergency), at most 640 wide on a computer.
+  activeCard: {
+    width: "100%",
+    maxWidth: 640,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.emergencyRed,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  activeTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // White button with a clear grey edge ("End emergency" on the card, "Keep it open" in the question).
+  outlineButton: {
+    minHeight: 52,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  outlineButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  outlineButtonText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  // "End this emergency?" question.
+  endCard: { width: "100%", maxWidth: 440, padding: 24, borderRadius: 8, backgroundColor: DESIGN_COLORS.paperWhite },
+  endTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  endText: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  endError: { marginTop: 8, fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.emergencyRed },
+  endConfirmButton: {
+    minHeight: 56,
+    marginTop: 20,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: DESIGN_COLORS.emergencyRed,
+  },
+  endConfirmButtonPressed: { backgroundColor: "#8F1C13" },
+  endConfirmText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
   modalButton: {
     flex: 1,
     minHeight: 54,
