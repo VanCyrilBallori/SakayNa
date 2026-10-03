@@ -930,14 +930,16 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 
 ### Emergency alert
 
-6. **Partly fixed — The Dispatcher cannot see the resident's phone number or
-   location in the alert pop-up.** The confirm pop-up says "Dispatchers will
-   see your name and phone number" (`app/resident-home.jsx:675`), and the
-   accepted state says they "can see where you are". The dispatcher's alert
-   pop-up still only shows `residentName` (`app/dispatcher-home.jsx:823`).
-   The saved `residentPhone` and `location` are not displayed there. (For
-   **transport requests**, the dispatcher now sees the phone numbers and the
-   exact pin, section 5.1.)
+6. **Fixed (2026-10-03) — The Dispatcher sees the resident's phone number and
+   location.** The dispatcher's "Incoming Emergency Call" pop-up shows the
+   resident's phone (big, tap to call), their barangay or GPS address, and an
+   "Open location in Maps" button once the location arrives
+   (`EmergencyCallerDetails` in `app/dispatcher-home.jsx`). After Answer, an
+   "Active emergency" card at the top of the dispatcher screen keeps showing
+   the same details until the resident taps Done or the dispatcher taps "End
+   emergency". So the resident's confirm pop-up ("Dispatchers will see your
+   name and phone number") is now true. The accepted state only says "can see
+   where you are" once the location was really sent.
 7. **Still open — The "Dispatcher could not accept" state can never happen.**
    The resident screen checks for `callStatus === "declined"`
    (`app/resident-home.jsx:729`), but the dispatcher's Decline never sets that
