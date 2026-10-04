@@ -704,7 +704,13 @@ export default function DriverHome() {
         </View>
 
         <View style={[styles.container, compact && styles.containerCompact]}>
-          <DriverDutyCard driverId={authUser.uid} driverName={profile?.fullName || displayName} duty={duty} />
+          <DriverDutyCard
+            driverId={authUser.uid}
+            driverName={profile?.fullName || displayName}
+            duty={duty}
+            activeRideStatus={assignedTransfer?.status ?? ""}
+            rideTitle={request?.title || assignedTransfer?.title || ""}
+          />
 
           <View style={styles.mainGrid}>
             <View style={styles.assignmentPanel}>

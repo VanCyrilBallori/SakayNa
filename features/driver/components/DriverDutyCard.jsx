@@ -23,7 +23,9 @@ const BREAK_ICONS = { Meal: "silverware-fork-knife", Rest: "coffee-outline", Per
 
 // The driver's duty status card at the top of the driver home (driver-duty-plan.md, DESIGN.md look).
 // "duty" comes from the driver's own users/{uid} profile: { dutyStatus, dutyStatusSince, shiftId, breakType, breakNote }.
-export default function DriverDutyCard({ driverId, driverName, duty }) {
+// activeRideStatus = the status of the driver's current ride ("Assigned" or "In Progress"), or "" if none.
+// rideTitle = what the current ride is for (shown on the "On a run" card).
+export default function DriverDutyCard({ driverId, driverName, duty, activeRideStatus = "", rideTitle = "" }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const dutyStatus = duty.dutyStatus;
@@ -157,6 +159,22 @@ export default function DriverDutyCard({ driverId, driverName, duty }) {
             <Text style={styles.punchInText}>{saving ? "Saving..." : "Resume duty"}</Text>
           </Pressable>
         </View>
+      ) : dutyStatus === "On a run" ? (
+        // Set by itself when the driver accepts a ride, back to Available when the ride is completed.
+        // No buttons: the driver can't take a break or punch out during a run.
+        <View style={[styles.card, styles.cardOnRun]}>
+          <View style={styles.statusRow}>
+            <MaterialCommunityIcons name="van-utility" size={30} color={DESIGN_COLORS.paperWhite} />
+            <Text style={[styles.statusWord, styles.whiteText]} accessibilityRole="header">
+              On a run
+            </Text>
+          </View>
+          {rideTitle ? <Text style={[styles.timerText, styles.whiteText]}>{rideTitle}</Text> : null}
+          <Text style={[styles.smallText, styles.whiteText]} accessibilityLabel={`On duty for ${formatDutyDuration(summary.onDutyMs)}`}>
+            On duty for {summary.punchInMs === null ? "--:--:--" : formatTimer(summary.onDutyMs)}
+          </Text>
+          <Text style={[styles.rideWaitingText, styles.whiteText]}>Complete the ride below to be available again.</Text>
+        </View>
       ) : dutyStatus === "Off duty" ? (
         <View style={[styles.card, styles.cardOffDuty]}>
           <View style={styles.statusRow}>
@@ -194,28 +212,37 @@ export default function DriverDutyCard({ driverId, driverName, duty }) {
             {summary.punchInMs === null ? "Dispatch can give you rides." : `Punched in at ${formatManilaTime(summary.punchInMs)} · Dispatch can give you rides.`}
           </Text>
 
-          <Pressable
-            style={({ pressed }) => [styles.mainButton, styles.whiteButton, pressed && styles.whiteButtonPressed, saving && styles.buttonBusy]}
-            onPress={openBreakSheet}
-            disabled={saving}
-            android_ripple={{ color: "rgba(11, 122, 75, 0.12)" }}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: saving }}
-          >
-            <MaterialCommunityIcons name="coffee-outline" size={24} color={DESIGN_COLORS.hallGreen} />
-            <Text style={styles.whiteButtonText}>Start break</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [styles.mainButton, styles.secondButton, styles.outlineOnGreen, pressed && styles.outlineOnGreenPressed, saving && styles.buttonBusy]}
-            onPress={() => setPunchOutOpen(true)}
-            disabled={saving}
-            android_ripple={{ color: "rgba(255, 255, 255, 0.16)" }}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: saving, busy: saving }}
-          >
-            {saving ? <ActivityIndicator color={DESIGN_COLORS.paperWhite} /> : <MaterialCommunityIcons name="logout" size={24} color={DESIGN_COLORS.paperWhite} />}
-            <Text style={styles.outlineOnGreenText}>{saving ? "Saving..." : "Punch out"}</Text>
-          </Pressable>
+          {/* A ride is waiting for you: no break and no punch out until it is answered (or finished). */}
+          {activeRideStatus ? (
+            <Text style={[styles.rideWaitingText, styles.whiteText]}>
+              {activeRideStatus === "Assigned" ? "You have a new ride. Accept or decline it below first." : "Finish your current ride first."}
+            </Text>
+          ) : (
+            <>
+              <Pressable
+                style={({ pressed }) => [styles.mainButton, styles.whiteButton, pressed && styles.whiteButtonPressed, saving && styles.buttonBusy]}
+                onPress={openBreakSheet}
+                disabled={saving}
+                android_ripple={{ color: "rgba(11, 122, 75, 0.12)" }}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: saving }}
+              >
+                <MaterialCommunityIcons name="coffee-outline" size={24} color={DESIGN_COLORS.hallGreen} />
+                <Text style={styles.whiteButtonText}>Start break</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.mainButton, styles.secondButton, styles.outlineOnGreen, pressed && styles.outlineOnGreenPressed, saving && styles.buttonBusy]}
+                onPress={() => setPunchOutOpen(true)}
+                disabled={saving}
+                android_ripple={{ color: "rgba(255, 255, 255, 0.16)" }}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: saving, busy: saving }}
+              >
+                {saving ? <ActivityIndicator color={DESIGN_COLORS.paperWhite} /> : <MaterialCommunityIcons name="logout" size={24} color={DESIGN_COLORS.paperWhite} />}
+                <Text style={styles.outlineOnGreenText}>{saving ? "Saving..." : "Punch out"}</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       )}
 
@@ -364,6 +391,9 @@ const styles = StyleSheet.create({
   cardAvailable: { backgroundColor: DESIGN_COLORS.hallGreen },
   // Orange has dark words (never white).
   cardOnBreak: { backgroundColor: DESIGN_COLORS.sakayOrange },
+  // Same deep green as the "Assigned" / "On the way" bands.
+  cardOnRun: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  rideWaitingText: { marginTop: 16, fontSize: 17, lineHeight: 24, fontWeight: "700" },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   availableDot: { width: 16, height: 16, borderRadius: 999, backgroundColor: DESIGN_COLORS.paperWhite },
   statusWord: { flexShrink: 1, fontSize: 28, lineHeight: 34, fontWeight: "800" },

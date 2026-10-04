@@ -217,8 +217,10 @@ full width and at least 56 tall, a word with every color, no ALL CAPS):
 - **Complete:** if the driver is "On a run", also set "Available" + save a
   "Run end" (Completed) record. If not (a ride accepted before this
   feature), complete as today.
-- **Cancelled by the resident** (`clearCancelledRide`): if "On a run", back
-  to "Available" + "Run end" (Cancelled).
+- **Cancelled by the resident:** not needed. A resident can only cancel
+  while the ride is "Pending" or "Assigned", before Accept
+  (residentRequestService.js), so a run is never cancelled halfway.
+  `clearCancelledRide` is unchanged (found 2026-10-04, Step 4).
 - **Decline:** no change (the driver stays Available).
 
 ### Dispatcher (app/dispatcher-home.jsx)
@@ -292,12 +294,12 @@ None needs a new package or a new development build.
   break → Punch out summary shows the break time.
 
 ### Step 4 — On a run (automatic)
-- Files: driverMissionService.js, DriverDutyCard.jsx.
+- Files: driverMissionService.js, DriverDutyCard.jsx, app/driver-home.jsx.
 - **Test:** punch in → dispatcher assigns → Start break and Punch out are
   hidden ("Answer your ride first") → Accept → "On a run", no buttons →
   Complete → back to Available. Punch out summary says 1 ride completed.
-  Also: resident cancels an accepted ride → driver back to Available.
-  Also: Decline → driver stays Available.
+  Also: Decline → driver stays Available. Also: accept while on break →
+  "Tap Resume duty, then accept this ride."
 
 ### Step 5 — Dispatcher [UI]
 - Files: app/dispatcher-home.jsx, dispatcherAssignmentService.js.

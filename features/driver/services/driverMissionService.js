@@ -1,4 +1,4 @@
-import { doc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { db } from "../../../firebase";
 
@@ -50,11 +50,28 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
 
     // The resident may have cancelled the ride while it was still "Assigned" (Skills/resident.md #1).
     // Then nothing is saved, so Accept or Decline can never undo the cancel.
+    let request = null;
     if (requestRef) {
       const requestSnapshot = await transaction.get(requestRef);
-      if (requestSnapshot.exists() && requestSnapshot.data().status === "Cancelled") {
+      request = requestSnapshot.exists() ? requestSnapshot.data() : null;
+      if (request?.status === "Cancelled") {
         throw new Error("The resident cancelled this ride.");
       }
+    }
+
+    // The driver's duty status (driver-duty-plan.md Step 4): Accept makes the driver "On a run",
+    // Complete makes them "Available" again. Read here, because a transaction reads everything before it writes.
+    const driverRef = doc(db, "users", assignment.driverId);
+    const driverSnapshot = nextStatus === "Accepted" || nextStatus === "Completed" ? await transaction.get(driverRef) : null;
+    const dutyStatus = driverSnapshot?.data()?.dutyStatus ?? "Off duty";
+    const shiftId = driverSnapshot?.data()?.shiftId ?? "";
+
+    if (nextStatus === "Accepted" && dutyStatus !== "Available") {
+      const notReadyMessages = {
+        "On break": "You are on a break. Tap Resume duty, then accept this ride.",
+        "On a run": "Finish your current ride first, then accept this one.",
+      };
+      throw new Error(notReadyMessages[dutyStatus] || "You are off duty. Tap Punch in, then accept this ride.");
     }
 
     const assignmentPatch = { missionStatus: nextStatus, updatedAt: serverTimestamp() };
@@ -105,6 +122,30 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
     transaction.update(assignmentRef, assignmentPatch);
     if (requestRef) {
       transaction.update(requestRef, requestPatch);
+    }
+
+    // Save the duty status change and its time card line together with the ride (firestore.rules checks they match).
+    // A ride accepted before this feature existed has no "On a run": then Complete changes nothing here.
+    const startsRun = nextStatus === "Accepted";
+    const endsRun = nextStatus === "Completed" && dutyStatus === "On a run";
+    if (startsRun || endsRun) {
+      transaction.update(driverRef, {
+        dutyStatus: startsRun ? "On a run" : "Available",
+        dutyStatusSince: serverTimestamp(),
+        availability: startsRun ? "Unavailable" : "Available",
+      });
+      transaction.set(doc(collection(db, "dutyRecords")), {
+        driverId: assignment.driverId,
+        driverName: assignment.driverName || "Driver",
+        type: startsRun ? "Run start" : "Run end",
+        at: serverTimestamp(),
+        shiftId,
+        assignmentId,
+        requestId: assignment.requestId || "",
+        // What the ride was for. The admin DTR counts "Medical / Health" rides apart from the others.
+        purpose: request?.purpose || "",
+        ...(endsRun ? { outcome: "Completed" } : {}),
+      });
     }
   });
 
