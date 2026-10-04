@@ -1,24 +1,29 @@
-SakayNa update: a new ride screen for drivers
+SakayNa update: 3 pages for drivers, and "I can't do this ride"
 
 Hi everyone! There's a new SakayNa app. Please update before your next test.
 
 EVERYONE
-- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/NHmR5E6Rnxl1k2pgSzuLKgWJsgmYfjl-4ePG5q1SKfg.apk
+- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/WXOHuQkKAsOUrHkMjnonpQlfjDyraNhi99yovpILEjA.apk
 - Residents: the old app still works, but please update too.
 
 DRIVERS (important)
-- The old app can't get rides any more. Please use the new app.
+- The driver home now has 3 pages. Use the buttons at the bottom:
+  - Ride: your ride, the green step button, and "Ride steps".
+  - Map: a big map and "Navigate to pickup" (after "Confirm pickup" it
+    changes to "Navigate to destination").
+  - Availability: Punch in, Take a break, Resume duty, Punch out, and
+    "Ride history".
+- When dispatch gives you a ride, the app opens the Ride page by itself
+  and shows an orange dot on "Ride" until you accept.
+- There is no "Decline" any more: dispatch chooses the driver. If you
+  can't take rides, don't punch in, or take a break.
+- Real problem before the pickup (vehicle problem, feeling unwell,
+  family emergency)? Tap "I can't do this ride" and choose a reason.
+  The ride goes back to dispatch right away. If you can't take more
+  rides after that, take a break or punch out.
+- Problem after the rider is on board? Tap "Call dispatch".
+- "Ride history" moved from the profile menu to the Availability page.
 - Tap "Punch in" when you start testing, and "Punch out" when you stop.
-- Taking a break? Tap "Start break", pick Lunch, Rest or Personal, then
-  "Resume duty" when you're back.
-- When you accept a ride, you become "On a run" by yourself. When you
-  complete it, you're "Available" again.
-- New ride screen: the map is on top, then one card with the ride.
-  "Accept ride" works with one tap (no vehicle checklist any more).
-- "Navigate to pickup" opens Google Maps. After "Confirm pickup" it
-  changes to "Navigate to destination".
-- Under the green step button, "Ride steps" shows what you've done
-  and what's next.
 - Keep the app open while you're punched in. If you close it, dispatch
   sees "app closed" and will call you first.
 - No phone with the new app yet? Log in as a driver on the website:
@@ -27,12 +32,14 @@ DRIVERS (important)
 
 DISPATCHERS
 - Refresh the website.
-- Only drivers with a green "Available" badge can be given a ride.
-  Grey cards say why not (On a break, On a run, Off duty).
+- When a driver can't do a ride, an orange "Needs a new driver" banner
+  shows at the top with the reason, and the ride is first in the list.
+  Assign it to another driver. The driver's card also says
+  "Reported: can't do a ride".
 
 ADMINS
-- New menu item "Duty Records": each driver's time card for a day
-  (punch in, punch out, break time, time on duty, rides completed).
+- Duty Records now also lists the day's "Inability reports" (who
+  couldn't do a ride, when, and why).
 
 Emergency alerts work the same as before.
 Questions or problems? Message me.
