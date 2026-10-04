@@ -318,18 +318,23 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
                 accessibilityLabel="Note, optional"
               />
 
-              <Pressable
-                style={({ pressed }) => [styles.mainButton, styles.confirmButton, pressed && styles.punchInPressed, !chosenBreakType && styles.buttonDisabled]}
-                onPress={handleStartBreak}
-                disabled={!chosenBreakType}
-                android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !chosenBreakType }}
-              >
-                <Text style={[styles.confirmButtonText, !chosenBreakType && styles.buttonDisabledText]}>
-                  {chosenBreakType ? `Start ${chosenBreakType.toLowerCase()} break` : "Choose a kind of break"}
-                </Text>
-              </Pressable>
+              {/* Two different things, not one button that changes color: on Android the button's */}
+              {/* background could stay light grey while its text turned white, so the words "disappeared". */}
+              {chosenBreakType ? (
+                <Pressable
+                  style={({ pressed }) => [styles.mainButton, styles.confirmButton, pressed && styles.punchInPressed]}
+                  onPress={handleStartBreak}
+                  android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.confirmButtonText}>Start {chosenBreakType.toLowerCase()} break</Text>
+                </Pressable>
+              ) : (
+                // Not a button yet: just a grey box that says what to do first.
+                <View style={[styles.mainButton, styles.confirmButton, styles.buttonDisabled]} accessibilityRole="button" accessibilityState={{ disabled: true }}>
+                  <Text style={[styles.confirmButtonText, styles.buttonDisabledText]}>Choose a kind of break</Text>
+                </View>
+              )}
               <Pressable style={({ pressed }) => [styles.cancelButton, pressed && styles.cancelPressed]} onPress={closeBreakSheet} accessibilityRole="button">
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
