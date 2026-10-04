@@ -14,12 +14,14 @@ import { endBreak, punchIn, punchOut, startBreak } from "../services/driverDutyS
 const SLOW_SAVE_MS = 8000;
 
 // The three kinds of break (the same list is checked in firestore.rules).
+// "Lunch" replaced "Meal" (Oct 2026). Old records keep "Meal".
 const BREAK_TYPES = [
-  { value: "Meal", label: "Meal", icon: "silverware-fork-knife" },
+  { value: "Lunch", label: "Lunch", icon: "silverware-fork-knife" },
   { value: "Rest", label: "Rest", icon: "coffee-outline" },
   { value: "Personal", label: "Personal", icon: "account-outline" },
 ];
-const BREAK_ICONS = { Meal: "silverware-fork-knife", Rest: "coffee-outline", Personal: "account-outline" };
+// "Meal" is still here for a driver who started a Meal break on the older app.
+const BREAK_ICONS = { Lunch: "silverware-fork-knife", Meal: "silverware-fork-knife", Rest: "coffee-outline", Personal: "account-outline" };
 
 // The driver's duty status card at the top of the driver home (driver-duty-plan.md, DESIGN.md look).
 // "duty" comes from the driver's own users/{uid} profile: { dutyStatus, dutyStatusSince, shiftId, breakType, breakNote }.

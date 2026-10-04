@@ -80,7 +80,7 @@ driver's screen right now".
 | `dutyStatusSince` | Server time of the last change (for "time in this status") |
 | `shiftId` | Id of this shift's "Punch in" record (ties a shift's records together) |
 | `shiftStartedAt` | Server time of punch in |
-| `breakType` | "Meal", "Rest" or "Personal" (only while on break) |
+| `breakType` | "Lunch", "Rest" or "Personal" (only while on break). "Meal" until Oct 4, 2026; old records keep it |
 | `breakNote` | Optional, up to 100 letters (only while on break) |
 | `availability` | Old field, copies the duty status (see above) |
 | `presence` | Old field, still means "app is open" (see above) |
@@ -135,7 +135,7 @@ function allowedDutyChange(before, after) {
   changes, the driver must be an Approved Driver, the change must be in the
   list above (missing `dutyStatus` counts as "Off duty"), and
   `dutyStatusSince` must equal `request.time` (Firestore's clock). Going on
-  break also needs a break type in ["Meal", "Rest", "Personal"] and a note
+  break also needs a break type in ["Lunch", "Meal", "Rest", "Personal"] and a note
   of 100 letters or fewer. Saves that don't touch duty fields (Settings,
   the old online/offline code) are checked exactly as today.
 - **users/{uid}, new profile (sign-up):** may not contain duty fields.
@@ -471,3 +471,14 @@ everything residents see.
 2. Yes: remove the work-hours pop-up from the driver home and the
    Schedule/Tags lines from the dispatcher card. Keep its data and code.
 3. Added to Step 5: "Available · app closed" warning, using `presence`.
+
+## Groupmates' feedback (2026-10-04, after the demo-ready-8 release)
+1. "Take a break" button text disappeared after choosing a type
+   (Android): fixed, the grey box and the green button are now two
+   separate things.
+2. Header too thick: one thin row (logo left, profile right).
+3. "Meal" renamed "Lunch". Rules allow "Lunch" and still "Meal" (older
+   APK, old records). Dispatcher badge shows what was saved; the admin
+   DTR shows only break time, so it needed no change.
+4. Break card too orange: Peach Tint card with an orange edge and dark
+   text (preview first).

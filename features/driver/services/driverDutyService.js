@@ -33,7 +33,7 @@ export const punchIn = async ({ driverId, driverName }) => {
   await batch.commit();
 };
 
-// Available -> On break. breakType is "Meal", "Rest" or "Personal"; the note is optional (100 letters at most).
+// Available -> On break. breakType is "Lunch", "Rest" or "Personal"; the note is optional (100 letters at most).
 export const startBreak = async ({ driverId, driverName, shiftId, breakType, breakNote }) => {
   const recordRef = doc(collection(db, "dutyRecords"));
   const batch = writeBatch(db);
