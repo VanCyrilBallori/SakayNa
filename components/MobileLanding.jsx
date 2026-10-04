@@ -36,13 +36,8 @@ const GOOGLE_G_LOGO = require("../assets/images/google-g.png");
 const BACKDROP_COLOR = "rgba(0, 0, 0, 0.4)";
 const RIPPLE_COLOR = "rgba(11, 122, 75, 0.12)";
 
-// Colors used only inside the phone + van drawing: a pale green map and a faint ground line.
-const ART_COLORS = {
-  map: "#DCEFE5",
-  ground: "rgba(20, 33, 28, 0.10)",
-};
-// Where the ground line is in the 320 x 230 drawing.
-const GROUND_Y = 200;
+// The pale green of the map drawing. Used only in the drawing.
+const MAP_COLOR = "#DCEFE5";
 
 export default function MobileLanding() {
   const router = useRouter();
@@ -180,7 +175,7 @@ export default function MobileLanding() {
       {/* Dark clock/battery icons so they stay visible on the white page, even when the phone is in dark mode. */}
       <StatusBar style="dark" />
 
-      {/* The demo-ready-5 landing page (phone + van drawing), in the DESIGN.md colors. Scrolls on small phones and with big text. */}
+      {/* The landing page (logo, map drawing, card), in the DESIGN.md colors. Scrolls on small phones and with big text. */}
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
@@ -195,112 +190,32 @@ export default function MobileLanding() {
           <BrandLogo variant="secondary" height={logoSize * 0.56} style={styles.logoMark} />
         </View>
 
-        {/* The drawing is one picture: TalkBack reads only its label, and nothing happens when you tap it. */}
-        {/* Its tiny words keep a fixed size (allowFontScaling={false}) so they stay inside the drawn phone. */}
+        {/* The map drawing is one picture: TalkBack reads only its label, and nothing happens when you tap it. */}
+        {/* "Toledo City" keeps a fixed size (allowFontScaling={false}) so it stays inside the drawn map. */}
         <View style={styles.artArea}>
           <View
-            style={{ width: u(320), height: u(230) }}
+            style={[styles.map, { width: u(320), height: u(230) }]}
             accessible
             accessibilityRole="image"
-            accessibilityLabel="A phone requesting a SakayNa van in Toledo City"
+            accessibilityLabel="Map of Toledo City"
           >
-            {/* Ground line under the phone and the van */}
-            <View
-              style={{
-                position: "absolute",
-                left: u(20),
-                top: u(GROUND_Y - 6),
-                width: u(290),
-                height: u(14),
-                borderRadius: u(7),
-                backgroundColor: ART_COLORS.ground,
-              }}
-            />
+            {/* Two white roads crossing the map */}
+            <View style={[styles.road, { top: u(78), height: u(8), transform: [{ rotate: "-24deg" }] }]} />
+            <View style={[styles.road, { top: u(152), height: u(8), transform: [{ rotate: "18deg" }] }]} />
 
-            {/* Phone showing a mini map and a pickup pin */}
-            <View
-              style={{
-                position: "absolute",
-                left: u(28),
-                top: u(20),
-                width: u(100),
-                height: u(184),
-                padding: u(5),
-                borderRadius: u(18),
-                backgroundColor: DESIGN_COLORS.ink,
-              }}
-            >
-              <View style={{ flex: 1, borderRadius: u(14), overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite }}>
-                <View style={{ height: u(18), justifyContent: "center", paddingHorizontal: u(7) }}>
-                  <BrandLogo variant="secondary" height={u(10)} style={{ tintColor: DESIGN_COLORS.hallGreen }} />
-                </View>
-
-                <View style={{ height: u(88), marginHorizontal: u(5), borderRadius: u(8), overflow: "hidden", backgroundColor: ART_COLORS.map }}>
-                  <View style={[styles.road, { top: u(30), height: u(3), transform: [{ rotate: "-24deg" }] }]} />
-                  <View style={[styles.road, { top: u(58), height: u(3), transform: [{ rotate: "18deg" }] }]} />
-                  <View style={styles.mapCenter}>
-                    <MaterialCommunityIcons name="map-marker" size={u(26)} color={DESIGN_COLORS.sakayOrange} />
-                    <Text allowFontScaling={false} style={{ fontSize: u(7), fontWeight: "700", color: DESIGN_COLORS.ink }}>
-                      Toledo City
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ marginHorizontal: u(7), marginTop: u(7) }}>
-                  <Text allowFontScaling={false} style={{ fontSize: u(6), color: DESIGN_COLORS.inkMuted }}>
-                    Pickup
-                  </Text>
-                  <Text allowFontScaling={false} style={{ fontSize: u(7.5), fontWeight: "700", color: DESIGN_COLORS.ink }}>
-                    Poblacion
-                  </Text>
-                </View>
-
-                {/* A picture of a button, not a real one: pale with grey words. */}
-                {/* Only real buttons are solid green with white words, so Get Started is the one thing that looks tappable. */}
-                <View
-                  style={{
-                    height: u(16),
-                    marginHorizontal: u(5),
-                    marginTop: u(8),
-                    borderRadius: u(8),
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: DESIGN_COLORS.boardTint,
-                  }}
-                >
-                  <Text allowFontScaling={false} style={{ fontSize: u(6.5), fontWeight: "800", color: DESIGN_COLORS.inkMuted }}>
-                    Request a Ride
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Barangay van, wheels resting on the ground line */}
-            <View style={{ position: "absolute", left: u(150), top: u(GROUND_Y - 119) }}>
-              <MaterialCommunityIcons name="van-passenger" size={u(150)} color={DESIGN_COLORS.hallGreen} />
-              <View
-                style={{
-                  position: "absolute",
-                  left: u(62),
-                  top: u(71),
-                  width: u(26),
-                  height: u(26),
-                  borderRadius: u(13),
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: DESIGN_COLORS.paperWhite,
-                }}
-              >
-                <BrandLogo variant="secondary" height={u(15)} style={{ tintColor: DESIGN_COLORS.hallGreen }} />
-              </View>
+            {/* Orange pin on Toledo City */}
+            <View style={styles.mapCenter}>
+              <MaterialCommunityIcons name="map-marker" size={u(72)} color={DESIGN_COLORS.sakayOrange} />
+              <Text allowFontScaling={false} style={{ fontSize: u(20), fontWeight: "700", color: DESIGN_COLORS.ink }}>
+                Toledo City
+              </Text>
             </View>
           </View>
         </View>
 
         {/* Flat card (no shadow, DESIGN.md "Flat Board Rule") with the approved words and the buttons in thumb reach. */}
         <View style={styles.card}>
-          <Text style={styles.heading}>Transport and emergency help for Toledo City</Text>
-          <Text style={styles.subheading}>Barangay vehicles, sent by a dispatcher.</Text>
+          <Text style={styles.heading}>Request a Ride now</Text>
 
           <Pressable
             style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
@@ -426,7 +341,10 @@ const styles = StyleSheet.create({
   logoMark: { tintColor: "#FFFFFF" },
   // Takes the free space between the logo and the card, with the drawing in the middle.
   artArea: { flex: 1, width: "100%", minHeight: 160, alignItems: "center", justifyContent: "center", paddingVertical: 16 },
-  road: { position: "absolute", left: -20, right: -20, backgroundColor: DESIGN_COLORS.paperWhite },
+  // Pale green map with 24 corners (DESIGN.md card corner). overflow "hidden" cuts the roads at the map's edge.
+  map: { borderRadius: 24, overflow: "hidden", backgroundColor: MAP_COLOR },
+  // Wider than the map, so the tilted roads still reach both sides.
+  road: { position: "absolute", left: -60, right: -60, backgroundColor: DESIGN_COLORS.paperWhite },
   mapCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
   // Flat Board Tint card, 24 corners (DESIGN.md card corner), no shadow.
   card: {
@@ -440,7 +358,6 @@ const styles = StyleSheet.create({
   },
   // DESIGN.md "Title" size.
   heading: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
-  subheading: { marginTop: 8, fontSize: 17, lineHeight: 24, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   primaryButton: {
     minHeight: 56,
     marginTop: 20,

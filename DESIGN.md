@@ -180,7 +180,8 @@ A status band at the top of a card follows the card's 24dp top corners.
 - Don't use the Toledo City seal, any LGU logo, the word "Official", or wording
   that says the city government runs or endorses SakayNa.
 - Don't use ride-hailing language or pictures: fares, "Book now", sedan icons,
-  promo banners, city skylines.
+  promo banners, city skylines. Exception: the mobile landing page heading
+  "Request a Ride now" is allowed (owner's choice, Oct 2026). Don't change it.
 - Don't use soft shadows, gradients, glass effects, colored stripes down the side
   of cards, or decorative circles.
 - Don't put cards inside cards.
