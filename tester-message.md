@@ -1,9 +1,9 @@
-SakayNa update: drivers now Punch in and Punch out
+SakayNa update: a new ride screen for drivers
 
 Hi everyone! There's a new SakayNa app. Please update before your next test.
 
 EVERYONE
-- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/dlxB284I1AZtvDD_tfItMKZbVJkbKPxb2FHng2QuBa0.apk
+- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/NHmR5E6Rnxl1k2pgSzuLKgWJsgmYfjl-4ePG5q1SKfg.apk
 - Residents: the old app still works, but please update too.
 
 DRIVERS (important)
@@ -13,6 +13,12 @@ DRIVERS (important)
   "Resume duty" when you're back.
 - When you accept a ride, you become "On a run" by yourself. When you
   complete it, you're "Available" again.
+- New ride screen: the map is on top, then one card with the ride.
+  "Accept ride" works with one tap (no vehicle checklist any more).
+- "Navigate to pickup" opens Google Maps. After "Confirm pickup" it
+  changes to "Navigate to destination".
+- Under the green step button, "Ride steps" shows what you've done
+  and what's next.
 - Keep the app open while you're punched in. If you close it, dispatch
   sees "app closed" and will call you first.
 - No phone with the new app yet? Log in as a driver on the website:
