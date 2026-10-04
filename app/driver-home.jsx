@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platfo
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
+import DriverDutyCard from "../features/driver/components/DriverDutyCard";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
@@ -119,7 +120,7 @@ export default function DriverHome() {
     return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "D";
   }, [displayName]);
   const [accessStatus, setAccessStatus] = useState("checking");
-  const [availability, setAvailability] = useState("Unavailable");
+  const [duty, setDuty] = useState({ dutyStatus: "Off duty", shiftId: "" });
   const [assignedTransfer, setAssignedTransfer] = useState(null);
   const [currentMissionRequest, setCurrentMissionRequest] = useState(null);
   const [missionMessage, setMissionMessage] = useState({ message: "", tone: "info" });
@@ -127,7 +128,6 @@ export default function DriverHome() {
   const [cancelledNotice, setCancelledNotice] = useState(null);
   const [driverSchedules, setDriverSchedules] = useState([]);
   const [schedulePromptOpen, setSchedulePromptOpen] = useState(false);
-  const [hasPromptedSchedule, setHasPromptedSchedule] = useState(false);
   const [scheduleStartTime, setScheduleStartTime] = useState(createTimeParts(8, 0, "AM"));
   const [scheduleEndTime, setScheduleEndTime] = useState(createTimeParts(5, 0, "PM"));
   const [scheduleError, setScheduleError] = useState("");
@@ -180,10 +180,11 @@ export default function DriverHome() {
 
     const userRef = doc(db, "users", authUser.uid);
 
+    // "presence" only means "is the driver's app open right now?" (driver-duty-plan.md).
+    // Whether the driver can get rides is their duty status (Punch in / Punch out), not this.
     setDoc(
       userRef,
       {
-        availability: "Available",
         presence: "Online",
         email: authUser.email ?? profile?.email ?? "",
         fullName: profile?.fullName ?? displayName,
@@ -191,55 +192,53 @@ export default function DriverHome() {
         lastSeenAt: serverTimestamp(),
       },
       { merge: true }
-    ).catch((error) => console.log("Driver availability setup warning:", error));
-    setAvailability("Available");
+    ).catch((error) => console.log("Driver presence setup warning:", error));
 
+    // The duty status card reads the driver's status from here. No status yet = never punched in = "Off duty".
     const unsubscribe = onSnapshot(
       userRef,
       (snapshot) => {
-        const data = snapshot.data();
-        setAvailability(data?.availability ?? "Unavailable");
+        const data = snapshot.data({ serverTimestamps: "estimate" });
+        setDuty({ dutyStatus: data?.dutyStatus ?? "Off duty", shiftId: data?.shiftId ?? "" });
       },
-      (error) => console.log("Driver availability listener warning:", error)
+      (error) => console.log("Driver duty status listener warning:", error)
     );
 
-    const markUnavailable = () => {
+    const markAppClosed = () => {
       setDoc(
         userRef,
         {
-          availability: "Unavailable",
           presence: "Offline",
           lastSeenAt: serverTimestamp(),
         },
         { merge: true }
-      ).catch((error) => console.log("Driver offline update warning:", error));
+      ).catch((error) => console.log("Driver presence offline warning:", error));
     };
 
-    const markAvailable = () => {
+    const markAppOpen = () => {
       setDoc(
         userRef,
         {
-          availability: "Available",
           presence: "Online",
           lastSeenAt: serverTimestamp(),
         },
         { merge: true }
-      ).catch((error) => console.log("Driver online update warning:", error));
+      ).catch((error) => console.log("Driver presence online warning:", error));
     };
 
     const appStateSubscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        markAvailable();
+        markAppOpen();
         return;
       }
 
-      markUnavailable();
+      markAppClosed();
     });
 
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      window.addEventListener("online", markAvailable);
-      window.addEventListener("offline", markUnavailable);
-      window.addEventListener("beforeunload", markUnavailable);
+      window.addEventListener("online", markAppOpen);
+      window.addEventListener("offline", markAppClosed);
+      window.addEventListener("beforeunload", markAppClosed);
     }
 
     return () => {
@@ -247,12 +246,12 @@ export default function DriverHome() {
       appStateSubscription.remove();
 
       if (Platform.OS === "web" && typeof window !== "undefined") {
-        window.removeEventListener("online", markAvailable);
-        window.removeEventListener("offline", markUnavailable);
-        window.removeEventListener("beforeunload", markUnavailable);
+        window.removeEventListener("online", markAppOpen);
+        window.removeEventListener("offline", markAppClosed);
+        window.removeEventListener("beforeunload", markAppClosed);
       }
 
-      markUnavailable();
+      markAppClosed();
     };
   }, [accessStatus, authUser?.uid, authUser?.email, displayName, profile?.email, profile?.fullName]);
 
@@ -392,15 +391,6 @@ export default function DriverHome() {
 
     return undefined;
   }, [accessStatus, authUser?.uid, driverSchedules]);
-
-  useEffect(() => {
-    if (accessStatus !== "approved" || hasPromptedSchedule) {
-      return;
-    }
-
-    setSchedulePromptOpen(true);
-    setHasPromptedSchedule(true);
-  }, [accessStatus, hasPromptedSchedule]);
 
   const request = currentMissionRequest ?? assignedTransfer?.request;
   const missionStatus = getMissionStatus(assignedTransfer || {});
@@ -708,18 +698,7 @@ export default function DriverHome() {
         </View>
 
         <View style={[styles.container, compact && styles.containerCompact]}>
-          <View style={[styles.statusBar, availability === "Unavailable" && styles.statusBarUnavailable]}>
-            <View style={styles.statusLeft}>
-              <View style={[styles.statusDot, availability === "Unavailable" && styles.statusDotUnavailable]} />
-              <View>
-                <Text style={[styles.statusText, compact && styles.statusTextCompact]}>{availability}</Text>
-                <Text style={styles.statusSubtext}>{availability === "Available" ? "Online and ready for dispatch" : "Offline or inactive"}</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.scheduleLaunchButton} onPress={() => setSchedulePromptOpen(true)}>
-              <Text style={styles.scheduleLaunchButtonText}>Set Availability</Text>
-            </TouchableOpacity>
-          </View>
+          <DriverDutyCard driverId={authUser.uid} driverName={profile?.fullName || displayName} duty={duty} />
 
           <View style={styles.mainGrid}>
             <View style={styles.assignmentPanel}>
@@ -870,6 +849,8 @@ export default function DriverHome() {
           </View>
         </Modal>
 
+        {/* Old work-hours window (driverSchedules). Nothing opens it any more: the Punch in / Punch out card */}
+        {/* replaced it (driver-duty-plan.md, answer 2). Its code and saved data are kept on purpose. */}
         <Modal visible={schedulePromptOpen} transparent animationType="fade" onRequestClose={() => setSchedulePromptOpen(false)}>
           <View style={styles.modalOverlay}>
             <View style={[styles.scheduleModalCard, compact && styles.scheduleModalCardCompact]}>
@@ -1204,26 +1185,6 @@ const styles = StyleSheet.create({
   },
   container: { width: "100%", maxWidth: 1280, alignSelf: "center", padding: 24, gap: 18 },
   containerCompact: { padding: 16, gap: 16 },
-  statusBar: {
-    backgroundColor: "#0B7A4A",
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 14,
-  },
-  statusBarUnavailable: { backgroundColor: "#647067" },
-  statusLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 220 },
-  statusDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: "#20F48B" },
-  statusDotUnavailable: { backgroundColor: "#C8D0CC" },
-  statusText: { fontSize: 26, fontWeight: "800", color: "#FFFFFF" },
-  statusTextCompact: { fontSize: 21 },
-  statusSubtext: { marginTop: 2, fontSize: 13, color: "#D8EEE3" },
-  scheduleLaunchButton: { minHeight: 42, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#EAF4EF", alignItems: "center", justifyContent: "center" },
-  scheduleLaunchButtonText: { fontSize: 14, fontWeight: "800", color: "#0B7A4A" },
   mainGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "flex-start" },
   assignmentPanel: { flex: 3, minWidth: 280, padding: 20, borderRadius: 18, backgroundColor: "#E3E7E5" },
   panelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
