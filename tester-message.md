@@ -3,13 +3,13 @@ SakayNa update: drivers now Punch in and Punch out
 Hi everyone! There's a new SakayNa app. Please update before your next test.
 
 EVERYONE
-- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/YkysgyXDX22Ib8rZrbILn8ITuSklJmobcc1dk_ySHm8.apk
+- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/dlxB284I1AZtvDD_tfItMKZbVJkbKPxb2FHng2QuBa0.apk
 - Residents: the old app still works, but please update too.
 
 DRIVERS (important)
 - The old app can't get rides any more. Please use the new app.
 - Tap "Punch in" when you start testing, and "Punch out" when you stop.
-- Taking a break? Tap "Start break", pick Meal, Rest or Personal, then
+- Taking a break? Tap "Start break", pick Lunch, Rest or Personal, then
   "Resume duty" when you're back.
 - When you accept a ride, you become "On a run" by yourself. When you
   complete it, you're "Available" again.
