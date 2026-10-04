@@ -5,7 +5,16 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 
 import { DESIGN_COLORS } from "../../../constants/design";
 import { db } from "../../../firebase";
+import { getTimestampMillis } from "../../../lib/dates";
 import { buildDailyDtr, DAY_MS, formatDutyDuration, formatManilaDay, formatManilaTime, getManilaDayStart } from "../../../lib/dutyTime";
+
+// The ride step when the driver sent "I can't do this ride" (unableAtStep), in plain words.
+const STEP_WORDS = {
+  Assigned: "Before Accept",
+  Accepted: "After Accept, not on the way yet",
+  "En Route": "On the way to the pickup",
+  Arrived: "At the pickup",
+};
 
 // Admin "Duty Records": the daily DTR (driver-duty-plan.md Step 6, DESIGN.md look).
 // One line per driver for the chosen day, worked out from the dutyRecords (which can't be edited).
@@ -17,6 +26,10 @@ export default function AdminDutyRecordsSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
+  // "Inability reports" (driver-pages-plan.md Step 2c): every driverAssignment with status "Unable".
+  const [reports, setReports] = useState([]);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
+  const [reportsError, setReportsError] = useState("");
 
   // Read the chosen day AND the next day, so a night shift that ends after midnight is complete.
   // Live: a driver who punches in or out now shows up without a refresh.
@@ -43,6 +56,24 @@ export default function AdminDutyRecordsSection() {
     );
   }, [dayStartMs]);
 
+  // Inability reports, live. Only the chosen day's reports are shown (filtered below), so no extra index is needed.
+  useEffect(() => {
+    const reportsQuery = query(collection(db, "driverAssignments"), where("status", "==", "Unable"));
+    return onSnapshot(
+      reportsQuery,
+      (snapshot) => {
+        setReports(snapshot.docs.map((reportDoc) => ({ id: reportDoc.id, ...reportDoc.data(), atMs: getTimestampMillis(reportDoc.data().unableAt) })));
+        setReportsLoaded(true);
+        setReportsError("");
+      },
+      (listenError) => {
+        console.log("Inability reports listener warning:", listenError);
+        setReportsError("The inability reports could not be loaded. Check your internet and try again.");
+        setReportsLoaded(true);
+      }
+    );
+  }, []);
+
   // "Still on duty" times keep counting: refresh once a minute.
   useEffect(() => {
     const intervalId = setInterval(() => setNow(Date.now()), 60_000);
@@ -50,6 +81,10 @@ export default function AdminDutyRecordsSection() {
   }, []);
 
   const lines = buildDailyDtr(records, dayStartMs, now);
+  // The chosen day's reports, earliest first.
+  const dayReports = reports
+    .filter((report) => report.atMs !== null && report.atMs >= dayStartMs && report.atMs < dayStartMs + DAY_MS)
+    .sort((first, second) => first.atMs - second.atMs);
   const isToday = dayStartMs >= todayStartMs;
 
   return (
@@ -139,6 +174,48 @@ export default function AdminDutyRecordsSection() {
           <Text style={styles.emptyText}>No driver punched in on this day.</Text>
         </View>
       )}
+
+      {/* Inability reports (driver-pages-plan.md Step 2c): "I can't do this ride", for the same day.
+          Each one is a report, not a decline. The dispatcher gave the ride to another driver. */}
+      <Text style={styles.sectionTitle} accessibilityRole="header">
+        Inability reports
+      </Text>
+      <Text style={styles.intro}>
+        Rides a driver said they couldn&apos;t do (&quot;I can&apos;t do this ride&quot;) on this day, with their reason. The ride went
+        back to dispatch.
+      </Text>
+
+      {reportsError ? (
+        <Text style={styles.errorText} accessibilityRole="alert">
+          {reportsError}
+        </Text>
+      ) : null}
+
+      {!reportsLoaded ? (
+        <View style={styles.emptyState}>
+          <ActivityIndicator color={DESIGN_COLORS.hallGreen} />
+          <Text style={styles.emptyText}>Loading inability reports...</Text>
+        </View>
+      ) : dayReports.length ? (
+        <View style={styles.list}>
+          {dayReports.map((report, index) => (
+            <View key={report.id} style={[styles.line, index > 0 && styles.lineDivider]}>
+              <Text style={styles.reportTime}>{formatManilaTime(report.atMs)}</Text>
+              <View style={styles.reportCopy}>
+                <Text style={styles.driverName}>{report.driverName || "Driver"}</Text>
+                <Text style={styles.reportReason}>{report.unableReason || "No reason"}</Text>
+                <Text style={styles.smallMuted}>
+                  {[report.title || "Transport request", report.vehicleName, STEP_WORDS[report.unableAtStep] || report.unableAtStep].filter(Boolean).join(" · ")}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No inability reports on this day.</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -190,6 +267,12 @@ const styles = StyleSheet.create({
   cell: { flexBasis: 140, flexGrow: 1 },
   cellLabel: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   cellValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+
+  // Inability reports: same plain list as the time cards. Time on the left, then who, why, and which ride.
+  sectionTitle: { marginTop: 32, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  reportTime: { flexBasis: 100, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  reportCopy: { flexBasis: 240, flexGrow: 1, gap: 2 },
+  reportReason: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
 
   emptyState: { marginTop: 16, padding: 24, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
   emptyText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },

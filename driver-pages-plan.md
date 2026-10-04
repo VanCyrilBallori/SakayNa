@@ -1,6 +1,6 @@
 # Driver Pages Plan (3 pages + "I can't do this ride")
 
-**Status: approved 2026-10-04. Step 1 (3 pages) DONE (commit a9d9aae). Step 2a (driver: "I can't do this ride", Call dispatch) DONE (commit a022361). Step 2b (dispatcher: banner, reason on the ride, driver card warning) DONE, tested. Step 2c (admin list) next.**
+**Status: approved 2026-10-04. Step 1 (3 pages) DONE (commit a9d9aae). Step 2a (driver: "I can't do this ride", Call dispatch) DONE (commit a022361). Step 2b (dispatcher: banner, reason on the ride, driver card warning) DONE (commit 16e8376). "Ride history" moved to the Availability page (commit bf4f119, group's request). Step 2c (admin "Inability reports" list) written, waiting for test.**
 
 From the groupmate's two requests. Built one step at a time:
 sketch → OK → build → test on phone → commit. Demo freeze ~Oct 8–9.
