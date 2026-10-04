@@ -107,8 +107,9 @@ service cloud.firestore {
               && request.resource.data.shiftId is string
               && request.resource.data.shiftId.size() > 0))
           // Start a break: a known break type and a short note.
+          // "Lunch" replaced "Meal" (Oct 2026); "Meal" stays allowed for drivers on the older APK.
           && (request.resource.data.dutyStatus != "On break"
-            || (request.resource.data.get("breakType", "") in ["Meal", "Rest", "Personal"]
+            || (request.resource.data.get("breakType", "") in ["Lunch", "Meal", "Rest", "Personal"]
               && request.resource.data.get("breakNote", "") is string
               && request.resource.data.get("breakNote", "").size() <= 100)));
     }
