@@ -119,14 +119,15 @@ Press `w` for the browser, or open the SakayNa development build on the phone an
 
 | Collection | Purpose |
 | --- | --- |
-| `users` | Profiles, roles, account state, driver presence |
+| `users` | Profiles, roles, account state. Drivers also have their duty status (`dutyStatus`: Off duty, Available, On break, On a run) and `presence` (is the app open) |
 | `transportRequests` | Resident transport requests. `purpose`: Medical / Health, Community / Personal Trip, or Other. `timing`: `asap` or `scheduled` (with `scheduledFor`, 1 hour to 7 days ahead). Emergencies use `callSessions`, not this form. |
 | `driverAssignments` | Dispatcher-to-driver assignments |
+| `dutyRecords` | Driver time card lines: punch in / out, break start / end, run start / end, with Firestore's time. Never edited or deleted. The admin's Duty Records (DTR) are worked out from these |
 | `callSessions` | In-app emergency alerts (the red Emergency button) |
 | `residentVerifications` | Resident proof-of-residency photo link, for the barangay Admin's review |
 | `Driver_Applications` | Driver applications + document photo links, for the barangay Admin's review |
 | `vehicles` | City and barangay vehicle records (drivers do not register vehicles) |
-| `driverSchedules` | Driver availability windows |
+| `driverSchedules` | Old driver work-hours windows. No longer used by the app since the duty status (Oct 2026); kept |
 | `vehicleChecklists` | Pre-trip vehicle readiness checks |
 | `activityLogs`, `vehicleMaintenance`, `staffInvitations`, `deletionRequests`, `systemSettings` | Admin bookkeeping |
 

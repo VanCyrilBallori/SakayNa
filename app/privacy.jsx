@@ -23,6 +23,7 @@ const sections = [
       "When you register as a resident: your full name, phone number, barangay, and address (house number, street, or purok). You also send one photo that proves you live in your barangay (a Barangay Certificate of Residency, a Barangay ID, or another government document that shows your address), and you say which document it is.",
       "When you apply to be a driver: your full name, date of birth, contact number, barangay, address, and a profile picture. You also send photos of your documents: your Professional Driver's License (front and back, with its number and expiration date), your NBI Clearance or Police Clearance, your Medical Certificate, and, if you choose to, your Drug Test Clearance. Some of these documents, like the medical certificate, contain sensitive personal information.",
       "SakayNa does not collect any vehicle information from drivers. Vehicles belong to the barangay.",
+      "When you work as a driver: the times you punch in and punch out, your breaks (Meal, Rest or Personal, and any note you add), when each ride you accept starts and ends, and whether the SakayNa app is open on your phone. These times come from the database's own clock, not your phone, and they cannot be changed afterward. SakayNa does not calculate pay.",
       "Location: the app only uses your location if you allowed it on your phone. The home screen map shows where you are, but that position is not saved. Your location is only saved when you choose to use it for a pickup, or when you send an emergency alert.",
     ],
   },
@@ -34,6 +35,7 @@ const sections = [
       "To respond to emergency alerts as quickly as possible.",
       "To check that residents live in their barangay before they can send emergency alerts or transport requests.",
       "To review driver applications and check that drivers are allowed to drive.",
+      "To show dispatchers which drivers can take a ride right now, and to keep a daily time record (DTR) of each driver's duty hours.",
       "To keep a record of requests for safety and reporting.",
     ],
   },
@@ -43,6 +45,7 @@ const sections = [
       "Only the people who need it to do their job in SakayNa: dispatchers, the driver assigned to your request, and system administrators.",
       "The driver assigned to your request sees the passenger's name and contact number, the pickup location and landmark, the destination, the help the passenger needs, and your notes, so they can find and call the passenger.",
       "When a driver is assigned to your request, you see the driver's name and phone number and the vehicle's name and plate number, so you know who is coming and can call the driver.",
+      "Dispatchers see each driver's duty status (Available, On break, On a run, or Off duty), the break type and note, and whether the driver's app is open. Administrators see each driver's daily time record. A driver can see their own time records.",
       "Your proof-of-residency photo and your driver documents can only be opened in SakayNa by you and by the administrator of your barangay, who reviews them. Dispatchers and drivers cannot see them.",
       "Please note: the photos are stored as web links. Anyone who has the exact link can open the photo, but SakayNa only shows these links to you and your barangay's administrator.",
       "We do not sell your information, and we do not share it for advertising.",
@@ -65,6 +68,7 @@ const sections = [
     lines: [
       "We keep your account information while your account is active.",
       "Transport request and emergency alert records are kept for [time period to be decided] for safety and reporting.",
+      "Driver duty records (punch in, breaks, rides, and punch out times) are kept for [time period to be decided].",
       "Proof-of-residency photos and driver document photos are kept after they are reviewed, so an administrator can check them again. They are deleted after [time period to be decided].",
       "If you ask us to delete your account, we will delete or anonymize your information within [time period to be decided], unless the law requires us to keep it longer.",
     ],
@@ -97,7 +101,7 @@ export default function PrivacyPolicy() {
         </View>
 
         <Text style={styles.title}>SakayNa Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: October 3, 2026 (draft)</Text>
+        <Text style={styles.updated}>Last updated: October 4, 2026 (draft)</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>

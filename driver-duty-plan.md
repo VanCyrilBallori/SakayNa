@@ -1,6 +1,6 @@
 # Driver Duty Status + Duty Time Record (DTR) Plan — demo version
 
-**Status: APPROVED (2026-10-04).** Step 1 in progress.
+**Status: Steps 1–6 DONE (tested 2026-10-04).** Step 8 (paperwork + release) in progress, then Step 7 if there is time.
 Demo freeze: around Oct 8–9.
 
 ## Goal (in simple words)
@@ -318,15 +318,116 @@ None needs a new package or a new development build.
 - Files: new small screen/pop-up in the driver menu.
 - **Test:** the driver sees their own shifts from today; nothing to edit.
 
-### Step 8 — Paperwork + release
-- Known-Issue.md (forgotten punch-outs, no heartbeat, rules limits above),
-  Privacy Policy draft (duty times are recorded; dispatchers see status,
-  admins see the DTR), Skills/resident.md not affected.
-- Rules Part B [Rules], deployed right when the website goes live.
-- Website (master → main → Vercel) **and** a new preview APK, same day.
-  Warn testers: drivers on an old APK can't punch in, so dispatchers can't
-  give them rides. Emergency alerts are not changed, so old APKs still
-  send and receive alerts.
+### Step 8 — Paperwork + release (planned 2026-10-04, waiting for OK)
+Order changed (2026-10-04): Step 8 before Step 7. Step 7 comes after,
+if there is time.
+
+**Why the order inside Step 8 matters.** The new rule ("only Available
+drivers can be assigned") goes live for everyone the moment it is
+deployed. Drivers can only become Available with the new app (new APK,
+or the website). So the new APK must be built and ready to send
+*before* the rule goes live, and the rule goes live together with the
+website.
+
+**8a. Paperwork** (no behavior change; you read it, then commit)
+- Known-Issue.md, new "Open" items:
+  - A driver who forgets to punch out stays "Available" (no
+    auto-closing). The admin DTR shows "Still on duty" and the hours
+    keep counting. Fix by hand for now: the driver punches out.
+  - "App closed" only shows when the app closed normally. A crash or a
+    dead phone still looks "app open" (no heartbeat, no server).
+  - Rules limits: the rules can't check that "On a run" matches a real
+    ride, or that a driver with a waiting ride doesn't start a break.
+    The app checks these.
+  - Drivers on an old APK can't get rides after this release (on
+    purpose; they can't punch in).
+  - The admin DTR is city-wide (added to the existing "Admin tools are
+    still city-wide" item).
+  - "Last checked" date updated.
+- Privacy Policy draft (app/privacy.jsx, shows in the app and on the
+  website):
+  - What we collect, drivers: punch in / punch out times, breaks (type
+    and optional note), the rides started and finished while on duty,
+    and whether the app is open.
+  - Who sees it: dispatchers see a driver's duty status, break type and
+    note, and whether the app is open; administrators see the daily
+    time records. Drivers see their own.
+  - "SakayNa does not calculate pay." Keeping time: "[to be decided]",
+    like the other records.
+  - "Last updated" date.
+- README.md collections table: new `dutyRecords` row; `users` row says
+  "duty status"; `driverSchedules` row says "old work-hours windows, no
+  longer used by the app (kept)".
+- PRODUCT.md: Driver = punch in / out, breaks, "On a run" set
+  automatically (instead of "go online/offline, post availability
+  schedules"); Dispatcher = sees duty status, assigns only Available
+  drivers; Admin = daily duty records (DTR).
+- One sentence in the app: the admin's "Approve driver?" pop-up
+  (AdminDriverApplicationsSection.jsx:258) says "They will be able to
+  punch in and receive rides." instead of "go online".
+- Test: read the files; open /privacy on your dev server.
+
+**8b. Rules Part B** (written and committed, NOT deployed yet)
+```
+match /driverAssignments/{assignmentId} {
+  allow create: if isStaff()
+    && get(/databases/$(database)/documents/users/$(request.resource.data.driverId))
+         .data.get("dutyStatus", "Off duty") == "Available";
+  ...the rest unchanged
+}
+```
+- Compile check with `--dry-run`, then commit.
+
+**8c. Preview APK** (CLAUDE.md "EAS build checklist")
+1. git status clean.
+2. `npx expo install --check`.
+3. `eas build --profile preview --platform android` (from the 8b
+   commit; the new rule is in the file but not live, which is fine).
+4. `eas fingerprint:compare --build-id <id>` must say "matches".
+5. Uninstall the old app, install the new APK, quick test on the
+   phone: punch in, break, resume, punch out. (Live rules are still
+   Part A, which is all the app needs.)
+
+**8d. Release window** (one sitting, same day, in this order)
+1. Website (CLAUDE.md "How to update the website"):
+   `git push origin master` → `git switch main` →
+   `git merge --ff-only master` (must say "Fast-forward") →
+   `git push origin main` → `git switch master`. Wait for Vercel
+   "Ready".
+2. Rules Part B, the safe way: download live rules and compare with
+   the last deployed version (commit 177df0c) → deploy with
+   `--project sakayna-571e8` → download again and compare with the
+   file.
+3. Tag `demo-ready-8` on the release commit and push the tag.
+4. Live checks on https://sakay-na-delta.vercel.app:
+   - Dispatcher: badges and times; an Off duty driver can't be tapped.
+   - Driver (new APK): punch in → the dispatcher sees "Available" →
+     assign → accept → complete.
+   - Admin: Duty Records shows that shift.
+   - Emergency alert from the new APK **and** from an old APK still
+     rings and can be answered (alerts are not changed).
+5. Send testers the message below.
+
+**8e. Write it down:** a "Releases" section at the end of this plan
+(build id, commit, tag), Status line updated. Commit.
+
+**Undo button.** If something is badly wrong after 8d: deploy the old
+rules again the same safe way (the firestore.rules from commit 177df0c,
+"Part A"). Then old APKs can be assigned again. The website can stay.
+
+**What testers must do** (message to send at 8d step 5):
+- Everyone: uninstall the old SakayNa app and install the new one
+  (link). Residents: the old app still works, but please update.
+- Drivers: the old app can't get rides any more. In the new app, tap
+  **Punch in** when you start testing and **Punch out** when you stop.
+  Use **Start break** for breaks and **Resume duty** after. Keep the
+  app open while punched in, or dispatch sees "app closed".
+  No phone with the new app? Log in as driver on the website instead.
+  Don't switch between the old and new app.
+- Dispatchers: refresh the website. Only drivers with a green
+  "Available" badge can be given a ride. Grey cards say why not.
+- Admins: new "Duty Records" menu item: each driver's time card per
+  day.
 
 ## If time runs out (demo freeze ~Oct 8–9)
 Suggested days: Oct 4 Step 1 · Oct 5 Steps 2–3 · Oct 6 Steps 4–5 ·

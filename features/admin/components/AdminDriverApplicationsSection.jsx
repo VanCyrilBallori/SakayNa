@@ -255,7 +255,7 @@ export default function AdminDriverApplicationsSection({ theme, adminId, adminBa
               {mode === "approve" ? (
                 <View style={styles.decisionBox}>
                   <Text style={[styles.decisionText, { color: theme.text }]}>
-                    Approve {selected?.fullName || "this driver"}? They will be able to go online and receive missions.
+                    Approve {selected?.fullName || "this driver"}? They will be able to punch in and receive rides.
                   </Text>
                   <View style={styles.actionRow}>
                     <TouchableOpacity style={[styles.actionButton, styles.cancelButton, { borderColor: theme.mutedText }]} onPress={() => setMode("review")} disabled={saving} accessibilityRole="button">

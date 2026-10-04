@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked against the app: Sept 30, 2026 (after resident overhaul Step 7).
+Last checked against the app: Oct 4, 2026 (after driver duty Step 6, driver-duty-plan.md).
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,6 +10,59 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### Drivers on an old APK can't get rides (on purpose)
+
+- **Found:** Oct 4, 2026 (driver-duty-plan.md, Step 8).
+- **What it is:** Since the duty status release, a dispatcher can only
+  give a ride to a driver who is punched in ("Available"). This is also
+  checked by firestore.rules. Only the new app (preview APK
+  demo-ready-8 or later) and the website have the Punch in button. A
+  driver on an older APK shows as "Off duty: not punched in" and can't be
+  assigned.
+- **What to do:** drivers install the new APK, or log in as driver on the
+  website. Emergency alerts are not affected: old APKs still send them.
+- **Status:** Intended.
+
+### A driver who forgets to punch out stays "Available"
+
+- **Found:** Oct 4, 2026 (driver-duty-plan.md).
+- **What it is:** Nothing closes a shift by itself (there is no server to
+  do it). If a driver goes home without tapping Punch out, dispatchers
+  still see them as "Available", and the admin's Duty Records show
+  "Still on duty" with the hours still counting. The next punch out ends
+  that long shift.
+- **Also:** a shift is read up to the end of the day after it started.
+  A shift left open longer than that shows as "Still on duty".
+- **What to do for now:** the driver punches out (the record can't be
+  edited afterward, on purpose).
+- **Future work:** auto-closing forgotten shifts, admin corrections
+  (driver-duty-plan.md, "Not now").
+- **Status:** Open. Fine for the Capstone demo.
+
+### "App closed" only shows when the app closes normally
+
+- **Found:** Oct 4, 2026 (driver-duty-plan.md, Step 5).
+- **What it is:** The dispatcher's "Available · app closed" warning uses
+  the driver's `presence`, which the driver's app saves when it opens and
+  closes. If the app crashes or the phone dies, it has no chance to save
+  "Offline", so the driver still looks "app open". This is a simple
+  stand-in for a real "Unreachable" status, which would need a regular
+  "I'm still here" signal (heartbeat).
+- **Status:** Open. Left out on purpose (future work).
+
+### Duty status: what firestore.rules can't check
+
+- **Found:** Oct 4, 2026 (driver-duty-plan.md, "What the rules can't
+  check").
+- **What it is:** The rules check that every status change is allowed
+  (for example, no punch out during a run), that times come from
+  Firestore's clock, and that duty records are never edited or deleted.
+  But they can't check that "On a run" matches a real accepted ride, or
+  that a driver with a ride waiting to be accepted doesn't start a break.
+  The app checks these two things, not the rules.
+- **Status:** Open. Fine for the Capstone (only approved drivers can
+  change their own status).
 
 ### Cancelled ride: driver stays "busy" until the driver's app is opened
 
@@ -51,6 +104,8 @@ Skills/resident.md section 6.
   document review.
 - **Also:** If an admin changes a Pending resident's barangay in Users →
   Edit, the resident's verification stays with the old barangay's admin.
+- **Also (Oct 4, 2026):** the new Duty Records (driver DTR) list shows
+  the drivers of every barangay.
 - **Status:** Open. Fine for the Capstone demo (trusted test admins).
 
 ### A barangay with no admin leaves its people waiting
