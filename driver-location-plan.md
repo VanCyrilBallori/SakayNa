@@ -1,11 +1,12 @@
 # Driver Location Plan ("Show on map") — light version
 
-**Status: Steps 1–3 DONE and tested on the phone, Step 4 paperwork written (2026-10-04). Release (APK + website) not done yet.**
+**Status: DONE. Released as demo-ready-12 (2026-10-04).** Steps 1–4 done and tested on the phone.
 - Step 1 rules: commit 288e164, deployed. Before: live rules matched
   commit 09c0f46. After: live rules matched firestore.rules (ruleset
   0f846354-c72c-44bc-b46c-a99e83e40796).
 - Step 2 driver saves location: commit 5618f97.
 - Step 3 dispatcher "Show on map": commit 1aacad2.
+- Step 4 paperwork: commit 4886a31.
 Demo freeze: around Oct 8–9.
 
 ## Goal (in simple words)
@@ -177,3 +178,20 @@ match /driverLocations/{driverId} {
 - Location history or a route trail.
 - Location from the website (browser GPS).
 - Distance to the pickup / "nearest driver" sorting.
+
+## Releases
+- 2026-10-04: **demo-ready-12** (driver location + emergency auto call,
+  released together).
+  - Website: master → main → Vercel, fast-forward 37454ba..698cd91;
+    the new version was live at 22:36 (checked: the live /privacy page
+    has "Only dispatchers see a driver's last saved location"). Live
+    checks passed: Vercel "Ready", the location line and Show on map,
+    the privacy page, the queue, assigning, an emergency alert.
+  - Rules: no deploy in this release (the driverLocations rules went
+    live in Step 1).
+  - Preview APK: EAS build 1e6d609e-2ae8-446f-9ff0-972051685484,
+    profile preview, built from commit 698cd91, finished 23:02,
+    `eas fingerprint:compare` says "matches". Tested on the phone.
+    Tagged demo-ready-12 (on 698cd91) and pushed.
+  - Tester message: tester-message.md with the new APK link and the
+    driver, dispatcher and resident lines (commit c7d337e).

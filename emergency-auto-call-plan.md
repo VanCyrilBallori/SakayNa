@@ -1,6 +1,6 @@
 # Emergency Auto Call Plan
 
-**Status: Step A DONE and tested on the phone (commit ab3ca7a), Step B notes written (2026-10-04). Release: demo-ready-12.**
+**Status: DONE. Released as demo-ready-12 (2026-10-04).** Step A (commit ab3ca7a) and Step B notes (commit 698cd91) done; tested on the phone.
 
 ## Goal (in simple words)
 When a dispatcher taps **Answer** on a resident's emergency alert, the
@@ -83,3 +83,19 @@ alert's countdown is the one exception.
   already in the app).
 - No rules change. Website: nothing visible changes.
 - Old APKs keep today's tap-to-call.
+
+## Releases
+- 2026-10-04: **demo-ready-12** (driver location + emergency auto call,
+  released together).
+  - Website: master → main → Vercel, fast-forward 37454ba..698cd91;
+    the new version was live at 22:36 (checked: the live /privacy page
+    has "Only dispatchers see a driver's last saved location"). Live
+    checks passed: Vercel "Ready", the location line and Show on map,
+    the privacy page, the queue, assigning, an emergency alert.
+  - No rules change.
+  - Preview APK: EAS build 1e6d609e-2ae8-446f-9ff0-972051685484,
+    profile preview, built from commit 698cd91, finished 23:02,
+    `eas fingerprint:compare` says "matches". Tested on the phone.
+    Tagged demo-ready-12 (on 698cd91) and pushed.
+  - Tester message: tester-message.md with the new APK link and the
+    driver, dispatcher and resident lines (commit c7d337e).
