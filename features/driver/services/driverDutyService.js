@@ -1,6 +1,7 @@
 import { collection, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+import { eraseDriverLocation } from "./driverLocationService";
 
 // Driver duty status (driver-duty-plan.md).
 // Each change saves two things in ONE save (a "batch": both are saved or neither is):
@@ -101,4 +102,6 @@ export const punchOut = async ({ driverId, driverName, shiftId }) => {
   });
 
   await batch.commit();
+  // Off duty now: erase the last known location (driver-location-plan.md). Not waited for.
+  eraseDriverLocation({ driverId });
 };

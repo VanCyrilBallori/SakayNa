@@ -2,6 +2,7 @@ import { collection, doc, runTransaction, serverTimestamp, setDoc } from "fireba
 
 import { db } from "../../../firebase";
 import { getMissionStatus } from "../utils/driverMissionMapper";
+import { saveDriverLocation } from "./driverLocationService";
 
 const TIMESTAMP_FIELD = {
   Accepted: "acceptedAt",
@@ -228,10 +229,23 @@ export const clearCancelledRide = async ({ assignmentId }) => {
   });
 };
 
-export const acceptAssignment = async ({ assignmentId }) => transitionMission(assignmentId, "Accepted");
+// The ride steps that also save the driver's location (driver-location-plan.md). Complete and "I can't do this ride" don't.
+const LOCATION_STEPS = ["Accepted", "En Route", "Arrived", "Picked Up"];
 
-export const advanceMission = async ({ assignmentId, nextStatus, completion = {} }) =>
-  transitionMission(assignmentId, nextStatus, completion.notes || "");
+// After the step is saved, the location is saved too. Not waited for, so the step never waits for the GPS.
+export const acceptAssignment = async ({ assignmentId, driverId }) => {
+  const result = await transitionMission(assignmentId, "Accepted");
+  saveDriverLocation({ driverId, step: "Accepted" });
+  return result;
+};
+
+export const advanceMission = async ({ assignmentId, driverId, nextStatus, completion = {} }) => {
+  const result = await transitionMission(assignmentId, nextStatus, completion.notes || "");
+  if (LOCATION_STEPS.includes(nextStatus)) {
+    saveDriverLocation({ driverId, step: nextStatus });
+  }
+  return result;
+};
 
 // Not used since driver-pages-plan.md Step 2a (Decline was removed). Kept so it can come back; old "Declined" data stays.
 export const declineAssignment = async ({ assignmentId, reason, details }) =>

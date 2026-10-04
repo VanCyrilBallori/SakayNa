@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DESIGN_COLORS } from "../../../constants/design";
@@ -9,6 +9,7 @@ import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
 import { formatDutyDuration, formatManilaTime, formatTimer, summarizeShift } from "../../../lib/dutyTime";
 import { endBreak, punchIn, punchOut, startBreak } from "../services/driverDutyService";
+import { shareLocationAtPunchIn } from "../services/driverLocationService";
 
 // If a save takes longer than this, the internet is probably slow or off.
 const SLOW_SAVE_MS = 8000;
@@ -94,8 +95,13 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
     }
   };
 
+  // After the punch in is saved: ask for the location (first time only) and save it.
+  // Not waited for, so "Saving..." doesn't stay on while Android's pop-up is open (driver-location-plan.md).
   const handlePunchIn = () =>
-    runSave(() => punchIn({ driverId, driverName }), "We couldn't punch you in. Check your internet and try again.");
+    runSave(async () => {
+      await punchIn({ driverId, driverName });
+      shareLocationAtPunchIn({ driverId });
+    }, "We couldn't punch you in. Check your internet and try again.");
 
   const handlePunchOut = () => {
     setPunchOutOpen(false);
@@ -186,6 +192,12 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
             </Text>
           </View>
           <Text style={[styles.bodyText, styles.inkMutedText]}>Dispatch can&apos;t give you rides until you punch in.</Text>
+          {/* Android's location pop-up can't explain itself, so this line does (phone only: the website shares no location). */}
+          {Platform.OS !== "web" ? (
+            <Text style={[styles.bodyText, styles.inkMutedText]}>
+              When you punch in, SakayNa asks for your location. It is saved only when you tap Punch in, Accept, En route, Arrived or Picked up. Never in the background.
+            </Text>
+          ) : null}
 
           <Pressable
             style={({ pressed }) => [styles.mainButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
