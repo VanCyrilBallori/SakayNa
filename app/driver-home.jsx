@@ -10,6 +10,7 @@ import BrandLogo from "../components/BrandLogo";
 import CloseButton from "../components/ui/CloseButton";
 import DriverDutyCard from "../features/driver/components/DriverDutyCard";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
+import DriverNavigateButton from "../features/driver/components/DriverNavigateButton";
 import DriverRideCard from "../features/driver/components/DriverRideCard";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
@@ -32,8 +33,12 @@ import { startPhoneCall } from "../lib/phoneCall";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
-// How tall the ride map is on the driver home (driver-home-restyle-plan.md Piece 4a).
-const RIDE_MAP_HEIGHT = 180;
+// The three pages of the driver home and their buttons in the bottom bar (driver-pages-plan.md Step 1).
+const PAGES = [
+  { key: "ride", label: "Ride", icon: "van-passenger" },
+  { key: "map", label: "Map", icon: "map-outline" },
+  { key: "availability", label: "Availability", icon: "clock-check-outline" },
+];
 
 // The assigned vehicle's name. (Old requests saved the passenger count in "vehicle", so that field is not used here.)
 const getVehicleName = (request, assignment) => request?.assignedVehicleName || assignment?.vehicleName || "Vehicle pending";
@@ -132,6 +137,8 @@ export default function DriverHome() {
   const [missionMessage, setMissionMessage] = useState({ message: "", tone: "info" });
   // Shown after a ride was cancelled by the resident and removed: { title, reason }.
   const [cancelledNotice, setCancelledNotice] = useState(null);
+  // Which page is open: "ride" (first), "map" or "availability" (driver-pages-plan.md Step 1).
+  const [activePage, setActivePage] = useState("ride");
   const [driverSchedules, setDriverSchedules] = useState([]);
   const [schedulePromptOpen, setSchedulePromptOpen] = useState(false);
   const [scheduleStartTime, setScheduleStartTime] = useState(createTimeParts(8, 0, "AM"));
@@ -320,6 +327,18 @@ export default function DriverHome() {
       })
       .catch((error) => console.log("Free cancelled ride warning:", error));
   }, [cancelledAssignmentId, cancelledTitle, cancelledReason]);
+
+  // A new ride from dispatch, waiting for Accept: open the Ride page by itself (driver-pages-plan.md Step 1).
+  // It runs once per new ride, so the driver can still open the Map or Availability page afterwards.
+  // The same id also puts the orange dot on the Ride button.
+  const waitingRideId = assignedTransfer?.status === "Assigned" ? assignedTransfer.id : null;
+  useEffect(() => {
+    if (waitingRideId) setActivePage("ride");
+  }, [waitingRideId]);
+  // The "resident cancelled this ride" note is on the Ride page, so open it there too.
+  useEffect(() => {
+    if (cancelledNotice) setActivePage("ride");
+  }, [cancelledNotice]);
   useEffect(() => {
     if (!authUser?.uid || accessStatus !== "approved") {
       setAssignmentHistory([]);
@@ -696,7 +715,8 @@ export default function DriverHome() {
 
   return (
     <>
-      <ScrollView style={[styles.page, { backgroundColor: theme.page }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* Three parts, top to bottom: the thin header, the open page (it scrolls when it doesn't fit), the bottom bar. */}
+      <View style={styles.page}>
         <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
           <BrandLogo variant="main" height={compact ? 30 : 36} />
 
@@ -709,76 +729,107 @@ export default function DriverHome() {
           </View>
         </View>
 
-        <View style={[styles.container, compact && styles.containerCompact]}>
-          <DriverDutyCard
-            driverId={authUser.uid}
-            driverName={profile?.fullName || displayName}
-            duty={duty}
-            activeRideStatus={assignedTransfer?.status ?? ""}
-            rideTitle={request?.title || assignedTransfer?.title || ""}
-          />
-
-          <View style={styles.mainGrid}>
-            <View style={styles.assignmentPanel}>
-              {/* Ride Inbox header (driver-home-restyle-plan.md Piece 2). The pill is a label, not a button. */}
-              <View style={styles.panelHeader}>
-                <View style={styles.inboxPill}>
-                  <Text style={styles.inboxPillText}>Ride Inbox</Text>
-                </View>
-                <Text style={styles.assignmentStatus}>
-                  {!assignedTransfer ? "No ride yet" : assignedTransfer.status === "Assigned" ? "New from dispatch" : "Ride in progress"}
-                </Text>
-              </View>
-
-              <Text style={styles.assignmentTitle} accessibilityRole="header">Current ride</Text>
-
-              {cancelledNotice ? (
-                <View style={styles.cancelledNotice} accessibilityRole="alert">
-                  <FontAwesome name="ban" size={24} color="#B42318" />
-                  <View style={styles.cancelledNoticeCopy}>
-                    <Text style={styles.cancelledNoticeTitle}>The resident cancelled this ride: {cancelledNotice.title}</Text>
-                    {cancelledNotice.reason ? <Text style={styles.cancelledNoticeText}>Reason: {cancelledNotice.reason}</Text> : null}
-                    <Text style={styles.cancelledNoticeText}>It was removed from your rides. You and the vehicle are free again.</Text>
-                    <TouchableOpacity style={styles.cancelledNoticeButton} onPress={() => setCancelledNotice(null)} accessibilityRole="button">
-                      <Text style={styles.cancelledNoticeButtonText}>OK</Text>
-                    </TouchableOpacity>
+        {/* flexGrow: 1 lets the Map page's map fill the space; a page that is too tall scrolls instead of being cut off. */}
+        <ScrollView style={styles.pageScroll} contentContainerStyle={styles.pageScrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.pageColumn}>
+            {/* Ride page: the ride card, the green step button and the ride steps, or the empty inbox.
+                The "Ride Inbox" pill and "Current ride" title were removed (driver-pages-plan.md, answer 4). */}
+            {activePage === "ride" ? (
+              <>
+                {cancelledNotice ? (
+                  <View style={styles.cancelledNotice} accessibilityRole="alert">
+                    <FontAwesome name="ban" size={24} color="#B42318" />
+                    <View style={styles.cancelledNoticeCopy}>
+                      <Text style={styles.cancelledNoticeTitle}>The resident cancelled this ride: {cancelledNotice.title}</Text>
+                      {cancelledNotice.reason ? <Text style={styles.cancelledNoticeText}>Reason: {cancelledNotice.reason}</Text> : null}
+                      <Text style={styles.cancelledNoticeText}>It was removed from your rides. You and the vehicle are free again.</Text>
+                      <TouchableOpacity style={styles.cancelledNoticeButton} onPress={() => setCancelledNotice(null)} accessibilityRole="button">
+                        <Text style={styles.cancelledNoticeButtonText}>OK</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              ) : null}
+                ) : null}
 
-              {request ? (
-                // One column on the phone and the website (driver-home-restyle-plan.md Piece 4a):
-                // map on top, then the task card, then the navigation and step buttons (DriverMissionActions).
-                <View style={styles.rideColumn}>
-                  <View style={styles.rideMap}>
-                    <LeafletMap {...requestMapProps} minHeight={0} />
+                {request ? (
+                  <>
+                    {/* The task card (driver-home-restyle-plan.md Piece 3). */}
+                    <DriverRideCard
+                      request={request}
+                      assignment={assignedTransfer}
+                      missionStatus={missionStatus}
+                      vehicleName={getVehicleName(request, assignedTransfer)}
+                      onOpenDetails={() => setReviewOpen(true)}
+                    />
+
+                    <FeedbackMessage message={missionMessage.message} tone={missionMessage.tone} />
+                    {/* A ride the resident just cancelled has no Accept / Decline: it is being removed (see cancelledAssignmentId). */}
+                    {request.status === "Cancelled" ? (
+                      <FeedbackMessage message="The resident cancelled this ride. Removing it..." tone="error" />
+                    ) : (
+                      <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.inboxEmpty}>
+                    <MaterialCommunityIcons name="email-outline" size={48} color={DESIGN_COLORS.inkMuted} />
+                    <Text style={styles.inboxEmptyTitle}>Inbox empty</Text>
+                    <Text style={styles.inboxEmptyText}>Rides assigned to you by dispatch will appear here.</Text>
                   </View>
+                )}
+              </>
+            ) : null}
 
-                  {/* The task card (driver-home-restyle-plan.md Piece 3). Replaces the five small boxes. */}
-                  <DriverRideCard
-                    request={request}
-                    assignment={assignedTransfer}
-                    missionStatus={missionStatus}
-                    vehicleName={getVehicleName(request, assignedTransfer)}
-                    onOpenDetails={() => setReviewOpen(true)}
-                  />
+            {/* Map page: a big map with the same pins, and the navigation button. No ride = Toledo City, no pins. */}
+            {activePage === "map" ? (
+              <>
+                <View style={styles.bigMap}>
+                  <LeafletMap {...requestMapProps} showPins={Boolean(request)} minHeight={0} />
+                </View>
+                {request && request.status !== "Cancelled" ? (
+                  <DriverNavigateButton request={request} status={missionStatus} />
+                ) : (
+                  <Text style={styles.mapNote}>No ride yet. The pickup and destination show here when dispatch gives you a ride.</Text>
+                )}
+              </>
+            ) : null}
 
-                  <FeedbackMessage message={missionMessage.message} tone={missionMessage.tone} />
-                  {/* A ride the resident just cancelled has no Accept / Decline: it is being removed (see cancelledAssignmentId). */}
-                  {request.status === "Cancelled" ? (
-                    <FeedbackMessage message="The resident cancelled this ride. Removing it..." tone="error" />
-                  ) : (
-                    <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
-                  )}
-                </View>
-              ) : (
-                <View style={styles.inboxEmpty}>
-                  <MaterialCommunityIcons name="email-outline" size={48} color={DESIGN_COLORS.inkMuted} />
-                  <Text style={styles.inboxEmptyTitle}>Inbox empty</Text>
-                  <Text style={styles.inboxEmptyText}>Rides assigned to you by dispatch will appear here.</Text>
-                </View>
-              )}
-            </View>
+            {/* Availability page: the duty card (Punch in, Take a break, Resume duty, Punch out, On a run). */}
+            {activePage === "availability" ? (
+              <DriverDutyCard
+                driverId={authUser.uid}
+                driverName={profile?.fullName || displayName}
+                duty={duty}
+                activeRideStatus={assignedTransfer?.status ?? ""}
+                rideTitle={request?.title || assignedTransfer?.title || ""}
+              />
+            ) : null}
+          </View>
+        </ScrollView>
+
+        {/* Bottom bar: icon + word for each page. The open page is green and bold.
+            An orange dot on Ride while a new ride waits for Accept. Words wrap with large text, never cut off. */}
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom }]}>
+          <View style={styles.bottomBarRow} accessibilityRole="tablist">
+            {PAGES.map((page) => {
+              const isOpen = activePage === page.key;
+              const showDot = page.key === "ride" && Boolean(waitingRideId);
+              return (
+                <Pressable
+                  key={page.key}
+                  style={({ pressed }) => [styles.tabButton, pressed && styles.tabButtonPressed]}
+                  onPress={() => setActivePage(page.key)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isOpen }}
+                  accessibilityLabel={showDot ? `${page.label}, new ride waiting` : page.label}
+                >
+                  <View style={[styles.tabIcon, isOpen && styles.tabIconOpen]}>
+                    <MaterialCommunityIcons name={page.icon} size={24} color={isOpen ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.inkMuted} />
+                    {showDot ? <View style={styles.tabDot} /> : null}
+                  </View>
+                  <Text style={[styles.tabLabel, isOpen && styles.tabLabelOpen]}>{page.label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -1093,16 +1144,16 @@ export default function DriverHome() {
             </View>
           </KeyboardAvoidingView>
         </Modal>
-      </ScrollView>
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#F5F7F6" },
+  // The whole screen: header, page, bottom bar. Board Tint behind the white cards (DESIGN.md).
+  page: { flex: 1, backgroundColor: DESIGN_COLORS.boardTint },
   accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
   accessText: { fontSize: 15, fontWeight: "800", color: "#335E50", textAlign: "center" },
-  content: { paddingBottom: 24 },
   // One thin row on every screen: logo on the left, profile on the right (never wraps to a second row).
   header: {
     paddingHorizontal: 24,
@@ -1134,26 +1185,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "900",
   },
-  container: { width: "100%", maxWidth: 1280, alignSelf: "center", padding: 24, gap: 18 },
-  containerCompact: { padding: 16, gap: 16 },
-  mainGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "flex-start" },
-  // Ride Inbox (driver-home-restyle-plan.md Piece 2): a Board Tint section with card corners (24).
-  assignmentPanel: { flex: 3, minWidth: 280, padding: 16, borderRadius: 24, backgroundColor: DESIGN_COLORS.boardTint },
-  panelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
-  // Orange has dark words (DESIGN.md). Fully round: it is a small tag, not a button.
-  inboxPill: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
-  inboxPillText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
-  assignmentStatus: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
-  assignmentTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // The open page (driver-pages-plan.md Step 1). flexGrow: 1 = at least as tall as the space, so the map can fill it.
+  pageScroll: { flex: 1 },
+  pageScrollContent: { flexGrow: 1 },
+  // One column, 16 side margins, 12 between parts. At most 640 wide so lines stay easy to read on the website.
+  pageColumn: { flex: 1, width: "100%", maxWidth: 640, alignSelf: "center", padding: 16, gap: 12 },
+  // Map page: the map takes all the space left above the button, but never less than 280.
+  bigMap: { flex: 1, minHeight: 280, borderRadius: 24, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
+  mapNote: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  // Bottom bar: white, a thin line on top. paddingBottom (in the code) keeps it above the phone's own buttons.
+  bottomBar: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
+  bottomBarRow: { flexDirection: "row", width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 8, paddingVertical: 4 },
+  // Three equal buttons, at least 56 tall (DESIGN.md main action size).
+  tabButton: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 4, borderRadius: 16 },
+  tabButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  tabIcon: { paddingHorizontal: 16, paddingVertical: 2, borderRadius: 16 },
+  // The open page's icon sits on a Board Tint box, so "open" is shown by more than color.
+  tabIconOpen: { backgroundColor: DESIGN_COLORS.boardTint },
+  // The "new ride" dot: Sakay Orange, fully round, with a white ring so it shows on the box.
+  tabDot: { position: "absolute", top: 0, right: 10, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite, backgroundColor: DESIGN_COLORS.sakayOrange },
+  tabLabel: { fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  tabLabelOpen: { fontWeight: "800", color: DESIGN_COLORS.hallGreen },
   // Empty inbox card. Own styles: the History pop-up still uses emptyInbox / emptyTitle / emptyText.
-  inboxEmpty: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 32, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite, alignItems: "center" },
+  inboxEmpty: { paddingHorizontal: 24, paddingVertical: 32, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite, alignItems: "center" },
   inboxEmptyTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
   inboxEmptyText: { marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  // The ride (Piece 4a): one column, at most 640 wide so lines stay easy to read on the website.
-  rideColumn: { width: "100%", maxWidth: 640, marginTop: 16, gap: 12 },
-  // The map on top. Change RIDE_MAP_HEIGHT to make it taller or shorter.
-  rideMap: { height: RIDE_MAP_HEIGHT, borderRadius: 24, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
-  cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 16, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },
+  cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },
   cancelledNoticeCopy: { flex: 1 },
   cancelledNoticeTitle: { fontSize: 17, lineHeight: 23, fontWeight: "800", color: "#7A1A12" },
   cancelledNoticeText: { marginTop: 4, fontSize: 15, lineHeight: 21, color: "#7A1A12" },

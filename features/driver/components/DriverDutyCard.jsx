@@ -217,7 +217,7 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
           {/* A ride is waiting for you: no break and no punch out until it is answered (or finished). */}
           {activeRideStatus ? (
             <Text style={[styles.rideWaitingText, styles.whiteText]}>
-              {activeRideStatus === "Assigned" ? "You have a new ride. Accept or decline it below first." : "Finish your current ride first."}
+              {activeRideStatus === "Assigned" ? "You have a new ride. Accept or decline it on the Ride page first." : "Finish your current ride first."}
             </Text>
           ) : (
             <>
