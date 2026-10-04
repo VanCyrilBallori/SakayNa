@@ -121,7 +121,7 @@ Press `w` for the browser, or open the SakayNa development build on the phone an
 | --- | --- |
 | `users` | Profiles, roles, account state. Drivers also have their duty status (`dutyStatus`: Off duty, Available, On break, On a run) and `presence` (is the app open) |
 | `transportRequests` | Resident transport requests. `purpose`: Medical / Health, Community / Personal Trip, or Other. `timing`: `asap` or `scheduled` (with `scheduledFor`, 1 hour to 7 days ahead). Emergencies use `callSessions`, not this form. |
-| `driverAssignments` | Dispatcher-to-driver assignments |
+| `driverAssignments` | Dispatcher-to-driver assignments. Status Assigned, In Progress, Completed, Cancelled, or Unable (the driver sent "I can't do this ride": an inability report with the reason, shown to the dispatcher and in the admin's Duty Records). Old "Declined" ones are kept (older APKs can still decline) |
 | `dutyRecords` | Driver time card lines: punch in / out, break start / end, run start / end, with Firestore's time. Never edited or deleted. The admin's Duty Records (DTR) are worked out from these |
 | `callSessions` | In-app emergency alerts (the red Emergency button) |
 | `residentVerifications` | Resident proof-of-residency photo link, for the barangay Admin's review |
@@ -147,6 +147,10 @@ Centralized names, roles, statuses, and priorities live in [`constants/app.js`](
    "Dispatcher accepted" on the resident's phone → end.
 6. **Driver approval:** a new driver applies (Choose Role → Driver) → the Admin of the same
    barangay approves them in **Driver Applications** → the driver can reach `/driver-home`.
+7. **Driver can't do a ride:** Dispatcher assigns → Driver taps **I can't do this ride** (before
+   the pickup) and chooses a reason → the ride is back in the dispatcher's list with an orange
+   "Needs a new driver" banner and a warning on that driver's card → Dispatcher assigns another
+   driver → Admin sees the report in **Duty Records** → Inability reports.
 
 ## Deploying
 

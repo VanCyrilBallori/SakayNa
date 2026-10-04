@@ -1,6 +1,6 @@
 # Driver Home Restyle Plan
 
-**Status: Pieces 1–5 DONE (commits f0c21dd, a6e75f4, 1b0dcb7, fd00d3d, 8ee0520, c0800eb), released as demo-ready-10, 2026-10-04.** Next: driver-pages-plan.md (3 pages, "I can't do this ride").
+**Status: Pieces 1–5 DONE (commits f0c21dd, a6e75f4, 1b0dcb7, fd00d3d, 8ee0520, c0800eb), released as demo-ready-10, 2026-10-04.** Later changed by driver-pages-plan.md: a bottom bar with 3 pages (Ride / Map / Availability), Decline replaced by "I can't do this ride", History moved to the Availability page.
 
 ## Answers (2026-10-04)
 1. Accept is one tap, no "Are you sure?". Decline keeps asking first
@@ -177,7 +177,7 @@ the inbox and the task card, and remove the checklist.
 ## Not now (future work)
 - The 1-hour confirm / transfer flow (screens 5–8).
 - The red emergency takeover with countdown and vibration (screen 9).
-- Bottom tabs (Inbox / Schedule / History / Profile).
+- Bottom tabs (Inbox / Schedule / History / Profile). Partly done in driver-pages-plan.md: Ride / Map / Availability.
 - The "How assignments reach you" note.
 - Distance (needs a route service).
 - The Online / Offline sheet (screen 2): our duty card replaces it.

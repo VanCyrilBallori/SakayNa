@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked against the app: Oct 4, 2026 (after driver duty Step 6, driver-duty-plan.md).
+Last checked against the app: Oct 4, 2026 (after driver-pages-plan.md Step 2: 3 driver pages, "I can't do this ride").
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,6 +10,42 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### A van reported with "Vehicle problem" can still be assigned
+
+- **Found:** Oct 4, 2026 (driver-pages-plan.md Step 2a).
+- **What it is:** When a driver sends "I can't do this ride" with
+  "Vehicle problem", the van is freed ("Available") like after a
+  decline. The dispatcher's banner names the van, but the Assign window
+  still offers it (and picks the first van by itself if the dispatcher
+  doesn't choose one).
+- **What to do for now:** the dispatcher picks another van; the admin
+  can add a maintenance record in Operations.
+- **Future work:** keep that van out of the Assign window until an admin
+  checks it (driver-pages-plan.md, "Not now").
+- **Status:** Open. Fine for the Capstone demo.
+
+### Drivers on an older APK still see Decline
+
+- **Found:** Oct 4, 2026 (driver-pages-plan.md Step 2a).
+- **What it is:** APKs before demo-ready-11 still have the Decline button.
+  It still works: the ride goes back to the dispatcher, who sees the
+  banner and the reason, but not the driver's name, and there is no
+  warning on the driver's card and no line in the admin's Inability
+  reports.
+- **What to do:** drivers install the newest APK.
+- **Status:** Intended (old data and code are kept on purpose).
+
+### After pickup, a problem can only be reported by phone
+
+- **Found:** Oct 4, 2026 (driver-pages-plan.md, answer 1).
+- **What it is:** Once the rider is on board, "I can't do this ride" is
+  gone and the driver taps "Call dispatch" (the office number). If the
+  admin has not saved an office number (Operations → operational
+  settings), the driver only sees a sentence telling them to call the
+  barangay office. Nothing is saved in the app about the problem.
+- **Status:** Open. Left out on purpose (a ride with the rider on board
+  needs a person to decide).
 
 ### Drivers on an old APK can't get rides (on purpose)
 

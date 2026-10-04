@@ -799,9 +799,11 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
     Progress"` plus `missionStatus` and a timestamp (`acceptedAt`,
     `enRouteAt`, `arrivedAt`, `pickedUpAt`)
   - **Completed** → request `status: "Completed"`, `completedAt`
-  - **Declined** → request goes back to `status: "Pending"`, the driver fields
-    are cleared, and `lastDeclinedDriverId` is set. The Dispatcher then sees it
-    as "Reassignment needed".
+  - **Declined** (older APKs only) → request goes back to `status: "Pending"`,
+    the driver fields are cleared, and `lastDeclinedDriverId` is set.
+  - **Unable** ("I can't do this ride", driver-pages-plan.md) → the same, but it
+    sets `lastUnableDriverId` / `lastUnableReason` and also clears the old step
+    times. The resident sees "Finding another driver" in both cases.
   - If the resident already **cancelled** the ride, none of these steps is
     saved; the driver sees "The resident cancelled this ride."
 - **The resident cancels while the ride is still Assigned:** the driver's
@@ -1002,7 +1004,9 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 16. **Still open — A "Rejected" request status is displayed but never set.**
     The timeline and labels handle it (`statusMeta` in `requestMapper.js:40`,
     `getRequestTimeline` in `96`), but no code sets a request to "Rejected".
-17. **Still open — The timeline can be wrong after a driver declines.** A
+17. **Partly fixed — The timeline can be wrong after a driver declines.**
+    "I can't do this ride" (which replaced Decline) clears the old step
+    times, so it is fixed there. Still open for a Decline from an older APK. A
     decline sets the request back to Pending, but it does not clear
     `assignedAt` or `acceptedAt` (`transitionMission` in
     `driverMissionService.js:71-86`). So "Driver assigned" may still show a
