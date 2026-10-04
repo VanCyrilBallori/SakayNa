@@ -44,6 +44,15 @@ const DUTY_BADGES = {
   "Off duty": { label: "Off duty", backgroundColor: DESIGN_COLORS.inkMuted, color: DESIGN_COLORS.paperWhite },
 };
 
+// The step saved with a driver's last known location (driver-location-plan.md), in everyday words.
+const LOCATION_STEP_LABELS = {
+  "Punch in": "Punched in",
+  Accepted: "Accepted",
+  "En Route": "En route",
+  Arrived: "Arrived",
+  "Picked Up": "Picked up",
+};
+
 const getRequestStyle = (level) => {
   if (level === "Emergency") {
     return { color: "#F6D0D0", chip: "#C53A3A" };
@@ -154,7 +163,8 @@ const queueOrder = (request) => {
 // One driver in the "Driver availability" list (driver-duty-plan.md Step 5, DESIGN.md look):
 // name, duty status badge, how long they have been in it, and why they can't be assigned (greyed out).
 // "now" is the screen's 10-second clock, so the time moves every 10 seconds.
-function DriverDutyRow({ driver, now, selected, onPress }) {
+// onShowOnMap = zooms the Live Map to the driver's last known location (driver-location-plan.md).
+function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
   const badge = DUTY_BADGES[driver.dutyStatus] || DUTY_BADGES["Off duty"];
   const badgeLabel = driver.dutyStatus === "On break" && driver.breakType ? `On break · ${driver.breakType}` : badge.label;
   const sinceMs = driver.dutyStatusSinceMs;
@@ -165,6 +175,9 @@ function DriverDutyRow({ driver, now, selected, onPress }) {
   const report = driver.unableReport;
   const reportAgo = report ? (now - report.atMs < 60_000 ? "just now" : `${formatDutyDuration(now - report.atMs)} ago`) : "";
   const reportText = report ? `Reported: can't do a ride (${report.reason}), ${reportAgo}` : "";
+  // The driver's last known location (only while on duty, see dispatcherAvailabilityRows).
+  const location = driver.location;
+  const locationAgo = location?.atMs == null ? "" : now - location.atMs < 60_000 ? "just now" : `${formatDutyDuration(now - location.atMs)} ago`;
 
   return (
     <Pressable
@@ -197,6 +210,31 @@ function DriverDutyRow({ driver, now, selected, onPress }) {
       {driver.dutyStatus === "On break" && driver.breakNote ? <Text style={styles.driverMetaLine}>Note: {driver.breakNote}</Text> : null}
       {driver.activeAssignment ? <Text style={styles.driverMetaLine}>Ride: {driver.activeAssignment.title || "Assigned ride"}</Text> : null}
       <Text style={styles.driverMetaLine}>Vehicle: {driver.linkedVehicle?.name || "No linked vehicle"}</Text>
+
+      {/* Last known location: saved only when the driver tapped a step, never in the background (driver-location-plan.md). */}
+      {/* The button has its own tap area, so it also works on a greyed-out card (a driver "On a run" is often the one to find). */}
+      {location ? (
+        <>
+          <Text style={styles.driverMetaLine}>
+            Last known location: {locationAgo} ({LOCATION_STEP_LABELS[location.step] || location.step})
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.showOnMapButton, pressed && styles.showOnMapButtonPressed]}
+            onPress={(event) => {
+              // Only this button: don't also open the "Assign Request" window of the card around it.
+              event?.stopPropagation?.();
+              onShowOnMap();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Show ${driver.name} on the map`}
+          >
+            <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+            <Text style={styles.showOnMapText}>Show on map</Text>
+          </Pressable>
+        </>
+      ) : driver.dutyStatus !== "Off duty" ? (
+        <Text style={styles.driverMetaLine}>No location shared.</Text>
+      ) : null}
 
       {appClosed ? (
         <View style={styles.appClosedBox}>
@@ -335,6 +373,10 @@ export default function DispatcherHome() {
   const [unableReports, setUnableReports] = useState([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [driverSchedules, setDriverSchedules] = useState([]);
+  // Each driver's last known location, by driver id (driver-location-plan.md).
+  const [driverLocations, setDriverLocations] = useState({});
+  // The driver whose "Show on map" was tapped (null = the map shows the selected request).
+  const [mapDriverId, setMapDriverId] = useState(null);
 
   const visibleRequests = useMemo(() => requests.filter((request) => !assignedRequestIds.includes(request.id)), [assignedRequestIds, requests]);
   const pendingRequests = useMemo(() => visibleRequests.filter((request) => request.status === "Pending"), [visibleRequests]);
@@ -443,10 +485,25 @@ export default function DispatcherHome() {
           linkedVehicle,
           blockReason: getAssignBlockReason(driver),
           unableReport,
+          // Only while on duty. Punch out erases it, but an old app doesn't, so Off duty hides it here too.
+          location: driver.dutyStatus !== "Off duty" ? driverLocations[driver.id] ?? null : null,
         };
       }),
-    [driversWithAssignments, unableReports, vehicles]
+    [driverLocations, driversWithAssignments, unableReports, vehicles]
   );
+  // The driver shown on the Live Map, if they still have a location (it goes away when they punch out).
+  const mapDriver = dispatcherAvailabilityRows.find((driver) => driver.id === mapDriverId && driver.location) ?? null;
+  // Only a new place makes a new map (not every 10-second tick of the clock).
+  const mapDriverLatitude = mapDriver?.location.latitude ?? null;
+  const mapDriverLongitude = mapDriver?.location.longitude ?? null;
+  const mapDriverCoordinates = useMemo(
+    () => (mapDriverLatitude === null ? null : [mapDriverLatitude, mapDriverLongitude]),
+    [mapDriverLatitude, mapDriverLongitude]
+  );
+  // A clock time, not "5 min ago": a label that changed every 10 seconds would reload the map every 10 seconds.
+  const mapDriverLabel = mapDriver
+    ? `${mapDriver.name} · ${LOCATION_STEP_LABELS[mapDriver.location.step] || mapDriver.location.step}${mapDriver.location.atMs == null ? "" : `, ${formatManilaTime(mapDriver.location.atMs)}`}`
+    : "";
 
   useEffect(() => {
     const requestsQuery = query(collection(db, "transportRequests"), where("status", "==", "Pending"));
@@ -565,6 +622,27 @@ export default function DispatcherHome() {
         }
       },
       (error) => console.log("Assignments listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, []);
+
+  // Drivers' last known locations (driver-location-plan.md). Live, so "5 min ago (Arrived)" changes as soon as the driver taps a step.
+  // Only dispatchers may read them (firestore.rules); for anyone else this just logs a warning.
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "driverLocations"),
+      (snapshot) => {
+        const nextLocations = {};
+        snapshot.docs.forEach((locationDoc) => {
+          const data = locationDoc.data();
+          if (typeof data.latitude === "number" && typeof data.longitude === "number") {
+            nextLocations[locationDoc.id] = { latitude: data.latitude, longitude: data.longitude, step: data.step || "", atMs: getTimestampMillis(data.at) };
+          }
+        });
+        setDriverLocations(nextLocations);
+      },
+      (error) => console.log("Driver locations listener warning:", error)
     );
 
     return unsubscribe;
@@ -865,7 +943,11 @@ export default function DispatcherHome() {
                         { backgroundColor: request.color },
                         selectedRequest?.id === request.id && styles.requestCardActive,
                       ]}
-                      onPress={() => setSelectedRequest(request)}
+                      onPress={() => {
+                        setSelectedRequest(request);
+                        // Back to the ride's pins (hides a driver shown with "Show on map").
+                        setMapDriverId(null);
+                      }}
                     >
                       <View style={styles.requestTop}>
                         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
@@ -907,7 +989,7 @@ export default function DispatcherHome() {
               ]}
             >
               <View style={styles.mapPlaceholder}>
-                <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} />
+                <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} driverCoordinates={mapDriverCoordinates} driverLabel={mapDriverLabel} />
               </View>
             </View>
 
@@ -916,7 +998,7 @@ export default function DispatcherHome() {
               <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
                 {dispatcherAvailabilityRows.length ? (
                   dispatcherAvailabilityRows.map((driver) => (
-                    <DriverDutyRow key={driver.id} driver={driver} now={now} selected={selectedDriver?.id === driver.id} onPress={() => openAssignModal(driver)} />
+                    <DriverDutyRow key={driver.id} driver={driver} now={now} selected={selectedDriver?.id === driver.id} onPress={() => openAssignModal(driver)} onShowOnMap={() => setMapDriverId(driver.id)} />
                   ))
                 ) : (
                   <View style={styles.emptyDriversCard}>
@@ -1158,6 +1240,22 @@ const styles = StyleSheet.create({
   driverMetaLine: { marginTop: 6, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.ink },
   appClosedBox: { marginTop: 10, flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
   appClosedText: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  // Outline button (DESIGN.md: corner 16, at least 48 tall, icon with a word).
+  showOnMapButton: {
+    marginTop: 10,
+    minHeight: 48,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  showOnMapButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  showOnMapText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   blockReasonText: { marginTop: 10, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
   assignErrorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 15, lineHeight: 20, fontWeight: "600", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
   emptyRequestsCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
