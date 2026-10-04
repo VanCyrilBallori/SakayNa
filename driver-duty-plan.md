@@ -1,6 +1,6 @@
 # Driver Duty Status + Duty Time Record (DTR) Plan — demo version
 
-**Status: Steps 1–6 DONE (tested 2026-10-04).** Step 8 (paperwork + release) in progress, then Step 7 if there is time.
+**Status: Steps 1–6 and 8 DONE (released as demo-ready-8, 2026-10-04).** Groupmates' feedback done; releasing demo-ready-9. Step 7 (My DTR) only if there is time.
 Demo freeze: around Oct 8–9.
 
 ## Goal (in simple words)
@@ -482,3 +482,26 @@ everything residents see.
    DTR shows only break time, so it needed no change.
 4. Break card too orange: Peach Tint card with an orange edge and dark
    text (preview first).
+
+## Releases
+- 2026-10-04: **demo-ready-8** (Steps 1–6 + 8a/8b).
+  - Website: master → main → Vercel, fast-forward 7e35934..7949b7f; the
+    new version was live at 12:38. It also carried 11 earlier commits
+    not yet on the website (Toledo-only map search, Log In / Create
+    Account / Verify Email / Choose Role / registration restyle, wide
+    split login with logo, landing page map and "Request a Ride now",
+    Sakay Orange #FF8A00, two plan notes).
+  - Rules Part B ("only Available drivers can be assigned"): before the
+    deploy, the live rules matched the Step 1 rules (commit 177df0c);
+    after it, the live rules matched firestore.rules (ruleset
+    e1b642d4-7844-4d0f-a8d0-08148536d79d).
+  - Preview APK: EAS build 07fc77b8-b6d9-4314-873f-beccc5c4ce69,
+    profile preview, built from commit 30c15be, `eas fingerprint:compare`
+    says "matches". Tagged demo-ready-8 (on 30c15be) and pushed.
+  - Live checks (8d.4): not recorded. Replaced by demo-ready-9 the same
+    day.
+- 2026-10-04: rules only, "Lunch" break type (commit 09c0f46). Before
+  the deploy, the live rules matched the demo-ready-8 rules (commit
+  30c15be); after it, the live rules matched firestore.rules (ruleset
+  4cbea369-6bb5-4682-a209-d65f1982bfa1). "Meal" stays allowed for the
+  demo-ready-8 APK.
