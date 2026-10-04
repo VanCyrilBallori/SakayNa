@@ -49,7 +49,7 @@ export const DESIGN_COLORS = Object.freeze({
   hallGreenDeep: "#0B5A37", // pressed buttons, "Assigned" / "On the way"
   emergencyRed: "#B42318", // Emergency and "can't be undone" only. Red has white words.
   redTint: "#FCE9E7",
-  sakayOrange: "#F97316", // highlights: bands, badges, destination dot. Orange has dark words (never white).
+  sakayOrange: "#FF8A00", // highlights: bands, badges, destination dot. Orange has dark words (never white).
   orangeDeep: "#B34D00", // small orange words on white or peach only (e.g. a scheduled time)
   peachTint: "#FDECD3", // background of important info boxes
   paperWhite: "#FFFFFF",

@@ -67,9 +67,11 @@ is spent on a few things the resident should notice; red stays rare.
 - **Red Tint (#FCE9E7):** background behind red message text (5.62:1).
 
 ### Tertiary
-- **Sakay Orange (#F97316):** highlights: the "Waiting" and "Your driver is here"
+- **Sakay Orange (#FF8A00):** highlights: the "Waiting" and "Your driver is here"
   status bands, small tags and badges, the destination dot on the route board.
-  Ink text on it: 5.93:1. White text on it: 2.80:1, so never white.
+  Ink text on it: 7.03:1. White text on it: 2.36:1, so never white. Chosen by
+  the group (Oct 2026) over #F97316: more golden, and easier for colorblind
+  people to tell apart from Emergency Red. Don't move it toward red.
 - **Orange Deep (#B34D00):** small orange words only, on white or Peach Tint
   (a scheduled time like "Fri, Oct 9, 9:00 AM", an icon in a peach box).
   5.28:1 on white, 4.55:1 on Peach Tint. Never a large fill.
