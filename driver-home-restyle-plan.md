@@ -1,6 +1,6 @@
 # Driver Home Restyle Plan
 
-**Status: Pieces 1–4b done (commits f0c21dd, a6e75f4, 1b0dcb7, fd00d3d, 8ee0520). Piece 5 (paperwork) written, waiting for review. Then release demo-ready-10.**
+**Status: Pieces 1–5 DONE (commits f0c21dd, a6e75f4, 1b0dcb7, fd00d3d, 8ee0520, c0800eb), released as demo-ready-10, 2026-10-04.** Next: driver-pages-plan.md (3 pages, "I can't do this ride").
 
 ## Answers (2026-10-04)
 1. Accept is one tap, no "Are you sure?". Decline keeps asking first
@@ -183,3 +183,19 @@ the inbox and the task card, and remove the checklist.
 - The Online / Offline sheet (screen 2): our duty card replaces it.
 - The "1" count badge on the Ride Inbox pill (a driver only ever sees
   one ride at a time today).
+
+## Releases
+- 2026-10-04: **demo-ready-10** (Pieces 1–5: Accept without the
+  vehicle checklist, Ride Inbox header, one ride card with status band,
+  map on top with one navigation button, ride steps list).
+  - Website: master → main → Vercel, main at c0800eb; the new version
+    was live (checked: the live code file contains "Accept ride",
+    "Navigate to pickup" and "Ride steps"). No rules change.
+  - Preview APK: EAS build 5c010ce5-2c5e-49b0-a5a2-84c6ba0479f1,
+    profile preview, built from commit c0800eb, `eas fingerprint:compare`
+    says "matches". Tested on the phone. Tagged demo-ready-10 (on
+    c0800eb) and pushed.
+  - Tester message: tester-message.md with the new ride screen and this
+    APK's link (commit 7cbc131).
+  - Not in this release: the 3 driver pages (driver-pages-plan.md
+    Step 1, not committed yet), for the next website + APK.
