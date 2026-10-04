@@ -199,6 +199,25 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- Driver's last known location (driver-location-plan.md) ----
+    // One document per driver (id = their uid), replaced at each step, erased at punch out.
+    // Saved only when the driver taps Punch in, Accept, En route, Arrived or Picked up, while on duty.
+    // Only dispatchers may read it (not admins, not residents), and the driver their own.
+    match /driverLocations/{driverId} {
+      allow read:   if isDispatcher() || (signedIn() && request.auth.uid == driverId);
+      allow create, update: if signedIn() && request.auth.uid == driverId
+        && isApprovedDriver()
+        && get(/databases/$(database)/documents/users/$(driverId)).data.get("dutyStatus", "Off duty") != "Off duty"
+        && request.resource.data.keys().hasOnly(["latitude", "longitude", "step", "at"])
+        && request.resource.data.latitude is number
+        && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number
+        && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && request.resource.data.step in ["Punch in", "Accepted", "En Route", "Arrived", "Picked Up"]
+        && request.resource.data.at == request.time;
+      allow delete: if signedIn() && request.auth.uid == driverId;
+    }
+
     // ---- In-app emergency call signaling ----
     match /callSessions/{callId} {
       // resource == null: the resident's app starts watching its new alert while the alert is
