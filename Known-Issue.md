@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked against the app: Oct 4, 2026 (after driver-pages-plan.md Step 2: 3 driver pages, "I can't do this ride").
+Last checked against the app: Oct 4, 2026 (after driver-location-plan.md Step 3: "Show on map").
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,6 +10,38 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### "Show on map": the location can be old, rough, or missing
+
+- **Found:** Oct 4, 2026 (driver-location-plan.md).
+- **What it is:** A driver's location is saved only when they tap Punch
+  in, Accept, En route, Arrived or Picked up (never in the background),
+  so it is a *last known* place, not a live one. Also:
+  - A driver who forgets to punch out keeps their last location visible
+    to dispatchers until they punch out.
+  - If the driver chose "Approximate" in Android's location pop-up, the
+    pin can be a few km off.
+  - Drivers on the website or on an APK before this release never share
+    a location ("No location shared.").
+  - On a narrow screen the map is above the driver list, so the
+    dispatcher scrolls up after tapping Show on map.
+- **What to do for now:** read the "5 min ago (Arrived)" line before
+  trusting the pin; call the driver if it is old.
+- **Future work:** live tracking (driver-location-plan.md, "Not now").
+- **Status:** Open. The light version on purpose.
+
+### Driver location: what firestore.rules can't check
+
+- **Found:** Oct 4, 2026 (driver-location-plan.md, "What the rules can't
+  check").
+- **What it is:** The rules check that only the driver saves their own
+  location, only while on duty, with one of the five steps and
+  Firestore's clock, and that only dispatchers can read it. But they
+  can't check that the latitude and longitude are real (a tampered app
+  could send a fake place), or that the step matches what the driver
+  just did.
+- **Status:** Open. Fine for the Capstone (only approved drivers can
+  save a location).
 
 ### A van reported with "Vehicle problem" can still be assigned
 

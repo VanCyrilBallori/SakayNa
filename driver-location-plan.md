@@ -1,6 +1,11 @@
 # Driver Location Plan ("Show on map") — light version
 
-**Status: approved 2026-10-04. Step 1 (rules) in progress.**
+**Status: Steps 1–3 DONE and tested on the phone, Step 4 paperwork written (2026-10-04). Release (APK + website) not done yet.**
+- Step 1 rules: commit 288e164, deployed. Before: live rules matched
+  commit 09c0f46. After: live rules matched firestore.rules (ruleset
+  0f846354-c72c-44bc-b46c-a99e83e40796).
+- Step 2 driver saves location: commit 5618f97.
+- Step 3 dispatcher "Show on map": commit 1aacad2.
 Demo freeze: around Oct 8–9.
 
 ## Goal (in simple words)
