@@ -1,6 +1,6 @@
 # Driver Home Restyle Plan
 
-**Status: Piece 1 done (commit f0c21dd). Piece 2 built, waiting for phone test.**
+**Status: Pieces 1–2 done (commits f0c21dd, a6e75f4). Piece 3 built, waiting for phone test.**
 
 ## Answers (2026-10-04)
 1. Accept is one tap, no "Are you sure?". Decline keeps asking first
@@ -94,7 +94,13 @@ Searched the whole project (2026-10-04):
   driver-home.jsx from growing); app/driver-home.jsx uses it instead
   of the five small cards (Current mission, Passenger, Pickup,
   Destination, Trip summary).
-- Card: status band (word + color, see below) → ride title (22) →
+- Agreed at the sketch (2026-10-04): ride title is 17 bold (the band
+  is the card's one big thing); landmark and "Needs help" stay on the
+  card; "Pickup" / "Destination" sit above the place. The pop-up is
+  renamed "Ride details" and also shows Summary, Priority (`level`,
+  from the old "Trip summary" box) and Landmark. The "Review details"
+  button under the map is replaced by "Ride details ›" on the card.
+- Card: status band (word + color, see below) → ride title (17) →
   clock + time ("Sun, Oct 4 · 9:00 AM" or "As soon as possible") →
   Pickup / Destination route board → two small boxes, **Riders**
   ("4 seniors") and **Vehicle** ("Barangay Van 1") → passenger name

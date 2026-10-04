@@ -10,6 +10,7 @@ import BrandLogo from "../components/BrandLogo";
 import CloseButton from "../components/ui/CloseButton";
 import DriverDutyCard from "../features/driver/components/DriverDutyCard";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
+import DriverRideCard from "../features/driver/components/DriverRideCard";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
@@ -745,61 +746,14 @@ export default function DriverHome() {
               {request ? (
                 <View style={styles.assignmentGrid}>
                   <View style={styles.leftColumn}>
-                    <View style={styles.missionCard}>
-                      <View style={styles.missionCardTop}>
-                        <Text style={styles.missionEyebrow}>Current Mission</Text>
-                        <View style={styles.missionStatusPill}>
-                          <Text style={styles.missionStatusText}>{missionStatus}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.missionTitle}>{request.emergencyType ?? request.title}</Text>
-                      <Text style={styles.missionText}>When: {getWhenText(request)}</Text>
-                      <Text style={styles.missionText}>Request: {request.summary}</Text>
-                    </View>
-
-                    <View style={styles.infoCard}>
-                      <Text style={styles.sectionTitle}>Passenger</Text>
-                      <Text style={styles.passengerName}>{getPassengerName(request, assignedTransfer)}</Text>
-                      {request.contactNumber ? (
-                        <TouchableOpacity
-                          style={styles.locationRow}
-                          onPress={() => startPhoneCall(request.contactNumber)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Call passenger at ${request.contactNumber}`}
-                        >
-                          <FontAwesome name="phone" size={20} color="#06774B" />
-                          <Text style={styles.phoneLink}>{request.contactNumber}</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <Text style={styles.missionText}>Phone: Not provided</Text>
-                      )}
-                      <Text style={styles.missionText}>Passengers: {getPassengerCountText(request)}</Text>
-                      <Text style={styles.missionText}>Assistance: {getAssistanceText(request)}</Text>
-                      {request.additionalNotes ? <Text style={styles.missionText}>Notes: {request.additionalNotes}</Text> : null}
-                    </View>
-
-                    <View style={styles.infoCard}>
-                      <Text style={styles.sectionTitle}>Pickup Location</Text>
-                      <View style={styles.locationRow}>
-                        <FontAwesome name="map-marker" size={26} color="#111111" />
-                        <Text style={styles.locationText}>{request.pickupLocation || "Pickup location pending"}</Text>
-                      </View>
-                      {request.pickupDetails ? <Text style={styles.missionText}>Landmark: {request.pickupDetails}</Text> : null}
-                    </View>
-
-                    <View style={styles.infoCard}>
-                      <Text style={styles.sectionTitle}>Destination</Text>
-                      <View style={styles.locationRow}>
-                        <FontAwesome name="flag" size={20} color="#111111" />
-                        <Text style={styles.locationText}>{request.destination}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.infoCard}>
-                      <Text style={styles.sectionTitle}>Trip Summary</Text>
-                      <Text style={styles.summaryText}>{request.summary}</Text>
-                      <Text style={styles.requestMeta}>{request.level} | {request.emergencyType ?? request.title} | {getVehicleName(request, assignedTransfer)}</Text>
-                    </View>
+                    {/* The task card (driver-home-restyle-plan.md Piece 3). Replaces the five small boxes. */}
+                    <DriverRideCard
+                      request={request}
+                      assignment={assignedTransfer}
+                      missionStatus={missionStatus}
+                      vehicleName={getVehicleName(request, assignedTransfer)}
+                      onOpenDetails={() => setReviewOpen(true)}
+                    />
                   </View>
 
                   <View style={styles.mapCard}>
@@ -821,9 +775,6 @@ export default function DriverHome() {
                     ) : (
                       <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
                     )}
-                    <TouchableOpacity style={[styles.driverActionButton, styles.reviewButton]} onPress={() => setReviewOpen(true)}>
-                      <Text style={styles.driverActionButtonText}>Review details</Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
               ) : (
@@ -840,7 +791,7 @@ export default function DriverHome() {
         <Modal visible={reviewOpen} transparent animationType="fade" onRequestClose={() => setReviewOpen(false)}>
           <View style={styles.modalOverlay}>
             <View style={[styles.reviewCard, compact && styles.reviewCardCompact]}>
-              <Text style={styles.reviewTitle}>Mission Details</Text>
+              <Text style={styles.reviewTitle}>Ride details</Text>
               <Text style={styles.reviewLine}>Passenger: {getPassengerName(request, assignedTransfer)}</Text>
               {request?.contactNumber ? (
                 <TouchableOpacity onPress={() => startPhoneCall(request.contactNumber)} accessibilityRole="button" accessibilityLabel={`Call passenger at ${request.contactNumber}`}>
@@ -855,8 +806,11 @@ export default function DriverHome() {
               <Text style={styles.reviewLine}>Assistance: {getAssistanceText(request)}</Text>
               {request?.additionalNotes ? <Text style={styles.reviewLine}>Notes: {request.additionalNotes}</Text> : null}
               <Text style={styles.reviewLine}>Request: {request?.emergencyType ?? request?.title ?? "Transport Request"}</Text>
+              {request?.summary ? <Text style={styles.reviewLine}>Summary: {request.summary}</Text> : null}
+              {request?.level ? <Text style={styles.reviewLine}>Priority: {request.level}</Text> : null}
               <Text style={styles.reviewLine}>When: {getWhenText(request)}</Text>
               <Text style={styles.reviewLine}>Pickup: {request?.pickupLocation ?? "Pickup location pending"}</Text>
+              {request?.pickupDetails ? <Text style={styles.reviewLine}>Landmark: {request.pickupDetails}</Text> : null}
               <Text style={styles.reviewLine}>Destination: {request?.destination ?? "Nearest available response center"}</Text>
               <Text style={styles.reviewLine}>Vehicle: {getVehicleName(request, assignedTransfer)}</Text>
               <TouchableOpacity style={styles.reviewCloseButton} onPress={() => setReviewOpen(false)}>
@@ -1209,21 +1163,7 @@ const styles = StyleSheet.create({
   cancelledNoticeText: { marginTop: 4, fontSize: 15, lineHeight: 21, color: "#7A1A12" },
   cancelledNoticeButton: { alignSelf: "flex-start", minHeight: 48, marginTop: 10, paddingHorizontal: 24, borderRadius: 12, backgroundColor: "#B42318", alignItems: "center", justifyContent: "center" },
   cancelledNoticeButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
-  missionCard: { padding: 18, borderRadius: 18, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E2DD" },
-  missionCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  missionEyebrow: { fontSize: 12, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase", color: "#5A7267" },
-  missionStatusPill: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: "#EAF4EF" },
-  missionStatusText: { fontSize: 12, fontWeight: "800", color: "#06774B" },
-  missionTitle: { marginTop: 12, fontSize: 24, fontWeight: "800", color: "#111111" },
-  missionText: { marginTop: 8, fontSize: 15, lineHeight: 22, color: "#475652" },
-  infoCard: { padding: 18, borderRadius: 18, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E2DD" },
-  sectionTitle: { fontSize: 20, fontWeight: "700", color: "#111111" },
-  locationRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
-  locationText: { flex: 1, fontSize: 17, fontWeight: "600", color: "#1C2723" },
-  summaryText: { marginTop: 10, fontSize: 15, lineHeight: 23, color: "#475652" },
-  passengerName: { marginTop: 10, fontSize: 17, fontWeight: "700", color: "#1C2723" },
   phoneLink: { fontSize: 17, fontWeight: "700", color: "#06774B", textDecorationLine: "underline" },
-  requestMeta: { marginTop: 12, fontSize: 13, fontWeight: "700", color: "#60716B" },
   mapCard: { flex: 0.82, minWidth: 280, maxWidth: 460, borderRadius: 18, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D5DEDA", overflow: "hidden" },
   mapCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#E4EBE7", gap: 12, flexWrap: "wrap" },
   mapCardTitle: { fontSize: 18, fontWeight: "700", color: "#2E3C37" },
@@ -1233,12 +1173,9 @@ const styles = StyleSheet.create({
   mapBlankTitle: { marginTop: 14, fontSize: 24, fontWeight: "800", color: "#2F3B46", textAlign: "center" },
   mapBlankText: { marginTop: 10, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
   driverActionRow: { padding: 14, flexDirection: "row", flexWrap: "wrap", gap: 10, borderTopWidth: 1, borderTopColor: "#E4EBE7", backgroundColor: "#FFFFFF" },
-  driverActionButton: { flexGrow: 1, minWidth: 120, minHeight: 54, borderRadius: 14, alignItems: "center", justifyContent: "center", paddingHorizontal: 14 },
   acceptButton: { backgroundColor: "#06774B" },
   declineButton: { backgroundColor: "#C53A3A" },
-  reviewButton: { backgroundColor: "#326CD0" },
   completeButton: { backgroundColor: "#FB7A2E" },
-  driverActionButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
   emptyInbox: { marginTop: 20, minHeight: 300, borderRadius: 18, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", padding: 24, borderWidth: 1, borderColor: "#D8E2DD" },
   emptyTitle: { marginTop: 12, fontSize: 24, fontWeight: "800", color: "#2F3B46" },
   emptyText: { marginTop: 8, maxWidth: 360, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
