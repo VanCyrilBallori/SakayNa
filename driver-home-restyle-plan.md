@@ -1,6 +1,6 @@
 # Driver Home Restyle Plan
 
-**Status: Pieces 1–3 done (commits f0c21dd, a6e75f4, 1b0dcb7). Piece 4a built, waiting for phone test.**
+**Status: Pieces 1–4a done (commits f0c21dd, a6e75f4, 1b0dcb7, fd00d3d). Piece 4b built, waiting for phone test.**
 
 ## Answers (2026-10-04)
 1. Accept is one tap, no "Are you sure?". Decline keeps asking first
@@ -134,7 +134,11 @@ Searched the whole project (2026-10-04):
   "Picked up", then **Navigate to destination**.
 
 ### Piece 4b — Ride steps as a timeline (screens 10–11)
-- File: DriverMissionActions.jsx.
+- Files: features/driver/components/DriverRideSteps.jsx (new),
+  DriverMissionActions.jsx.
+- Agreed at the sketch (2026-10-04): the step button sits ABOVE the
+  list (the picture has it below), so the button stays on screen
+  without scrolling. The list shows only after Accept.
 - Title "Ride steps" (not "STATUS"). One row per step:
   Accepted → On the way → Arrived at pickup → Rider picked up →
   Completed.
