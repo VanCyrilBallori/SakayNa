@@ -82,7 +82,8 @@ const openLocationInMaps = async (location) => {
   }
 };
 
-// Who sent an emergency alert and how to reach them: big tap-to-call phone, barangay or place, and the map link.
+// Who sent an emergency alert and how to reach them: the resident's number (plain text, for reference),
+// barangay or place, and the map link. The number is not a button: the resident calls the dispatcher, and a computer can't call.
 // call = the alert (callSessions document). It updates by itself when the resident's location arrives a few seconds later.
 function EmergencyCallerDetails({ call }) {
   const phone = call?.residentPhone || "";
@@ -94,15 +95,10 @@ function EmergencyCallerDetails({ call }) {
   return (
     <View style={styles.callerDetails}>
       {phone ? (
-        <Pressable
-          style={({ pressed }) => [styles.callerPhoneButton, pressed && styles.callerPhoneButtonPressed]}
-          onPress={() => startPhoneCall(phone)}
-          accessibilityRole="button"
-          accessibilityLabel={`Call ${formatPhoneForDialing(phone)}`}
-        >
-          <MaterialCommunityIcons name="phone" size={28} color="#FFFFFF" />
+        <View>
+          <Text style={styles.callerLabel}>{"Resident's number:"}</Text>
           <Text style={styles.callerPhoneText}>{formatPhoneForDialing(phone)}</Text>
-        </Pressable>
+        </View>
       ) : (
         <Text style={styles.callerLine}>No phone number on file.</Text>
       )}
@@ -1335,22 +1331,11 @@ const styles = StyleSheet.create({
   },
   assignButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 22 },
-  // Emergency caller details (DESIGN.md look): big tap-to-call number, then barangay and the map link.
+  // Emergency caller details (DESIGN.md look): big resident's number (text only), then barangay and the map link.
   callerDetails: { marginTop: 16, gap: 12 },
-  callerPhoneButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    minHeight: 64,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: DESIGN_COLORS.hallGreen,
-  },
-  callerPhoneButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  callerPhoneText: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: "#FFFFFF" },
+  callerPhoneText: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink },
   callerLine: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  callerLabel: { fontWeight: "700" },
+  callerLabel: { fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.ink },
   callerMapButton: {
     flexDirection: "row",
     alignItems: "center",
