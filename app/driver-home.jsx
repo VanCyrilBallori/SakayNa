@@ -120,7 +120,7 @@ export default function DriverHome() {
     return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "D";
   }, [displayName]);
   const [accessStatus, setAccessStatus] = useState("checking");
-  const [duty, setDuty] = useState({ dutyStatus: "Off duty", shiftId: "" });
+  const [duty, setDuty] = useState({ dutyStatus: "Off duty", dutyStatusSince: null, shiftId: "", breakType: "", breakNote: "" });
   const [assignedTransfer, setAssignedTransfer] = useState(null);
   const [currentMissionRequest, setCurrentMissionRequest] = useState(null);
   const [missionMessage, setMissionMessage] = useState({ message: "", tone: "info" });
@@ -199,7 +199,13 @@ export default function DriverHome() {
       userRef,
       (snapshot) => {
         const data = snapshot.data({ serverTimestamps: "estimate" });
-        setDuty({ dutyStatus: data?.dutyStatus ?? "Off duty", shiftId: data?.shiftId ?? "" });
+        setDuty({
+          dutyStatus: data?.dutyStatus ?? "Off duty",
+          dutyStatusSince: data?.dutyStatusSince ?? null,
+          shiftId: data?.shiftId ?? "",
+          breakType: data?.breakType ?? "",
+          breakNote: data?.breakNote ?? "",
+        });
       },
       (error) => console.log("Driver duty status listener warning:", error)
     );

@@ -193,8 +193,8 @@ full width and at least 56 tall, a word with every color, no ALL CAPS):
 | On break | Sakay Orange card, Ink text: "On break · Meal", break timer "12:30", the note | **Resume duty** |
 | On a run | Hall Green Deep card, white text: "On a run", the ride's purpose | none |
 
-- **Start break** opens the "Set availability" bottom sheet (like
-  reference screen 2): three big choices Meal / Rest / Personal, an
+- **Start break** opens the "Take a break" bottom sheet (like
+  reference screen 2; renamed from "Set availability" on 2026-10-04): three big choices Meal / Rest / Personal, an
   optional note (max 100), then **Start break** (main) and **Cancel**
   underneath.
 - **Punch out** opens a confirm pop-up: "Punch out?" + start time, time on

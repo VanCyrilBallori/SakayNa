@@ -1,19 +1,31 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DESIGN_COLORS } from "../../../constants/design";
 import { db } from "../../../firebase";
+import { getTimestampMillis } from "../../../lib/dates";
 import { formatDutyDuration, formatManilaTime, formatTimer, summarizeShift } from "../../../lib/dutyTime";
-import { punchIn, punchOut } from "../services/driverDutyService";
+import { endBreak, punchIn, punchOut, startBreak } from "../services/driverDutyService";
 
 // If a save takes longer than this, the internet is probably slow or off.
 const SLOW_SAVE_MS = 8000;
 
+// The three kinds of break (the same list is checked in firestore.rules).
+const BREAK_TYPES = [
+  { value: "Meal", label: "Meal", icon: "silverware-fork-knife" },
+  { value: "Rest", label: "Rest", icon: "coffee-outline" },
+  { value: "Personal", label: "Personal", icon: "account-outline" },
+];
+const BREAK_ICONS = { Meal: "silverware-fork-knife", Rest: "coffee-outline", Personal: "account-outline" };
+
 // The driver's duty status card at the top of the driver home (driver-duty-plan.md, DESIGN.md look).
-// "duty" comes from the driver's own users/{uid} profile: { dutyStatus, shiftId }.
+// "duty" comes from the driver's own users/{uid} profile: { dutyStatus, dutyStatusSince, shiftId, breakType, breakNote }.
 export default function DriverDutyCard({ driverId, driverName, duty }) {
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const dutyStatus = duty.dutyStatus;
   const shiftId = duty.shiftId;
   const [shiftRecords, setShiftRecords] = useState([]);
@@ -22,6 +34,14 @@ export default function DriverDutyCard({ driverId, driverName, duty }) {
   const [message, setMessage] = useState({ text: "", tone: "info" });
   const [punchOutOpen, setPunchOutOpen] = useState(false);
   const savingRef = useRef(false);
+  // "Take a break" sheet.
+  const [breakSheetOpen, setBreakSheetOpen] = useState(false);
+  const [chosenBreakType, setChosenBreakType] = useState("");
+  const [breakNoteInput, setBreakNoteInput] = useState("");
+  // How far the sheet is pushed down (0 = open). The dark background fades as it moves.
+  const sheetHeight = height * 0.85;
+  const [sheetY] = useState(() => new Animated.Value(0));
+  const backdropOpacity = sheetY.interpolate({ inputRange: [0, sheetHeight], outputRange: [1, 0], extrapolate: "clamp" });
 
   // This shift's duty records, live. Pending saves show at once, with Firestore's estimated time.
   useEffect(() => {
@@ -78,9 +98,66 @@ export default function DriverDutyCard({ driverId, driverName, duty }) {
     runSave(() => punchOut({ driverId, driverName, shiftId }), "We couldn't punch you out. Check your internet and try again.");
   };
 
+  // The sheet starts hidden below the screen, then slides up once it is shown (same as BottomSheetPicker).
+  const openBreakSheet = () => {
+    setChosenBreakType("");
+    setBreakNoteInput("");
+    sheetY.setValue(sheetHeight);
+    setBreakSheetOpen(true);
+  };
+  const slideSheetIn = () => {
+    Animated.timing(sheetY, { toValue: 0, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  };
+  const closeBreakSheet = () => {
+    Animated.timing(sheetY, { toValue: sheetHeight, duration: 200, useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setBreakSheetOpen(false);
+    });
+  };
+
+  const handleStartBreak = () => {
+    if (!chosenBreakType) return;
+    const breakType = chosenBreakType;
+    const breakNote = breakNoteInput;
+    closeBreakSheet();
+    runSave(() => startBreak({ driverId, driverName, shiftId, breakType, breakNote }), "We couldn't start your break. Check your internet and try again.");
+  };
+
+  const handleResumeDuty = () =>
+    runSave(() => endBreak({ driverId, driverName, shiftId }), "We couldn't end your break. Check your internet and try again.");
+
+  // How long the current break has lasted (dutyStatusSince = when the break started, Firestore's time).
+  const breakStartMs = getTimestampMillis(duty.dutyStatusSince);
+  const breakLengthMs = breakStartMs === null ? null : Math.max(0, now - breakStartMs);
+
   return (
     <View>
-      {dutyStatus === "Off duty" ? (
+      {dutyStatus === "On break" ? (
+        <View style={[styles.card, styles.cardOnBreak]}>
+          <View style={styles.statusRow}>
+            <MaterialCommunityIcons name={BREAK_ICONS[duty.breakType] || "coffee-outline"} size={30} color={DESIGN_COLORS.ink} />
+            <Text style={[styles.statusWord, styles.inkText]} accessibilityRole="header">
+              On break
+            </Text>
+          </View>
+          <Text style={[styles.timerText, styles.inkText]} accessibilityLabel={`${duty.breakType || "Break"} break for ${formatDutyDuration(breakLengthMs ?? 0)}`}>
+            {duty.breakType || "Break"} break · {breakLengthMs === null ? "--:--:--" : formatTimer(breakLengthMs)}
+          </Text>
+          {duty.breakNote ? <Text style={[styles.bodyText, styles.inkText]}>Note: {duty.breakNote}</Text> : null}
+          <Text style={[styles.smallText, styles.inkText]}>Dispatch can&apos;t give you rides. Your time on duty is paused.</Text>
+
+          <Pressable
+            style={({ pressed }) => [styles.mainButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
+            onPress={handleResumeDuty}
+            disabled={saving}
+            android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saving, busy: saving }}
+          >
+            {saving ? <ActivityIndicator color={DESIGN_COLORS.paperWhite} /> : <MaterialCommunityIcons name="play-outline" size={28} color={DESIGN_COLORS.paperWhite} />}
+            <Text style={styles.punchInText}>{saving ? "Saving..." : "Resume duty"}</Text>
+          </Pressable>
+        </View>
+      ) : dutyStatus === "Off duty" ? (
         <View style={[styles.card, styles.cardOffDuty]}>
           <View style={styles.statusRow}>
             <MaterialCommunityIcons name="clock-outline" size={30} color={DESIGN_COLORS.inkMuted} />
@@ -118,7 +195,18 @@ export default function DriverDutyCard({ driverId, driverName, duty }) {
           </Text>
 
           <Pressable
-            style={({ pressed }) => [styles.mainButton, styles.outlineOnGreen, pressed && styles.outlineOnGreenPressed, saving && styles.buttonBusy]}
+            style={({ pressed }) => [styles.mainButton, styles.whiteButton, pressed && styles.whiteButtonPressed, saving && styles.buttonBusy]}
+            onPress={openBreakSheet}
+            disabled={saving}
+            android_ripple={{ color: "rgba(11, 122, 75, 0.12)" }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saving }}
+          >
+            <MaterialCommunityIcons name="coffee-outline" size={24} color={DESIGN_COLORS.hallGreen} />
+            <Text style={styles.whiteButtonText}>Start break</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.mainButton, styles.secondButton, styles.outlineOnGreen, pressed && styles.outlineOnGreenPressed, saving && styles.buttonBusy]}
             onPress={() => setPunchOutOpen(true)}
             disabled={saving}
             android_ripple={{ color: "rgba(255, 255, 255, 0.16)" }}
@@ -136,6 +224,92 @@ export default function DriverDutyCard({ driverId, driverName, duty }) {
           <Text style={[styles.messageText, message.tone === "error" && styles.messageTextError]}>{message.text}</Text>
         </View>
       ) : null}
+
+      {/* "Take a break" sheet: choose the kind of break, add an optional note, then Start break. */}
+      {/* animationType="none": the sheet slides and the background fades by itself (sheetY above). */}
+      <Modal visible={breakSheetOpen} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onShow={slideSheetIn} onRequestClose={closeBreakSheet}>
+        {/* "padding" makes room for the keyboard while the note is typed. */}
+        <KeyboardAvoidingView behavior="padding" style={[styles.sheetBackdrop, { paddingTop: insets.top + 24 }]}>
+          <Animated.View style={[StyleSheet.absoluteFill, styles.sheetBackdropColor, { opacity: backdropOpacity }]} pointerEvents="none" />
+          <Pressable style={styles.dismissArea} onPress={closeBreakSheet} accessibilityRole="button" accessibilityLabel="Close" />
+
+          <Animated.View style={[styles.sheet, { maxHeight: sheetHeight, transform: [{ translateY: sheetY }] }]} accessibilityViewIsModal>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle} accessibilityRole="header">
+                Take a break
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.closeButton, pressed && styles.cancelPressed]}
+                onPress={closeBreakSheet}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
+                <MaterialCommunityIcons name="close" size={26} color={DESIGN_COLORS.ink} />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              style={styles.sheetScroll}
+              contentContainerStyle={[styles.sheetContent, { paddingBottom: insets.bottom + 16 }]}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.sheetIntro}>Dispatch can&apos;t give you rides until you tap Resume duty.</Text>
+
+              <Text style={styles.fieldLabel}>What kind of break?</Text>
+              <View accessibilityRole="radiogroup">
+                {BREAK_TYPES.map((option) => {
+                  const selected = chosenBreakType === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      style={({ pressed }) => [styles.breakOption, selected && styles.breakOptionSelected, pressed && !selected && styles.cancelPressed]}
+                      onPress={() => setChosenBreakType(option.value)}
+                      android_ripple={{ color: "rgba(11, 122, 75, 0.12)" }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected }}
+                    >
+                      <MaterialCommunityIcons name={option.icon} size={26} color={selected ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.inkMuted} />
+                      <Text style={[styles.breakOptionText, selected && styles.breakOptionTextSelected]}>{option.label}</Text>
+                      <MaterialCommunityIcons
+                        name={selected ? "radiobox-marked" : "radiobox-blank"}
+                        size={26}
+                        color={selected ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.controlOutline}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.fieldLabel}>Note (optional)</Text>
+              <TextInput
+                style={styles.noteInput}
+                value={breakNoteInput}
+                onChangeText={setBreakNoteInput}
+                placeholder="Example: Back in 15 minutes"
+                placeholderTextColor={DESIGN_COLORS.placeholder}
+                maxLength={100}
+                accessibilityLabel="Note, optional"
+              />
+
+              <Pressable
+                style={({ pressed }) => [styles.mainButton, styles.confirmButton, pressed && styles.punchInPressed, !chosenBreakType && styles.buttonDisabled]}
+                onPress={handleStartBreak}
+                disabled={!chosenBreakType}
+                android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !chosenBreakType }}
+              >
+                <Text style={[styles.confirmButtonText, !chosenBreakType && styles.buttonDisabledText]}>
+                  {chosenBreakType ? `Start ${chosenBreakType.toLowerCase()} break` : "Choose a kind of break"}
+                </Text>
+              </Pressable>
+              <Pressable style={({ pressed }) => [styles.cancelButton, pressed && styles.cancelPressed]} onPress={closeBreakSheet} accessibilityRole="button">
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+            </ScrollView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* "Punch out?" pop-up: a short summary of the shift, main action on top, "Keep working" underneath. */}
       <Modal visible={punchOutOpen} transparent animationType="fade" onRequestClose={() => setPunchOutOpen(false)}>
@@ -188,6 +362,8 @@ const styles = StyleSheet.create({
   card: { borderRadius: 24, paddingHorizontal: 20, paddingVertical: 20 },
   cardOffDuty: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1, borderColor: DESIGN_COLORS.rule },
   cardAvailable: { backgroundColor: DESIGN_COLORS.hallGreen },
+  // Orange has dark words (never white).
+  cardOnBreak: { backgroundColor: DESIGN_COLORS.sakayOrange },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   availableDot: { width: 16, height: 16, borderRadius: 999, backgroundColor: DESIGN_COLORS.paperWhite },
   statusWord: { flexShrink: 1, fontSize: 28, lineHeight: 34, fontWeight: "800" },
@@ -215,6 +391,12 @@ const styles = StyleSheet.create({
   punchInButton: { minHeight: 64, backgroundColor: DESIGN_COLORS.hallGreen },
   punchInPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   punchInText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
+  secondButton: { marginTop: 12 },
+  whiteButton: { backgroundColor: DESIGN_COLORS.paperWhite },
+  whiteButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  whiteButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  buttonDisabled: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1.5, borderColor: DESIGN_COLORS.rule },
+  buttonDisabledText: { color: DESIGN_COLORS.inkMuted },
   outlineOnGreen: { borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },
   outlineOnGreenPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   outlineOnGreenText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
@@ -251,4 +433,44 @@ const styles = StyleSheet.create({
   },
   cancelPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   cancelText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+
+  // "Take a break" sheet (slides up; top corners 24).
+  sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
+  sheetBackdropColor: { backgroundColor: "rgba(0,0,0,0.4)" },
+  dismissArea: { flex: 1 },
+  // flexShrink lets the sheet get shorter (instead of going off the top) when the keyboard is open.
+  sheet: { flexShrink: 1, width: "100%", maxWidth: 640, alignSelf: "center", backgroundColor: DESIGN_COLORS.paperWhite, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" },
+  sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingLeft: 24, paddingRight: 12, paddingTop: 16, paddingBottom: 8 },
+  sheetTitle: { flex: 1, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  closeButton: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  sheetScroll: { flexGrow: 0 },
+  sheetContent: { paddingHorizontal: 24 },
+  sheetIntro: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  fieldLabel: { marginTop: 24, marginBottom: 8, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  breakOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 60,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+    overflow: "hidden",
+  },
+  breakOptionSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
+  breakOptionText: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  breakOptionTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
+  noteInput: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    fontSize: 17,
+    color: DESIGN_COLORS.ink,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
 });

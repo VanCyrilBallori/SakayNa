@@ -33,6 +33,55 @@ export const punchIn = async ({ driverId, driverName }) => {
   await batch.commit();
 };
 
+// Available -> On break. breakType is "Meal", "Rest" or "Personal"; the note is optional (100 letters at most).
+export const startBreak = async ({ driverId, driverName, shiftId, breakType, breakNote }) => {
+  const recordRef = doc(collection(db, "dutyRecords"));
+  const batch = writeBatch(db);
+  const note = breakNote.trim().slice(0, 100);
+
+  batch.update(doc(db, "users", driverId), {
+    dutyStatus: "On break",
+    dutyStatusSince: serverTimestamp(),
+    breakType,
+    breakNote: note,
+    availability: "Unavailable",
+  });
+  batch.set(recordRef, {
+    driverId,
+    driverName,
+    type: "Break start",
+    at: serverTimestamp(),
+    shiftId,
+    breakType,
+    breakNote: note,
+  });
+
+  await batch.commit();
+};
+
+// On break -> Available ("Resume duty"). The break type and note are cleared from the profile.
+export const endBreak = async ({ driverId, driverName, shiftId }) => {
+  const recordRef = doc(collection(db, "dutyRecords"));
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, "users", driverId), {
+    dutyStatus: "Available",
+    dutyStatusSince: serverTimestamp(),
+    breakType: "",
+    breakNote: "",
+    availability: "Available",
+  });
+  batch.set(recordRef, {
+    driverId,
+    driverName,
+    type: "Break end",
+    at: serverTimestamp(),
+    shiftId,
+  });
+
+  await batch.commit();
+};
+
 // Available -> Off duty. The profile keeps its shiftId, so the "Punch out" record matches it.
 export const punchOut = async ({ driverId, driverName, shiftId }) => {
   const recordRef = doc(collection(db, "dutyRecords"));
