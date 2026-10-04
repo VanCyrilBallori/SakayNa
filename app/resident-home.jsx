@@ -3,7 +3,7 @@ import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePas
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, AppState, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
@@ -32,6 +32,8 @@ const SEND_TIMEOUT_MS = 10_000;
 // Dispatchers hide a ringing alert that has gone 2 minutes without one (crashed or closed app).
 const ALERT_HEARTBEAT_MS = 20_000;
 const KEEP_AWAKE_TAG = "emergency-alert";
+// After a dispatcher answers, the phone calls them after this many seconds, unless the resident taps Cancel call.
+const AUTO_CALL_SECONDS = 3;
 
 export default function ResidentHome() {
   const { width } = useWindowDimensions();
@@ -71,6 +73,13 @@ export default function ResidentHome() {
   const activeAlertIdRef = useRef("");
   // True once a snapshot without pending writes proves the alert reached the server.
   const serverConfirmedRef = useRef(false);
+  // Auto call after a dispatcher answers (emergency-auto-call-plan.md).
+  // Seconds left in the "Calling Maria in 3…" countdown, or null when no countdown is running.
+  const [autoCallSeconds, setAutoCallSeconds] = useState(null);
+  // True once the countdown reached 0 and the call was started: the button then says "Call Maria again".
+  const [autoCalled, setAutoCalled] = useState(false);
+  // The alert the countdown already ran for, so each alert counts down (and calls) only once.
+  const autoCallAlertRef = useRef("");
   const { detectLocation } = useCurrentLocation();
   const [settingsForm, setSettingsForm] = useState({
     fullName: "",
@@ -192,6 +201,45 @@ export default function ResidentHome() {
       KeepAwake.deactivateKeepAwake(KEEP_AWAKE_TAG).catch(() => {});
     };
   }, [callOpen, callStatus]);
+
+  // Auto call, part 1 (emergency-auto-call-plan.md): when a dispatcher with a phone number answers,
+  // start the "Calling Maria in 3…" countdown. Only on the phone app, only while SakayNa is on screen,
+  // not while "Cancel your emergency alert?" is open, and only once per alert.
+  // This deliberately changes the old rule "nothing calls unless the user taps a Call button".
+  useEffect(() => {
+    const accepted = callOpen && sendPhase === "sent" && callStatus === "connected";
+    if (Platform.OS === "web" || !accepted || !callDispatcherPhone || cancelAlertConfirmOpen) return;
+    if (autoCallAlertRef.current === callSessionId || AppState.currentState !== "active") return;
+
+    autoCallAlertRef.current = callSessionId;
+    setAutoCallSeconds(AUTO_CALL_SECONDS);
+  }, [callOpen, sendPhase, callStatus, callDispatcherPhone, cancelAlertConfirmOpen, callSessionId]);
+
+  // Auto call, part 2: count down once a second, then call through the same startPhoneCall as the Call buttons.
+  // Leaving the app (Home button, another app) stops the countdown, so it can never call later by surprise.
+  useEffect(() => {
+    if (autoCallSeconds === null) return undefined;
+
+    const timeoutId = setTimeout(() => {
+      if (autoCallSeconds > 1) {
+        setAutoCallSeconds(autoCallSeconds - 1);
+        return;
+      }
+      setAutoCallSeconds(null);
+      if (AppState.currentState === "active") {
+        setAutoCalled(true);
+        startPhoneCall(callDispatcherPhone);
+      }
+    }, 1000);
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") setAutoCallSeconds(null);
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      appStateSubscription.remove();
+    };
+  }, [autoCallSeconds, callDispatcherPhone]);
 
   const loadOfficePhone = useCallback(async () => {
     try {
@@ -397,6 +445,9 @@ export default function ResidentHome() {
     setCallDispatcherPhone("");
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("idle");
+    // Done or Back during the countdown: no call.
+    setAutoCallSeconds(null);
+    setAutoCalled(false);
   };
 
   // Hardware Back while an alert is still ringing asks first; a Back press on that
@@ -855,7 +906,10 @@ export default function ResidentHome() {
                     : alertLocationStatus === "failed"
                       ? "Location: not available — dispatchers will see your barangay."
                       : "";
-              const showCallDispatcher = accepted && Boolean(callDispatcherPhone);
+              // "Calling Maria in 3…" replaces the Call button until it calls or the resident taps Cancel call.
+              const countingDown = accepted && autoCallSeconds !== null;
+              const showCallDispatcher = accepted && Boolean(callDispatcherPhone) && !countingDown;
+              const callDispatcherLabel = `Call ${dispatcherLabel}${autoCalled ? " again" : ""}`;
               const showCallOffice = showOfficeFallback && Boolean(officePhone);
               const closeLabel = accepted ? "Done" : stillLive ? "Cancel alert" : "Close";
               // Cancel alert = white with a red edge. Done / Close = white with a grey edge.
@@ -883,9 +937,23 @@ export default function ResidentHome() {
                     </TouchableOpacity>
                   ) : null}
 
+                  {/* Auto call countdown (emergency-auto-call-plan.md): never a surprise call. */}
+                  {countingDown ? (
+                    <>
+                      <View style={styles.autoCallBox}>
+                        <Text style={styles.autoCallText} accessibilityLiveRegion="polite">
+                          Calling {dispatcherLabel} in {autoCallSeconds}…
+                        </Text>
+                      </View>
+                      <TouchableOpacity style={styles.alertDoneButton} onPress={() => setAutoCallSeconds(null)} accessibilityRole="button" accessibilityLabel={`Cancel the call to ${dispatcherLabel}`}>
+                        <Text style={styles.alertDoneText}>Cancel call</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : null}
+
                   {showCallDispatcher ? (
-                    <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(callDispatcherPhone)} accessibilityRole="button" accessibilityLabel={`Call ${dispatcherLabel}`}>
-                      <Text style={styles.callNowButtonText}>Call {dispatcherLabel}</Text>
+                    <TouchableOpacity style={styles.callNowButton} onPress={() => openPhone(callDispatcherPhone)} accessibilityRole="button" accessibilityLabel={callDispatcherLabel}>
+                      <Text style={styles.callNowButtonText}>{callDispatcherLabel}</Text>
                     </TouchableOpacity>
                   ) : null}
 
@@ -1369,6 +1437,9 @@ const styles = StyleSheet.create({
   // "Keep this screen open…": the most important line while waiting, on a light strip.
   keepOpenStrip: { alignSelf: "stretch", marginTop: 12, padding: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
   keepOpenText: { fontSize: 17, lineHeight: 24, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  // "Calling Maria in 3…": one big thing in Board size on a light strip (DESIGN.md), not red.
+  autoCallBox: { alignSelf: "stretch", marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
+  autoCallText: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center", fontVariant: ["tabular-nums"] },
   alertLocationText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   alertSpinner: {
     marginTop: 14,
