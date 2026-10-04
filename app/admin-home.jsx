@@ -21,6 +21,7 @@ import {
 import BrandLogo from "../components/BrandLogo";
 import AdminCallSessionsSection from "../features/admin/components/AdminCallSessionsSection";
 import AdminDriverApplicationsSection from "../features/admin/components/AdminDriverApplicationsSection";
+import AdminDutyRecordsSection from "../features/admin/components/AdminDutyRecordsSection";
 import AdminOperationsPanel from "../features/admin/components/AdminOperationsPanel";
 import AdminOverviewSection from "../features/admin/components/AdminOverviewSection";
 import AdminRequestsSection from "../features/admin/components/AdminRequestsSection";
@@ -46,7 +47,7 @@ import { useTheme } from "../lib/theme";
 
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
-const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Driver Applications", "Operations", "Requests", "Users", "Vehicles"];
+const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Driver Applications", "Duty Records", "Operations", "Requests", "Users", "Vehicles"];
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
 // "Ride for" filter: the choices from the resident's request form. Old requests have no purpose, so they show under "All" only.
@@ -745,6 +746,11 @@ export default function AdminHome() {
           loadError={applicationsError}
         />
       );
+    }
+
+    // Daily DTR of the drivers (driver-duty-plan.md Step 6).
+    if (selectedSection === "Duty Records") {
+      return <AdminDutyRecordsSection />;
     }
 
     if (selectedSection === "Operations") {
