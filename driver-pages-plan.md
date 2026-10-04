@@ -1,6 +1,6 @@
 # Driver Pages Plan (3 pages + "I can't do this ride")
 
-**Status: ALL STEPS DONE 2026-10-04: Step 1 (a9d9aae), 2a (a022361), 2b (16e8376), Ride history on Availability (bf4f119, group's request), 2c (574c817), 2d paperwork. Releasing demo-ready-11.**
+**Status: ALL STEPS DONE 2026-10-04: Step 1 (a9d9aae), 2a (a022361), 2b (16e8376), Ride history on Availability (bf4f119, group's request), 2c (574c817), 2d paperwork (37454ba). Released as demo-ready-11, 2026-10-04.**
 
 From the groupmate's two requests. Built one step at a time:
 sketch → OK → build → test on phone → commit. Demo freeze ~Oct 8–9.
@@ -289,3 +289,26 @@ driverAssignments with status "Unable".
   a new save (like the report's save, done by the dispatcher). The
   driver would wait with the ride in the meantime.
 - Android back button switching pages.
+
+## Releases
+- 2026-10-04: **demo-ready-11** (Steps 1, 2a–2d, and Ride history on
+  the Availability page: 3 driver pages with a bottom bar, "I can't do
+  this ride" instead of Decline, Call dispatch after pickup, the
+  dispatcher's "Needs a new driver" banner and driver card warning, the
+  admin's Inability reports).
+  - Website: master → main → Vercel, fast-forward c0800eb..37454ba; the
+    new version was live about a minute later (checked: the live code
+    contains "Needs a new driver", "Inability reports", "Ride history"
+    and "Send to dispatch"). Checked on the website by the owner:
+    banner, inability reports, 3 pages, emergency alert. No rules
+    change in this release.
+  - Preview APK: EAS build 8cce2568-cdfb-424d-8105-4f6ee8ded2ae,
+    profile preview, built from commit 37454ba, `npx expo install
+    --check` up to date, `eas fingerprint:compare` says "matches"
+    (same native fingerprint as demo-ready-10). Tested on the phone.
+    Tagged demo-ready-11 (on 37454ba) and pushed.
+  - Tester message: tester-message.md with the 3 pages, "I can't do
+    this ride", Ride history on Availability, and this APK's link
+    (commit a0d3b4e).
+  - Old APKs (demo-ready-10 and before) still work with this website;
+    their Decline still gives the ride back (Known-Issue.md).
