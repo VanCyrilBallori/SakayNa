@@ -1,12 +1,15 @@
-SakayNa update: 3 pages for drivers, and "I can't do this ride"
+SakayNa update: driver location ("Show on map"), and an automatic call after an emergency alert
 
 Hi everyone! There's a new SakayNa app. Please update before your next test.
 
 EVERYONE
-- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/WXOHuQkKAsOUrHkMjnonpQlfjDyraNhi99yovpILEjA.apk
+- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/k-CfiE_jBbNLw1hvckPAptlxs2OWSYVMdvMutflCONE.apk
 - Residents: the old app still works, but please update too.
 
 DRIVERS (important)
+- NEW: allow location when you punch in. It's saved only when you tap a
+  step (Punch in, Accept, En route, Arrived, Picked up), never in the
+  background.
 - The driver home now has 3 pages. Use the buttons at the bottom:
   - Ride: your ride, the green step button, and "Ride steps".
   - Map: a big map and "Navigate to pickup" (after "Confirm pickup" it
@@ -32,6 +35,8 @@ DRIVERS (important)
 
 DISPATCHERS
 - Refresh the website.
+- NEW: "Show on map" on a driver's card zooms the map to their last
+  known location ("Last known location: 5 min ago (Arrived)").
 - When a driver can't do a ride, an orange "Needs a new driver" banner
   shows at the top with the reason, and the ride is first in the list.
   Assign it to another driver. The driver's card also says
@@ -41,5 +46,8 @@ ADMINS
 - Duty Records now also lists the day's "Inability reports" (who
   couldn't do a ride, when, and why).
 
-Emergency alerts work the same as before.
+RESIDENTS
+- NEW: after a dispatcher answers your emergency alert, your phone calls
+  them after a 3-second countdown you can cancel.
+
 Questions or problems? Message me.
