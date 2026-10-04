@@ -1,6 +1,6 @@
 # Driver Home Restyle Plan
 
-**Status: Pieces 1–4a done (commits f0c21dd, a6e75f4, 1b0dcb7, fd00d3d). Piece 4b built, waiting for phone test.**
+**Status: Pieces 1–4b done (commits f0c21dd, a6e75f4, 1b0dcb7, fd00d3d, 8ee0520). Piece 5 (paperwork) written, waiting for review. Then release demo-ready-10.**
 
 ## Answers (2026-10-04)
 1. Accept is one tap, no "Are you sure?". Decline keeps asking first

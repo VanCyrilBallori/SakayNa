@@ -15,7 +15,7 @@ Android-first installed app. iOS is configured in `app.json` and must keep worki
 Operational roles, all serving the resident:
 
 - **Dispatcher** — city/barangay staff at a station. Answers in-app emergency calls, assigns pending requests to a driver and a vehicle, watches each driver's duty status.
-- **Driver** — operates a barangay vehicle. Runs a mission through Accept → En Route → Arrived → Picked Up → Completed, completes a pre-trip vehicle checklist, and punches in and out of duty.
+- **Driver** — operates a barangay vehicle. Runs a mission through Accept → En Route → Arrived → Picked Up → Completed, and punches in and out of duty.
 - **Admin** — oversight. Each Admin belongs to one barangay. Verifies the residents and driver applications of their own barangay, manages accounts and the vehicle fleet, monitors unanswered emergency calls, reads reports and the activity log.
 
 ## Product Purpose
@@ -47,7 +47,7 @@ A **public-service dispatch system, not a ride-hailing marketplace.** There are 
 **Confirmed functionality**
 
 - Resident: sign up with proof of residency, request a ride now or schedule one, cancel it, see request status and timeline, send an emergency alert, edit profile. Home is a map (showing their location if already allowed) with a fixed bottom sheet (Emergency, Request a Ride, latest request) and a ☰ side menu.
-- Driver: apply with document photos, wait on a status screen until approved, punch in / punch out, take breaks (Lunch, Rest, Personal), accept/decline assignments (accepting sets "On a run", completing sets "Available" again), run the mission lifecycle, complete a vehicle readiness checklist.
+- Driver: apply with document photos, wait on a status screen until approved, punch in / punch out, take breaks (Lunch, Rest, Personal), accept/decline assignments (accepting sets "On a run", completing sets "Available" again), run the mission lifecycle (map on top, one ride card, a navigation button that follows the step, and a ride steps list with times).
 - Dispatcher: see pending requests on a map (as soon as possible first, then scheduled rides soonest first), see the passenger's details and phone, assign request → driver + vehicle in one transaction, answer/decline emergency alerts, see each driver's duty status and time in it (only Available drivers can be assigned; an "app closed" warning for punched-in drivers whose app is closed).
 - Admin: Overview stats (server-side counts for totals, by ride purpose), live Emergency Calls panel with stale-call badge, Resident Verification and Driver Applications lists (own barangay only), Duty Records (each driver's daily time record: first punch in, last punch out, break time, time on duty, rides completed; city-wide), Operations (account status/role changes with required reason and audit log, vehicle maintenance records, reports + CSV export, operational settings, activity log), Requests/Users/Vehicles lists with filters, vehicle add/edit/archive.
 

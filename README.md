@@ -128,7 +128,7 @@ Press `w` for the browser, or open the SakayNa development build on the phone an
 | `Driver_Applications` | Driver applications + document photo links, for the barangay Admin's review |
 | `vehicles` | City and barangay vehicle records (drivers do not register vehicles) |
 | `driverSchedules` | Old driver work-hours windows. No longer used by the app since the duty status (Oct 2026); kept |
-| `vehicleChecklists` | Pre-trip vehicle readiness checks |
+| `vehicleChecklists` | Old pre-trip vehicle checks. No longer asked before Accept since the driver home restyle (Oct 2026); kept |
 | `activityLogs`, `vehicleMaintenance`, `staffInvitations`, `deletionRequests`, `systemSettings` | Admin bookkeeping |
 
 Centralized names, roles, statuses, and priorities live in [`constants/app.js`](constants/app.js).
@@ -141,7 +141,7 @@ Centralized names, roles, statuses, and priorities live in [`constants/app.js`](
    → the Admin of the same barangay approves them in **Resident Verification** → the resident's
    banner disappears.
 4. **Full flow:** Resident taps **Request a Ride** and sends a request → Dispatcher assigns a
-   driver + vehicle → Driver runs the mission (checklist → Accept → En Route → Arrived → Picked Up →
+   driver + vehicle → Driver runs the mission (Accept → En Route → Arrived → Picked Up →
    Complete) → Resident sees it "Completed" → Admin Overview count increases.
 5. **Emergency alert:** Resident taps **Emergency** → Send alert → Dispatcher "Answer" →
    "Dispatcher accepted" on the resident's phone → end.
