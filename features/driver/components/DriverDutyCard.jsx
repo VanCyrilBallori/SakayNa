@@ -138,7 +138,7 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
       {dutyStatus === "On break" ? (
         <View style={[styles.card, styles.cardOnBreak]}>
           <View style={styles.statusRow}>
-            <MaterialCommunityIcons name={BREAK_ICONS[duty.breakType] || "coffee-outline"} size={30} color={DESIGN_COLORS.ink} />
+            <MaterialCommunityIcons name={BREAK_ICONS[duty.breakType] || "coffee-outline"} size={30} color={DESIGN_COLORS.orangeDeep} />
             <Text style={[styles.statusWord, styles.inkText]} accessibilityRole="header">
               On break
             </Text>
@@ -396,8 +396,10 @@ const styles = StyleSheet.create({
   card: { borderRadius: 24, paddingHorizontal: 20, paddingVertical: 20 },
   cardOffDuty: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1, borderColor: DESIGN_COLORS.rule },
   cardAvailable: { backgroundColor: DESIGN_COLORS.hallGreen },
-  // Orange has dark words (never white).
-  cardOnBreak: { backgroundColor: DESIGN_COLORS.sakayOrange },
+  // Light peach with an orange edge and dark words, like the resident's "account pending" banner
+  // (approved by the group, Oct 2026). Bright orange stays for small accents only (the edge, the icon).
+  // 2 dp edge, so the padding is 2 less to keep the same inside size.
+  cardOnBreak: { backgroundColor: DESIGN_COLORS.peachTint, borderWidth: 2, borderColor: DESIGN_COLORS.sakayOrange, paddingHorizontal: 18, paddingVertical: 18 },
   // Same deep green as the "Assigned" / "On the way" bands.
   cardOnRun: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   rideWaitingText: { marginTop: 16, fontSize: 17, lineHeight: 24, fontWeight: "700" },
