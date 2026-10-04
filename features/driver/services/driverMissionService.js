@@ -11,6 +11,8 @@ const TIMESTAMP_FIELD = {
   Declined: "declinedAt",
 };
 
+// Not used since driver-home-restyle-plan.md Piece 1 (Accept no longer asks for the checklist).
+// Kept so it can come back; the saved vehicleChecklists stay in Firestore.
 export const saveVehicleChecklist = async ({ checklistId, driverId, assignment, items, issues }) => {
   const ref = checklistId ? doc(db, "vehicleChecklists", checklistId) : doc(db, "vehicleChecklists");
   await setDoc(
