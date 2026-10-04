@@ -1,4 +1,4 @@
-import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { arrayUnion, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,10 +14,9 @@ import { db } from "../firebase";
 import { getTimestampMillis } from "../lib/dates";
 import {
   DRIVER_SCHEDULE_COLLECTION,
-  formatScheduleWindow,
   getDateFromValue,
-  getDriverAvailabilityState,
 } from "../lib/driverScheduling";
+import { formatDutyDuration, formatManilaTime } from "../lib/dutyTime";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 
 // A ringing alert whose "I'm still here" signal (lastActiveAt) hasn't changed for this long is
@@ -25,6 +24,25 @@ import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from ".
 // changed in Firestore, so it comes back by itself if the signal starts again.
 const STUCK_ALERT_MS = 120_000;
 const STUCK_CHECK_INTERVAL_MS = 10_000;
+
+// Why a driver can't be given a ride right now, or "" if they can (driver-duty-plan.md Step 5).
+const getAssignBlockReason = (driver) => {
+  if (driver.accountStatus !== "Approved") return "Not approved yet.";
+  if (driver.activeAssignment?.status === "Assigned") return "Has a ride waiting to be accepted.";
+  if (driver.activeAssignment) return "Handling a ride.";
+  if (driver.dutyStatus === "On break") return driver.breakType ? `On a break (${driver.breakType}).` : "On a break.";
+  if (driver.dutyStatus === "On a run") return "On a run.";
+  if (driver.dutyStatus !== "Available") return "Off duty: not punched in.";
+  return "";
+};
+
+// The badge on each driver card: always a word with its color (DESIGN.md).
+const DUTY_BADGES = {
+  Available: { label: "Available", backgroundColor: DESIGN_COLORS.hallGreen, color: DESIGN_COLORS.paperWhite },
+  "On break": { label: "On break", backgroundColor: DESIGN_COLORS.sakayOrange, color: DESIGN_COLORS.ink },
+  "On a run": { label: "On a run", backgroundColor: DESIGN_COLORS.hallGreenDeep, color: DESIGN_COLORS.paperWhite },
+  "Off duty": { label: "Off duty", backgroundColor: DESIGN_COLORS.inkMuted, color: DESIGN_COLORS.paperWhite },
+};
 
 const getRequestStyle = (level) => {
   if (level === "Emergency") {
@@ -126,6 +144,62 @@ const queueOrder = (request) => {
 };
 
 // Everything about the request the dispatcher tapped, under the queue / map / drivers columns.
+// One driver in the "Driver availability" list (driver-duty-plan.md Step 5, DESIGN.md look):
+// name, duty status badge, how long they have been in it, and why they can't be assigned (greyed out).
+// "now" is the screen's 10-second clock, so the time moves every 10 seconds.
+function DriverDutyRow({ driver, now, selected, onPress }) {
+  const badge = DUTY_BADGES[driver.dutyStatus] || DUTY_BADGES["Off duty"];
+  const badgeLabel = driver.dutyStatus === "On break" && driver.breakType ? `On break · ${driver.breakType}` : badge.label;
+  const sinceMs = driver.dutyStatusSinceMs;
+  const canAssign = !driver.blockReason;
+  // Punched in, but the driver's app is closed: our simple, no-server stand-in for "Unreachable".
+  const appClosed = canAssign && driver.presence === "Offline";
+
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.driverCard,
+        !canAssign && styles.driverCardBlocked,
+        canAssign && selected && styles.driverCardSelected,
+        canAssign && pressed && styles.driverCardPressed,
+      ]}
+      onPress={onPress}
+      disabled={!canAssign}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !canAssign, selected }}
+      accessibilityLabel={`${driver.name}, ${badgeLabel}. ${canAssign ? "Tap to assign a ride." : `Can't assign: ${driver.blockReason}`}`}
+    >
+      <Text style={[styles.driverName, !canAssign && styles.driverNameBlocked]}>{driver.name}</Text>
+      <Text style={styles.driverPlace}>{driver.barangay}</Text>
+
+      <View style={styles.dutyLine}>
+        <View style={[styles.dutyBadge, { backgroundColor: badge.backgroundColor }]}>
+          <Text style={[styles.dutyBadgeText, { color: badge.color }]}>{badgeLabel}</Text>
+        </View>
+        {sinceMs !== null ? (
+          <Text style={styles.dutySince}>
+            since {formatManilaTime(sinceMs)} · {formatDutyDuration(now - sinceMs)}
+          </Text>
+        ) : null}
+      </View>
+
+      {driver.dutyStatus === "On break" && driver.breakNote ? <Text style={styles.driverMetaLine}>Note: {driver.breakNote}</Text> : null}
+      {driver.activeAssignment ? <Text style={styles.driverMetaLine}>Ride: {driver.activeAssignment.title || "Assigned ride"}</Text> : null}
+      <Text style={styles.driverMetaLine}>Vehicle: {driver.linkedVehicle?.name || "No linked vehicle"}</Text>
+
+      {appClosed ? (
+        <View style={styles.appClosedBox}>
+          <MaterialCommunityIcons name="cellphone-off" size={22} color={DESIGN_COLORS.orangeDeep} />
+          <Text style={styles.appClosedText}>
+            Available · app closed. Call {driver.phoneNumber ? formatPhoneForDialing(driver.phoneNumber) : "the driver"} first.
+          </Text>
+        </View>
+      ) : null}
+      {!canAssign ? <Text style={styles.blockReasonText}>Can&apos;t assign: {driver.blockReason}</Text> : null}
+    </Pressable>
+  );
+}
+
 function SelectedRequestDetails({ request, now }) {
   if (!request) {
     return (
@@ -212,6 +286,8 @@ export default function DispatcherHome() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [requestToAssign, setRequestToAssign] = useState(null);
   const [, setAssignmentMessage] = useState("");
+  // Why "Assign" failed, shown inside the assign window.
+  const [assignError, setAssignError] = useState("");
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
   const [activeAssignments, setActiveAssignments] = useState([]);
   const [incomingCall, setIncomingCall] = useState(null);
@@ -309,37 +385,11 @@ export default function DispatcherHome() {
 
     return assignableVehicles[0] ?? null;
   }, [assignableVehicles, requestToAssign, selectedVehicle]);
-  const schedulesByDriver = useMemo(
-    () =>
-      driverSchedules.reduce((accumulator, schedule) => {
-        const driverId = schedule.driverUid;
-
-        if (!driverId) {
-          return accumulator;
-        }
-
-        accumulator[driverId] = [...(accumulator[driverId] ?? []), schedule].sort(
-          (first, second) => (getDateFromValue(first.startAt)?.getTime() ?? 0) - (getDateFromValue(second.startAt)?.getTime() ?? 0)
-        );
-        return accumulator;
-      }, {}),
-    [driverSchedules]
-  );
+  // One row per driver for the "Driver availability" list (driver-duty-plan.md Step 5).
+  // Only an Approved, Available driver with no ride in hand can be assigned; everyone else shows the reason.
   const dispatcherAvailabilityRows = useMemo(
     () =>
       driversWithAssignments.map((driver) => {
-        const driverSchedulesForUser = schedulesByDriver[driver.id] ?? [];
-        const activeSchedule = driverSchedulesForUser.find(
-          (schedule) =>
-            ["Available", "Claimed", "On Duty"].includes(schedule.status) &&
-            (getDateFromValue(schedule.startAt)?.getTime() ?? 0) <= Date.now() &&
-            (getDateFromValue(schedule.endAt)?.getTime() ?? 0) >= Date.now()
-        );
-        const nextSchedule = driverSchedulesForUser.find(
-          (schedule) =>
-            ["Available", "Claimed", "On Duty"].includes(schedule.status) &&
-            (getDateFromValue(schedule.startAt)?.getTime() ?? 0) > Date.now()
-        );
         const linkedVehicle = vehicles.find(
           (vehicle) =>
             vehicle.ownerUid === driver.id ||
@@ -348,19 +398,11 @@ export default function DispatcherHome() {
 
         return {
           ...driver,
-          approvalStatus: driver.accountStatus ?? "Pending",
-          presence: driver.presence ?? "Offline",
-          activeSchedule,
-          nextSchedule,
           linkedVehicle,
-          availabilityState: getDriverAvailabilityState({
-            driver,
-            schedules: driverSchedulesForUser,
-            activeAssignment: driver.activeAssignment,
-          }),
+          blockReason: getAssignBlockReason(driver),
         };
       }),
-    [driversWithAssignments, schedulesByDriver, vehicles]
+    [driversWithAssignments, vehicles]
   );
 
   useEffect(() => {
@@ -433,7 +475,13 @@ export default function DispatcherHome() {
             phoneNumber: data.phoneNumber || data.phone || "",
             barangay: data.barangay ?? "No barangay set",
             availability: data.availability ?? "Unavailable",
+            // "Is the driver's app open?" Used for the "App closed" warning.
             presence: data.presence ?? "Offline",
+            // Duty status (driver-duty-plan.md). Never punched in = "Off duty".
+            dutyStatus: data.dutyStatus ?? "Off duty",
+            dutyStatusSinceMs: getTimestampMillis(data.dutyStatusSince),
+            breakType: data.breakType ?? "",
+            breakNote: data.breakNote ?? "",
             accountStatus: data.accountStatus ?? "Pending",
             useOwnVehicle: data.useOwnVehicle === true,
           };
@@ -574,13 +622,10 @@ export default function DispatcherHome() {
     setSelectedVehicleId("");
     setAssignmentMessage("");
 
-    if (driver.activeAssignment) {
-      setAssignmentMessage(`${driver.name} is handling ${driver.activeAssignment.title || "an assigned mission"} (${driver.activeAssignment.status}).`);
-      return;
-    }
+    setAssignError("");
 
-    if (!["Online Now", "Scheduled Now"].includes(driver.availabilityState)) {
-      setAssignmentMessage(`${driver.name} is not inside an active availability window yet.`);
+    // Only Available drivers can be picked. The card already shows the reason for the others.
+    if (driver.blockReason) {
       return;
     }
 
@@ -609,9 +654,12 @@ export default function DispatcherHome() {
     } catch (error) {
       console.log("Assign request failed:", error);
       setAssignmentMessage(error?.message || "Assignment could not be completed. Refresh the request and try again.");
+      // Shown inside the assign window (for example: the driver started a break at the same moment).
+      setAssignError(error?.message || "Assignment could not be completed. Refresh the request and try again.");
     }
   };
   const handleCancelAssignModal = () => {
+    setAssignError("");
     setAssignModalOpen(false);
     setRequestToAssign(null);
     setSelectedVehicleId("");
@@ -774,44 +822,7 @@ export default function DispatcherHome() {
               <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
                 {dispatcherAvailabilityRows.length ? (
                   dispatcherAvailabilityRows.map((driver) => (
-                    <TouchableOpacity
-                      key={driver.id}
-                      style={[
-                        styles.driverCard,
-                        !["Online Now", "Scheduled Now", "Scheduled Later"].includes(driver.availabilityState) && styles.driverCardUnavailable,
-                        ["Busy", "On Duty"].includes(driver.availabilityState) && styles.driverCardInProgress,
-                        selectedDriver?.id === driver.id && styles.driverCardActive,
-                      ]}
-                      onPress={() => openAssignModal(driver)}
-                    >
-                      <View style={styles.driverTop}>
-                        <View style={styles.driverIdentity}>
-                          <View style={styles.driverAvatar}>
-                            <FontAwesome name="user" size={22} color="#111111" />
-                          </View>
-                          <View style={styles.driverCopy}>
-                            <Text style={styles.driverName}>{driver.name}</Text>
-                            <Text style={styles.driverPlace}>{driver.barangay}</Text>
-                          </View>
-                        </View>
-                        <View style={[styles.statusPill, ["Online Now", "Scheduled Now", "Scheduled Later"].includes(driver.availabilityState) ? styles.statusPillAvailable : styles.statusPillUnavailable]}>
-                          <Text style={styles.statusPillText}>{driver.availabilityState}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.driverMetaLine}>Approval: {driver.approvalStatus}</Text>
-                      <Text style={styles.driverMetaLine}>Presence: {driver.presence}</Text>
-                      <Text style={styles.driverMetaLine}>Schedule: {driver.activeSchedule ? formatScheduleWindow(driver.activeSchedule) : driver.nextSchedule ? `Later - ${formatScheduleWindow(driver.nextSchedule)}` : "No schedule"}</Text>
-                      <Text style={styles.driverMetaLine}>
-                        Tags: {driver.activeSchedule?.scheduleTags?.length ? driver.activeSchedule.scheduleTags.join(", ") : driver.nextSchedule?.scheduleTags?.length ? driver.nextSchedule.scheduleTags.join(", ") : "None"}
-                      </Text>
-                      <Text style={styles.driverMetaLine}>Vehicle: {driver.linkedVehicle?.name || "No linked vehicle"}</Text>
-                      {driver.activeAssignment ? (
-                        <View style={styles.driverMission}>
-                          <Text style={styles.driverMissionLabel}>Handling</Text>
-                          <Text style={styles.driverMissionText}>{driver.activeAssignment.title || "Assigned mission"}</Text>
-                        </View>
-                      ) : null}
-                    </TouchableOpacity>
+                    <DriverDutyRow key={driver.id} driver={driver} now={now} selected={selectedDriver?.id === driver.id} onPress={() => openAssignModal(driver)} />
                   ))
                 ) : (
                   <View style={styles.emptyDriversCard}>
@@ -914,6 +925,12 @@ export default function DispatcherHome() {
                     </Text>
                   ) : null}
                 </View>
+
+                {assignError ? (
+                  <Text style={styles.assignErrorText} accessibilityRole="alert">
+                    {assignError}
+                  </Text>
+                ) : null}
 
                 <View style={styles.assignmentActionRow}>
                   <TouchableOpacity style={[styles.assignmentActionButton, styles.assignmentCancelButton]} onPress={handleCancelAssignModal}>
@@ -1031,24 +1048,24 @@ const styles = StyleSheet.create({
   mapPlaceholderTitle: { marginTop: 18, fontSize: 26, fontWeight: "800", color: "#2D3934", textAlign: "center" },
   mapPlaceholderText: { marginTop: 12, maxWidth: 520, fontSize: 16, lineHeight: 24, color: "#61716B", textAlign: "center" },
   rightPanel: { flexBasis: 220, maxWidth: 280, flexGrow: 1, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
-  driverCard: { padding: 14, borderRadius: 18, backgroundColor: "#06774B" },
-  driverCardUnavailable: { backgroundColor: "#68756D" },
-  driverCardInProgress: { backgroundColor: "#0B5F8F" },
-  driverCardActive: { borderWidth: 2, borderColor: "#DFF5EA" },
-  driverTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" },
-  driverIdentity: { flexDirection: "row", gap: 10, alignItems: "center", flex: 1, minWidth: 180 },
-  driverAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
-  driverCopy: { flex: 1 },
-  driverName: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
-  driverPlace: { marginTop: 2, fontSize: 12, color: "#DDEEE7" },
-  driverMission: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.24)" },
-  driverMissionLabel: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", color: "#DDEEE7" },
-  driverMissionText: { marginTop: 3, fontSize: 13, lineHeight: 18, fontWeight: "700", color: "#FFFFFF" },
-  driverMetaLine: { marginTop: 8, fontSize: 12, lineHeight: 18, color: "#E6F3ED" },
-  statusPill: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999 },
-  statusPillAvailable: { backgroundColor: "#E5FFF2" },
-  statusPillUnavailable: { backgroundColor: "#F0E8E8" },
-  statusPillText: { fontSize: 12, fontWeight: "700", color: "#26433A" },
+  // Driver cards (driver-duty-plan.md Step 5, DESIGN.md look). Flat: no shadows.
+  driverCard: { padding: 14, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
+  driverCardSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen },
+  driverCardPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  // Greyed out: this driver can't be given a ride now (the reason is written on the card).
+  driverCardBlocked: { borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
+  driverName: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  driverNameBlocked: { color: DESIGN_COLORS.inkMuted },
+  driverPlace: { marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  dutyLine: { marginTop: 10, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
+  dutyBadge: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999 },
+  dutyBadgeText: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
+  dutySince: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, fontVariant: ["tabular-nums"] },
+  driverMetaLine: { marginTop: 6, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.ink },
+  appClosedBox: { marginTop: 10, flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
+  appClosedText: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  blockReasonText: { marginTop: 10, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  assignErrorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 15, lineHeight: 20, fontWeight: "600", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
   emptyRequestsCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
   emptyRequestsTitle: { fontSize: 16, fontWeight: "800", color: "#24342E" },
   emptyRequestsText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#66776F" },

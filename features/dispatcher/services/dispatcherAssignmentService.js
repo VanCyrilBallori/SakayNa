@@ -26,6 +26,14 @@ export const assignDispatcherRequest = async ({ requestId, driver, vehicle, disp
     }
 
     const driverName = driver.name || driver.fullName || "Driver";
+
+    // Read the driver again now: they may have started a break or punched out a moment ago
+    // (driver-duty-plan.md Step 5). Only an Available driver can be given a ride.
+    const driverSnapshot = await transaction.get(doc(db, "users", driver.id));
+    const dutyStatus = driverSnapshot.data()?.dutyStatus ?? "Off duty";
+    if (dutyStatus !== "Available") {
+      throw new Error(`${driverName} is no longer available (${dutyStatus}). Choose another driver.`);
+    }
     const vehicleName = vehicle.name || "Vehicle";
     const resolvedPriority = priority || request.priorityLevel || request.level || "";
 
