@@ -33,6 +33,8 @@ export const MISSION_STATUSES = Object.freeze({
   PICKED_UP: "Picked Up",
   COMPLETED: "Completed",
   DECLINED: "Declined",
+  // "I can't do this ride" (driver-pages-plan.md Step 2a). An inability report, not a decline.
+  UNABLE: "Unable",
 });
 
 export const REQUEST_PRIORITIES = Object.freeze({

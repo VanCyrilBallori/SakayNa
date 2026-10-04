@@ -1,6 +1,6 @@
 # Driver Pages Plan (3 pages + "I can't do this ride")
 
-**Status: approved 2026-10-04. Step 1 (3 pages) DONE, tested on the phone. Step 2a next.**
+**Status: approved 2026-10-04. Step 1 (3 pages) DONE (commit a9d9aae). Step 2a (driver: "I can't do this ride", Call dispatch) DONE, tested on the phone. Step 2b next.**
 
 From the groupmate's two requests. Built one step at a time:
 sketch → OK → build → test on phone → commit. Demo freeze ~Oct 8–9.

@@ -139,6 +139,10 @@ export default function DriverHome() {
   const [cancelledNotice, setCancelledNotice] = useState(null);
   // Which page is open: "ride" (first), "map" or "availability" (driver-pages-plan.md Step 1).
   const [activePage, setActivePage] = useState("ride");
+  // Shown after the driver sent "I can't do this ride": { reason } (driver-pages-plan.md Step 2a).
+  const [unableNotice, setUnableNotice] = useState(null);
+  // The office number the admin saved, for "Call dispatch" once the rider is on board. "" = none saved.
+  const [officePhone, setOfficePhone] = useState("");
   const [driverSchedules, setDriverSchedules] = useState([]);
   const [schedulePromptOpen, setSchedulePromptOpen] = useState(false);
   const [scheduleStartTime, setScheduleStartTime] = useState(createTimeParts(8, 0, "AM"));
@@ -327,6 +331,15 @@ export default function DriverHome() {
       })
       .catch((error) => console.log("Free cancelled ride warning:", error));
   }, [cancelledAssignmentId, cancelledTitle, cancelledReason]);
+
+  // The office number (systemSettings/operational, the same number residents see). Loaded once, so it is
+  // already on hand during a trip. Every signed-in user may read it (firestore.rules).
+  useEffect(() => {
+    if (accessStatus !== "approved") return;
+    getDoc(doc(db, "systemSettings", "operational"))
+      .then((snapshot) => setOfficePhone(snapshot.exists() ? (snapshot.data()?.publicOfficePhone ?? "").trim() : ""))
+      .catch((error) => console.log("Office phone lookup warning:", error));
+  }, [accessStatus]);
 
   // A new ride from dispatch, waiting for Accept: open the Ride page by itself (driver-pages-plan.md Step 1).
   // It runs once per new ride, so the driver can still open the Map or Availability page afterwards.
@@ -750,6 +763,33 @@ export default function DriverHome() {
                   </View>
                 ) : null}
 
+                {/* After "I can't do this ride": the driver is still Available, so suggest a break or punch out.
+                    Peach = important info (DESIGN.md), not red: nothing went wrong. */}
+                {unableNotice ? (
+                  <View style={styles.unableNotice} accessibilityRole="alert">
+                    <Text style={styles.unableNoticeTitle}>You told dispatch you can&apos;t do this ride ({unableNotice.reason}).</Text>
+                    <Text style={styles.unableNoticeText}>Dispatch will give it to another driver.</Text>
+                    <Text style={styles.unableNoticeText}>If you can&apos;t take more rides, take a break or punch out.</Text>
+                    <Pressable
+                      style={({ pressed }) => [styles.unableNoticeMainButton, pressed && styles.unableNoticeMainButtonPressed]}
+                      onPress={() => {
+                        setUnableNotice(null);
+                        setActivePage("availability");
+                      }}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.unableNoticeMainButtonText}>Open Availability</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.unableNoticeOkButton, pressed && styles.tabButtonPressed]}
+                      onPress={() => setUnableNotice(null)}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.unableNoticeOkButtonText}>OK</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
                 {request ? (
                   <>
                     {/* The task card (driver-home-restyle-plan.md Piece 3). */}
@@ -762,11 +802,17 @@ export default function DriverHome() {
                     />
 
                     <FeedbackMessage message={missionMessage.message} tone={missionMessage.tone} />
-                    {/* A ride the resident just cancelled has no Accept / Decline: it is being removed (see cancelledAssignmentId). */}
+                    {/* A ride the resident just cancelled has no buttons: it is being removed (see cancelledAssignmentId). */}
                     {request.status === "Cancelled" ? (
                       <FeedbackMessage message="The resident cancelled this ride. Removing it..." tone="error" />
                     ) : (
-                      <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
+                      <DriverMissionActions
+                        assignment={{ ...assignedTransfer, currentRequest: request }}
+                        driverId={authUser?.uid}
+                        officePhone={officePhone}
+                        onFeedback={(message, tone) => setMissionMessage({ message, tone })}
+                        onUnableSent={(reason) => setUnableNotice({ reason })}
+                      />
                     )}
                   </>
                 ) : (
@@ -1212,6 +1258,15 @@ const styles = StyleSheet.create({
   inboxEmptyText: { marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },
   cancelledNoticeCopy: { flex: 1 },
+  // The note after "I can't do this ride": a Peach Tint box with card corners, buttons stacked (main one on top).
+  unableNotice: { padding: 16, gap: 8, borderRadius: 24, backgroundColor: DESIGN_COLORS.peachTint },
+  unableNoticeTitle: { fontSize: 17, lineHeight: 24, fontWeight: "800", color: DESIGN_COLORS.ink },
+  unableNoticeText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  unableNoticeMainButton: { minHeight: 48, marginTop: 4, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
+  unableNoticeMainButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  unableNoticeMainButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  unableNoticeOkButton: { minHeight: 48, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.paperWhite },
+  unableNoticeOkButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
   cancelledNoticeTitle: { fontSize: 17, lineHeight: 23, fontWeight: "800", color: "#7A1A12" },
   cancelledNoticeText: { marginTop: 4, fontSize: 15, lineHeight: 21, color: "#7A1A12" },
   cancelledNoticeButton: { alignSelf: "flex-start", minHeight: 48, marginTop: 10, paddingHorizontal: 24, borderRadius: 12, backgroundColor: "#B42318", alignItems: "center", justifyContent: "center" },

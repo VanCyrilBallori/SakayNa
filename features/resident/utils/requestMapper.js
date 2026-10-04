@@ -85,8 +85,8 @@ export const getRideProgress = (request = {}) => {
   if (missionStatus === "En Route") return { step: 4, title: "Driver on the way" };
   if (missionStatus === "Accepted" || status === REQUEST_STATUSES.IN_PROGRESS) return { step: 3, title: "Driver accepted" };
   if (status === REQUEST_STATUSES.ASSIGNED) return { step: 2, title: "Driver assigned" };
-  // Pending. If a driver declined it before, the dispatcher is now finding someone else.
-  return { step: 1, title: request.lastDeclinedDriverId ? "Finding another driver" : "Waiting for a driver" };
+  // Pending. If a driver declined it or couldn't do it ("I can't do this ride"), the dispatcher is now finding someone else.
+  return { step: 1, title: request.lastDeclinedDriverId || request.lastUnableDriverId ? "Finding another driver" : "Waiting for a driver" };
 };
 
 // The ride for the home "Your ride" card. requests = newest first (from useResidentRequests).

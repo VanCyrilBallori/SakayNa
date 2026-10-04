@@ -1,6 +1,7 @@
 import { collection, doc, runTransaction, serverTimestamp, setDoc } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+import { getMissionStatus } from "../utils/driverMissionMapper";
 
 const TIMESTAMP_FIELD = {
   Accepted: "acceptedAt",
@@ -9,7 +10,11 @@ const TIMESTAMP_FIELD = {
   "Picked Up": "pickedUpAt",
   Completed: "completedAt",
   Declined: "declinedAt",
+  Unable: "unableAt",
 };
+
+// The ride steps when "I can't do this ride" may be sent: before the rider is on board (driver-pages-plan.md, answer 1).
+const UNABLE_ALLOWED_STEPS = ["Assigned", "Accepted", "En Route", "Arrived"];
 
 // Not used since driver-home-restyle-plan.md Piece 1 (Accept no longer asks for the checklist).
 // Kept so it can come back; the saved vehicleChecklists stay in Firestore.
@@ -48,10 +53,18 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
     }
 
     const assignment = assignmentSnapshot.data();
+    // The ride step before this change (Assigned, Accepted, En Route...).
+    const currentStep = getMissionStatus(assignment);
+
+    // "I can't do this ride" only for a ride that is still going, and only before the rider is on board.
+    if (nextStatus === "Unable" && (!["Assigned", "In Progress"].includes(assignment.status) || !UNABLE_ALLOWED_STEPS.includes(currentStep))) {
+      throw new Error("The rider is already on board. Tap Call dispatch to report a problem.");
+    }
+
     const requestRef = assignment.requestId ? doc(db, "transportRequests", assignment.requestId) : null;
 
     // The resident may have cancelled the ride while it was still "Assigned" (Skills/resident.md #1).
-    // Then nothing is saved, so Accept or Decline can never undo the cancel.
+    // Then nothing is saved, so Accept or "I can't do this ride" can never undo the cancel.
     let request = null;
     if (requestRef) {
       const requestSnapshot = await transaction.get(requestRef);
@@ -62,9 +75,10 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
     }
 
     // The driver's duty status (driver-duty-plan.md Step 4): Accept makes the driver "On a run",
-    // Complete makes them "Available" again. Read here, because a transaction reads everything before it writes.
+    // Complete (or "I can't do this ride" after Accept) makes them "Available" again.
+    // Read here, because a transaction reads everything before it writes.
     const driverRef = doc(db, "users", assignment.driverId);
-    const driverSnapshot = nextStatus === "Accepted" || nextStatus === "Completed" ? await transaction.get(driverRef) : null;
+    const driverSnapshot = ["Accepted", "Completed", "Unable"].includes(nextStatus) ? await transaction.get(driverRef) : null;
     const dutyStatus = driverSnapshot?.data()?.dutyStatus ?? "Off duty";
     const shiftId = driverSnapshot?.data()?.shiftId ?? "";
 
@@ -96,9 +110,30 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
           updatedAt: serverTimestamp(),
         });
       }
-    } else if (nextStatus === "Declined") {
-      assignmentPatch.status = "Declined";
-      assignmentPatch.declineReason = notes;
+    } else if (nextStatus === "Declined" || nextStatus === "Unable") {
+      // Both give the ride back to the dispatcher: "Pending" again, no driver, vehicle free.
+      if (nextStatus === "Declined") {
+        // Decline is not on the screen since driver-pages-plan.md Step 2a. Kept for drivers on an older APK.
+        assignmentPatch.status = "Declined";
+        assignmentPatch.declineReason = notes;
+        requestPatch.lastDeclinedDriverId = assignment.driverId || null;
+        requestPatch.lastDeclineReason = notes;
+      } else {
+        // "I can't do this ride" (driver-pages-plan.md Step 2a): an inability report, not a decline.
+        // The assignment keeps the report (the admin's list reads it). The ride keeps the latest one for the dispatcher.
+        assignmentPatch.status = "Unable";
+        assignmentPatch.unableReason = notes;
+        assignmentPatch.unableAtStep = currentStep;
+        requestPatch.lastUnableDriverId = assignment.driverId || null;
+        requestPatch.lastUnableDriverName = assignment.driverName || "Driver";
+        requestPatch.lastUnableReason = notes;
+        requestPatch.lastUnableVehicleName = assignment.vehicleName || "";
+        // Clear the old step times on the ride, so the resident's timeline shows no old check marks (Skills/resident.md #17).
+        requestPatch.assignedAt = null;
+        requestPatch.acceptedAt = null;
+        requestPatch.enRouteAt = null;
+        requestPatch.arrivedAt = null;
+      }
       requestPatch.status = "Pending";
       requestPatch.missionStatus = null;
       requestPatch.assignedDriverId = null;
@@ -107,8 +142,6 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
       requestPatch.assignedVehicleId = null;
       requestPatch.assignedVehicleName = null;
       requestPatch.vehiclePlateNumber = null;
-      requestPatch.lastDeclinedDriverId = assignment.driverId || null;
-      requestPatch.lastDeclineReason = notes;
       if (assignment.vehicleId) {
         transaction.update(doc(db, "vehicles", assignment.vehicleId), {
           status: "Available",
@@ -129,7 +162,7 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
     // Save the duty status change and its time card line together with the ride (firestore.rules checks they match).
     // A ride accepted before this feature existed has no "On a run": then Complete changes nothing here.
     const startsRun = nextStatus === "Accepted";
-    const endsRun = nextStatus === "Completed" && dutyStatus === "On a run";
+    const endsRun = ["Completed", "Unable"].includes(nextStatus) && dutyStatus === "On a run";
     if (startsRun || endsRun) {
       transaction.update(driverRef, {
         dutyStatus: startsRun ? "On a run" : "Available",
@@ -146,7 +179,8 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
         requestId: assignment.requestId || "",
         // What the ride was for. The admin DTR counts "Medical / Health" rides apart from the others.
         purpose: request?.purpose || "",
-        ...(endsRun ? { outcome: "Completed" } : {}),
+        // "Driver unable" is not counted as a completed ride in the admin's DTR.
+        ...(endsRun ? { outcome: nextStatus === "Unable" ? "Driver unable" : "Completed" } : {}),
       });
     }
   });
@@ -199,5 +233,10 @@ export const acceptAssignment = async ({ assignmentId }) => transitionMission(as
 export const advanceMission = async ({ assignmentId, nextStatus, completion = {} }) =>
   transitionMission(assignmentId, nextStatus, completion.notes || "");
 
+// Not used since driver-pages-plan.md Step 2a (Decline was removed). Kept so it can come back; old "Declined" data stays.
 export const declineAssignment = async ({ assignmentId, reason, details }) =>
   transitionMission(assignmentId, "Declined", [reason, details].filter(Boolean).join(": "));
+
+// "I can't do this ride": gives the ride back to the dispatcher with the reason, e.g. "Vehicle problem: flat tire".
+export const reportUnable = async ({ assignmentId, reason, details }) =>
+  transitionMission(assignmentId, "Unable", [reason, details.trim()].filter(Boolean).join(": "));
