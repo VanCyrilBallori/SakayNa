@@ -1,4 +1,4 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
@@ -17,6 +17,7 @@ import { normalizePhilippinePhone } from "../features/resident/utils/requestVali
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
+import { DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
 import {
   DRIVER_AVAILABILITY_SHIFT,
@@ -715,14 +716,17 @@ export default function DriverHome() {
 
           <View style={styles.mainGrid}>
             <View style={styles.assignmentPanel}>
+              {/* Ride Inbox header (driver-home-restyle-plan.md Piece 2). The pill is a label, not a button. */}
               <View style={styles.panelHeader}>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Ride Inbox</Text>
+                <View style={styles.inboxPill}>
+                  <Text style={styles.inboxPillText}>Ride Inbox</Text>
                 </View>
-                <Text style={styles.assignmentStatus}>{assignedTransfer ? "Assigned request" : "No assigned task"}</Text>
+                <Text style={styles.assignmentStatus}>
+                  {!assignedTransfer ? "No ride yet" : assignedTransfer.status === "Assigned" ? "New from dispatch" : "Ride in progress"}
+                </Text>
               </View>
 
-              <Text style={[styles.assignmentTitle, compact && styles.assignmentTitleCompact]}>Current Ride</Text>
+              <Text style={styles.assignmentTitle} accessibilityRole="header">Current ride</Text>
 
               {cancelledNotice ? (
                 <View style={styles.cancelledNotice} accessibilityRole="alert">
@@ -823,10 +827,10 @@ export default function DriverHome() {
                   </View>
                 </View>
               ) : (
-                <View style={styles.emptyInbox}>
-                  <FontAwesome name="envelope-o" size={54} color="#8EA098" />
-                  <Text style={styles.emptyTitle}>Inbox empty</Text>
-                  <Text style={styles.emptyText}>Rides assigned to you by dispatch will appear here.</Text>
+                <View style={styles.inboxEmpty}>
+                  <MaterialCommunityIcons name="email-outline" size={48} color={DESIGN_COLORS.inkMuted} />
+                  <Text style={styles.inboxEmptyTitle}>Inbox empty</Text>
+                  <Text style={styles.inboxEmptyText}>Rides assigned to you by dispatch will appear here.</Text>
                 </View>
               )}
             </View>
@@ -1185,13 +1189,18 @@ const styles = StyleSheet.create({
   container: { width: "100%", maxWidth: 1280, alignSelf: "center", padding: 24, gap: 18 },
   containerCompact: { padding: 16, gap: 16 },
   mainGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "flex-start" },
-  assignmentPanel: { flex: 3, minWidth: 280, padding: 20, borderRadius: 18, backgroundColor: "#E3E7E5" },
+  // Ride Inbox (driver-home-restyle-plan.md Piece 2): a Board Tint section with card corners (24).
+  assignmentPanel: { flex: 3, minWidth: 280, padding: 16, borderRadius: 24, backgroundColor: DESIGN_COLORS.boardTint },
   panelHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" },
-  badge: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 999, backgroundColor: "#FB7A2E" },
-  badgeText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
-  assignmentStatus: { fontSize: 14, fontWeight: "700", color: "#567167" },
-  assignmentTitle: { marginTop: 14, fontSize: 38, fontWeight: "800", color: "#111111" },
-  assignmentTitleCompact: { fontSize: 30 },
+  // Orange has dark words (DESIGN.md). Fully round: it is a small tag, not a button.
+  inboxPill: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
+  inboxPillText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  assignmentStatus: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  assignmentTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // Empty inbox card. Own styles: the History pop-up still uses emptyInbox / emptyTitle / emptyText.
+  inboxEmpty: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 32, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite, alignItems: "center" },
+  inboxEmptyTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  inboxEmptyText: { marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   assignmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "stretch" },
   leftColumn: { flex: 1, minWidth: 260, gap: 14 },
   cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 16, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },

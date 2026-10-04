@@ -1,6 +1,6 @@
 # Driver Home Restyle Plan
 
-**Status: plan OK'd 2026-10-04. Piece 1 built, waiting for phone test.**
+**Status: Piece 1 done (commit f0c21dd). Piece 2 built, waiting for phone test.**
 
 ## Answers (2026-10-04)
 1. Accept is one tap, no "Are you sure?". Decline keeps asking first
@@ -79,7 +79,12 @@ Searched the whole project (2026-10-04):
 - File: app/driver-home.jsx (inbox header, empty inbox, their styles).
 - Board Tint section with 24 corners. Orange "Ride Inbox" pill with
   Ink text. Small green words on the right: "No ride yet" /
-  "New from dispatch" / "Ride in progress".
+  "New from dispatch" / "Ride in progress" (group chose "No ride yet"
+  over the reference's "No assigned task").
+- The empty card has its own new styles, because the History pop-up
+  shares the old ones (emptyInbox / emptyTitle / emptyText) and
+  stays unchanged. The "Ride Inbox" pill is new too (History uses
+  `badge`).
 - Title "Current ride" (22, bold).
 - Empty: white card, envelope icon, "Inbox empty" (22),
   "Rides assigned to you by dispatch will appear here." (17).
