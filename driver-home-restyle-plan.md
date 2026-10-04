@@ -1,6 +1,6 @@
 # Driver Home Restyle Plan
 
-**Status: Pieces 1–2 done (commits f0c21dd, a6e75f4). Piece 3 built, waiting for phone test.**
+**Status: Pieces 1–3 done (commits f0c21dd, a6e75f4, 1b0dcb7). Piece 4a built, waiting for phone test.**
 
 ## Answers (2026-10-04)
 1. Accept is one tap, no "Are you sure?". Decline keeps asking first
@@ -123,8 +123,11 @@ Searched the whole project (2026-10-04):
 - Files: app/driver-home.jsx, DriverMissionActions.jsx.
 - Order on screen: inbox header → map (same LeafletMap) → task card →
   navigation button → buttons.
-- One column on the phone and on the website (centered, not wider than
-  about 640).
+- One column on the phone and on the website (not wider than 640).
+- Map height is one number, `RIDE_MAP_HEIGHT` in driver-home.jsx: 180
+  (was 240; the step button needed scrolling on the phone, 2026-10-04).
+- The repeated header above the map (title + small status tag) is
+  removed; the task card already shows both.
 - One navigation button replaces the two buttons "Open pickup" /
   "Open destination". It opens the same Google Maps link we use now.
   Its words follow the ride step: **Navigate to pickup** until

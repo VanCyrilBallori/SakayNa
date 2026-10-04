@@ -32,6 +32,9 @@ import { startPhoneCall } from "../lib/phoneCall";
 import { getAuthErrorMessage, logoutCurrentUser, saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 
+// How tall the ride map is on the driver home (driver-home-restyle-plan.md Piece 4a).
+const RIDE_MAP_HEIGHT = 180;
+
 // The assigned vehicle's name. (Old requests saved the passenger count in "vehicle", so that field is not used here.)
 const getVehicleName = (request, assignment) => request?.assignedVehicleName || assignment?.vehicleName || "Vehicle pending";
 
@@ -744,38 +747,29 @@ export default function DriverHome() {
               ) : null}
 
               {request ? (
-                <View style={styles.assignmentGrid}>
-                  <View style={styles.leftColumn}>
-                    {/* The task card (driver-home-restyle-plan.md Piece 3). Replaces the five small boxes. */}
-                    <DriverRideCard
-                      request={request}
-                      assignment={assignedTransfer}
-                      missionStatus={missionStatus}
-                      vehicleName={getVehicleName(request, assignedTransfer)}
-                      onOpenDetails={() => setReviewOpen(true)}
-                    />
+                // One column on the phone and the website (driver-home-restyle-plan.md Piece 4a):
+                // map on top, then the task card, then the navigation and step buttons (DriverMissionActions).
+                <View style={styles.rideColumn}>
+                  <View style={styles.rideMap}>
+                    <LeafletMap {...requestMapProps} minHeight={0} />
                   </View>
 
-                  <View style={styles.mapCard}>
-                    <View style={styles.mapCardHeader}>
-                      <Text style={styles.mapCardTitle}>{request.emergencyType ?? request.title ?? "Current Ride"}</Text>
-                      <View style={styles.mapHeaderButton}>
-                        <Text style={styles.mapHeaderButtonText}>{missionStatus}</Text>
-                      </View>
-                    </View>
+                  {/* The task card (driver-home-restyle-plan.md Piece 3). Replaces the five small boxes. */}
+                  <DriverRideCard
+                    request={request}
+                    assignment={assignedTransfer}
+                    missionStatus={missionStatus}
+                    vehicleName={getVehicleName(request, assignedTransfer)}
+                    onOpenDetails={() => setReviewOpen(true)}
+                  />
 
-                    <View style={styles.mapBlankState}>
-                      <LeafletMap {...requestMapProps} />
-                    </View>
-
-                    <FeedbackMessage message={missionMessage.message} tone={missionMessage.tone} />
-                    {/* A ride the resident just cancelled has no Accept / Decline: it is being removed (see cancelledAssignmentId). */}
-                    {request.status === "Cancelled" ? (
-                      <FeedbackMessage message="The resident cancelled this ride. Removing it..." tone="error" />
-                    ) : (
-                      <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
-                    )}
-                  </View>
+                  <FeedbackMessage message={missionMessage.message} tone={missionMessage.tone} />
+                  {/* A ride the resident just cancelled has no Accept / Decline: it is being removed (see cancelledAssignmentId). */}
+                  {request.status === "Cancelled" ? (
+                    <FeedbackMessage message="The resident cancelled this ride. Removing it..." tone="error" />
+                  ) : (
+                    <DriverMissionActions assignment={{ ...assignedTransfer, currentRequest: request }} driverId={authUser?.uid} onFeedback={(message, tone) => setMissionMessage({ message, tone })} />
+                  )}
                 </View>
               ) : (
                 <View style={styles.inboxEmpty}>
@@ -1155,8 +1149,10 @@ const styles = StyleSheet.create({
   inboxEmpty: { marginTop: 16, paddingHorizontal: 24, paddingVertical: 32, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite, alignItems: "center" },
   inboxEmptyTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
   inboxEmptyText: { marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  assignmentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, marginTop: 20, alignItems: "stretch" },
-  leftColumn: { flex: 1, minWidth: 260, gap: 14 },
+  // The ride (Piece 4a): one column, at most 640 wide so lines stay easy to read on the website.
+  rideColumn: { width: "100%", maxWidth: 640, marginTop: 16, gap: 12 },
+  // The map on top. Change RIDE_MAP_HEIGHT to make it taller or shorter.
+  rideMap: { height: RIDE_MAP_HEIGHT, borderRadius: 24, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginTop: 16, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },
   cancelledNoticeCopy: { flex: 1 },
   cancelledNoticeTitle: { fontSize: 17, lineHeight: 23, fontWeight: "800", color: "#7A1A12" },
@@ -1164,12 +1160,6 @@ const styles = StyleSheet.create({
   cancelledNoticeButton: { alignSelf: "flex-start", minHeight: 48, marginTop: 10, paddingHorizontal: 24, borderRadius: 12, backgroundColor: "#B42318", alignItems: "center", justifyContent: "center" },
   cancelledNoticeButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
   phoneLink: { fontSize: 17, fontWeight: "700", color: "#06774B", textDecorationLine: "underline" },
-  mapCard: { flex: 0.82, minWidth: 280, maxWidth: 460, borderRadius: 18, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D5DEDA", overflow: "hidden" },
-  mapCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#E4EBE7", gap: 12, flexWrap: "wrap" },
-  mapCardTitle: { fontSize: 18, fontWeight: "700", color: "#2E3C37" },
-  mapHeaderButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "#EFF4F2" },
-  mapHeaderButtonText: { fontSize: 13, fontWeight: "700", color: "#496B5F" },
-  mapBlankState: { minHeight: 280, aspectRatio: 1, alignItems: "stretch", justifyContent: "flex-start" },
   mapBlankTitle: { marginTop: 14, fontSize: 24, fontWeight: "800", color: "#2F3B46", textAlign: "center" },
   mapBlankText: { marginTop: 10, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
   driverActionRow: { padding: 14, flexDirection: "row", flexWrap: "wrap", gap: 10, borderTopWidth: 1, borderTopColor: "#E4EBE7", backgroundColor: "#FFFFFF" },
