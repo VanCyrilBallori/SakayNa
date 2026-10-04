@@ -694,7 +694,7 @@ export default function DriverHome() {
         <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
           <BrandLogo variant="main" height={compact ? 30 : 36} />
 
-          <View style={[styles.headerRight, narrow && styles.headerRightCompact]}>
+          <View style={styles.headerRight}>
             <TouchableOpacity style={[styles.profileTrigger, { backgroundColor: theme.headerBg }]} onPress={() => setProfileMenuOpen(true)}>
               <View style={[styles.avatarCircle, { backgroundColor: theme.avatarBg }]}>
                 <Text style={[styles.avatarText, { color: theme.avatarText }]}>{initials}</Text>
@@ -1160,24 +1160,20 @@ const styles = StyleSheet.create({
   accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
   accessText: { fontSize: 15, fontWeight: "800", color: "#335E50", textAlign: "center" },
   content: { paddingBottom: 24 },
+  // One thin row on every screen: logo on the left, profile on the right (never wraps to a second row).
   header: {
     paddingHorizontal: 24,
-    paddingVertical: 18,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    flexWrap: "wrap",
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-  },
-  headerRightCompact: {
-    width: "100%",
-    justifyContent: "space-between",
   },
   profileTrigger: {
     paddingVertical: 6,
