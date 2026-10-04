@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked against the app: Oct 4, 2026 (after driver-location-plan.md Step 3: "Show on map").
+Last checked against the app: Oct 4, 2026 (after emergency-auto-call-plan.md Step A: auto call after a dispatcher answers).
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,6 +10,22 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### Auto call after a dispatcher answers: when it doesn't call
+
+- **Found:** Oct 4, 2026 (emergency-auto-call-plan.md).
+- **What it is:** After a dispatcher answers, the resident's phone calls
+  them after a 3-second countdown. It is a normal phone call from the
+  resident's own SIM, so with no load or no signal it fails like any
+  call. It also doesn't call:
+  - on the website (a browser can't place a phone call),
+  - if SakayNa is in the background, or the resident leaves the app
+    during the countdown,
+  - on APKs before demo-ready-12 (they still need a tap on Call),
+  - if the dispatcher has no Operational phone saved.
+- **What to do:** the **Call {name}** button stays on the pop-up in all
+  of these cases; the office number is in the ☰ menu.
+- **Status:** Open. Fine for the Capstone demo.
 
 ### "Show on map": the location can be old, rough, or missing
 

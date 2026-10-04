@@ -1,6 +1,6 @@
 # Emergency Auto Call Plan
 
-**Status: approved 2026-10-04. Step A (code) in progress.**
+**Status: Step A DONE and tested on the phone (commit ab3ca7a), Step B notes written (2026-10-04). Release: demo-ready-12.**
 
 ## Goal (in simple words)
 When a dispatcher taps **Answer** on a resident's emergency alert, the

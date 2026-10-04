@@ -335,7 +335,7 @@ not-verified pop-up in `app/resident-home.jsx`):
    | Not confirmed within 10 seconds (for example, offline) (`SEND_TIMEOUT_MS` in `app/resident-home.jsx:29`) | "Alert not confirmed" + **Try again** (+ **Call the office** if an office number exists) |
    | Saved, waiting | "Emergency alert sent", "Waiting for a dispatcher to accept." with a spinner |
    | Nobody accepted after 30 seconds (`NO_ANSWER_TIMEOUT_MS` in `app/resident-home.jsx:26`) | "No dispatcher has accepted yet" + **Call the office** (if a number exists) |
-   | A dispatcher accepted | "Dispatcher accepted" + **Call {dispatcher name}** (if the dispatcher has a phone number) |
+   | A dispatcher accepted | "Dispatcher accepted". If the dispatcher has a phone number (phone app only): **"Calling {dispatcher name} in 3…"** (2…, 1…) with **Cancel call**, then the phone calls them (see item 12). After that: **Call {dispatcher name} again**. After Cancel call: **Call {dispatcher name}**. No number: no countdown, no Call button |
    | Sending, waiting, or nobody accepted yet | A bold line: **"Keep this screen open until a dispatcher accepts."** |
    | Location line | "Location: sending…", "Location: sent", or "Location: not available — dispatchers will see your barangay." |
 
@@ -356,6 +356,23 @@ not-verified pop-up in `app/resident-home.jsx`):
       right away**.
     - Otherwise (website, permission not given, or any error), the phone's
       **dialer opens** with the number already filled in.
+12. **Auto call after a dispatcher answers** (added 2026-10-04,
+    `emergency-auto-call-plan.md`; "Auto call, part 1" and "part 2"
+    `useEffect`s in `app/resident-home.jsx:205-246`, the countdown block at
+    `app/resident-home.jsx:940`):
+    - **This deliberately changes the earlier rule "nothing calls unless the
+      user taps a Call button".** The countdown is the one exception
+      (written in the comment in `lib/phoneCall.js:3-6`).
+    - When the alert turns "connected" and the dispatcher has a phone
+      number, a 3-second countdown starts (`AUTO_CALL_SECONDS` in
+      `app/resident-home.jsx:36`): "Calling {name} in 3…" + **Cancel
+      call**. At 0 it calls through `startPhoneCall`, like the Call buttons.
+    - Only once per alert, only on the phone app, only while SakayNa is on
+      screen, and not while "Cancel your emergency alert?" is open.
+      Leaving the app during the countdown cancels it. **Done** or Back
+      during the countdown closes the pop-up with no call.
+    - After the call ends, Android brings the resident back to the same
+      pop-up: **Call {name} again** and **Done**.
 
 #### b) Request a Ride — `ResidentRequestForm` in `features/resident/components/ResidentRequestForm.jsx`
 
@@ -587,8 +604,10 @@ works the same from History and from the home card (`requestCancellation` in
 | `retryEmergencyAlert` | `app/resident-home.jsx:357` | Sends the same alert again, using the same ID. |
 | `closeEmergencyAlert` | `app/resident-home.jsx:363` | Marks the alert cancelled or ended, then resets the pop-up. |
 | `handleAlertBack` | `app/resident-home.jsx:389` | Asks "Cancel your emergency alert?" before closing an alert that is still live. |
-| `openPhone` | `app/resident-home.jsx:403` | Used by every Call button on the alert pop-up. Calls `startPhoneCall`. |
-| `startPhoneCall` | `lib/phoneCall.js:6` | Android with permission: starts the call right away. Otherwise: opens the dialer with the number filled in. |
+| `openPhone` | `app/resident-home.jsx:469` | Used by every Call button on the alert pop-up. Calls `startPhoneCall`. |
+| auto call, part 1 (`useEffect` in `ResidentHome`) | `app/resident-home.jsx:205` | When a dispatcher with a phone number answers, starts the 3-second "Calling {name} in 3…" countdown (once per alert). Added 2026-10-04. |
+| auto call, part 2 (`useEffect` in `ResidentHome`) | `app/resident-home.jsx:218` | Counts down once a second, then calls `startPhoneCall`. Leaving the app cancels it. |
+| `startPhoneCall` | `lib/phoneCall.js:9` | Android with permission: starts the call right away. Otherwise: opens the dialer with the number filled in. Called by the Call buttons and by the auto call countdown (the one exception to "only from a tapped button"). |
 | `loadOfficePhone` | `app/resident-home.jsx:180` | Reads the public office phone number from `systemSettings/operational`. |
 | `saveResidentSettings` | `app/resident-home.jsx:407` | Saves name, phone and email changes. |
 | `saveResidentPassword` | `app/resident-home.jsx:477` | Checks the current password, then saves the new one. |
