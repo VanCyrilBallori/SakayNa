@@ -70,12 +70,86 @@ service cloud.firestore {
                  "approvalReviewedAt", "approvalReviewedBy", "barangay"]);
     }
 
+    // ---- Driver duty status (driver-duty-plan.md) ----
+    // A driver's current status is saved on their own users/{uid} profile.
+    // Every change is also saved as a new dutyRecords document in the same save.
+
+    function isApprovedDriver() {
+      return isDriver()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountStatus == "Approved";
+    }
+
+    // The profile fields that hold the duty status.
+    function dutyFields() {
+      return ["dutyStatus", "dutyStatusSince", "shiftId", "shiftStartedAt", "breakType", "breakNote"];
+    }
+
+    // The only allowed status changes. "On a run" is set by the app when the driver accepts a ride.
+    function allowedDutyChange(before, after) {
+      return (before == "Off duty" && after == "Available")
+        || (before == "Available" && after in ["On break", "On a run", "Off duty"])
+        || (before == "On break" && after in ["Available", "Off duty"])
+        || (before == "On a run" && after == "Available");
+    }
+
+    // A driver's own profile save may leave the duty fields alone (Settings, the
+    // app-open "presence" signal), or make one allowed change, stamped with
+    // Firestore's own clock (request.time), never the phone's.
+    // A driver who never punched in has no dutyStatus: that counts as "Off duty".
+    function dutyChangeIsSafe() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(dutyFields())
+        || (isApprovedDriver()
+          && allowedDutyChange(resource.data.get("dutyStatus", "Off duty"), request.resource.data.get("dutyStatus", ""))
+          && request.resource.data.dutyStatusSince == request.time
+          // Punch in: the shift starts now and gets an id.
+          && (resource.data.get("dutyStatus", "Off duty") != "Off duty"
+            || (request.resource.data.shiftStartedAt == request.time
+              && request.resource.data.shiftId is string
+              && request.resource.data.shiftId.size() > 0))
+          // Start a break: a known break type and a short note.
+          && (request.resource.data.dutyStatus != "On break"
+            || (request.resource.data.get("breakType", "") in ["Meal", "Rest", "Personal"]
+              && request.resource.data.get("breakNote", "") is string
+              && request.resource.data.get("breakNote", "").size() <= 100)));
+    }
+
+    // Which status each duty record goes with.
+    function dutyRecordStatus() {
+      return {
+        "Punch in": "Available",
+        "Break start": "On break",
+        "Break end": "Available",
+        "Run start": "On a run",
+        "Run end": "Available",
+        "Punch out": "Off duty"
+      };
+    }
+
+    // The driver's profile as it will be after this save.
+    function myProfileAfter() {
+      return getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // A new duty record must be the driver's own, use Firestore's clock, and be saved
+    // together with the matching status change on their profile (same save, same moment).
+    // On punch out the profile keeps its shiftId, so the "Punch out" record still matches it.
+    function dutyRecordIsSafe() {
+      return request.resource.data.driverId == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.type in dutyRecordStatus()
+        && myProfileAfter().get("dutyStatus", "") == dutyRecordStatus()[request.resource.data.type]
+        && myProfileAfter().get("dutyStatusSince", null) == request.time
+        && request.resource.data.get("shiftId", "") == myProfileAfter().get("shiftId", "");
+    }
+
     // ---- User profiles ----
     match /users/{userId} {
       allow read:   if signedIn() && (request.auth.uid == userId || isStaff());
-      allow create: if signedIn() && request.auth.uid == userId && selfCreateProfileIsSafe();
+      // A new profile may not start with a duty status (a driver must punch in).
+      allow create: if signedIn() && request.auth.uid == userId && selfCreateProfileIsSafe()
+        && !request.resource.data.keys().hasAny(dutyFields());
       allow update: if signedIn() && (
-        (request.auth.uid == userId && keepsAdminOnlyFields()) || (isAdmin() && request.auth.uid != userId)
+        (request.auth.uid == userId && keepsAdminOnlyFields() && dutyChangeIsSafe()) || (isAdmin() && request.auth.uid != userId)
       );
       allow delete: if false;
     }
@@ -111,6 +185,14 @@ service cloud.firestore {
     match /driverSchedules/{scheduleId} {
       allow read:  if isStaff() || isDriver();
       allow write: if isStaff() || isDriver();
+    }
+
+    // ---- Driver duty records (the DTR) ----
+    // Append-only: a record is never edited or deleted, not even by an Admin.
+    match /dutyRecords/{recordId} {
+      allow read:   if isStaff() || (signedIn() && resource.data.driverId == request.auth.uid);
+      allow create: if isApprovedDriver() && dutyRecordIsSafe();
+      allow update, delete: if false;
     }
 
     // ---- In-app emergency call signaling ----
