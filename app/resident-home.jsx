@@ -62,6 +62,8 @@ export default function ResidentHome() {
   const [callStatus, setCallStatus] = useState("idle");
   const [callDispatcherName, setCallDispatcherName] = useState("");
   const [callDispatcherPhone, setCallDispatcherPhone] = useState("");
+  // True when the dispatcher had no phone, so the website gave the office number instead.
+  const [callDispatcherPhoneIsOffice, setCallDispatcherPhoneIsOffice] = useState(false);
   const [officePhone, setOfficePhone] = useState("");
   const [alertLocationStatus, setAlertLocationStatus] = useState("idle");
   const [noAnswerTimedOut, setNoAnswerTimedOut] = useState(false);
@@ -136,6 +138,7 @@ export default function ResidentHome() {
         setCallStatus(callData?.status ?? "ringing");
         setCallDispatcherName(callData?.dispatcherName ?? "");
         setCallDispatcherPhone(callData?.dispatcherPhone ?? "");
+        setCallDispatcherPhoneIsOffice(callData?.dispatcherPhoneIsOffice === true);
 
         // A snapshot with no pending writes means the server has it — including a
         // queued offline write that synced after we already showed the error state.
@@ -405,6 +408,7 @@ export default function ResidentHome() {
     setCallStatus("ringing");
     setCallDispatcherName("");
     setCallDispatcherPhone("");
+    setCallDispatcherPhoneIsOffice(false);
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("pending");
     setCallSessionId(alertId);
@@ -443,6 +447,7 @@ export default function ResidentHome() {
     setSendPhase("idle");
     setCallDispatcherName("");
     setCallDispatcherPhone("");
+    setCallDispatcherPhoneIsOffice(false);
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("idle");
     // Done or Back during the countdown: no call.
@@ -909,7 +914,9 @@ export default function ResidentHome() {
               // "Calling Maria in 3…" replaces the Call button until it calls or the resident taps Cancel call.
               const countingDown = accepted && autoCallSeconds !== null;
               const showCallDispatcher = accepted && Boolean(callDispatcherPhone) && !countingDown;
-              const callDispatcherLabel = `Call ${dispatcherLabel}${autoCalled ? " again" : ""}`;
+              // Who the countdown and the Call button say they are calling: the office when the number is the office number.
+              const autoCallLabel = callDispatcherPhoneIsOffice ? "the dispatch office" : dispatcherLabel;
+              const callDispatcherLabel = `Call ${autoCallLabel}${autoCalled ? " again" : ""}`;
               const showCallOffice = showOfficeFallback && Boolean(officePhone);
               const closeLabel = accepted ? "Done" : stillLive ? "Cancel alert" : "Close";
               // Cancel alert = white with a red edge. Done / Close = white with a grey edge.
@@ -942,10 +949,10 @@ export default function ResidentHome() {
                     <>
                       <View style={styles.autoCallBox}>
                         <Text style={styles.autoCallText} accessibilityLiveRegion="polite">
-                          Calling {dispatcherLabel} in {autoCallSeconds}…
+                          Calling {autoCallLabel} in {autoCallSeconds}…
                         </Text>
                       </View>
-                      <TouchableOpacity style={styles.alertDoneButton} onPress={() => setAutoCallSeconds(null)} accessibilityRole="button" accessibilityLabel={`Cancel the call to ${dispatcherLabel}`}>
+                      <TouchableOpacity style={styles.alertDoneButton} onPress={() => setAutoCallSeconds(null)} accessibilityRole="button" accessibilityLabel={`Cancel the call to ${autoCallLabel}`}>
                         <Text style={styles.alertDoneText}>Cancel call</Text>
                       </TouchableOpacity>
                     </>

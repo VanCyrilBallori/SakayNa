@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { arrayUnion, collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
@@ -812,10 +812,22 @@ export default function DispatcherHome() {
     }
 
     try {
+      // The number the resident's phone will call: this dispatcher's own account phone,
+      // else their Operational phone, else the office number (systemSettings/operational).
+      let dispatcherPhone = (profile?.phoneNumber || profile?.phone || profile?.operationalPhone || "").trim();
+      let dispatcherPhoneIsOffice = false;
+      if (!dispatcherPhone) {
+        const settings = await getDoc(doc(db, "systemSettings", "operational"));
+        dispatcherPhone = settings.exists() ? (settings.data()?.publicOfficePhone ?? "").trim() : "";
+        // Tells the resident's phone to say "Calling the dispatch office" instead of the dispatcher's name.
+        dispatcherPhoneIsOffice = Boolean(dispatcherPhone);
+      }
+
       await updateDoc(doc(db, "callSessions", incomingCall.id), {
         dispatcherId: authUser?.uid ?? "",
         dispatcherName: displayName,
-        dispatcherPhone: profile?.officePhone || profile?.operationalPhone || "",
+        dispatcherPhone,
+        dispatcherPhoneIsOffice,
         status: "connected",
         updatedAt: serverTimestamp(),
       });
