@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platfo
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
+import CloseButton from "../components/ui/CloseButton";
 import DriverDutyCard from "../features/driver/components/DriverDutyCard";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
@@ -867,13 +868,11 @@ export default function DriverHome() {
           <View style={styles.modalOverlay}>
             <View style={[styles.scheduleModalCard, compact && styles.scheduleModalCardCompact]}>
               <View style={styles.scheduleModalHeader}>
-                <View>
+                <View style={styles.scheduleModalHeaderCopy}>
                   <Text style={styles.scheduleModalTitle}>Add Availability</Text>
                   <Text style={styles.scheduleModalSubtitle}>Date: {new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</Text>
                 </View>
-                <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setSchedulePromptOpen(false)}>
-                  <Text style={styles.modalCloseCircleText}>X</Text>
-                </TouchableOpacity>
+                <CloseButton onPress={() => setSchedulePromptOpen(false)} label="Close work hours" />
               </View>
 
               <Text style={styles.scheduleModalHint}>Set today&apos;s working window using the up/down controls, then save it for dispatcher visibility.</Text>
@@ -935,9 +934,7 @@ export default function DriverHome() {
         <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
           <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
             <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setProfileEditorOpen(false)}>
-                <Text style={styles.modalCloseCircleText}>X</Text>
-              </TouchableOpacity>
+              <CloseButton onPress={() => setProfileEditorOpen(false)} label="Close profile" style={styles.closeInCorner} />
 
               <Text style={[styles.reviewTitle, { color: theme.text }]}>Profile</Text>
               <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Driver account details currently saved in your profile.</Text>
@@ -974,13 +971,11 @@ export default function DriverHome() {
           <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
             <View style={[styles.scheduleModalCard, compact && styles.scheduleModalCardCompact, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.scheduleModalHeader}>
-                <View>
+                <View style={styles.scheduleModalHeaderCopy}>
                   <Text style={[styles.scheduleModalTitle, { color: theme.text }]}>History</Text>
                   <Text style={[styles.scheduleModalSubtitle, { color: theme.mutedText }]}>Your current and past driver assignments are recorded here.</Text>
                 </View>
-                <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setHistoryOpen(false)}>
-                  <Text style={styles.modalCloseCircleText}>X</Text>
-                </TouchableOpacity>
+                <CloseButton onPress={() => setHistoryOpen(false)} label="Close history" />
               </View>
 
               <ScrollView contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
@@ -1018,9 +1013,7 @@ export default function DriverHome() {
           <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
             <View style={[styles.profileEditorCard, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setSettingsOpen(false)}>
-                  <Text style={styles.modalCloseCircleText}>X</Text>
-                </TouchableOpacity>
+                <CloseButton onPress={() => setSettingsOpen(false)} label="Close settings" style={styles.closeInCorner} />
 
                 <Text style={[styles.reviewTitle, { color: theme.text }]}>Settings</Text>
                 <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your driver account details, email, and theme mode.</Text>
@@ -1099,9 +1092,7 @@ export default function DriverHome() {
           <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
             <View style={[styles.profileEditorCard, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setChangePasswordOpen(false)}>
-                  <Text style={styles.modalCloseCircleText}>X</Text>
-                </TouchableOpacity>
+                <CloseButton onPress={() => setChangePasswordOpen(false)} label="Close change password" style={styles.closeInCorner} />
 
                 <Text style={[styles.reviewTitle, { color: theme.text }]}>Change Password</Text>
                 <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
@@ -1245,6 +1236,8 @@ const styles = StyleSheet.create({
   scheduleModalCard: { width: "100%", maxWidth: 760, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E2DD", padding: 22 },
   scheduleModalCardCompact: { padding: 18 },
   scheduleModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  // flex: 1 = take the space left next to the X and wrap long text, so the X stays inside the window.
+  scheduleModalHeaderCopy: { flex: 1 },
   scheduleModalTitle: { fontSize: 26, fontWeight: "800", color: "#111111" },
   scheduleModalSubtitle: { marginTop: 6, fontSize: 14, lineHeight: 20, color: "#60716B" },
   scheduleModalHint: { marginTop: 14, fontSize: 14, lineHeight: 21, color: "#4D5D57" },
@@ -1301,8 +1294,8 @@ const styles = StyleSheet.create({
   editorCardFit: { flexShrink: 1 },
   editorScroll: { flexGrow: 0 },
   profileEditorCard: { width: "100%", maxWidth: 520, borderRadius: 20, borderWidth: 1, padding: 22 },
-  modalCloseCircle: { alignSelf: "flex-end", width: 42, height: 42, borderRadius: 21, backgroundColor: "#F51D1D", alignItems: "center", justifyContent: "center" },
-  modalCloseCircleText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
+  // The X at the top-right of Profile, Settings and Change Password.
+  closeInCorner: { alignSelf: "flex-end" },
   profileEditorSubtitle: { marginTop: 8, fontSize: 14, lineHeight: 21 },
   profileInfoCard: { marginTop: 16, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
   profileInfoLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4 },

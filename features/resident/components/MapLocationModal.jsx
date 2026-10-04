@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, View } from "react-native";
 
 import LeafletMap from "../../../components/LeafletMap";
 import AppButton from "../../../components/ui/AppButton";
+import CloseButton from "../../../components/ui/CloseButton";
 import { COLORS, RADIUS, SPACING } from "../../../constants/design";
 import { getLocationIfAllowed } from "../hooks/useCurrentLocation";
 
@@ -59,8 +60,8 @@ export default function MapLocationModal({ visible, initialLocation, onClose, on
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <View><Text style={styles.title}>Pin Pickup Location</Text><Text style={styles.subtitle}>Tap the map to place the pickup marker, then confirm it.</Text></View>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close map picker" onPress={onClose} style={styles.close}><Text style={styles.closeText}>X</Text></TouchableOpacity>
+            <View style={styles.headerCopy}><Text style={styles.title}>Pin Pickup Location</Text><Text style={styles.subtitle}>Tap the map to place the pickup marker, then confirm it.</Text></View>
+            <CloseButton onPress={onClose} label="Close map picker" />
           </View>
           <View style={styles.map}>
             {startCenter === undefined ? (
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
   card: { maxHeight: "92%", padding: SPACING.lg, backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg },
   header: { flexDirection: "row", gap: SPACING.md, justifyContent: "space-between", alignItems: "flex-start", marginBottom: SPACING.md },
   title: { fontSize: 21, fontWeight: "800", color: COLORS.text }, subtitle: { maxWidth: 290, marginTop: 4, color: COLORS.mutedText, lineHeight: 20 },
-  close: { width: 36, height: 36, alignItems: "center", justifyContent: "center" }, closeText: { fontWeight: "800", fontSize: 17, color: COLORS.text },
+  headerCopy: { flex: 1 }, 
   map: { height: 320, overflow: "hidden", borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border },
   mapLoading: { flex: 1, alignItems: "center", justifyContent: "center", gap: SPACING.sm }, mapLoadingText: { color: COLORS.mutedText, fontSize: 15 }, coordinate: { marginTop: SPACING.sm, color: COLORS.mutedText, fontSize: 13 },
   input: { minHeight: 48, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, color: COLORS.text },

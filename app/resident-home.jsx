@@ -13,6 +13,7 @@ import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
 import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
+import CloseButton from "../components/ui/CloseButton";
 import LatestRequestCard from "../features/resident/components/LatestRequestCard";
 import ResidentRequestDetails from "../features/resident/components/ResidentRequestDetails";
 import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
@@ -923,9 +924,7 @@ export default function ResidentHome() {
       <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.profileEditorCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
-            <TouchableOpacity style={styles.modalClose} onPress={() => setProfileEditorOpen(false)}>
-              <Text style={styles.modalCloseText}>X</Text>
-            </TouchableOpacity>
+            <CloseButton onPress={() => setProfileEditorOpen(false)} label="Close profile" style={styles.closeInCorner} />
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>Profile</Text>
             <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Resident account details currently saved in your profile.</Text>
@@ -971,9 +970,7 @@ export default function ResidentHome() {
         <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
           <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
             <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <TouchableOpacity style={styles.modalClose} onPress={() => setSettingsOpen(false)}>
-                <Text style={styles.modalCloseText}>X</Text>
-              </TouchableOpacity>
+              <CloseButton onPress={() => setSettingsOpen(false)} label="Close settings" style={styles.closeInCorner} />
 
               <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
               <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Update your resident account details, password, and theme mode.</Text>
@@ -1036,9 +1033,7 @@ export default function ResidentHome() {
         <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
           <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
             <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <TouchableOpacity style={styles.modalClose} onPress={() => setChangePasswordOpen(false)}>
-                <Text style={styles.modalCloseText}>X</Text>
-              </TouchableOpacity>
+              <CloseButton onPress={() => setChangePasswordOpen(false)} label="Close change password" style={styles.closeInCorner} />
 
               <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
               <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
@@ -1237,20 +1232,8 @@ const styles = StyleSheet.create({
   modalScrollContent: {
     paddingBottom: 4,
   },
-  modalClose: {
-    alignSelf: "flex-end",
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: "#F51D1D",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalCloseText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "800",
-  },
+  // The X at the top-right of Profile, Settings and Change Password.
+  closeInCorner: { alignSelf: "flex-end" },
   modalTitle: {
     marginTop: 8,
     fontSize: 27,

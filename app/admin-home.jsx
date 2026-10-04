@@ -19,6 +19,7 @@ import {
 } from "react-native";
 
 import BrandLogo from "../components/BrandLogo";
+import CloseButton from "../components/ui/CloseButton";
 import AdminCallSessionsSection from "../features/admin/components/AdminCallSessionsSection";
 import AdminDriverApplicationsSection from "../features/admin/components/AdminDriverApplicationsSection";
 import AdminDutyRecordsSection from "../features/admin/components/AdminDutyRecordsSection";
@@ -957,9 +958,7 @@ export default function AdminHome() {
       <Modal visible={Boolean(editingUser)} transparent animationType="fade" onRequestClose={() => setEditingUser(null)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setEditingUser(null)}>
-              <Text style={styles.modalCloseCircleText}>X</Text>
-            </TouchableOpacity>
+            <CloseButton onPress={() => setEditingUser(null)} label="Close edit account" style={styles.closeInCorner} />
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Account</Text>
             <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
@@ -1031,9 +1030,7 @@ export default function AdminHome() {
       <Modal visible={vehicleEditorOpen} transparent animationType="fade" onRequestClose={() => setVehicleEditorOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setVehicleEditorOpen(false)}>
-              <Text style={styles.modalCloseCircleText}>X</Text>
-            </TouchableOpacity>
+            <CloseButton onPress={() => setVehicleEditorOpen(false)} label="Close vehicle editor" style={styles.closeInCorner} />
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>{vehicleForm.id ? "Edit Vehicle" : "Add Vehicle"}</Text>
             <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Vehicle records are stored in the `vehicles` collection and used by dispatch and admin monitoring.</Text>
@@ -1210,9 +1207,7 @@ export default function AdminHome() {
       <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setProfileEditorOpen(false)}>
-              <Text style={styles.modalCloseCircleText}>X</Text>
-            </TouchableOpacity>
+            <CloseButton onPress={() => setProfileEditorOpen(false)} label="Close profile" style={styles.closeInCorner} />
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>Profile</Text>
             <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>This profile sheet remains view-only for the admin session.</Text>
@@ -1472,8 +1467,8 @@ const styles = StyleSheet.create({
   logoutMenuButton: { marginTop: 14, minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#0B7A4A" },
   logoutMenuButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
   profileEditorCard: { width: "100%", maxWidth: 560, backgroundColor: "#FFFFFF", borderRadius: 20, borderWidth: 1, padding: 22 },
-  modalCloseCircle: { alignSelf: "flex-end", width: 42, height: 42, borderRadius: 21, backgroundColor: "#F51D1D", alignItems: "center", justifyContent: "center" },
-  modalCloseCircleText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
+  // The X at the top-right of Edit Account, Vehicle editor and Profile.
+  closeInCorner: { alignSelf: "flex-end" },
   profileFieldLabel: { marginTop: 22, fontSize: 15, fontWeight: "700" },
   profileInput: { marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, backgroundColor: "#FCFCFC", fontSize: 15, color: "#111111" },
   readOnlyInput: { opacity: 0.78 },
