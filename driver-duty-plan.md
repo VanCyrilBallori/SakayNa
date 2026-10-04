@@ -1,6 +1,6 @@
 # Driver Duty Status + Duty Time Record (DTR) Plan — demo version
 
-**Status: Steps 1–6 and 8 DONE (released as demo-ready-8, 2026-10-04).** Groupmates' feedback done; releasing demo-ready-9. Step 7 (My DTR) only if there is time.
+**Status: Steps 1–6 and 8 DONE (demo-ready-8), groupmates' feedback released (demo-ready-9), 2026-10-04.** Close (X) button fix committed, not released yet. Step 7 (My DTR) only if there is time.
 Demo freeze: around Oct 8–9.
 
 ## Goal (in simple words)
@@ -505,3 +505,18 @@ everything residents see.
   30c15be); after it, the live rules matched firestore.rules (ruleset
   4cbea369-6bb5-4682-a209-d65f1982bfa1). "Meal" stays allowed for the
   demo-ready-8 APK.
+- 2026-10-04: **demo-ready-9** (groupmates' feedback: "Take a break"
+  button text fix, thin driver header, "Meal" → "Lunch", peach "On
+  break" card).
+  - Website: master → main → Vercel, fast-forward 7949b7f..be98f8a;
+    the new version was live at 14:49 (checked: a new code file that
+    contains "Lunch"). No rules change in this release (the "Lunch" rule
+    was already live).
+  - Preview APK: EAS build bdff728e-1195-483f-a8c6-e2e0ed909981,
+    profile preview, built from commit be98f8a, `eas fingerprint:compare`
+    says "matches". Tested on the phone. Tagged demo-ready-9 (on
+    be98f8a) and pushed.
+  - Tester message: tester-message.md with "Lunch" and this APK's link
+    (commit 307d004).
+  - Not in this release: the plain close (X) button fix (commit
+    43938cd), for the next website + APK.
