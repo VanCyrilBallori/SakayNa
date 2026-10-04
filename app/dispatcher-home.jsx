@@ -136,9 +136,16 @@ function WhenLabel({ request, now, style }) {
   return <Text style={[style, passed && styles.whenPassed]}>{passed ? "Scheduled time passed" : "Scheduled"}: {getWhenText(request)}</Text>;
 }
 
-// Waiting list order: ASAP rides first (the one waiting longest on top), then scheduled rides (soonest first).
+// Why a driver gave this ride back (driver-pages-plan.md Step 2b), e.g. "Vehicle problem", or "" if no driver did.
+// "I can't do this ride" saves lastUnableReason; a Decline from an older APK saves lastDeclineReason.
+// Only Pending rides are on this screen, so a ride that was assigned again never shows it.
+const getGivenBackReason = (request) => request.lastUnableReason || request.lastDeclineReason || "";
+
+// Waiting list order: rides a driver gave back first (someone was already waiting for them),
+// then ASAP rides (the one waiting longest on top), then scheduled rides (soonest first).
 // A request the server hasn't timed yet goes last in its group.
 const queueOrder = (request) => {
+  if (getGivenBackReason(request)) return [-1, request.createdAt?.toMillis?.() ?? Infinity];
   const scheduled = getScheduledDate(request);
   return scheduled ? [1, scheduled.getTime()] : [0, request.createdAt?.toMillis?.() ?? Infinity];
 };
@@ -154,6 +161,10 @@ function DriverDutyRow({ driver, now, selected, onPress }) {
   const canAssign = !driver.blockReason;
   // Punched in, but the driver's app is closed: our simple, no-server stand-in for "Unreachable".
   const appClosed = canAssign && driver.presence === "Offline";
+  // The driver sent "I can't do this ride" and has not changed their duty status since (driver-pages-plan.md Step 2b).
+  const report = driver.unableReport;
+  const reportAgo = report ? (now - report.atMs < 60_000 ? "just now" : `${formatDutyDuration(now - report.atMs)} ago`) : "";
+  const reportText = report ? `Reported: can't do a ride (${report.reason}), ${reportAgo}` : "";
 
   return (
     <Pressable
@@ -167,7 +178,7 @@ function DriverDutyRow({ driver, now, selected, onPress }) {
       disabled={!canAssign}
       accessibilityRole="button"
       accessibilityState={{ disabled: !canAssign, selected }}
-      accessibilityLabel={`${driver.name}, ${badgeLabel}. ${canAssign ? "Tap to assign a ride." : `Can't assign: ${driver.blockReason}`}`}
+      accessibilityLabel={`${driver.name}, ${badgeLabel}. ${reportText ? `${reportText}. ` : ""}${canAssign ? "Tap to assign a ride." : `Can't assign: ${driver.blockReason}`}`}
     >
       <Text style={[styles.driverName, !canAssign && styles.driverNameBlocked]}>{driver.name}</Text>
       <Text style={styles.driverPlace}>{driver.barangay}</Text>
@@ -193,6 +204,13 @@ function DriverDutyRow({ driver, now, selected, onPress }) {
           <Text style={styles.appClosedText}>
             Available · app closed. Call {driver.phoneNumber ? formatPhoneForDialing(driver.phoneNumber) : "the driver"} first.
           </Text>
+        </View>
+      ) : null}
+      {/* Same peach box as "app closed": the dispatcher should know before giving this driver another ride. */}
+      {report ? (
+        <View style={styles.appClosedBox}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={22} color={DESIGN_COLORS.orangeDeep} />
+          <Text style={styles.appClosedText}>{reportText}</Text>
         </View>
       ) : null}
       {!canAssign ? <Text style={styles.blockReasonText}>Can&apos;t assign: {driver.blockReason}</Text> : null}
@@ -234,6 +252,17 @@ function SelectedRequestDetails({ request, now }) {
           <WhenLabel request={request} now={now} /> · {request.reference || request.id} · Sent {formatRequestDate(request.createdAt)}
         </Text>
       </View>
+
+      {/* A driver gave this ride back: say who and why (driver-pages-plan.md Step 2b). Peach = important info. */}
+      {getGivenBackReason(request) ? (
+        <View style={styles.givenBackBox}>
+          <Text style={styles.givenBackBoxText}>
+            <Text style={styles.givenBackBoxStrong}>Driver can&apos;t do this ride: </Text>
+            {getGivenBackReason(request)}
+            {request.lastUnableDriverName ? ` (${request.lastUnableDriverName})` : ""}
+          </Text>
+        </View>
+      ) : null}
 
       <View style={styles.detailsPhoneBlock}>
         <Text style={styles.detailsLabel}>Passenger</Text>
@@ -302,11 +331,16 @@ export default function DispatcherHome() {
   // Using only this device's own clock means a wrong clock on any phone or PC can't hide a live alert.
   const lastSignOfLifeRef = useRef({});
   const [vehicles, setVehicles] = useState([]);
+  // Every "I can't do this ride" report (driverAssignments with status "Unable"), for the warning on the driver cards.
+  const [unableReports, setUnableReports] = useState([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState("");
   const [driverSchedules, setDriverSchedules] = useState([]);
 
   const visibleRequests = useMemo(() => requests.filter((request) => !assignedRequestIds.includes(request.id)), [assignedRequestIds, requests]);
   const pendingRequests = useMemo(() => visibleRequests.filter((request) => request.status === "Pending"), [visibleRequests]);
+  // Rides a driver gave back, for the orange "Needs a new driver" banners at the top (driver-pages-plan.md Step 2b).
+  // A banner goes away by itself when its ride is assigned again (it is no longer Pending).
+  const givenBackRequests = useMemo(() => pendingRequests.filter((request) => getGivenBackReason(request)), [pendingRequests]);
   const driversWithAssignments = useMemo(
     () =>
       drivers.map((driver) => {
@@ -396,13 +430,22 @@ export default function DispatcherHome() {
             vehicle.assignedDriverId === driver.id
         );
 
+        // The driver's newest "I can't do this ride" report, but only if it came after their last duty change.
+        // Taking a break, punching out, or accepting a ride hides it again. (">=": a report sent during a run
+        // and the change back to "Available" are saved at the same moment.)
+        const latestReport = unableReports
+          .filter((report) => report.driverId === driver.id && report.atMs !== null)
+          .sort((first, second) => second.atMs - first.atMs)[0];
+        const unableReport = latestReport && latestReport.atMs >= (driver.dutyStatusSinceMs ?? 0) ? latestReport : null;
+
         return {
           ...driver,
           linkedVehicle,
           blockReason: getAssignBlockReason(driver),
+          unableReport,
         };
       }),
-    [driversWithAssignments, vehicles]
+    [driversWithAssignments, unableReports, vehicles]
   );
 
   useEffect(() => {
@@ -522,6 +565,25 @@ export default function DispatcherHome() {
         }
       },
       (error) => console.log("Assignments listener warning:", error)
+    );
+
+    return unsubscribe;
+  }, []);
+
+  // "I can't do this ride" reports (driver-pages-plan.md Step 2b). Live, so the warning shows on the driver's card right away.
+  useEffect(() => {
+    const reportsQuery = query(collection(db, "driverAssignments"), where("status", "==", "Unable"));
+    const unsubscribe = onSnapshot(
+      reportsQuery,
+      (snapshot) => {
+        setUnableReports(
+          snapshot.docs.map((reportDoc) => {
+            const data = reportDoc.data();
+            return { driverId: data.driverId, reason: data.unableReason || "No reason", atMs: getTimestampMillis(data.unableAt) };
+          })
+        );
+      },
+      (error) => console.log("Unable reports listener warning:", error)
     );
 
     return unsubscribe;
@@ -751,6 +813,33 @@ export default function DispatcherHome() {
             </View>
           ))}
 
+          {/* "Needs a new driver": one orange banner per ride a driver gave back (driver-pages-plan.md Step 2b).
+              Orange with dark words: important, but not an emergency. Tapping it shows the ride in Selected Request. */}
+          {givenBackRequests.map((request) => {
+            const driverName = request.lastUnableDriverName || "A driver";
+            const vehicleName = request.lastUnableVehicleName ? ` · ${request.lastUnableVehicleName}` : "";
+            return (
+              <Pressable
+                key={request.id}
+                style={({ pressed }) => [styles.givenBackBanner, pressed && styles.givenBackBannerPressed]}
+                onPress={() => setSelectedRequest(request)}
+                accessibilityRole="button"
+                accessibilityHint="Shows this ride in Selected Request"
+              >
+                <MaterialCommunityIcons name="alert-outline" size={28} color={DESIGN_COLORS.ink} />
+                <View style={styles.givenBackBannerCopy}>
+                  <Text style={styles.givenBackBannerTitle} accessibilityRole="header">
+                    Needs a new driver: {request.title}
+                  </Text>
+                  <Text style={styles.givenBackBannerText}>
+                    {driverName} can&apos;t do this ride ({getGivenBackReason(request)}
+                    {vehicleName}). Choose another driver.
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+
           <View style={styles.sectionLabels}>
             <View style={styles.sectionLabelLeft}>
               <Text style={styles.sectionLabelText}>Pending Requests</Text>
@@ -785,6 +874,11 @@ export default function DispatcherHome() {
                         <WhenLabel request={request} now={now} style={styles.requestStatus} />
                       </View>
                       <Text style={styles.requestTitle}>{request.title}</Text>
+                      {getGivenBackReason(request) ? (
+                        <View style={styles.givenBackTag}>
+                          <Text style={styles.givenBackTagText}>Driver can&apos;t do this ride: {getGivenBackReason(request)}</Text>
+                        </View>
+                      ) : null}
                       <Text style={styles.requestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
                       {getAssistanceText(request) !== "None" ? (
                         <Text style={[styles.requestMeta, styles.requestHelp]}>Needs help: {getAssistanceText(request)}</Text>
@@ -1171,6 +1265,28 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   activeTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // "Needs a new driver" banner (driver-pages-plan.md Step 2b): Sakay Orange with Ink words, card corners, no shadow.
+  givenBackBanner: {
+    width: "100%",
+    maxWidth: 640,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: DESIGN_COLORS.sakayOrange,
+  },
+  givenBackBannerPressed: { opacity: 0.85 },
+  givenBackBannerCopy: { flex: 1 },
+  givenBackBannerTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  givenBackBannerText: { marginTop: 4, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  // The same message on the ride's card in the list: a small orange box with dark words.
+  givenBackTag: { alignSelf: "flex-start", marginTop: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, backgroundColor: DESIGN_COLORS.sakayOrange },
+  givenBackTagText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  // And in Selected Request: a peach box (important info).
+  givenBackBox: { marginTop: 14, padding: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
+  givenBackBoxText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  givenBackBoxStrong: { fontWeight: "800" },
   // White button with a clear grey edge ("End emergency" on the card, "Keep it open" in the question).
   outlineButton: {
     minHeight: 52,
