@@ -560,7 +560,7 @@ export default function DriverHome() {
 
   const menuItems = [
     { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
-    { key: "history", label: "History", icon: "clock-o", action: () => { setProfileMenuOpen(false); setHistoryOpen(true); } },
+    // "History" moved to the Availability page ("Ride history" button), at the group's request.
     { key: "settings", label: "Settings", icon: "cog", action: () => { setProfileMenuOpen(false); setSettingsOpen(true); } },
   ];
 
@@ -839,15 +839,26 @@ export default function DriverHome() {
               </>
             ) : null}
 
-            {/* Availability page: the duty card (Punch in, Take a break, Resume duty, Punch out, On a run). */}
+            {/* Availability page: the duty card (Punch in, Take a break, Resume duty, Punch out, On a run),
+                and "Ride history", which opens the same History window the profile menu used to open. */}
             {activePage === "availability" ? (
-              <DriverDutyCard
-                driverId={authUser.uid}
-                driverName={profile?.fullName || displayName}
-                duty={duty}
-                activeRideStatus={assignedTransfer?.status ?? ""}
-                rideTitle={request?.title || assignedTransfer?.title || ""}
-              />
+              <>
+                <DriverDutyCard
+                  driverId={authUser.uid}
+                  driverName={profile?.fullName || displayName}
+                  duty={duty}
+                  activeRideStatus={assignedTransfer?.status ?? ""}
+                  rideTitle={request?.title || assignedTransfer?.title || ""}
+                />
+                <Pressable
+                  style={({ pressed }) => [styles.historyButton, pressed && styles.tabButtonPressed]}
+                  onPress={() => setHistoryOpen(true)}
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="history" size={24} color={DESIGN_COLORS.hallGreen} />
+                  <Text style={styles.historyButtonText}>Ride history</Text>
+                </Pressable>
+              </>
             ) : null}
           </View>
         </ScrollView>
@@ -1238,6 +1249,10 @@ const styles = StyleSheet.create({
   pageColumn: { flex: 1, width: "100%", maxWidth: 640, alignSelf: "center", padding: 16, gap: 12 },
   // Map page: the map takes all the space left above the button, but never less than 280.
   bigMap: { flex: 1, minHeight: 280, borderRadius: 24, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
+  // "Ride history" on the Availability page: white with a grey-green edge, green words, 56 tall
+  // (like "Call passenger"), so it doesn't compete with the duty card's buttons.
+  historyButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 56, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
+  historyButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   mapNote: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   // Bottom bar: white, a thin line on top. paddingBottom (in the code) keeps it above the phone's own buttons.
   bottomBar: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
