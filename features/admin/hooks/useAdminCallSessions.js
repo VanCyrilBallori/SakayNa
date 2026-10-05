@@ -1,4 +1,4 @@
-import { collection, limit, onSnapshot, query } from "firebase/firestore";
+import { collection, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 import { db } from "../../../firebase";
@@ -19,8 +19,10 @@ export default function useAdminCallSessions(enabled) {
       return undefined;
     }
 
+    // Newest first, then the limit. Without orderBy, Firestore picks 100 by random document ID,
+    // so a new unanswered alert could be missing once there are more than 100 (architecture-review.md C2).
     const unsubscribe = onSnapshot(
-      query(collection(db, "callSessions"), limit(COLLECTION_LIMIT)),
+      query(collection(db, "callSessions"), orderBy("createdAt", "desc"), limit(COLLECTION_LIMIT)),
       (snapshot) => {
         setRawCallSessions(snapshot.docs.map((callDoc) => ({ id: callDoc.id, ...callDoc.data() })));
         setCallSessionsError("");
