@@ -1,6 +1,6 @@
 # Emergency Request Form Plan
 
-**Status: DONE (2026-10-05). Steps 1 (3521461), 2a (7709c51), 3 (rules, 269a2b1), 4 (b403e55) and 2b (627ea2d) tested; Step 5 notes written.** Not released yet.
+**Status: DONE and released (2026-10-05).** Steps 1 (3521461), 2a (7709c51), 3 (rules, 269a2b1), 4 (b403e55), 2b (627ea2d) and 5 (notes, 49482ea), each tested. See "Releases" at the bottom.
 **Decisions (2026-10-05):** the alert stays connected after Submit; the
 description is saved as Notes, with the hint "The driver and the resident
 can see this." under the box; drivers are listed nearest first.
@@ -285,3 +285,19 @@ resident on the phone (demo-ready-13 APK), a driver on a second phone.
   already in the project).
 - Privacy Policy: no change (the same information as a resident-made ride;
   the resident's GPS spot was already shared with dispatchers in the alert).
+
+## Releases
+- 2026-10-05: **Emergency request form** (website + rules; no APK).
+  - Rules: deployed in Step 3 the safe way (live rules matched the
+    committed file before; dry run compiled; deployed to sakayna-571e8;
+    live rules matched 269a2b1 after). Ruleset
+    6c8642c6-1bd7-48aa-8e03-4fd85ccdadb2.
+  - Website: master → main → Vercel, fast-forward f020676..49482ea (also
+    carried ae47f44 and e5dd542, the demo-ready-13 tester message and
+    plans). Live checks passed: Vercel "Ready", Answer opens the form
+    while the phone still calls, distance line, Submit → "Ride created"
+    on the card, the resident's "Your ride" card shows the driver, the
+    driver gets the ride, normal Request a Ride and Assign still work.
+  - No new APK and no new development build. Testers keep demo-ready-13.
+    No new tag (the tags follow APK builds).
+  - Tester message: tester-message.md, for dispatchers.
