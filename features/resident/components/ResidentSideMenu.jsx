@@ -15,7 +15,9 @@ import { useTheme } from "../../../lib/theme";
 // The ☰ menu on the resident home screen. It slides in from the left.
 // Tapping the dark area, the X, or the phone's Back button closes it.
 // officePhone = the city office number the admin saved (publicOfficePhone). It can be empty.
-export default function ResidentSideMenu({ visible, onClose, name, profile, officePhone, onOpenHistory, onOpenProfile, onOpenSettings }) {
+// The driver home uses this menu too. It gives no onOpenHistory (no "Request History" row; Ride history is on
+// the Availability page) and its own onLogOut, which saves "Offline" before signing out.
+export default function ResidentSideMenu({ visible, onClose, name, profile, officePhone, onOpenHistory, onOpenProfile, onOpenSettings, onLogOut }) {
   const router = useRouter();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -41,6 +43,11 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
   };
 
   const logOut = async () => {
+    if (onLogOut) {
+      onClose();
+      onLogOut();
+      return;
+    }
     try {
       // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
       // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
@@ -52,9 +59,9 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
     }
   };
 
-  // Green dot = verified (Active), yellow = waiting for an admin, red = anything else (Rejected, Suspended, ...).
+  // Green dot = verified (Active resident, Approved driver), yellow = waiting for an admin, red = anything else (Rejected, Suspended, ...).
   const status = profile?.accountStatus;
-  const statusDotColor = status === ACCOUNT_STATUSES.ACTIVE ? "#1FA56B" : status === ACCOUNT_STATUSES.PENDING ? "#D99A00" : COLORS.emergency;
+  const statusDotColor = status === ACCOUNT_STATUSES.ACTIVE || status === ACCOUNT_STATUSES.APPROVED ? "#1FA56B" : status === ACCOUNT_STATUSES.PENDING ? "#D99A00" : COLORS.emergency;
 
   return (
     <>
@@ -90,7 +97,7 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
 
               <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-              <MenuRow icon="clock-outline" label="Request History" theme={theme} onPress={() => go(onOpenHistory)} />
+              {onOpenHistory ? <MenuRow icon="clock-outline" label="Request History" theme={theme} onPress={() => go(onOpenHistory)} /> : null}
               <MenuRow icon="account-outline" label="Profile" theme={theme} onPress={() => go(onOpenProfile)} />
               <MenuRow icon="cog-outline" label="Settings" theme={theme} onPress={() => go(onOpenSettings)} />
 

@@ -1,17 +1,18 @@
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import BrandLogo from "../components/BrandLogo";
 import CloseButton from "../components/ui/CloseButton";
 import DriverDutyCard from "../features/driver/components/DriverDutyCard";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
 import DriverNavigateButton from "../features/driver/components/DriverNavigateButton";
 import DriverRideCard from "../features/driver/components/DriverRideCard";
+import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import {
   getDestinationCoordinates,
@@ -24,7 +25,6 @@ import {
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
-import ProfileAvatar from "../components/profile/ProfileAvatar";
 import LeafletMap from "../components/LeafletMap";
 import { DESIGN_COLORS } from "../constants/design";
 import { auth, db } from "../firebase";
@@ -133,10 +133,6 @@ export default function DriverHome() {
   const { authUser, displayName, profile } = useCurrentUserProfile();
   const { theme } = useTheme();
 
-  const initials = useMemo(() => {
-    const words = displayName.split(" ").filter(Boolean);
-    return words.slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "D";
-  }, [displayName]);
   const [accessStatus, setAccessStatus] = useState("checking");
   const [duty, setDuty] = useState({ dutyStatus: "Off duty", dutyStatusSince: null, shiftId: "", breakType: "", breakNote: "" });
   const [assignedTransfer, setAssignedTransfer] = useState(null);
@@ -159,7 +155,8 @@ export default function DriverHome() {
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [assignmentHistory, setAssignmentHistory] = useState([]);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  // The ☰ side menu (the same menu as the resident home).
+  const [menuOpen, setMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -567,11 +564,25 @@ export default function DriverHome() {
     }
   };
 
-  const menuItems = [
-    { key: "profile", label: "Profile", icon: "user", action: () => { setProfileMenuOpen(false); setProfileEditorOpen(true); } },
-    // "History" moved to the Availability page ("Ride history" button), at the group's request.
-    { key: "settings", label: "Settings", icon: "cog", action: () => { setProfileMenuOpen(false); setSettingsOpen(true); } },
-  ];
+  // Log out from the ☰ menu. (The menu has no "History": it is on the Availability page, at the group's request.)
+  const logOut = async () => {
+    try {
+      // Save "app closed" (Offline) while still signed in, so the dispatcher sees it.
+      // Wait at most 3 seconds: with no internet the save would never finish.
+      if (authUser?.uid) {
+        const saveOffline = setDoc(doc(db, "users", authUser.uid), { presence: "Offline", lastSeenAt: serverTimestamp() }, { merge: true }).catch(
+          (error) => console.log("Driver presence offline warning:", error)
+        );
+        await Promise.race([saveOffline, new Promise((resolve) => setTimeout(resolve, 3000))]);
+      }
+      // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
+      // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
+      router.replace("/login");
+      await logoutCurrentUser();
+    } catch (error) {
+      Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+    }
+  };
 
   useEffect(() => {
     if (!settingsOpen) {
@@ -737,17 +748,34 @@ export default function DriverHome() {
 
   return (
     <>
-      {/* Three parts, top to bottom: the thin header, the open page (it scrolls when it doesn't fit), the bottom bar. */}
+      {/* Three parts, top to bottom: the place strip, the open page (it scrolls when it doesn't fit), the bottom bar. */}
       <View style={styles.page}>
-        <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
-          <BrandLogo variant="main" height={compact ? 30 : 36} />
+        {/* The place strip at the top is green, so the phone's clock and battery icons are drawn white. */}
+        <StatusBar style="light" />
 
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={[styles.profileTrigger, { backgroundColor: theme.headerBg }]} onPress={() => setProfileMenuOpen(true)}>
-              <View style={[styles.avatarCircle, { backgroundColor: theme.avatarBg }]}>
-                <Text style={[styles.avatarText, { color: theme.avatarText }]}>{initials}</Text>
-              </View>
-            </TouchableOpacity>
+        {/* Place strip (DESIGN.md), the same as the resident home: names the place and holds the ☰ button. */}
+        {/* paddingTop = the height of the phone's clock area, so the green goes behind the clock. */}
+        <View style={[styles.placeStrip, { paddingTop: insets.top + 4 }]}>
+          <Pressable
+            style={({ pressed }) => [styles.menuButton, pressed && styles.menuButtonPressed]}
+            onPress={() => setMenuOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open menu"
+          >
+            <MaterialCommunityIcons name="menu" size={30} color="#FFFFFF" />
+          </Pressable>
+
+          {/* Two pieces in a wrapping row: one line when both fit, otherwise "Barangay …" moves down as a whole. */}
+          <View style={styles.placeNames} accessible accessibilityRole="header" accessibilityLabel={profile?.barangay ? `Toledo City, Barangay ${profile.barangay}` : "Toledo City"}>
+            {/* maxFontSizeMultiplier: the strip grows with the phone's text size only up to 1.3x, so it stays 1-2 lines. */}
+            <Text style={styles.placeText} maxFontSizeMultiplier={1.3}>
+              {profile?.barangay ? "Toledo City · " : "Toledo City"}
+            </Text>
+            {profile?.barangay ? (
+              <Text style={styles.placeText} maxFontSizeMultiplier={1.3}>
+                Barangay {profile.barangay}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -969,53 +997,16 @@ export default function DriverHome() {
           </View>
         </Modal>
 
-        <Modal visible={profileMenuOpen} transparent animationType="fade" onRequestClose={() => setProfileMenuOpen(false)}>
-          <Pressable style={[styles.menuOverlay, { backgroundColor: theme.menuOverlay }]} onPress={() => setProfileMenuOpen(false)}>
-            <Pressable style={[styles.profileMenuCard, { backgroundColor: theme.surface, shadowColor: theme.shadow }]} onPress={() => {}}>
-              <View style={[styles.profileMenuHeader, { borderBottomColor: theme.border }]}>
-                <ProfileAvatar name={displayName} backgroundColor={theme.avatarBg} color={theme.avatarText} />
-                <Text style={[styles.profileMenuName, { color: theme.text }]}>{displayName}</Text>
-                <Text style={[styles.profileMenuEmail, { color: theme.secondaryText }]}>{profile?.email || authUser?.email || "Driver account"}</Text>
-              </View>
-
-              <View style={styles.profileMenuBody}>
-                {menuItems.map((item) => (
-                  <TouchableOpacity key={item.key} style={styles.menuItem} onPress={item.action}>
-                    <View style={styles.menuItemLeft}>
-                      <FontAwesome name={item.icon} size={18} color={theme.mutedText} />
-                      <Text style={[styles.menuItemText, { color: theme.text }]}>{item.label}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity
-                style={styles.logoutMenuButton}
-                onPress={async () => {
-                  try {
-                    // Save "app closed" (Offline) while still signed in, so the dispatcher sees it.
-                    // Wait at most 3 seconds: with no internet the save would never finish.
-                    if (authUser?.uid) {
-                      const saveOffline = setDoc(doc(db, "users", authUser.uid), { presence: "Offline", lastSeenAt: serverTimestamp() }, { merge: true }).catch(
-                        (error) => console.log("Driver presence offline warning:", error)
-                      );
-                      await Promise.race([saveOffline, new Promise((resolve) => setTimeout(resolve, 3000))]);
-                    }
-                    // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
-                    // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
-                    setProfileMenuOpen(false);
-                    router.replace("/login");
-                    await logoutCurrentUser();
-                  } catch (error) {
-                    Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
-                  }
-                }}
-              >
-                <Text style={styles.logoutMenuButtonText}>Log Out</Text>
-              </TouchableOpacity>
-            </Pressable>
-          </Pressable>
-        </Modal>
+        <ResidentSideMenu
+          visible={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          name={displayName}
+          profile={profile}
+          officePhone={officePhone}
+          onOpenProfile={() => setProfileEditorOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onLogOut={logOut}
+        />
 
         <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
           <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
@@ -1239,37 +1230,27 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: DESIGN_COLORS.boardTint },
   accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
   accessText: { fontSize: 15, fontWeight: "800", color: "#335E50", textAlign: "center" },
-  // One thin row on every screen: logo on the left, profile on the right (never wraps to a second row).
-  header: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 16,
-  },
-  headerRight: {
+  // Place strip: Hall Green across the top, white text, the ☰ button at its left (same as the resident home).
+  placeStrip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 4,
+    paddingLeft: 4,
+    paddingRight: 16,
+    paddingBottom: 4,
+    backgroundColor: DESIGN_COLORS.hallGreen,
   },
-  profileTrigger: {
-    paddingVertical: 6,
-    paddingHorizontal: 6,
-    borderRadius: 999,
-  },
-  avatarCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  // 48 x 48 so it is easy to tap. 16 corners (DESIGN.md button corner), darker green while pressed.
+  menuButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    fontSize: 15,
-    fontWeight: "900",
-  },
+  menuButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  placeNames: { flex: 1, flexDirection: "row", flexWrap: "wrap", paddingVertical: 10 },
+  placeText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: "#FFFFFF" },
   // The open page (driver-pages-plan.md Step 1). flexGrow: 1 = at least as tall as the space, so the map can fill it.
   pageScroll: { flex: 1 },
   pageScrollContent: { flexGrow: 1 },
@@ -1356,30 +1337,6 @@ const styles = StyleSheet.create({
   reviewLine: { marginTop: 12, fontSize: 15, lineHeight: 22, color: "#40504A" },
   reviewCloseButton: { marginTop: 22, minHeight: 54, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
   reviewCloseButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
-  menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.18)", paddingTop: 86, paddingRight: 18, alignItems: "flex-end" },
-  profileMenuCard: {
-    width: 320,
-    maxWidth: "92%",
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-  },
-  profileMenuHeader: { alignItems: "center", paddingBottom: 16, borderBottomWidth: 1 },
-  profileMenuAvatar: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center" },
-  profileMenuAvatarText: { fontSize: 22, fontWeight: "900" },
-  profileMenuName: { marginTop: 12, fontSize: 18, fontWeight: "800" },
-  profileMenuEmail: { marginTop: 4, fontSize: 13 },
-  profileMenuBody: { paddingTop: 12, gap: 4 },
-  menuItem: { minHeight: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  menuItemText: { fontSize: 15, fontWeight: "700" },
-  logoutMenuButton: { marginTop: 14, minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#0B7A4A" },
-  logoutMenuButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
   // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
   // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
   editorCardFit: { flexShrink: 1 },
