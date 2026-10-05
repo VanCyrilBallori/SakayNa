@@ -415,3 +415,14 @@ resident on the phone (demo-ready-13 APK), a driver on a second phone.
   - Not in this release: the patients box follow-up (11df96a, master
     only). When it goes on the website, update the tester message's
     "Number of patients" line.
+- 2026-10-05: **New form look** (website only).
+  - The group approved a side-by-side preview (Now vs New). Soft
+    green, red and peach sections with round color badges; pill-shaped
+    choices (a chosen "Emergency" priority fills red); round +/−
+    buttons; [Submit request] [Cancel] side by side on the right, 48 px
+    tall and as wide as their words, with the "After Submit" note on
+    their left. DESIGN.md "Website exception" records the new rules.
+  - Website: master → main → Vercel, fast-forward ddda3f3..665baa6
+    (also carried a8c43dd, the architecture review notes). Live check
+    passed.
+  - No rules change, no new APK. Testers keep their current APK.
