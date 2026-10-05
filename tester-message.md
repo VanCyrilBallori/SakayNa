@@ -1,30 +1,33 @@
-SakayNa update: new Emergency request form for dispatchers
+SakayNa update: emergency form changes, driver ride card, log out fix
 
-Hi everyone! The dispatcher website has a new emergency form.
-No new app this time: keep the SakayNa app you have (demo-ready-13).
+Hi everyone! There's a new SakayNa app (demo-ready-14). Please update
+before your next test.
 
-RESIDENTS AND DRIVERS
-- Nothing to update. Emergency rides show up for you like any other
-  ride.
+EVERYONE
+- Uninstall the old SakayNa app, then install the new one: https://expo.dev/artifacts/eas/eUHN4MGM9FdV8hvGyfSZR5hOyQRxvvd096QuPlIRXck.apk
+- Log out now goes straight back to the Log In page.
+- The Privacy Policy now explains the health details a dispatcher may
+  write down during an emergency call.
 
 DISPATCHERS
 - Refresh the website (Ctrl+F5).
-- When you tap Answer on an emergency alert, the resident's phone still
-  calls you, and your screen now opens the Emergency request form.
-- The caller's name, number, barangay and location are already filled
-  in. While you talk, fill in the emergency type, priority, number of
-  patients, a short description and the hospital.
-- The description is shown to the driver and the resident, so keep it
-  short and respectful.
-- Pick an Available driver and a vehicle. "About 2 km away" is a rough
-  straight line from where the driver last tapped a step, not the road
-  distance.
-- Tap Submit request. The driver gets the ride right away, and the
-  resident sees it in their "Your ride" card. The emergency card then
-  says "Ride SKN-... created".
-- Cancel saves nothing. You can open the form again with "Open
-  emergency form" on the emergency card, but only until the alert ends
-  (the resident taps Done or you tap End emergency). So please finish
-  the form before ending.
+- Emergency type: Medical, Accident / injury, Fire-related, Pregnancy /
+  labor, or Other. For Other, type what the emergency is.
+- Number of patients: 1 to 50, with -, +, +5 and +10. A big incident
+  still makes one ride for one driver and one vehicle.
+- "Incident details" replaces "Short description": what happened, who
+  needs help, and their condition. The driver and the resident can see
+  it, so write only what the driver needs.
+- New quick facts: approximate age (optional, like 30 or 30-40), and
+  Conscious and Breathing (Yes / No / Unknown).
+
+DRIVERS
+- Rides from an emergency call now say "Emergency: Medical" (or what
+  the emergency is) and "Patients" instead of "Riders".
+- A peach box on the ride card shows the patient's approximate age,
+  whether they are conscious and breathing, and the start of the
+  incident details. Tap Ride details to read everything.
+- Logging out does not punch you out. If you are done for the day,
+  punch out first.
 
 Questions or problems? Message me.
