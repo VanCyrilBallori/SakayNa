@@ -10,6 +10,7 @@ import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
 import { MAX_PASSENGERS } from "../../resident/utils/requestOptions";
 import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
+import { createEmergencyRide } from "../services/dispatcherAssignmentService";
 
 // The choices the dispatcher picks from while on the call (emergency-request-form-plan.md).
 export const EMERGENCY_TYPES = ["Medical emergency", "Accident / injury", "Pregnancy / labor", "Other"];
@@ -39,12 +40,24 @@ const checkEmergencyForm = (form, chosenDriver, chosenVehicle) => {
 
 // The Emergency request form (emergency-request-form-plan.md). Opens when the dispatcher answers an alert.
 // alert = the live alert (callSessions document). It updates by itself, for example when the GPS location arrives.
-// dispatcherName = the logged-in dispatcher. onCancel = back to the dispatcher page, nothing saved.
+// dispatcherId / dispatcherName = the logged-in dispatcher. onCancel = back to the dispatcher page, nothing saved.
+// onSubmitted = the ride was saved: back to the dispatcher page (the Active emergency card says "Ride created").
 // onOpenLocation = opens the resident's GPS spot in Google Maps.
 // drivers = the drivers who can be given a ride now (Available, no ride in hand).
 // vehicles = the vehicles for vehiclesDriverId, worked out by the dispatcher page the same way as for the Assign window.
 // onChooseDriver(driver) = tells the dispatcher page which driver was picked, so it can work out that driver's vehicles.
-export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, onOpenLocation, drivers, vehicles, vehiclesDriverId, onChooseDriver }) {
+export default function EmergencyRequestForm({
+  alert,
+  dispatcherId,
+  dispatcherName,
+  onCancel,
+  onSubmitted,
+  onOpenLocation,
+  drivers,
+  vehicles,
+  vehiclesDriverId,
+  onChooseDriver,
+}) {
   // The ride's id is made now, only on this computer (nothing is saved), so the reference can show at the top.
   const [requestId] = useState(() => doc(collection(db, "transportRequests")).id);
   const reference = `SKN-${requestId.slice(0, 8).toUpperCase()}`;
@@ -63,15 +76,15 @@ export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, 
     vehicleId: "",
   }));
   const [errors, setErrors] = useState({});
-  // Step 1 only: shown when everything is filled in, because saving comes in a later step.
-  const [notice, setNotice] = useState("");
+  // True while Submit is saving (the button can't be tapped twice). saveError = why saving failed.
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   // True once the dispatcher types in Pickup location, so a late GPS address doesn't overwrite what they typed.
   const pickupEditedRef = useRef(false);
 
   const setValue = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
-    setNotice("");
   };
 
   // The barangay comes from the resident's profile. (The alert's pickupLocation stops being
@@ -113,18 +126,34 @@ export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, 
     // A new driver means a new vehicle list, so the old vehicle choice is cleared.
     setForm((current) => ({ ...current, driverId: driver.id, vehicleId: "" }));
     setErrors((current) => ({ ...current, driver: undefined, vehicle: undefined }));
-    setNotice("");
   };
 
-  const submit = () => {
+  const submit = async () => {
+    if (saving) return;
     const nextErrors = checkEmergencyForm(form, chosenDriver, chosenVehicle);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length) {
-      setNotice("");
-      return;
+    setSaveError("");
+    if (Object.keys(nextErrors).length) return;
+
+    setSaving(true);
+    try {
+      await createEmergencyRide({
+        requestId,
+        alert,
+        form,
+        driver: chosenDriver,
+        vehicle: chosenVehicle,
+        dispatcher: { uid: dispatcherId, name: dispatcherName },
+      });
+      onSubmitted();
+    } catch (error) {
+      console.log("Emergency ride save failed:", error);
+      // Our own messages ("…is no longer available", "A ride was already made…") have no code; Firebase errors do.
+      setSaveError(
+        error?.code ? "The request could not be saved. Check the internet connection and try again." : error?.message || "The request could not be saved."
+      );
+      setSaving(false);
     }
-    // Nothing is saved yet: saving comes in Step 4.
-    setNotice("Everything is filled in. Saving comes in a later step.");
   };
 
   const hasErrors = Object.values(errors).some(Boolean);
@@ -135,8 +164,10 @@ export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, 
         <Pressable
           style={({ pressed }) => [styles.backButton, pressed && styles.outlinePressed]}
           onPress={onCancel}
+          disabled={saving}
           accessibilityRole="button"
           accessibilityLabel="Back. Nothing is saved."
+          accessibilityState={{ disabled: saving }}
         >
           <MaterialCommunityIcons name="arrow-left" size={24} color={DESIGN_COLORS.ink} />
           <Text style={styles.backText}>Back</Text>
@@ -367,21 +398,38 @@ export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, 
             Some fields need your attention. See the red messages above.
           </Text>
         ) : null}
-        {notice ? <Text style={styles.noticeBox}>{notice}</Text> : null}
+        {saveError ? (
+          <Text style={styles.errorBox} accessibilityRole="alert">
+            {saveError} Nothing was saved.
+          </Text>
+        ) : null}
 
         {/* DESIGN.md: the main action on top, Cancel underneath. */}
-        <Pressable style={({ pressed }) => [styles.submitButton, pressed && styles.submitPressed]} onPress={submit} accessibilityRole="button">
+        <Pressable
+          style={({ pressed }) => [styles.submitButton, pressed && styles.submitPressed, saving && styles.submitSaving]}
+          onPress={submit}
+          disabled={saving}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving, busy: saving }}
+        >
           <MaterialCommunityIcons name="send-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-          <Text style={styles.submitText}>Submit request</Text>
+          <Text style={styles.submitText}>{saving ? "Saving…" : "Submit request"}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.cancelButton, pressed && styles.outlinePressed]}
           onPress={onCancel}
           accessibilityRole="button"
           accessibilityLabel="Cancel. Nothing is saved."
+          // Not while saving: the save would still finish, so "Cancel" would not be true.
+          disabled={saving}
+          accessibilityState={{ disabled: saving }}
         >
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
+        <View style={styles.infoLine}>
+          <MaterialCommunityIcons name="information-outline" size={22} color={DESIGN_COLORS.inkMuted} />
+          <Text style={styles.hint}>After Submit, the driver gets the ride and the resident sees it in their &quot;Your ride&quot; card.</Text>
+        </View>
       </View>
     </View>
   );
@@ -589,7 +637,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   errorBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
-  noticeBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.peachTint },
   submitButton: {
     width: "100%",
     maxWidth: 480,
@@ -602,6 +649,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
   submitPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  submitSaving: { opacity: 0.7 },
   submitText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
   cancelButton: {
     width: "100%",
@@ -615,4 +663,5 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   cancelText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  infoLine: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
 });

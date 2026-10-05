@@ -903,8 +903,10 @@ export default function DispatcherHome() {
             <EmergencyRequestForm
               key={formAlert.id}
               alert={formAlert}
+              dispatcherId={authUser?.uid ?? ""}
               dispatcherName={displayName}
               onCancel={() => setFormAlert(null)}
+              onSubmitted={() => setFormAlert(null)}
               onOpenLocation={openLocationInMaps}
               drivers={dispatcherAvailabilityRows.filter((driver) => !driver.blockReason)}
               vehicles={assignableVehicles}
@@ -923,14 +925,24 @@ export default function DispatcherHome() {
                 Active emergency · {call.residentName || "Resident"}
               </Text>
               <EmergencyCallerDetails call={call} />
-              <Pressable
-                style={({ pressed }) => [styles.formButton, pressed && styles.formButtonPressed]}
-                onPress={() => setFormAlert(call)}
-                accessibilityRole="button"
-              >
-                <MaterialCommunityIcons name="clipboard-text-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-                <Text style={styles.formButtonText}>Open emergency form</Text>
-              </Pressable>
+              {/* One ride per alert: once the form's ride is saved, the button becomes a "Ride created" line. */}
+              {call.linkedRequestId ? (
+                <View style={styles.rideCreatedLine}>
+                  <MaterialCommunityIcons name="check-circle-outline" size={24} color={DESIGN_COLORS.hallGreen} />
+                  <Text style={styles.rideCreatedText}>
+                    Ride {call.linkedRequestReference} created · {call.linkedDriverName || "Driver"} · {call.linkedVehicleName || "Vehicle"}
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={({ pressed }) => [styles.formButton, pressed && styles.formButtonPressed]}
+                  onPress={() => setFormAlert(call)}
+                  accessibilityRole="button"
+                >
+                  <MaterialCommunityIcons name="clipboard-text-outline" size={24} color={DESIGN_COLORS.paperWhite} />
+                  <Text style={styles.formButtonText}>Open emergency form</Text>
+                </Pressable>
+              )}
               <Pressable
                 style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
                 onPress={() => {
@@ -1420,6 +1432,8 @@ const styles = StyleSheet.create({
   formButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   formButtonText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
   hidden: { display: "none" },
+  rideCreatedLine: { marginTop: 16, flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  rideCreatedText: { flex: 1, fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.ink },
   // "Needs a new driver" banner (driver-pages-plan.md Step 2b): Sakay Orange with Ink words, card corners, no shadow.
   givenBackBanner: {
     width: "100%",

@@ -1,6 +1,6 @@
 # Emergency Request Form Plan
 
-**Status: approved 2026-10-05. Steps 1 (3521461) and 2a (7709c51) done; 2b moved to the end (only if there is time). Step 3 rules deployed, waiting for the test.** Freeze: around Oct 8-9.
+**Status: approved 2026-10-05. Steps 1 (3521461) and 2a (7709c51) done; 2b moved to the end (only if there is time). Step 3 rules deployed (269a2b1), tested. Step 4 done, tested (all 7 checks). Freeze: around Oct 8-9.**
 **Decisions (2026-10-05):** the alert stays connected after Submit; the
 description is saved as Notes, with the hint "The driver and the resident
 can see this." under the box; drivers are listed nearest first.
