@@ -1053,9 +1053,11 @@ export default function DriverHome() {
           </View>
         </Modal>
 
-        <Modal visible={historyOpen} transparent animationType="fade" onRequestClose={() => setHistoryOpen(false)}>
-          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-            <View style={[styles.scheduleModalCard, compact && styles.scheduleModalCardCompact, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        {/* Full-screen (translucent) like Settings: the gaps at the top and bottom include the clock area and the
+            phone's buttons, and the card shrinks to fit (editorCardFit) so a long list scrolls instead of going under the clock. */}
+        <Modal visible={historyOpen} transparent animationType="fade" onRequestClose={() => setHistoryOpen(false)} statusBarTranslucent navigationBarTranslucent>
+          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
+            <View style={[styles.scheduleModalCard, compact && styles.scheduleModalCardCompact, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
               <View style={styles.scheduleModalHeader}>
                 <View style={styles.scheduleModalHeaderCopy}>
                   <Text style={[styles.scheduleModalTitle, { color: theme.text }]}>History</Text>
