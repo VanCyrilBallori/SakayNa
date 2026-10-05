@@ -898,7 +898,19 @@ export default function DispatcherHome() {
 
         {formAlert ? (
           <View style={[styles.container, compact && styles.containerCompact]}>
-            <EmergencyRequestForm key={formAlert.id} alert={formAlert} dispatcherName={displayName} onCancel={() => setFormAlert(null)} onOpenLocation={openLocationInMaps} />
+            {/* The form's driver choice uses the Assign window's memory (selectedDriver), so assignableVehicles
+                is that driver's vehicle list, worked out with the same rules. The two are never open together. */}
+            <EmergencyRequestForm
+              key={formAlert.id}
+              alert={formAlert}
+              dispatcherName={displayName}
+              onCancel={() => setFormAlert(null)}
+              onOpenLocation={openLocationInMaps}
+              drivers={dispatcherAvailabilityRows.filter((driver) => !driver.blockReason)}
+              vehicles={assignableVehicles}
+              vehiclesDriverId={selectedDriver?.id ?? ""}
+              onChooseDriver={setSelectedDriver}
+            />
           </View>
         ) : null}
 

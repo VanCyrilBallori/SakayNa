@@ -17,7 +17,8 @@ export const EMERGENCY_TYPES = ["Medical emergency", "Accident / injury", "Pregn
 export const EMERGENCY_PRIORITIES = ["Emergency", "Urgent", "Non-Urgent"];
 
 // Checks the form. Returns { fieldName: "message" } for every field that needs fixing (empty = all good).
-const checkEmergencyForm = (form) => {
+// chosenDriver / chosenVehicle = the picked driver and vehicle, or null if none (or no longer on the list).
+const checkEmergencyForm = (form, chosenDriver, chosenVehicle) => {
   const errors = {};
   const name = form.callerName.trim();
   if (name.length < 2 || name.length > 80) errors.callerName = "Enter the caller's name.";
@@ -31,6 +32,8 @@ const checkEmergencyForm = (form) => {
   if (!description || description.length > 500) errors.description = "Write a short description (up to 500 letters).";
   const destination = form.destination.trim();
   if (!destination || destination.length > 180) errors.destination = "Enter the destination or hospital (up to 180 letters).";
+  if (!chosenDriver) errors.driver = "Choose an Available driver.";
+  else if (!chosenVehicle) errors.vehicle = "Choose a vehicle.";
   return errors;
 };
 
@@ -38,7 +41,10 @@ const checkEmergencyForm = (form) => {
 // alert = the live alert (callSessions document). It updates by itself, for example when the GPS location arrives.
 // dispatcherName = the logged-in dispatcher. onCancel = back to the dispatcher page, nothing saved.
 // onOpenLocation = opens the resident's GPS spot in Google Maps.
-export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, onOpenLocation }) {
+// drivers = the drivers who can be given a ride now (Available, no ride in hand).
+// vehicles = the vehicles for vehiclesDriverId, worked out by the dispatcher page the same way as for the Assign window.
+// onChooseDriver(driver) = tells the dispatcher page which driver was picked, so it can work out that driver's vehicles.
+export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, onOpenLocation, drivers, vehicles, vehiclesDriverId, onChooseDriver }) {
   // The ride's id is made now, only on this computer (nothing is saved), so the reference can show at the top.
   const [requestId] = useState(() => doc(collection(db, "transportRequests")).id);
   const reference = `SKN-${requestId.slice(0, 8).toUpperCase()}`;
@@ -53,6 +59,8 @@ export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, 
     patientCount: 1,
     description: "",
     destination: "",
+    driverId: "",
+    vehicleId: "",
   }));
   const [errors, setErrors] = useState({});
   // Step 1 only: shown when everything is filled in, because saving comes in a later step.
@@ -94,15 +102,29 @@ export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, 
       ? [{ label: form.barangay, value: form.barangay }, ...TOLEDO_BARANGAY_PICKER_OPTIONS]
       : TOLEDO_BARANGAY_PICKER_OPTIONS;
 
+  // The picked driver, only while they are still on the Available list (they may start a break while the form is open).
+  const chosenDriver = drivers.find((driver) => driver.id === form.driverId) ?? null;
+  // The vehicle list belongs to the picked driver only once the dispatcher page has caught up with the choice.
+  const driverVehicles = chosenDriver && vehiclesDriverId === chosenDriver.id ? vehicles : [];
+  const chosenVehicle = driverVehicles.find((vehicle) => vehicle.id === form.vehicleId) ?? null;
+
+  const chooseDriver = (driver) => {
+    onChooseDriver(driver);
+    // A new driver means a new vehicle list, so the old vehicle choice is cleared.
+    setForm((current) => ({ ...current, driverId: driver.id, vehicleId: "" }));
+    setErrors((current) => ({ ...current, driver: undefined, vehicle: undefined }));
+    setNotice("");
+  };
+
   const submit = () => {
-    const nextErrors = checkEmergencyForm(form);
+    const nextErrors = checkEmergencyForm(form, chosenDriver, chosenVehicle);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setNotice("");
       return;
     }
-    // Step 1: nothing is saved yet. Choosing the driver and saving come in Steps 2a and 4.
-    setNotice("Everything is filled in. Choosing the driver and saving come in the next steps.");
+    // Nothing is saved yet: saving comes in Step 4.
+    setNotice("Everything is filled in. Saving comes in a later step.");
   };
 
   const hasErrors = Object.values(errors).some(Boolean);
@@ -281,6 +303,55 @@ export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, 
 
         <View style={styles.divider} />
 
+        {/* ---- Driver and vehicle (like the Assign window) ---- */}
+        <SectionTitle icon="van-utility" text="Driver and vehicle" />
+        <Field label="Driver" required error={errors.driver} wide>
+          {drivers.length ? (
+            <View style={styles.optionList}>
+              {drivers.map((driver) => (
+                <OptionRow key={driver.id} selected={form.driverId === driver.id} onPress={() => chooseDriver(driver)} accessibilityLabel={`${driver.name}, Available`}>
+                  <View style={styles.optionTop}>
+                    <Text style={styles.optionTitle}>{driver.name}</Text>
+                    <View style={styles.availableBadge}>
+                      <Text style={styles.availableBadgeText}>Available</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.optionMeta}>{driver.barangay}</Text>
+                  {/* Punched in, but the app is closed: the driver may not see the ride (same warning as the Drivers column). */}
+                  {driver.presence === "Offline" ? <Text style={styles.optionWarning}>App closed. Call the driver first.</Text> : null}
+                </OptionRow>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyBox}>No driver is Available right now. A driver must punch in first.</Text>
+          )}
+        </Field>
+        {chosenDriver ? (
+          <Field label="Vehicle" required error={errors.vehicle} wide>
+            {driverVehicles.length ? (
+              <View style={styles.optionList}>
+                {driverVehicles.map((vehicle) => (
+                  <OptionRow
+                    key={vehicle.id}
+                    selected={form.vehicleId === vehicle.id}
+                    onPress={() => setValue("vehicleId", vehicle.id)}
+                    accessibilityLabel={`${vehicle.name || "Vehicle"}, plate ${vehicle.plateNumber || "none"}`}
+                  >
+                    <Text style={styles.optionTitle}>{vehicle.name || "Registered vehicle"}</Text>
+                    <Text style={styles.optionMeta}>
+                      {vehicle.type || "Vehicle"} · {vehicle.plateNumber || "No plate"}
+                    </Text>
+                  </OptionRow>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.emptyBox}>No vehicle is free for {chosenDriver.name} right now. Choose another driver.</Text>
+            )}
+          </Field>
+        ) : null}
+
+        <View style={styles.divider} />
+
         {/* ---- Call information (filled in by itself, can't be changed) ---- */}
         <SectionTitle icon="phone-outline" text="Call information" />
         <View style={styles.row}>
@@ -352,6 +423,22 @@ function Choice({ label, selected, onPress }) {
     >
       <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={24} color={selected ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.controlOutline} />
       <Text style={styles.choiceText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+// One driver or vehicle to pick: an outlined row with a round mark (selected = green edge), not a card inside the card.
+function OptionRow({ selected, onPress, accessibilityLabel, children }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.optionRow, selected && styles.choiceSelected, pressed && styles.outlinePressed]}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={24} color={selected ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.controlOutline} />
+      <View style={styles.optionCopy}>{children}</View>
     </Pressable>
   );
 }
@@ -457,6 +544,27 @@ const styles = StyleSheet.create({
   },
   choiceSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
   choiceText: { fontSize: 17, fontWeight: "600", color: DESIGN_COLORS.ink },
+  optionList: { gap: 8 },
+  optionRow: {
+    minHeight: 56,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  optionCopy: { flex: 1, gap: 2 },
+  optionTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
+  optionTitle: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  optionMeta: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  optionWarning: { marginTop: 4, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.orangeDeep },
+  // Same green badge as the Drivers column ("Available" = Hall Green with white words).
+  availableBadge: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
+  availableBadgeText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  emptyBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.boardTint },
   stepper: { flexDirection: "row", alignItems: "center", gap: 12 },
   stepperButton: {
     width: 48,

@@ -1,6 +1,6 @@
 # Emergency Request Form Plan
 
-**Status: approved 2026-10-05. Step 1 written, waiting for the test.** Freeze: around Oct 8-9.
+**Status: approved 2026-10-05. Step 1 done (commit 3521461). Step 2a written, waiting for the test.** Freeze: around Oct 8-9.
 **Decisions (2026-10-05):** the alert stays connected after Submit; the
 description is saved as Notes, with the hint "The driver and the resident
 can see this." under the box; drivers are listed nearest first.
