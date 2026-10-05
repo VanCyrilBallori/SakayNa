@@ -13,8 +13,10 @@ DISPATCHERS
 - Refresh the website (Ctrl+F5).
 - Emergency type: Medical, Accident / injury, Fire-related, Pregnancy /
   labor, or Other. For Other, type what the emergency is.
-- Number of patients: 1 to 50, with -, +, +5 and +10. A big incident
-  still makes one ride for one driver and one vehicle.
+- Number of patients: 1 to 50. Type the number in the box, or use the
+  -10, -5, -, +, +5 and +10 buttons. An empty box or a number outside
+  1 to 50 shows a red message, and Submit won't save until you fix it.
+  A big incident still makes one ride for one driver and one vehicle.
 - "Incident details" replaces "Short description": what happened, who
   needs help, and their condition. The driver and the resident can see
   it, so write only what the driver needs.
