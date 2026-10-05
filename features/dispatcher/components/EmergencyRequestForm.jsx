@@ -336,21 +336,13 @@ export default function EmergencyRequestForm({
               onChange={(item) => setValue("emergencyType", item.value)}
             />
           </Field>
+          {/* Round buttons, not a drop-down: one click is faster during the call. */}
           <Field label="Priority" required>
-            <Dropdown
-              style={[styles.input, styles.dropdown]}
-              containerStyle={styles.dropdownList}
-              selectedTextStyle={styles.inputText}
-              itemTextStyle={styles.inputText}
-              itemContainerStyle={styles.dropdownItem}
-              activeColor={DESIGN_COLORS.boardTint}
-              data={EMERGENCY_PRIORITIES.map((priority) => ({ label: priority, value: priority }))}
-              labelField="label"
-              valueField="value"
-              value={form.priority}
-              accessibilityLabel="Priority"
-              onChange={(item) => setValue("priority", item.value)}
-            />
+            <View style={styles.choiceWrap}>
+              {EMERGENCY_PRIORITIES.map((priority) => (
+                <Choice key={priority} label={priority} accessibilityLabel={`Priority: ${priority}`} selected={form.priority === priority} onPress={() => setValue("priority", priority)} />
+              ))}
+            </View>
           </Field>
           <Field label="Number of patients" required error={errors.patientCount}>
             <View style={styles.stepper}>

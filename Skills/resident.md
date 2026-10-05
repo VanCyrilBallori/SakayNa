@@ -881,7 +881,7 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
     optional approximate age, and conscious / breathing (Yes / No /
     Unknown). Emergency types are Medical, Accident / injury, Fire-related,
     Pregnancy / labor, and Other (required specifics). These Part A updates
-    are local and waiting for the user's test and commit (2026-10-05).
+    were tested and committed on 2026-10-05.
     The dispatcher enters the destination and picks an
     Available driver and a vehicle (the same vehicle list as the Assign
     window). Each driver shows a rough straight-line distance from the

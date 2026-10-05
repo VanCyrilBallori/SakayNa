@@ -9,8 +9,9 @@ panel is ignored; our dispatcher header stays).
 
 ## Group lead feedback — Part A and Part B (2026-10-05)
 
-**Part A: implemented locally; waiting for the user's computer/phone test
-and commit. Not released. Part B: not started.** The sections below this
+**Part A: done, committed (addecd1) and tested by the user (2026-10-05).
+Follow-up fix: Priority is round buttons again (one click during the call),
+not a drop-down. Not on the live website yet. Part B: not started.** The sections below this
 update describe the original release; this update replaces its emergency
 types, patient limit, description, layout, and privacy decisions.
 
@@ -76,8 +77,8 @@ Records. Then test and commit before starting Part B.
 Local code checks passed: lint on the three changed code files, Expo web
 export, and temporary in-memory checks for limits, controls, validation,
 saved facts/Notes, and purpose/Duty Records grouping. No Firebase records
-were written by those checks. Browser unavailable; visual layout and the
-real computer/phone flow still need the user's test.
+were written by those checks. The user then tested the layout and the real
+computer/phone flow (2026-10-05).
 
 ### Part B — driver app, needs a new APK (not started)
 Add emergency type, patients, approximate age, conscious, and breathing to
