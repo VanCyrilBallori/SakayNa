@@ -155,12 +155,25 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // A dispatcher may create a ride for a resident, but only from an emergency alert
+    // this same dispatcher answered, for that same resident (emergency-request-form-plan.md).
+    // The alert may already be "ended": residents often tap Done while the dispatcher is still typing.
+    function dispatcherRideFromAlertIsSafe() {
+      return isDispatcher()
+        && request.resource.data.get("createdBy", "") == request.auth.uid
+        && request.resource.data.get("emergencyAlertId", "") is string
+        && request.resource.data.get("emergencyAlertId", "").size() > 0
+        && get(/databases/$(database)/documents/callSessions/$(request.resource.data.emergencyAlertId)).data.dispatcherId == request.auth.uid
+        && get(/databases/$(database)/documents/callSessions/$(request.resource.data.emergencyAlertId)).data.residentId == request.resource.data.residentId;
+    }
+
     // ---- Resident transport requests ----
     match /transportRequests/{requestId} {
       allow read: if isStaff()
         || (signedIn() && resource.data.residentId == request.auth.uid)
         || (isDriver() && resource.data.assignedDriverId == request.auth.uid);
-      allow create: if isActiveResident() && request.resource.data.residentId == request.auth.uid;
+      allow create: if (isActiveResident() && request.resource.data.residentId == request.auth.uid)
+        || dispatcherRideFromAlertIsSafe();
       allow update: if isStaff()
         || (signedIn() && resource.data.residentId == request.auth.uid)
         || (isDriver() && resource.data.assignedDriverId == request.auth.uid);
