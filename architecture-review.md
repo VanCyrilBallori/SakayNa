@@ -245,7 +245,9 @@ are only repeated here when they matter for the demo, and are marked KNOWN.
 schedules and checklists now need `isApprovedDriver()`. Deployed the safe
 way: the live rules matched 269a2b1 before and 93867d3 after (live
 ruleset afa530d9). Tested by hand: Complete, "I can't do this ride",
-resident cancel, emergency form, and admin vehicle edit.
+resident cancel, emergency form, and admin vehicle edit. Rules Playground
+("update" on a vehicle): Denied for a Pending driver, Allowed for an
+Approved driver.
 
 **What is happening?**
 In the rules, `isDriver()` only asks "is this account's role Driver?"
