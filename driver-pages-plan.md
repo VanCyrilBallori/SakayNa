@@ -280,6 +280,47 @@ driverAssignments with status "Unable".
 4. Remove the "Ride Inbox" pill and "Current ride" title from the Ride
    page? **Recommended: yes.**
 
+## PART 3 — Driver top area like the resident's + Ride history fix
+
+**Status: DONE 2026-10-05. Change 4 (e7ad6fb), Change 3 (a69fba5), both
+tested on the phone.**
+
+### Change 4 — Ride history window went under the clock (bug)
+- **Cause:** the app draws edge to edge, so pop-ups are drawn under the
+  phone's clock area too. The History window kept only a 20-point gap
+  at the top and had no height limit, so a long list pushed its top
+  behind the clock.
+- **Fix:** the same as the Settings window: the gaps at the top and
+  bottom are "clock area + 20" and "phone buttons + 20" (`insets`), and
+  the window shrinks to fit (`editorCardFit`), so the list scrolls
+  inside it. File: app/driver-home.jsx.
+
+### Change 3 — Place strip and ☰ menu
+```
+┌──────────────────────────────┐
+│▓12:30 (white icons on green)▓│
+│▓ ☰  Toledo City · Barangay  ▓│  place strip (driver's barangay;
+│▓    Poblacion               ▓│  "Toledo City" if none saved)
+├──────────────────────────────┤
+│  page (Ride/Map/Availability)│  unchanged
+├──────────────────────────────┤
+│  Ride    Map   Availability  │  unchanged
+└──────────────────────────────┘
+```
+- The thin header (logo + profile circle) and its profile pop-up are
+  replaced by the resident's place strip and ☰ side menu.
+- Menu: Profile, Settings, Help / Contact office (office number + Call
+  the office), Terms of Service, Privacy Policy, Log out. No history
+  row: Ride history stays on the Availability page.
+- The menu is ResidentSideMenu.jsx, reused (not copied). Three small,
+  optional changes, the resident menu is unchanged:
+  - "Request History" shows only when a screen gives `onOpenHistory`.
+  - `onLogOut`: the driver's own Log out, which saves "Offline" first
+    (same code as the old profile pop-up).
+  - "Approved" (drivers) gets the green dot, like "Active" (residents).
+- Files: app/driver-home.jsx,
+  features/resident/components/ResidentSideMenu.jsx.
+
 ## Not now (future work)
 - Keeping a van with a "Vehicle problem" out of the Assign window until
   an admin checks it (today the dispatcher just picks another vehicle).
