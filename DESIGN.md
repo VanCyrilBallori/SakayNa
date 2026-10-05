@@ -193,6 +193,14 @@ A status band at the top of a card follows the card's 24dp top corners.
 
 ## Website exception
 
+The dispatcher's Emergency request form is a computer task. On wide website
+screens it may use 2–3 columns, with 12dp gaps and 16dp outer padding, to
+reduce scrolling. Incident details and the quick facts sit beside each
+other; driver and vehicle choices sit beside each other. Narrow screens
+stack in one column. Keep the existing type scale, 48dp minimum controls,
+16/24dp corners, and Submit above Cancel. This exception applies only to
+this form; the dispatcher header and other screens keep their own layout.
+
 The website landing page (app/index.jsx) and the green left panel of the
 website Log In and Create Account pages (wide screens only,
 components/WebAuthPanel.jsx) may use the landing page style:

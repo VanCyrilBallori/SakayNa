@@ -99,6 +99,23 @@ export const createEmergencyRide = async ({ requestId, alert, form, driver, vehi
   if (!requestId || !alert?.id || !driver?.id || !vehicle?.id || !dispatcher?.uid) {
     throw new Error("Choose a driver and a vehicle before submitting.");
   }
+  // Check here too, so an invalid count cannot reach the save from a caller outside the form.
+  if (!Number.isInteger(form.patientCount) || form.patientCount < 1 || form.patientCount > 50) {
+    throw new Error("Choose 1 to 50 patients.");
+  }
+  const emergencyTypeOther = form.emergencyType === "Other" ? oneLine(form.emergencyTypeOther) : "";
+  if (form.emergencyType === "Other" && !emergencyTypeOther) throw new Error("Describe the other emergency.");
+  const approximateAge = oneLine(form.approximateAge);
+  const conscious = form.conscious || "Unknown";
+  const breathing = form.breathing || "Unknown";
+  const incidentDetails = form.description.trim();
+  // Existing resident and driver APKs read Notes. Keep all facts readable there until Part B's driver card ships.
+  const additionalNotes = [
+    emergencyTypeOther ? `Other emergency: ${emergencyTypeOther}` : "",
+    `Approximate age: ${approximateAge || "Unknown"}`,
+    `Conscious: ${conscious}. Breathing: ${breathing}.`,
+    `Incident details: ${incidentDetails}`,
+  ].filter(Boolean).join("\n");
 
   const requestRef = doc(db, "transportRequests", requestId);
   const alertRef = doc(db, "callSessions", alert.id);
@@ -106,7 +123,7 @@ export const createEmergencyRide = async ({ requestId, alert, form, driver, vehi
   const reference = `SKN-${requestId.slice(0, 8).toUpperCase()}`;
   const driverName = driver.name || driver.fullName || "Driver";
   const vehicleName = vehicle.name || "Vehicle";
-  // Medical emergency, Accident / injury and Pregnancy / labor count as "Medical / Health" rides
+  // Medical, Accident / injury, Fire-related and Pregnancy / labor count as "Medical / Health" rides
   // (admin counts and filters, the resident's History filter, the driver's DTR).
   const purpose = form.emergencyType === "Other" ? "Other" : "Medical / Health";
   const title = `Emergency: ${form.emergencyType}`;
@@ -155,6 +172,11 @@ export const createEmergencyRide = async ({ requestId, alert, form, driver, vehi
       purposeOther: purpose === "Other" ? "Emergency" : "",
       // The driver's ride card shows this first (DriverRideCard).
       emergencyType: form.emergencyType,
+      emergencyTypeOther,
+      approximateAge,
+      conscious,
+      breathing,
+      incidentDetails,
       timing: "asap",
       scheduledFor: null,
       title,
@@ -170,8 +192,8 @@ export const createEmergencyRide = async ({ requestId, alert, form, driver, vehi
       summary: `${title} ride for ${peopleLabel} from ${pickupAddress} to ${destination}.`,
       assistance: [],
       assistanceOther: "",
-      // The short description. The driver and the resident see it as "Notes".
-      additionalNotes: form.description.trim(),
+      // Facts plus incident details for existing resident and driver "Notes" screens.
+      additionalNotes,
       timeline: { submitted: { actorRole: "Dispatcher", actorId: dispatcher.uid, note: "From an emergency alert" } },
       // The rules check these two: the alert must be one this dispatcher answered, for this resident (firestore.rules).
       emergencyAlertId: alert.id,

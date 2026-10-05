@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { collection, doc, getDoc } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
 import { DESIGN_COLORS } from "../../../constants/design";
@@ -9,14 +9,16 @@ import { db } from "../../../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
 import { formatDutyDuration } from "../../../lib/dutyTime";
-import { MAX_PASSENGERS } from "../../resident/utils/requestOptions";
 import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
 import { createEmergencyRide } from "../services/dispatcherAssignmentService";
 
 // The choices the dispatcher picks from while on the call (emergency-request-form-plan.md).
-export const EMERGENCY_TYPES = ["Medical emergency", "Accident / injury", "Pregnancy / labor", "Other"];
+export const EMERGENCY_TYPES = ["Medical", "Accident / injury", "Fire-related", "Pregnancy / labor", "Other"];
 // Our existing priority names (constants/app.js), without "Planned": an emergency is never scheduled.
 export const EMERGENCY_PRIORITIES = ["Emergency", "Urgent", "Non-Urgent"];
+const MAX_PATIENTS = 50;
+const CONDITION_CHOICES = ["Yes", "No", "Unknown"];
+const INCIDENT_PLACEHOLDER = "What happened, who needs help, and their condition.";
 
 // The straight-line ("as the crow flies") distance in km between two GPS points (the haversine formula).
 // Roads are longer, so it is only a rough guide.
@@ -43,9 +45,20 @@ const checkEmergencyForm = (form, chosenDriver, chosenVehicle) => {
   const pickup = form.pickupLocation.trim();
   if (!pickup || pickup.length > 300) errors.pickupLocation = "Enter where to pick up the patient (up to 300 letters).";
   if (form.landmark.trim().length > 300) errors.landmark = "Keep the landmark under 300 letters.";
-  if (!form.emergencyType) errors.emergencyType = "Choose the emergency type.";
+  if (!EMERGENCY_TYPES.includes(form.emergencyType)) errors.emergencyType = "Choose the emergency type.";
+  if (form.emergencyType === "Other" && !form.emergencyTypeOther.trim()) errors.emergencyTypeOther = "Describe the other emergency.";
+  if (!Number.isInteger(form.patientCount) || form.patientCount < 1 || form.patientCount > MAX_PATIENTS) {
+    errors.patientCount = `Choose 1 to ${MAX_PATIENTS} patients.`;
+  }
+  const age = form.approximateAge.trim();
+  if (age) {
+    const range = age.match(/^(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?$/);
+    if (!range || (range[2] && Number(range[1]) > Number(range[2]))) errors.approximateAge = "Enter an age like 30 or a range like 30–40.";
+  }
+  if (!CONDITION_CHOICES.includes(form.conscious)) errors.conscious = "Choose Yes, No, or Unknown.";
+  if (!CONDITION_CHOICES.includes(form.breathing)) errors.breathing = "Choose Yes, No, or Unknown.";
   const description = form.description.trim();
-  if (!description || description.length > 500) errors.description = "Write a short description (up to 500 letters).";
+  if (!description || description.length > 500) errors.description = "Write the incident details (up to 500 characters).";
   const destination = form.destination.trim();
   if (!destination || destination.length > 180) errors.destination = "Enter the destination or hospital (up to 180 letters).";
   if (!chosenDriver) errors.driver = "Choose an Available driver.";
@@ -73,6 +86,8 @@ export default function EmergencyRequestForm({
   vehiclesDriverId,
   onChooseDriver,
 }) {
+  const { width } = useWindowDimensions();
+  const desktop = Platform.OS === "web" && width >= 1000;
   // The ride's id is made now, only on this computer (nothing is saved), so the reference can show at the top.
   const [requestId] = useState(() => doc(collection(db, "transportRequests")).id);
   const reference = `SKN-${requestId.slice(0, 8).toUpperCase()}`;
@@ -83,8 +98,12 @@ export default function EmergencyRequestForm({
     pickupLocation: alert.pickupLocation || "",
     landmark: "",
     emergencyType: "",
+    emergencyTypeOther: "",
     priority: "Emergency",
     patientCount: 1,
+    approximateAge: "",
+    conscious: "Unknown",
+    breathing: "Unknown",
     description: "",
     destination: "",
     driverId: "",
@@ -98,9 +117,13 @@ export default function EmergencyRequestForm({
   const pickupEditedRef = useRef(false);
 
   const setValue = (field, value) => {
-    setForm((current) => ({ ...current, [field]: value }));
-    setErrors((current) => ({ ...current, [field]: undefined }));
+    const clearOther = field === "emergencyType" && value !== "Other";
+    setForm((current) => ({ ...current, [field]: value, ...(clearOther ? { emergencyTypeOther: "" } : {}) }));
+    setErrors((current) => ({ ...current, [field]: undefined, ...(clearOther ? { emergencyTypeOther: undefined } : {}) }));
   };
+
+  // This counts patients at the incident, separately from the resident form's 1–6 rider limit.
+  const changePatientCount = (step) => setValue("patientCount", Math.min(MAX_PATIENTS, Math.max(1, form.patientCount + step)));
 
   // The barangay comes from the resident's profile. (The alert's pickupLocation stops being
   // the barangay once the GPS address arrives.) Dispatchers may read profiles (firestore.rules).
@@ -205,10 +228,10 @@ export default function EmergencyRequestForm({
         </View>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, desktop && styles.desktopCard]}>
         {/* ---- Caller information (filled in from the alert) ---- */}
         <SectionTitle icon="account-outline" text="Caller information" />
-        <View style={styles.row}>
+        <View style={[styles.row, !desktop && styles.stackedRow]}>
           <Field label="Caller name" required error={errors.callerName}>
             <TextInput
               style={[styles.input, errors.callerName && styles.inputError]}
@@ -249,7 +272,7 @@ export default function EmergencyRequestForm({
             />
           </Field>
         </View>
-        <View style={styles.row}>
+        <View style={[styles.row, !desktop && styles.stackedRow]}>
           <Field label="Pickup location" required error={errors.pickupLocation} wide>
             <TextInput
               style={[styles.input, errors.pickupLocation && styles.inputError]}
@@ -294,28 +317,48 @@ export default function EmergencyRequestForm({
 
         {/* ---- Emergency details (typed during the call) ---- */}
         <SectionTitle icon="medical-bag" text="Emergency details" />
-        <Field label="Emergency type" required error={errors.emergencyType} wide>
-          <View style={styles.choiceWrap}>
-            {EMERGENCY_TYPES.map((type) => (
-              <Choice key={type} label={type} selected={form.emergencyType === type} onPress={() => setValue("emergencyType", type)} />
-            ))}
-          </View>
-        </Field>
-        <View style={styles.row}>
-          <Field label="Priority" required wide>
-            <View style={styles.choiceWrap}>
-              {EMERGENCY_PRIORITIES.map((priority) => (
-                <Choice key={priority} label={priority} selected={form.priority === priority} onPress={() => setValue("priority", priority)} />
-              ))}
-            </View>
+        <View style={[styles.row, !desktop && styles.stackedRow]}>
+          <Field label="Emergency type" required error={errors.emergencyType}>
+            <Dropdown
+              style={[styles.input, styles.dropdown, errors.emergencyType && styles.inputError]}
+              containerStyle={styles.dropdownList}
+              selectedTextStyle={styles.inputText}
+              placeholderStyle={styles.placeholderText}
+              itemTextStyle={styles.inputText}
+              itemContainerStyle={styles.dropdownItem}
+              activeColor={DESIGN_COLORS.boardTint}
+              data={EMERGENCY_TYPES.map((type) => ({ label: type, value: type }))}
+              labelField="label"
+              valueField="value"
+              value={form.emergencyType}
+              placeholder="Choose the emergency type"
+              accessibilityLabel="Emergency type"
+              onChange={(item) => setValue("emergencyType", item.value)}
+            />
           </Field>
-          <Field label="Number of patients" required>
+          <Field label="Priority" required>
+            <Dropdown
+              style={[styles.input, styles.dropdown]}
+              containerStyle={styles.dropdownList}
+              selectedTextStyle={styles.inputText}
+              itemTextStyle={styles.inputText}
+              itemContainerStyle={styles.dropdownItem}
+              activeColor={DESIGN_COLORS.boardTint}
+              data={EMERGENCY_PRIORITIES.map((priority) => ({ label: priority, value: priority }))}
+              labelField="label"
+              valueField="value"
+              value={form.priority}
+              accessibilityLabel="Priority"
+              onChange={(item) => setValue("priority", item.value)}
+            />
+          </Field>
+          <Field label="Number of patients" required error={errors.patientCount}>
             <View style={styles.stepper}>
               <StepperButton
                 icon="minus"
                 label="Fewer patients"
                 disabled={form.patientCount <= 1}
-                onPress={() => setValue("patientCount", Math.max(1, form.patientCount - 1))}
+                onPress={() => changePatientCount(-1)}
               />
               <Text style={styles.stepperValue} accessibilityLiveRegion="polite">
                 {form.patientCount}
@@ -323,25 +366,78 @@ export default function EmergencyRequestForm({
               <StepperButton
                 icon="plus"
                 label="More patients"
-                disabled={form.patientCount >= MAX_PASSENGERS}
-                onPress={() => setValue("patientCount", Math.min(MAX_PASSENGERS, form.patientCount + 1))}
+                disabled={form.patientCount >= MAX_PATIENTS}
+                onPress={() => changePatientCount(1)}
               />
+              {[5, 10].map((step) => (
+                <Pressable
+                  key={step}
+                  style={({ pressed }) => [styles.stepperButton, form.patientCount >= MAX_PATIENTS && styles.stepperDisabled, pressed && styles.outlinePressed]}
+                  onPress={() => changePatientCount(step)}
+                  disabled={form.patientCount >= MAX_PATIENTS}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${step} patients, maximum ${MAX_PATIENTS}`}
+                  accessibilityState={{ disabled: form.patientCount >= MAX_PATIENTS }}
+                >
+                  <Text style={styles.choiceText}>+{step}</Text>
+                </Pressable>
+              ))}
             </View>
+            <Text style={styles.hint}>1–50 patients at the incident.</Text>
           </Field>
         </View>
-        <Field label="Short description" required error={errors.description} wide>
-          <TextInput
-            style={[styles.input, styles.textArea, errors.description && styles.inputError]}
-            value={form.description}
-            onChangeText={(text) => setValue("description", text)}
-            multiline
-            maxLength={500}
-            placeholder="e.g. Male, about 60, chest pain, hard to breathe"
-            placeholderTextColor={DESIGN_COLORS.placeholder}
-            accessibilityLabel="Short description. The driver and the resident can see this."
-          />
-          <Text style={styles.hint}>The driver and the resident can see this.</Text>
-        </Field>
+        {form.emergencyType === "Other" ? (
+          <Field label="Specify the emergency" required error={errors.emergencyTypeOther} wide>
+            <TextInput
+              style={[styles.input, errors.emergencyTypeOther && styles.inputError]}
+              value={form.emergencyTypeOther}
+              onChangeText={(text) => setValue("emergencyTypeOther", text)}
+              maxLength={180}
+              placeholder="Describe the other emergency"
+              placeholderTextColor={DESIGN_COLORS.placeholder}
+              accessibilityLabel="Specify the emergency"
+            />
+          </Field>
+        ) : null}
+        <View style={[styles.row, !desktop && styles.stackedRow]}>
+          <Field label="Incident details" required error={errors.description} style={desktop && styles.incidentField}>
+            <TextInput
+              style={[styles.input, styles.textArea, errors.description && styles.inputError]}
+              value={form.description}
+              onChangeText={(text) => setValue("description", text)}
+              multiline
+              maxLength={500}
+              placeholder={INCIDENT_PLACEHOLDER}
+              placeholderTextColor={DESIGN_COLORS.placeholder}
+              accessibilityLabel="Incident details. The driver and the resident can see this."
+            />
+            <Text style={styles.hint}>What happened, who needs help, and their condition (for example: male, about 30s, not breathing). Write only what the driver needs.</Text>
+            <Text style={styles.hint}>The driver and the resident can see this.</Text>
+          </Field>
+          <View style={[styles.quickFacts, desktop && styles.desktopQuickFacts]}>
+            <Field label="Approximate age (optional)" error={errors.approximateAge}>
+              <TextInput
+                style={[styles.input, errors.approximateAge && styles.inputError]}
+                value={form.approximateAge}
+                onChangeText={(text) => setValue("approximateAge", text)}
+                maxLength={20}
+                placeholder="e.g. 30 or 30–40"
+                placeholderTextColor={DESIGN_COLORS.placeholder}
+                accessibilityLabel="Approximate age, optional. Number or short range."
+              />
+            </Field>
+            {[{ field: "conscious", label: "Conscious" }, { field: "breathing", label: "Breathing" }].map(({ field, label }) => (
+              <Field key={field} label={label} error={errors[field]}>
+                <View style={styles.choiceWrap}>
+                  {CONDITION_CHOICES.map((answer) => (
+                    <Choice key={answer} label={answer} accessibilityLabel={`${label}: ${answer}`} selected={form[field] === answer} onPress={() => setValue(field, answer)} />
+                  ))}
+                </View>
+              </Field>
+            ))}
+            {form.patientCount > 1 ? <Text style={styles.hint}>If patients have different ages or conditions, explain the differences in Incident details.</Text> : null}
+          </View>
+        </View>
         <Field label="Destination / hospital" required error={errors.destination} wide>
           <TextInput
             style={[styles.input, errors.destination && styles.inputError]}
@@ -358,69 +454,71 @@ export default function EmergencyRequestForm({
 
         {/* ---- Driver and vehicle (like the Assign window) ---- */}
         <SectionTitle icon="van-utility" text="Driver and vehicle" />
-        <Field label="Driver" required error={errors.driver} wide>
-          {/* Without the resident's GPS there is nothing to measure from. */}
-          {drivers.length && !hasLocation ? <Text style={styles.hint}>Distance not shown: the resident&apos;s location was not sent.</Text> : null}
-          {drivers.length ? (
-            <View style={styles.optionList}>
-              {driverRows.map((driver) => (
-                <OptionRow key={driver.id} selected={form.driverId === driver.id} onPress={() => chooseDriver(driver)} accessibilityLabel={`${driver.name}, Available`}>
-                  <View style={styles.optionTop}>
-                    <Text style={styles.optionTitle}>{driver.name}</Text>
-                    <View style={styles.availableBadge}>
-                      <Text style={styles.availableBadgeText}>Available</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.optionMeta}>{driver.barangay}</Text>
-                  {/* The location is where the driver last tapped a step, so its age is shown too: it can be old. */}
-                  {driver.km !== null ? (
-                    <Text style={styles.optionDistance}>
-                      {getDistanceLabel(driver.km)}
-                      {driver.location.atMs != null
-                        ? ` (location from ${now - driver.location.atMs < 60_000 ? "just now" : `${formatDutyDuration(now - driver.location.atMs)} ago`})`
-                        : ""}
-                    </Text>
-                  ) : hasLocation ? (
-                    <Text style={styles.optionMeta}>Distance unknown (no location shared)</Text>
-                  ) : null}
-                  {/* Punched in, but the app is closed: the driver may not see the ride (same warning as the Drivers column). */}
-                  {driver.presence === "Offline" ? <Text style={styles.optionWarning}>App closed. Call the driver first.</Text> : null}
-                </OptionRow>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyBox}>No driver is Available right now. A driver must punch in first.</Text>
-          )}
-        </Field>
-        {chosenDriver ? (
-          <Field label="Vehicle" required error={errors.vehicle} wide>
-            {driverVehicles.length ? (
+        <View style={[styles.row, !desktop && styles.stackedRow]}>
+          <Field label="Driver" required error={errors.driver} wide>
+            {/* Without the resident's GPS there is nothing to measure from. */}
+            {drivers.length && !hasLocation ? <Text style={styles.hint}>Distance not shown: the resident&apos;s location was not sent.</Text> : null}
+            {drivers.length ? (
               <View style={styles.optionList}>
-                {driverVehicles.map((vehicle) => (
-                  <OptionRow
-                    key={vehicle.id}
-                    selected={form.vehicleId === vehicle.id}
-                    onPress={() => setValue("vehicleId", vehicle.id)}
-                    accessibilityLabel={`${vehicle.name || "Vehicle"}, plate ${vehicle.plateNumber || "none"}`}
-                  >
-                    <Text style={styles.optionTitle}>{vehicle.name || "Registered vehicle"}</Text>
-                    <Text style={styles.optionMeta}>
-                      {vehicle.type || "Vehicle"} · {vehicle.plateNumber || "No plate"}
-                    </Text>
+                {driverRows.map((driver) => (
+                  <OptionRow key={driver.id} selected={form.driverId === driver.id} onPress={() => chooseDriver(driver)} accessibilityLabel={`${driver.name}, Available`}>
+                    <View style={styles.optionTop}>
+                      <Text style={styles.optionTitle}>{driver.name}</Text>
+                      <View style={styles.availableBadge}>
+                        <Text style={styles.availableBadgeText}>Available</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.optionMeta}>{driver.barangay}</Text>
+                    {/* The location is where the driver last tapped a step, so its age is shown too: it can be old. */}
+                    {driver.km !== null ? (
+                      <Text style={styles.optionDistance}>
+                        {getDistanceLabel(driver.km)}
+                        {driver.location.atMs != null
+                          ? ` (location from ${now - driver.location.atMs < 60_000 ? "just now" : `${formatDutyDuration(now - driver.location.atMs)} ago`})`
+                          : ""}
+                      </Text>
+                    ) : hasLocation ? (
+                      <Text style={styles.optionMeta}>Distance unknown (no location shared)</Text>
+                    ) : null}
+                    {/* Punched in, but the app is closed: the driver may not see the ride (same warning as the Drivers column). */}
+                    {driver.presence === "Offline" ? <Text style={styles.optionWarning}>App closed. Call the driver first.</Text> : null}
                   </OptionRow>
                 ))}
               </View>
             ) : (
-              <Text style={styles.emptyBox}>No vehicle is free for {chosenDriver.name} right now. Choose another driver.</Text>
+              <Text style={styles.emptyBox}>No driver is Available right now. A driver must punch in first.</Text>
             )}
           </Field>
-        ) : null}
+          {chosenDriver ? (
+            <Field label="Vehicle" required error={errors.vehicle} wide>
+              {driverVehicles.length ? (
+                <View style={styles.optionList}>
+                  {driverVehicles.map((vehicle) => (
+                    <OptionRow
+                      key={vehicle.id}
+                      selected={form.vehicleId === vehicle.id}
+                      onPress={() => setValue("vehicleId", vehicle.id)}
+                      accessibilityLabel={`${vehicle.name || "Vehicle"}, plate ${vehicle.plateNumber || "none"}`}
+                    >
+                      <Text style={styles.optionTitle}>{vehicle.name || "Registered vehicle"}</Text>
+                      <Text style={styles.optionMeta}>
+                        {vehicle.type || "Vehicle"} · {vehicle.plateNumber || "No plate"}
+                      </Text>
+                    </OptionRow>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.emptyBox}>No vehicle is free for {chosenDriver.name} right now. Choose another driver.</Text>
+              )}
+            </Field>
+          ) : null}
+        </View>
 
         <View style={styles.divider} />
 
         {/* ---- Call information (filled in by itself, can't be changed) ---- */}
         <SectionTitle icon="phone-outline" text="Call information" />
-        <View style={styles.row}>
+        <View style={[styles.row, !desktop && styles.stackedRow]}>
           <ReadOnly label="Date received" value={receivedAt ? formatShortDay(receivedAt) : "Not known"} />
           <ReadOnly label="Time received" value={receivedAt ? formatClockTime(receivedAt) : "Not known"} />
           <ReadOnly label="Dispatcher" value={dispatcherName || "Dispatcher"} />
@@ -482,9 +580,9 @@ function SectionTitle({ icon, text }) {
 }
 
 // A label, the input under it, and its red message. wide = takes a whole row on its own when there is room.
-function Field({ label, required, error, wide, children }) {
+function Field({ label, required, error, wide, style, children }) {
   return (
-    <View style={[styles.field, wide && styles.fieldWide]}>
+    <View style={[styles.field, wide && styles.fieldWide, style]}>
       <Text style={styles.label}>
         {label}
         {required ? <Text style={styles.required}> *</Text> : null}
@@ -496,12 +594,13 @@ function Field({ label, required, error, wide, children }) {
 }
 
 // One choice in a group (like a radio button): a round mark and a word.
-function Choice({ label, selected, onPress }) {
+function Choice({ label, accessibilityLabel, selected, onPress }) {
   return (
     <Pressable
       style={({ pressed }) => [styles.choice, selected && styles.choiceSelected, pressed && styles.outlinePressed]}
       onPress={onPress}
       accessibilityRole="radio"
+      accessibilityLabel={accessibilityLabel || label}
       accessibilityState={{ selected }}
     >
       <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={24} color={selected ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.controlOutline} />
@@ -552,7 +651,7 @@ function ReadOnly({ label, value }) {
 
 // DESIGN.md look: flat, corners 16 (controls) and 24 (the card), Hall Green titles, red only for errors.
 const styles = StyleSheet.create({
-  page: { width: "100%", maxWidth: 1080, alignSelf: "center", gap: 16 },
+  page: { width: "100%", maxWidth: 1280, alignSelf: "center", gap: 12 },
   header: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16 },
   backButton: {
     minHeight: 48,
@@ -572,12 +671,17 @@ const styles = StyleSheet.create({
   referenceTag: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
   referenceText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   card: { padding: 24, gap: 16, borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
+  desktopCard: { padding: 16, gap: 12 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.hallGreen },
   divider: { height: 1, backgroundColor: DESIGN_COLORS.rule },
-  row: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
-  field: { flexGrow: 1, flexShrink: 1, flexBasis: 240, gap: 6 },
-  fieldWide: { flexBasis: 420 },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-start" },
+  stackedRow: { flexDirection: "column", alignItems: "stretch" },
+  field: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0, gap: 4 },
+  fieldWide: { flexGrow: 2 },
+  incidentField: { flexGrow: 2, flexBasis: 0 },
+  quickFacts: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0, gap: 8 },
+  desktopQuickFacts: { flexBasis: 300 },
   label: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
   required: { color: DESIGN_COLORS.emergencyRed },
   input: {
@@ -596,7 +700,8 @@ const styles = StyleSheet.create({
   placeholderText: { fontSize: 17, color: DESIGN_COLORS.placeholder },
   dropdown: { paddingVertical: 0 },
   dropdownList: { borderRadius: 16, borderColor: DESIGN_COLORS.controlOutline },
-  textArea: { minHeight: 96, textAlignVertical: "top" },
+  dropdownItem: { minHeight: 48 },
+  textArea: { minHeight: 144, textAlignVertical: "top" },
   hint: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   errorText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.emergencyRed },
   locationLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
@@ -649,7 +754,7 @@ const styles = StyleSheet.create({
   availableBadge: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
   availableBadgeText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
   emptyBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.boardTint },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 12 },
+  stepper: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   stepperButton: {
     width: 48,
     height: 48,

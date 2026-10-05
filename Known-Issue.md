@@ -32,6 +32,11 @@ Skills/resident.md section 6.
   - firestore.rules checks that the alert was answered by this
     dispatcher for this resident, but not the other fields. That is not
     new: dispatchers can already change any field of any ride.
+  - Part A feedback update (local, awaiting test/commit, Oct 5): the
+    dispatcher can record 1–50 patients, but Submit still creates one
+    assignment to one driver and vehicle. This is the incident count, not
+    a promise that everyone fits in one vehicle. Different patients'
+    conditions need to be described in Incident details.
 - **What to do:** keep the form open until Submit. If it was lost, the
   resident can still send a normal Request a Ride.
 - **Status:** Open. Fine for the Capstone demo.

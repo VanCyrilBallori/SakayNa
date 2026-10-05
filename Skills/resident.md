@@ -876,8 +876,13 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
   - Filled in by itself: caller name and number (from the alert), barangay
     (from the resident's profile), pickup location (the GPS address once it
     arrives), date / time received, dispatcher. The dispatcher types the
-    emergency type, priority, number of patients, a short description ("The
-    driver and the resident can see this."), the destination, and picks an
+    emergency type, priority, number of patients (1–50, with − / + / +5 /
+    +10), Incident details ("The driver and the resident can see this."),
+    optional approximate age, and conscious / breathing (Yes / No /
+    Unknown). Emergency types are Medical, Accident / injury, Fire-related,
+    Pregnancy / labor, and Other (required specifics). These Part A updates
+    are local and waiting for the user's test and commit (2026-10-05).
+    The dispatcher enters the destination and picks an
     Available driver and a vehicle (the same vehicle list as the Assign
     window). Each driver shows a rough straight-line distance from the
     resident's GPS ("about 2 km away (location from 5 min ago)"), nearest
@@ -887,7 +892,9 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
     one transaction: a new `transportRequests` ride for the resident,
     already `"Assigned"` (`requestType: "Emergency Request"`, `purpose`
     "Medical / Health" or "Other", `emergencyType`, `title` "Emergency: …",
-    the description as `additionalNotes`, `dispatcherName`,
+    the facts plus incident details as `additionalNotes` for existing phone
+    Notes screens, plus separate `emergencyTypeOther`, `approximateAge`,
+    `conscious`, `breathing`, and `incidentDetails` fields, `dispatcherName`,
     `emergencyAlertId`, `createdBy`), the driver's assignment, the vehicle
     marked busy, and the alert's link (`linkedRequestId`,
     `linkedRequestReference`, `emergencyType`). The GPS pin is saved only if
@@ -895,6 +902,10 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
   - The resident sees it like any assigned ride: the "Your ride" card
     (under the alert pop-up, then after Done), Request Details (with
     "Dispatcher"), and they can cancel it while it is Assigned.
+    Part A's purpose grouping is Medical / Health for every emergency type
+    except Other. The new facts appear in Request Details → Notes without
+    changing resident screens or needing a new APK. A large patient count
+    still creates one assigned ride, not multiple vehicles.
   - The alert stays `"connected"`, so the resident's pop-up does not change.
     The dispatcher's card shows "Ride SKN-… created · driver · vehicle"
     until the alert ends as before.

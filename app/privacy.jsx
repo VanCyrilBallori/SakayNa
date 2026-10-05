@@ -20,6 +20,7 @@ const sections = [
       "When you sign in with Google: only your name and email address from your Google account. We do not get your Google password, contacts, or any other Google data.",
       "When you request transport: what the ride is for, when you need it (as soon as possible, or a day and time you schedule up to 7 days ahead), who is riding (you or someone else) with their name and contact number, how many people are riding, the pickup location (your barangay, and if you choose, your phone's GPS or a pin you place on the map), a landmark, the destination, any help the passenger needs (for example, senior citizen, PWD or wheelchair user, pregnant, child), and any notes you choose to add.",
       "When you send an emergency alert: your name, phone number, barangay, and your latest transport request. Right after the alert is sent, the app also attaches your GPS location (latitude, longitude, and address) so responders can find you, if your phone allows it.",
+      "When a dispatcher makes an emergency ride from your alert: the emergency type, number of patients, approximate age, whether a patient is conscious or breathing, and what happened, as reported during the call. These details can include sensitive health information. The dispatcher should write only what the driver needs for the ride.",
       "When you register as a resident: your full name, phone number, barangay, and address (house number, street, or purok). You also send one photo that proves you live in your barangay (a Barangay Certificate of Residency, a Barangay ID, or another government document that shows your address), and you say which document it is.",
       "When you apply to be a driver: your full name, date of birth, contact number, barangay, address, and a profile picture. You also send photos of your documents: your Professional Driver's License (front and back, with its number and expiration date), your NBI Clearance or Police Clearance, your Medical Certificate, and, if you choose to, your Drug Test Clearance. Some of these documents, like the medical certificate, contain sensitive personal information.",
       "SakayNa does not collect any vehicle information from drivers. Vehicles belong to the barangay.",
@@ -46,6 +47,7 @@ const sections = [
     lines: [
       "Only the people who need it to do their job in SakayNa: dispatchers, the driver assigned to your request, and system administrators.",
       "The driver assigned to your request sees the passenger's name and contact number, the pickup location and landmark, the destination, the help the passenger needs, and your notes, so they can find and call the passenger.",
+      "Emergency ride health details can be seen by the resident whose account holds the request, the driver assigned to that request, dispatchers, and system administrators, to help arrange and carry out the ride.",
       "When a driver is assigned to your request, you see the driver's name and phone number and the vehicle's name and plate number, so you know who is coming and can call the driver.",
       "Dispatchers see each driver's duty status (Available, On break, On a run, or Off duty), the break type and note, and whether the driver's app is open. Administrators see each driver's daily time record. A driver can see their own time records.",
       "Only dispatchers see a driver's last saved location, the step it was saved at, and when, and only while the driver is on duty. Administrators, residents and other drivers cannot see drivers' locations.",
@@ -105,7 +107,7 @@ export default function PrivacyPolicy() {
         </View>
 
         <Text style={styles.title}>SakayNa Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: October 4, 2026 (draft)</Text>
+        <Text style={styles.updated}>Last updated: October 5, 2026 (draft)</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>

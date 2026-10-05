@@ -1,11 +1,91 @@
 # Emergency Request Form Plan
 
-**Status: DONE and released (2026-10-05).** Steps 1 (3521461), 2a (7709c51), 3 (rules, 269a2b1), 4 (b403e55), 2b (627ea2d) and 5 (notes, 49482ea), each tested. See "Releases" at the bottom.
+**Original release: DONE and released (2026-10-05).** Steps 1 (3521461), 2a (7709c51), 3 (rules, 269a2b1), 4 (b403e55), 2b (627ea2d) and 5 (notes, 49482ea), each tested. See "Releases" at the bottom.
 **Decisions (2026-10-05):** the alert stays connected after Submit; the
 description is saved as Notes, with the hint "The driver and the resident
 can see this." under the box; drivers are listed nearest first.
 Layout reference: design-refs/emergency-form-reference.png (its left side
 panel is ignored; our dispatcher header stays).
+
+## Group lead feedback — Part A and Part B (2026-10-05)
+
+**Part A: implemented locally; waiting for the user's computer/phone test
+and commit. Not released. Part B: not started.** The sections below this
+update describe the original release; this update replaces its emergency
+types, patient limit, description, layout, and privacy decisions.
+
+### Part A — website only (approved)
+- Emergency types: Medical, Accident / injury, Fire-related, Pregnancy /
+  labor, Other. Other shows a required specifics box (up to 180 characters).
+  Switching away clears it; it is saved only for Other.
+- Patients: 1–50, using −, +, +5 and +10. Adding near 50 stops at 50;
+  increase buttons disable at 50. The form and save function both check the
+  count. Ordinary resident ride requests still allow 1–6 people.
+- Incident details replaces Short description (still required, up to 500
+  characters). Hint: "What happened, who needs help, and their condition
+  (for example: male, about 30s, not breathing). Write only what the driver
+  needs." Placeholder: "What happened, who needs help, and their condition."
+- Approximate age is optional: a number or short range such as 30 or 30–40.
+  Conscious and Breathing each offer Yes / No / Unknown, initially Unknown.
+  For several patients, differing ages/conditions go in Incident details.
+- Wide website: three columns for short fields; Incident details beside
+  quick facts; Driver beside Vehicle. Narrow screens stack. No smaller text
+  or controls; DESIGN.md records this form's column exception.
+
+| Emergency type | Saved `purpose` |
+|---|---|
+| Medical | Medical / Health |
+| Accident / injury | Medical / Health |
+| Fire-related | Medical / Health |
+| Pregnancy / labor | Medical / Health |
+| Other | Other |
+
+The Admin counters query `purpose`. Driver run records already copy it,
+so Duty Records group these rides correctly without a driver app change.
+Duty Records currently has two ride groups: Medical / Health rides, and
+Community rides (all non-medical purposes, including Other).
+For Other, `purposeOther` remains "Emergency" as in the original release;
+the specific emergency is saved in `emergencyTypeOther`.
+
+Save on the same `transportRequests` record, in the existing transaction:
+- Existing: `emergencyType`, `passengerCount` (the incident's patient count),
+  title, purpose, route, driver, vehicle, priority, and status.
+- New: `emergencyTypeOther`, `approximateAge` (text, blank if unknown),
+  `conscious`, `breathing`, and `incidentDetails` (the incident text alone).
+- Existing `additionalNotes`: a readable copy of the Other specifics when
+  present, approximate age, conscious, breathing, and incident details.
+  Existing resident/driver APKs still see these in Notes. No data migration
+  and no Firestore rules change.
+- Health details stay on the ride record, not on the alert or assignment.
+  Existing read access: that resident, assigned driver, Dispatchers, Admins.
+- A big incident still creates one ride for one driver/vehicle. The count
+  does not mean all patients fit in that vehicle; no multi-vehicle feature.
+- Privacy Policy collection/sharing paragraphs now describe emergency health
+  information, with an updated date. Website copy updates with Part A;
+  installed phone policy copy updates with the next APK.
+
+**Part A test:** dispatcher on local website, resident and driver on existing
+phones. Check all five types, required Other specifics, switching away from
+Other, 1 → 6 → 16 → 50 (cannot exceed it), age 30 and 30–40, and Yes / No /
+Unknown. Submit a test emergency: resident sees the same ride/driver/vehicle
+and facts in Request details → Notes; driver sees them in Ride details →
+Notes, and can Accept → En route. Check ordinary requests still allow 1–6.
+Check Admin purpose counters; after completing a test ride, check Duty
+Records. Then test and commit before starting Part B.
+
+Local code checks passed: lint on the three changed code files, Expo web
+export, and temporary in-memory checks for limits, controls, validation,
+saved facts/Notes, and purpose/Duty Records grouping. No Firebase records
+were written by those checks. Browser unavailable; visual layout and the
+real computer/phone flow still need the user's test.
+
+### Part B — driver app, needs a new APK (not started)
+Add emergency type, patients, approximate age, conscious, and breathing to
+DriverRideCard above Incident details. Read the separate fields saved by
+Part A. Older rides fall back to their existing Notes, without requiring
+new fields. Ordinary rides keep their current card. No "Why you" line.
+Test enlarged phone text and old/new emergency rides before committing and
+building. Use the AGENTS.md EAS checklist for the new APK.
 
 ## Goal (in simple words)
 When a dispatcher taps **Answer** on an emergency alert, the resident's
