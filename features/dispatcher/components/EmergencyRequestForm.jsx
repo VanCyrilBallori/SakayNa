@@ -1,0 +1,510 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { collection, doc, getDoc } from "firebase/firestore";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Dropdown } from "react-native-element-dropdown";
+
+import { DESIGN_COLORS } from "../../../constants/design";
+import { db } from "../../../firebase";
+import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
+import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
+import { MAX_PASSENGERS } from "../../resident/utils/requestOptions";
+import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
+
+// The choices the dispatcher picks from while on the call (emergency-request-form-plan.md).
+export const EMERGENCY_TYPES = ["Medical emergency", "Accident / injury", "Pregnancy / labor", "Other"];
+// Our existing priority names (constants/app.js), without "Planned": an emergency is never scheduled.
+export const EMERGENCY_PRIORITIES = ["Emergency", "Urgent", "Non-Urgent"];
+
+// Checks the form. Returns { fieldName: "message" } for every field that needs fixing (empty = all good).
+const checkEmergencyForm = (form) => {
+  const errors = {};
+  const name = form.callerName.trim();
+  if (name.length < 2 || name.length > 80) errors.callerName = "Enter the caller's name.";
+  if (!normalizePhilippinePhone(form.contactNumber)) errors.contactNumber = "Enter a mobile number like 0917 123 4567.";
+  if (!form.barangay) errors.barangay = "Choose the barangay.";
+  const pickup = form.pickupLocation.trim();
+  if (!pickup || pickup.length > 300) errors.pickupLocation = "Enter where to pick up the patient (up to 300 letters).";
+  if (form.landmark.trim().length > 300) errors.landmark = "Keep the landmark under 300 letters.";
+  if (!form.emergencyType) errors.emergencyType = "Choose the emergency type.";
+  const description = form.description.trim();
+  if (!description || description.length > 500) errors.description = "Write a short description (up to 500 letters).";
+  const destination = form.destination.trim();
+  if (!destination || destination.length > 180) errors.destination = "Enter the destination or hospital (up to 180 letters).";
+  return errors;
+};
+
+// The Emergency request form (emergency-request-form-plan.md). Opens when the dispatcher answers an alert.
+// alert = the live alert (callSessions document). It updates by itself, for example when the GPS location arrives.
+// dispatcherName = the logged-in dispatcher. onCancel = back to the dispatcher page, nothing saved.
+// onOpenLocation = opens the resident's GPS spot in Google Maps.
+export default function EmergencyRequestForm({ alert, dispatcherName, onCancel, onOpenLocation }) {
+  // The ride's id is made now, only on this computer (nothing is saved), so the reference can show at the top.
+  const [requestId] = useState(() => doc(collection(db, "transportRequests")).id);
+  const reference = `SKN-${requestId.slice(0, 8).toUpperCase()}`;
+  const [form, setForm] = useState(() => ({
+    callerName: alert.residentName || "",
+    contactNumber: alert.residentPhone || "",
+    barangay: "",
+    pickupLocation: alert.pickupLocation || "",
+    landmark: "",
+    emergencyType: "",
+    priority: "Emergency",
+    patientCount: 1,
+    description: "",
+    destination: "",
+  }));
+  const [errors, setErrors] = useState({});
+  // Step 1 only: shown when everything is filled in, because saving comes in a later step.
+  const [notice, setNotice] = useState("");
+  // True once the dispatcher types in Pickup location, so a late GPS address doesn't overwrite what they typed.
+  const pickupEditedRef = useRef(false);
+
+  const setValue = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [field]: undefined }));
+    setNotice("");
+  };
+
+  // The barangay comes from the resident's profile. (The alert's pickupLocation stops being
+  // the barangay once the GPS address arrives.) Dispatchers may read profiles (firestore.rules).
+  useEffect(() => {
+    if (!alert.residentId) return;
+    getDoc(doc(db, "users", alert.residentId))
+      .then((profile) => {
+        const barangay = profile.data()?.barangay || "";
+        setForm((current) => (current.barangay ? current : { ...current, barangay }));
+      })
+      .catch((error) => console.log("Emergency form barangay warning:", error));
+  }, [alert.residentId]);
+
+  // The GPS address often arrives a few seconds after Answer. Fill it in, unless the dispatcher already typed here.
+  useEffect(() => {
+    if (!pickupEditedRef.current && alert.pickupLocation) {
+      setForm((current) => ({ ...current, pickupLocation: alert.pickupLocation }));
+    }
+  }, [alert.pickupLocation]);
+
+  const location = alert.location;
+  const hasLocation = typeof location?.latitude === "number" && typeof location?.longitude === "number";
+  const receivedAt = getDateFromValue(alert.createdAt);
+  // The profile's barangay may be spelled differently from our list; add it so the dropdown can still show it.
+  const barangayOptions =
+    form.barangay && !TOLEDO_BARANGAY_PICKER_OPTIONS.some((option) => option.value === form.barangay)
+      ? [{ label: form.barangay, value: form.barangay }, ...TOLEDO_BARANGAY_PICKER_OPTIONS]
+      : TOLEDO_BARANGAY_PICKER_OPTIONS;
+
+  const submit = () => {
+    const nextErrors = checkEmergencyForm(form);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      setNotice("");
+      return;
+    }
+    // Step 1: nothing is saved yet. Choosing the driver and saving come in Steps 2a and 4.
+    setNotice("Everything is filled in. Choosing the driver and saving come in the next steps.");
+  };
+
+  const hasErrors = Object.values(errors).some(Boolean);
+
+  return (
+    <View style={styles.page}>
+      <View style={styles.header}>
+        <Pressable
+          style={({ pressed }) => [styles.backButton, pressed && styles.outlinePressed]}
+          onPress={onCancel}
+          accessibilityRole="button"
+          accessibilityLabel="Back. Nothing is saved."
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color={DESIGN_COLORS.ink} />
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
+        <View style={styles.headerCopy}>
+          <Text style={styles.title} accessibilityRole="header">
+            Emergency request form
+          </Text>
+          <Text style={styles.subtitle}>Fill this in while you are on the call.</Text>
+        </View>
+        <View style={styles.referenceTag}>
+          <Text style={styles.referenceText}>Reference: {reference}</Text>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        {/* ---- Caller information (filled in from the alert) ---- */}
+        <SectionTitle icon="account-outline" text="Caller information" />
+        <View style={styles.row}>
+          <Field label="Caller name" required error={errors.callerName}>
+            <TextInput
+              style={[styles.input, errors.callerName && styles.inputError]}
+              value={form.callerName}
+              onChangeText={(text) => setValue("callerName", text)}
+              maxLength={80}
+              accessibilityLabel="Caller name"
+            />
+          </Field>
+          <Field label="Contact number" required error={errors.contactNumber}>
+            <TextInput
+              style={[styles.input, errors.contactNumber && styles.inputError]}
+              value={form.contactNumber}
+              onChangeText={(text) => setValue("contactNumber", text)}
+              keyboardType="phone-pad"
+              placeholder="0917 123 4567"
+              placeholderTextColor={DESIGN_COLORS.placeholder}
+              accessibilityLabel="Contact number"
+            />
+          </Field>
+          <Field label="Barangay" required error={errors.barangay}>
+            <Dropdown
+              style={[styles.input, styles.dropdown, errors.barangay && styles.inputError]}
+              containerStyle={styles.dropdownList}
+              selectedTextStyle={styles.inputText}
+              placeholderStyle={styles.placeholderText}
+              itemTextStyle={styles.inputText}
+              activeColor={DESIGN_COLORS.boardTint}
+              data={barangayOptions}
+              labelField="label"
+              valueField="value"
+              value={form.barangay}
+              placeholder="Choose the barangay"
+              search
+              searchPlaceholder="Search barangay"
+              inputSearchStyle={styles.inputText}
+              onChange={(item) => setValue("barangay", item.value)}
+            />
+          </Field>
+        </View>
+        <View style={styles.row}>
+          <Field label="Pickup location" required error={errors.pickupLocation} wide>
+            <TextInput
+              style={[styles.input, errors.pickupLocation && styles.inputError]}
+              value={form.pickupLocation}
+              onChangeText={(text) => {
+                pickupEditedRef.current = true;
+                setValue("pickupLocation", text);
+              }}
+              maxLength={300}
+              accessibilityLabel="Pickup location"
+            />
+          </Field>
+          <Field label="Landmark (optional)" error={errors.landmark}>
+            <TextInput
+              style={[styles.input, errors.landmark && styles.inputError]}
+              value={form.landmark}
+              onChangeText={(text) => setValue("landmark", text)}
+              maxLength={300}
+              placeholder="e.g. near the covered court"
+              placeholderTextColor={DESIGN_COLORS.placeholder}
+              accessibilityLabel="Landmark, optional"
+            />
+          </Field>
+        </View>
+        {hasLocation ? (
+          <View style={styles.locationLine}>
+            <Text style={styles.hint}>From the resident&apos;s GPS.</Text>
+            <Pressable
+              style={({ pressed }) => [styles.smallOutlineButton, pressed && styles.outlinePressed]}
+              onPress={() => onOpenLocation(location)}
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+              <Text style={styles.smallOutlineText}>Open location in Maps</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={styles.hint}>Location not sent (yet). Ask the caller where they are.</Text>
+        )}
+
+        <View style={styles.divider} />
+
+        {/* ---- Emergency details (typed during the call) ---- */}
+        <SectionTitle icon="medical-bag" text="Emergency details" />
+        <Field label="Emergency type" required error={errors.emergencyType} wide>
+          <View style={styles.choiceWrap}>
+            {EMERGENCY_TYPES.map((type) => (
+              <Choice key={type} label={type} selected={form.emergencyType === type} onPress={() => setValue("emergencyType", type)} />
+            ))}
+          </View>
+        </Field>
+        <View style={styles.row}>
+          <Field label="Priority" required wide>
+            <View style={styles.choiceWrap}>
+              {EMERGENCY_PRIORITIES.map((priority) => (
+                <Choice key={priority} label={priority} selected={form.priority === priority} onPress={() => setValue("priority", priority)} />
+              ))}
+            </View>
+          </Field>
+          <Field label="Number of patients" required>
+            <View style={styles.stepper}>
+              <StepperButton
+                icon="minus"
+                label="Fewer patients"
+                disabled={form.patientCount <= 1}
+                onPress={() => setValue("patientCount", Math.max(1, form.patientCount - 1))}
+              />
+              <Text style={styles.stepperValue} accessibilityLiveRegion="polite">
+                {form.patientCount}
+              </Text>
+              <StepperButton
+                icon="plus"
+                label="More patients"
+                disabled={form.patientCount >= MAX_PASSENGERS}
+                onPress={() => setValue("patientCount", Math.min(MAX_PASSENGERS, form.patientCount + 1))}
+              />
+            </View>
+          </Field>
+        </View>
+        <Field label="Short description" required error={errors.description} wide>
+          <TextInput
+            style={[styles.input, styles.textArea, errors.description && styles.inputError]}
+            value={form.description}
+            onChangeText={(text) => setValue("description", text)}
+            multiline
+            maxLength={500}
+            placeholder="e.g. Male, about 60, chest pain, hard to breathe"
+            placeholderTextColor={DESIGN_COLORS.placeholder}
+            accessibilityLabel="Short description. The driver and the resident can see this."
+          />
+          <Text style={styles.hint}>The driver and the resident can see this.</Text>
+        </Field>
+        <Field label="Destination / hospital" required error={errors.destination} wide>
+          <TextInput
+            style={[styles.input, errors.destination && styles.inputError]}
+            value={form.destination}
+            onChangeText={(text) => setValue("destination", text)}
+            maxLength={180}
+            placeholder="e.g. Toledo City General Hospital"
+            placeholderTextColor={DESIGN_COLORS.placeholder}
+            accessibilityLabel="Destination or hospital"
+          />
+        </Field>
+
+        <View style={styles.divider} />
+
+        {/* ---- Call information (filled in by itself, can't be changed) ---- */}
+        <SectionTitle icon="phone-outline" text="Call information" />
+        <View style={styles.row}>
+          <ReadOnly label="Date received" value={receivedAt ? formatShortDay(receivedAt) : "Not known"} />
+          <ReadOnly label="Time received" value={receivedAt ? formatClockTime(receivedAt) : "Not known"} />
+          <ReadOnly label="Dispatcher" value={dispatcherName || "Dispatcher"} />
+        </View>
+
+        <View style={styles.divider} />
+
+        {hasErrors ? (
+          <Text style={styles.errorBox} accessibilityRole="alert">
+            Some fields need your attention. See the red messages above.
+          </Text>
+        ) : null}
+        {notice ? <Text style={styles.noticeBox}>{notice}</Text> : null}
+
+        {/* DESIGN.md: the main action on top, Cancel underneath. */}
+        <Pressable style={({ pressed }) => [styles.submitButton, pressed && styles.submitPressed]} onPress={submit} accessibilityRole="button">
+          <MaterialCommunityIcons name="send-outline" size={24} color={DESIGN_COLORS.paperWhite} />
+          <Text style={styles.submitText}>Submit request</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.cancelButton, pressed && styles.outlinePressed]}
+          onPress={onCancel}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel. Nothing is saved."
+        >
+          <Text style={styles.cancelText}>Cancel</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function SectionTitle({ icon, text }) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      <MaterialCommunityIcons name={icon} size={26} color={DESIGN_COLORS.hallGreen} />
+      <Text style={styles.sectionTitle} accessibilityRole="header">
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+// A label, the input under it, and its red message. wide = takes a whole row on its own when there is room.
+function Field({ label, required, error, wide, children }) {
+  return (
+    <View style={[styles.field, wide && styles.fieldWide]}>
+      <Text style={styles.label}>
+        {label}
+        {required ? <Text style={styles.required}> *</Text> : null}
+      </Text>
+      {children}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
+}
+
+// One choice in a group (like a radio button): a round mark and a word.
+function Choice({ label, selected, onPress }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.choice, selected && styles.choiceSelected, pressed && styles.outlinePressed]}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+    >
+      <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={24} color={selected ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.controlOutline} />
+      <Text style={styles.choiceText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function StepperButton({ icon, label, disabled, onPress }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.stepperButton, disabled && styles.stepperDisabled, pressed && !disabled && styles.outlinePressed]}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+    >
+      <MaterialCommunityIcons name={icon} size={24} color={disabled ? DESIGN_COLORS.controlOutline : DESIGN_COLORS.ink} />
+    </Pressable>
+  );
+}
+
+function ReadOnly({ label, value }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.readOnlyValue}>{value}</Text>
+    </View>
+  );
+}
+
+// DESIGN.md look: flat, corners 16 (controls) and 24 (the card), Hall Green titles, red only for errors.
+const styles = StyleSheet.create({
+  page: { width: "100%", maxWidth: 1080, alignSelf: "center", gap: 16 },
+  header: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16 },
+  backButton: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  backText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  headerCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 280 },
+  title: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink },
+  subtitle: { marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  referenceTag: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
+  referenceText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  card: { padding: 24, gap: 16, borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
+  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.hallGreen },
+  divider: { height: 1, backgroundColor: DESIGN_COLORS.rule },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+  field: { flexGrow: 1, flexShrink: 1, flexBasis: 240, gap: 6 },
+  fieldWide: { flexBasis: 420 },
+  label: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  required: { color: DESIGN_COLORS.emergencyRed },
+  input: {
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+    fontSize: 17,
+    color: DESIGN_COLORS.ink,
+  },
+  inputError: { borderColor: DESIGN_COLORS.emergencyRed, borderWidth: 2 },
+  inputText: { fontSize: 17, color: DESIGN_COLORS.ink },
+  placeholderText: { fontSize: 17, color: DESIGN_COLORS.placeholder },
+  dropdown: { paddingVertical: 0 },
+  dropdownList: { borderRadius: 16, borderColor: DESIGN_COLORS.controlOutline },
+  textArea: { minHeight: 96, textAlignVertical: "top" },
+  hint: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  errorText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.emergencyRed },
+  locationLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
+  smallOutlineButton: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  smallOutlineText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  outlinePressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  choiceWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  choice: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  choiceSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
+  choiceText: { fontSize: 17, fontWeight: "600", color: DESIGN_COLORS.ink },
+  stepper: { flexDirection: "row", alignItems: "center", gap: 12 },
+  stepperButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  stepperDisabled: { borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
+  stepperValue: { minWidth: 32, textAlign: "center", fontSize: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  readOnlyValue: {
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: DESIGN_COLORS.boardTint,
+    fontSize: 17,
+    color: DESIGN_COLORS.ink,
+    overflow: "hidden",
+  },
+  errorBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
+  noticeBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.peachTint },
+  submitButton: {
+    width: "100%",
+    maxWidth: 480,
+    minHeight: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderRadius: 16,
+    backgroundColor: DESIGN_COLORS.hallGreen,
+  },
+  submitPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  submitText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
+  cancelButton: {
+    width: "100%",
+    maxWidth: 480,
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  cancelText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+});

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import EmergencyRequestForm from "../features/dispatcher/components/EmergencyRequestForm";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
 import { startPhoneCall } from "../lib/phoneCall";
@@ -360,6 +361,9 @@ export default function DispatcherHome() {
   // The alert whose "End this emergency?" question is open (null = closed), and its error message.
   const [endingCall, setEndingCall] = useState(null);
   const [endError, setEndError] = useState("");
+  // The alert whose Emergency request form is open (null = closed) (emergency-request-form-plan.md).
+  const [formAlert, setFormAlert] = useState(null);
+  const pageScrollRef = useRef(null);
   const [now, setNow] = useState(() => Date.now());
   // For each ringing alert: its last lastActiveAt value, and when THIS device saw it change.
   // Using only this device's own clock means a wrong clock on any phone or PC can't hide a live alert.
@@ -737,6 +741,17 @@ export default function DispatcherHome() {
     return unsubscribe;
   }, [authUser?.uid]);
 
+  // Keep the open form's alert up to date (for example when the resident's GPS location arrives).
+  // If the alert ended (the resident tapped Done), the form keeps the last copy, so it can still be finished.
+  useEffect(() => {
+    setFormAlert((current) => (current ? activeCalls.find((call) => call.id === current.id) ?? current : null));
+  }, [activeCalls]);
+
+  // Opening or closing the form starts at the top of the page.
+  useEffect(() => {
+    pageScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [formAlert?.id]);
+
   // A crashed app sends no more updates, so nothing would trigger a re-check. This clock does.
   useEffect(() => {
     const intervalId = setInterval(() => setNow(Date.now()), STUCK_CHECK_INTERVAL_MS);
@@ -827,6 +842,9 @@ export default function DispatcherHome() {
         status: "connected",
         updatedAt: serverTimestamp(),
       });
+      // Open the Emergency request form, unless one is already open (then this alert's card has its own button).
+      const answeredCall = { ...incomingCall, dispatcherId: authUser?.uid ?? "", dispatcherName: displayName, dispatcherPhone, status: "connected" };
+      setFormAlert((current) => current ?? answeredCall);
       setIncomingCall(null);
     } catch (error) {
       console.log("Answer emergency call failed:", error);
@@ -868,7 +886,7 @@ export default function DispatcherHome() {
 
   return (
     <>
-      <ScrollView style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={pageScrollRef} style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <AppBrandHeader role="Dispatcher" name={displayName} onLogoutPress={async () => {
           try {
             await logoutCurrentUser();
@@ -878,7 +896,14 @@ export default function DispatcherHome() {
           }
         }} />
 
-        <View style={[styles.container, compact && styles.containerCompact]}>
+        {formAlert ? (
+          <View style={[styles.container, compact && styles.containerCompact]}>
+            <EmergencyRequestForm key={formAlert.id} alert={formAlert} dispatcherName={displayName} onCancel={() => setFormAlert(null)} onOpenLocation={openLocationInMaps} />
+          </View>
+        ) : null}
+
+        {/* While the form is open, the normal page is hidden, not removed, so the map doesn't reload when the form closes. */}
+        <View style={[styles.container, compact && styles.containerCompact, formAlert && styles.hidden]}>
           {/* One card per answered emergency that is still going, above everything else. */}
           {activeCalls.map((call) => (
             <View key={call.id} style={styles.activeCard}>
@@ -886,6 +911,14 @@ export default function DispatcherHome() {
                 Active emergency · {call.residentName || "Resident"}
               </Text>
               <EmergencyCallerDetails call={call} />
+              <Pressable
+                style={({ pressed }) => [styles.formButton, pressed && styles.formButtonPressed]}
+                onPress={() => setFormAlert(call)}
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="clipboard-text-outline" size={24} color={DESIGN_COLORS.paperWhite} />
+                <Text style={styles.formButtonText}>Open emergency form</Text>
+              </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
                 onPress={() => {
@@ -1360,6 +1393,21 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   activeTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // "Open emergency form" on the card: the main action, so solid Hall Green.
+  formButton: {
+    minHeight: 52,
+    marginTop: 16,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 16,
+    backgroundColor: DESIGN_COLORS.hallGreen,
+  },
+  formButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  formButtonText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
+  hidden: { display: "none" },
   // "Needs a new driver" banner (driver-pages-plan.md Step 2b): Sakay Orange with Ink words, card corners, no shadow.
   givenBackBanner: {
     width: "100%",
