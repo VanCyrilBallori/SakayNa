@@ -20,9 +20,13 @@ types, patient limit, description, layout, and privacy decisions.
 - Emergency types: Medical, Accident / injury, Fire-related, Pregnancy /
   labor, Other. Other shows a required specifics box (up to 180 characters).
   Switching away clears it; it is saved only for Other.
-- Patients: 1–50, using −, +, +5 and +10. Adding near 50 stops at 50;
-  increase buttons disable at 50. The form and save function both check the
-  count. Ordinary resident ride requests still allow 1–6 people.
+- Patients: 1–50. Follow-up (2026-10-05, website only): the dispatcher
+  can type the number in a box (digits only, up to 3 so "100" is caught)
+  or use [−10] [−5] [−] [box] [+] [+5] [+10] (all 48 × 48). Buttons keep
+  the result between 1 and 50 (−10 at 7 → 1, +10 at 45 → 50). An empty
+  box or a number outside 1–50 shows "Enter a number from 1 to 50." in red
+  at once, and Submit saves nothing. The form and save function both check
+  the count. Ordinary resident ride requests still allow 1–6 people.
 - Incident details replaces Short description (still required, up to 500
   characters). Hint: "What happened, who needs help, and their condition
   (for example: male, about 30s, not breathing). Write only what the driver

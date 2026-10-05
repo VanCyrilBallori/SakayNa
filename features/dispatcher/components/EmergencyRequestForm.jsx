@@ -17,6 +17,9 @@ export const EMERGENCY_TYPES = ["Medical", "Accident / injury", "Fire-related", 
 // Our existing priority names (constants/app.js), without "Planned": an emergency is never scheduled.
 export const EMERGENCY_PRIORITIES = ["Emergency", "Urgent", "Non-Urgent"];
 const MAX_PATIENTS = 50;
+const PATIENT_COUNT_MESSAGE = `Enter a number from 1 to ${MAX_PATIENTS}.`;
+// The patients box holds text, like "12". It is right only if it is digits only and the number is 1 to 50.
+const isPatientCountValid = (text) => /^[0-9]+$/.test(text) && Number(text) >= 1 && Number(text) <= MAX_PATIENTS;
 const CONDITION_CHOICES = ["Yes", "No", "Unknown"];
 const INCIDENT_PLACEHOLDER = "What happened, who needs help, and their condition.";
 
@@ -47,9 +50,7 @@ const checkEmergencyForm = (form, chosenDriver, chosenVehicle) => {
   if (form.landmark.trim().length > 300) errors.landmark = "Keep the landmark under 300 letters.";
   if (!EMERGENCY_TYPES.includes(form.emergencyType)) errors.emergencyType = "Choose the emergency type.";
   if (form.emergencyType === "Other" && !form.emergencyTypeOther.trim()) errors.emergencyTypeOther = "Describe the other emergency.";
-  if (!Number.isInteger(form.patientCount) || form.patientCount < 1 || form.patientCount > MAX_PATIENTS) {
-    errors.patientCount = `Choose 1 to ${MAX_PATIENTS} patients.`;
-  }
+  if (!isPatientCountValid(form.patientCount)) errors.patientCount = PATIENT_COUNT_MESSAGE;
   const age = form.approximateAge.trim();
   if (age) {
     const range = age.match(/^(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?$/);
@@ -100,7 +101,8 @@ export default function EmergencyRequestForm({
     emergencyType: "",
     emergencyTypeOther: "",
     priority: "Emergency",
-    patientCount: 1,
+    // Text, because the dispatcher can type in this box. Submit turns it into a number.
+    patientCount: "1",
     approximateAge: "",
     conscious: "Unknown",
     breathing: "Unknown",
@@ -123,7 +125,11 @@ export default function EmergencyRequestForm({
   };
 
   // This counts patients at the incident, separately from the resident form's 1–6 rider limit.
-  const changePatientCount = (step) => setValue("patientCount", Math.min(MAX_PATIENTS, Math.max(1, form.patientCount + step)));
+  // The box's text as a number (an empty box counts as 0).
+  const patientNumber = Number(form.patientCount);
+  const patientCountValid = isPatientCountValid(form.patientCount);
+  // The −10 … +10 buttons. The answer is kept between 1 and 50: −10 at 7 gives 1, +10 at 45 gives 50.
+  const changePatientCount = (step) => setValue("patientCount", String(Math.min(MAX_PATIENTS, Math.max(1, patientNumber + step))));
 
   // The barangay comes from the resident's profile. (The alert's pickupLocation stops being
   // the barangay once the GPS address arrives.) Dispatchers may read profiles (firestore.rules).
@@ -185,7 +191,8 @@ export default function EmergencyRequestForm({
       await createEmergencyRide({
         requestId,
         alert,
-        form,
+        // The patients box holds text ("12"); the save needs a number (12).
+        form: { ...form, patientCount: patientNumber },
         driver: chosenDriver,
         vehicle: chosenVehicle,
         dispatcher: { uid: dispatcherId, name: dispatcherName },
@@ -344,35 +351,26 @@ export default function EmergencyRequestForm({
               ))}
             </View>
           </Field>
-          <Field label="Number of patients" required error={errors.patientCount}>
+          {/* The red message shows as soon as the box is empty or outside 1–50, not only after Submit. */}
+          <Field label="Number of patients" required error={patientCountValid ? undefined : PATIENT_COUNT_MESSAGE}>
             <View style={styles.stepper}>
-              <StepperButton
-                icon="minus"
-                label="Fewer patients"
-                disabled={form.patientCount <= 1}
-                onPress={() => changePatientCount(-1)}
+              {[-10, -5, -1].map((step) => (
+                <StepperButton key={step} step={step} disabled={patientNumber <= 1} onPress={() => changePatientCount(step)} />
+              ))}
+              <TextInput
+                style={[styles.input, styles.patientInput, !patientCountValid && styles.inputError]}
+                value={form.patientCount}
+                // Digits only: if the new text has a letter or any other sign, it is not added.
+                onChangeText={(text) => {
+                  if (/^[0-9]*$/.test(text)) setValue("patientCount", text);
+                }}
+                keyboardType="number-pad"
+                // 3 digits, so "100" can be typed and gets the red message (with 2 it would quietly become "10").
+                maxLength={3}
+                accessibilityLabel={`Number of patients, 1 to ${MAX_PATIENTS}`}
               />
-              <Text style={styles.stepperValue} accessibilityLiveRegion="polite">
-                {form.patientCount}
-              </Text>
-              <StepperButton
-                icon="plus"
-                label="More patients"
-                disabled={form.patientCount >= MAX_PATIENTS}
-                onPress={() => changePatientCount(1)}
-              />
-              {[5, 10].map((step) => (
-                <Pressable
-                  key={step}
-                  style={({ pressed }) => [styles.stepperButton, form.patientCount >= MAX_PATIENTS && styles.stepperDisabled, pressed && styles.outlinePressed]}
-                  onPress={() => changePatientCount(step)}
-                  disabled={form.patientCount >= MAX_PATIENTS}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Add ${step} patients, maximum ${MAX_PATIENTS}`}
-                  accessibilityState={{ disabled: form.patientCount >= MAX_PATIENTS }}
-                >
-                  <Text style={styles.choiceText}>+{step}</Text>
-                </Pressable>
+              {[1, 5, 10].map((step) => (
+                <StepperButton key={step} step={step} disabled={patientNumber >= MAX_PATIENTS} onPress={() => changePatientCount(step)} />
               ))}
             </View>
             <Text style={styles.hint}>1–50 patients at the incident.</Text>
@@ -427,7 +425,7 @@ export default function EmergencyRequestForm({
                 </View>
               </Field>
             ))}
-            {form.patientCount > 1 ? <Text style={styles.hint}>If patients have different ages or conditions, explain the differences in Incident details.</Text> : null}
+            {patientNumber > 1 ? <Text style={styles.hint}>If patients have different ages or conditions, explain the differences in Incident details.</Text> : null}
           </View>
         </View>
         <Field label="Destination / hospital" required error={errors.destination} wide>
@@ -617,17 +615,26 @@ function OptionRow({ selected, onPress, accessibilityLabel, children }) {
   );
 }
 
-function StepperButton({ icon, label, disabled, onPress }) {
+// One of the six buttons beside the number of patients. step = how much it adds: -10, -5, -1, 1, 5 or 10.
+// −1 and +1 show a − or + mark; the others show their number ("−10", "+5"). 48 × 48, easy to click.
+function StepperButton({ step, disabled, onPress }) {
+  const size = Math.abs(step);
+  const color = disabled ? DESIGN_COLORS.controlOutline : DESIGN_COLORS.ink;
+  const words = `${step > 0 ? "Add" : "Remove"} ${size} ${size === 1 ? "patient" : "patients"}`;
   return (
     <Pressable
       style={({ pressed }) => [styles.stepperButton, disabled && styles.stepperDisabled, pressed && !disabled && styles.outlinePressed]}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={words}
       accessibilityState={{ disabled }}
     >
-      <MaterialCommunityIcons name={icon} size={24} color={disabled ? DESIGN_COLORS.controlOutline : DESIGN_COLORS.ink} />
+      {size === 1 ? (
+        <MaterialCommunityIcons name={step > 0 ? "plus" : "minus"} size={24} color={color} />
+      ) : (
+        <Text style={[styles.stepperText, { color }]}>{step > 0 ? `+${size}` : `−${size}`}</Text>
+      )}
     </Pressable>
   );
 }
@@ -758,7 +765,9 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   stepperDisabled: { borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
-  stepperValue: { minWidth: 32, textAlign: "center", fontSize: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  stepperText: { fontSize: 17, fontWeight: "700" },
+  // The typing box between the buttons: 48 tall like them, wide enough for 3 digits.
+  patientInput: { width: 72, textAlign: "center", fontSize: 22, fontWeight: "800", fontVariant: ["tabular-nums"] },
   readOnlyValue: {
     minHeight: 48,
     paddingHorizontal: 12,

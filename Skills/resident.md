@@ -876,9 +876,10 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
   - Filled in by itself: caller name and number (from the alert), barangay
     (from the resident's profile), pickup location (the GPS address once it
     arrives), date / time received, dispatcher. The dispatcher types the
-    emergency type, priority, number of patients (1–50, with − / + / +5 /
-    +10), Incident details ("The driver and the resident can see this."),
-    optional approximate age, and conscious / breathing (Yes / No /
+    emergency type, priority, number of patients (1–50: typed in a box, or
+    −10 / −5 / − / + / +5 / +10; outside 1–50 shows "Enter a number from 1
+    to 50." in red), Incident details ("The driver and the resident can
+    see this."), optional approximate age, and conscious / breathing (Yes / No /
     Unknown). Emergency types are Medical, Accident / injury, Fire-related,
     Pregnancy / labor, and Other (required specifics). These Part A updates
     were tested and committed on 2026-10-05.
