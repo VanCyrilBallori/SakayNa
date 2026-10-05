@@ -30,7 +30,7 @@ The problems, most important first:
 | ID | Problem | Category | What the fix touches |
 |---|---|---|---|
 | C1 | An unapproved "driver" account can change every vehicle | CRITICAL, **Fixed** (93867d3) | rules only |
-| C2 | The Admin's Emergency Calls list may not show a new alert | CRITICAL | website, 1 line |
+| C2 | The Admin's Emergency Calls list may not show a new alert | CRITICAL, **Fixed** (ddda3f3) | website, 1 line |
 | C3 | A real alert can disappear from every dispatcher after 2 minutes | CRITICAL (KNOWN #33) | test first; website, 1 number |
 | A1 | Two dispatchers can answer the same alert | After the demo | website |
 | A2 | Removed staff and drivers keep their database powers | After the demo | rules (+ a habit now) |
@@ -328,6 +328,12 @@ the Firebase Console that every test driver who should work has
    `vehicles/<id>`" as a Pending driver's uid → **Denied**.
 
 ### C2. The Admin's Emergency Calls list may not show a new alert (NEW, emergency safety net)
+
+**Fixed (2026-10-05, commit ddda3f3).** Website only: the list now loads
+`orderBy("createdAt", "desc")` before `limit(100)`. Tested by hand: a new
+unanswered alert appears at the top with the "unanswered" badge, and its
+status changes after Answer. Released to the website (main 2d0ae92 →
+ddda3f3).
 
 **What is happening?**
 The list asks the database for "any 100 alerts"
