@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { DESIGN_COLORS } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../../resident/utils/requestMapper";
-import { getDestinationLabel, getPickupLabel } from "../utils/driverMissionMapper";
+import { getDestinationLabel, getEmergencyRideTitle, getPatientCountText, getPickupLabel, isEmergencyFormRide } from "../utils/driverMissionMapper";
 
 // The words and color of the status band for each ride step (DESIGN.md "Status band colors").
 // A driver is on it = deep green with white words. "At the pickup" = orange with dark words. Cancelled = grey. Never red.
@@ -26,6 +26,11 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
   const isScheduled = Boolean(getScheduledDate(request));
   const assistance = getAssistanceText(request);
   const passengerName = getPassengerName(request, assignment);
+  // A ride the dispatcher made from an emergency alert (emergency-request-form-plan.md Part B). Ordinary rides keep the card as before.
+  const fromEmergencyForm = isEmergencyFormRide(request);
+  const title = fromEmergencyForm ? getEmergencyRideTitle(request) : request.emergencyType ?? request.title ?? "Transport request";
+  // Emergency rides made before Part A have no quick facts: the driver reads them in Ride details → Notes, as before.
+  const showQuickFacts = fromEmergencyForm && Boolean(request.conscious);
 
   return (
     <View style={styles.card}>
@@ -36,7 +41,7 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.title}>{request.emergencyType ?? request.title ?? "Transport request"}</Text>
+        <Text style={styles.title}>{title}</Text>
 
         {/* A scheduled time is shown in orange so it stands out. "As soon as possible" stays grey. */}
         <View style={styles.whenRow}>
@@ -72,8 +77,8 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
         {/* Two small boxes. They wrap under each other when the phone's text is large. */}
         <View style={styles.boxes}>
           <View style={styles.box}>
-            <Text style={styles.boxLabel}>Riders</Text>
-            <Text style={styles.boxValue}>{getPassengerCountText(request)}</Text>
+            <Text style={styles.boxLabel}>{fromEmergencyForm ? "Patients" : "Riders"}</Text>
+            <Text style={styles.boxValue}>{fromEmergencyForm ? getPatientCountText(request) : getPassengerCountText(request)}</Text>
           </View>
           <View style={styles.box}>
             <Text style={styles.boxLabel}>Vehicle</Text>
@@ -89,6 +94,31 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
               <Text style={styles.helpLabel}>Needs help: </Text>
               {assistance}
             </Text>
+          </View>
+        ) : null}
+
+        {/* The emergency's quick facts, from the dispatcher's form. Peach = important info (DESIGN.md).
+            Incident details stop at 3 lines ("…"); the full text is in Ride details → Notes. */}
+        {showQuickFacts ? (
+          <View style={[styles.helpBox, styles.factsBox]}>
+            <Text style={styles.helpText}>
+              <Text style={styles.helpLabel}>Approximate age: </Text>
+              {request.approximateAge || "Unknown"}
+            </Text>
+            <Text style={styles.helpText}>
+              <Text style={styles.helpLabel}>Conscious: </Text>
+              {request.conscious}
+            </Text>
+            <Text style={styles.helpText}>
+              <Text style={styles.helpLabel}>Breathing: </Text>
+              {request.breathing || "Unknown"}
+            </Text>
+            {request.incidentDetails ? (
+              <Text style={styles.helpText} numberOfLines={3}>
+                <Text style={styles.helpLabel}>Incident details: </Text>
+                {request.incidentDetails}
+              </Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -164,6 +194,7 @@ const styles = StyleSheet.create({
   helpBox: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
   helpText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   helpLabel: { fontWeight: "700" },
+  factsBox: { gap: 4 },
 
   passenger: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
   passengerName: { fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },

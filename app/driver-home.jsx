@@ -13,7 +13,14 @@ import DriverMissionActions from "../features/driver/components/DriverMissionAct
 import DriverNavigateButton from "../features/driver/components/DriverNavigateButton";
 import DriverRideCard from "../features/driver/components/DriverRideCard";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
-import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
+import {
+  getDestinationCoordinates,
+  getEmergencyRideTitle,
+  getMissionStatus,
+  getPatientCountText,
+  getPickupCoordinates,
+  isEmergencyFormRide,
+} from "../features/driver/utils/driverMissionMapper";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
@@ -906,10 +913,17 @@ export default function DriverHome() {
               ) : (
                 <Text style={styles.reviewLine}>Phone: Not provided</Text>
               )}
-              <Text style={styles.reviewLine}>Passengers: {getPassengerCountText(request)}</Text>
+              {/* Emergency-form rides say "Patients" and "Emergency: …", like the ride card (emergency-request-form-plan.md Part B). */}
+              {isEmergencyFormRide(request) ? (
+                <Text style={styles.reviewLine}>Patients: {getPatientCountText(request)}</Text>
+              ) : (
+                <Text style={styles.reviewLine}>Passengers: {getPassengerCountText(request)}</Text>
+              )}
               <Text style={styles.reviewLine}>Assistance: {getAssistanceText(request)}</Text>
               {request?.additionalNotes ? <Text style={styles.reviewLine}>Notes: {request.additionalNotes}</Text> : null}
-              <Text style={styles.reviewLine}>Request: {request?.emergencyType ?? request?.title ?? "Transport Request"}</Text>
+              <Text style={styles.reviewLine}>
+                Request: {isEmergencyFormRide(request) ? getEmergencyRideTitle(request) : request?.emergencyType ?? request?.title ?? "Transport Request"}
+              </Text>
               {request?.summary ? <Text style={styles.reviewLine}>Summary: {request.summary}</Text> : null}
               {request?.level ? <Text style={styles.reviewLine}>Priority: {request.level}</Text> : null}
               <Text style={styles.reviewLine}>When: {getWhenText(request)}</Text>

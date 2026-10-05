@@ -11,7 +11,8 @@ panel is ignored; our dispatcher header stays).
 
 **Part A: done, committed (addecd1) and tested by the user (2026-10-05).
 Follow-up fix: Priority is round buttons again (one click during the call),
-not a drop-down. Not on the live website yet. Part B: not started.** The sections below this
+not a drop-down. Not on the live website yet. Part B: written, waiting
+for the user's phone test.** The sections below this
 update describe the original release; this update replaces its emergency
 types, patient limit, description, layout, and privacy decisions.
 
@@ -80,7 +81,15 @@ saved facts/Notes, and purpose/Duty Records grouping. No Firebase records
 were written by those checks. The user then tested the layout and the real
 computer/phone flow (2026-10-05).
 
-### Part B — driver app, needs a new APK (not started)
+### Part B — driver app, needs a new APK (written, waiting for the user's phone test)
+Decided (2026-10-05): rides from the form (`emergencyAlertId`) get the title
+"Emergency: Medical" (Other: "Emergency: [specifics]"); the Riders box says
+"Patients"; a peach box shows approximate age, conscious, breathing, and
+Incident details cut at 3 lines (the full text stays in Ride details →
+Notes). The Ride details pop-up (app/driver-home.jsx) says "Patients: 3
+patients" and "Request: Emergency: Medical" for these rides too. The shared
+text rules are in features/driver/utils/driverMissionMapper.js.
+
 Add emergency type, patients, approximate age, conscious, and breathing to
 DriverRideCard above Incident details. Read the separate fields saved by
 Part A. Older rides fall back to their existing Notes, without requiring
