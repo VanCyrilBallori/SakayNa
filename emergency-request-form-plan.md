@@ -9,10 +9,11 @@ panel is ignored; our dispatcher header stays).
 
 ## Group lead feedback — Part A and Part B (2026-10-05)
 
-**Part A: done, committed (addecd1) and tested by the user (2026-10-05).
-Follow-up fix: Priority is round buttons again (one click during the call),
-not a drop-down. Not on the live website yet. Part B: written, waiting
-for the user's phone test.** The sections below this
+**Part A (addecd1, plus a44faba: Priority back to round buttons) and
+Part B (3b71790): done, tested, and released as demo-ready-14
+(2026-10-05). See "Releases" at the bottom. Follow-up on master only, not
+on the live website yet: the patients box with −10 / −5 and typing
+(11df96a).** The sections below this
 update describe the original release; this update replaces its emergency
 types, patient limit, description, layout, and privacy decisions.
 
@@ -85,7 +86,7 @@ saved facts/Notes, and purpose/Duty Records grouping. No Firebase records
 were written by those checks. The user then tested the layout and the real
 computer/phone flow (2026-10-05).
 
-### Part B — driver app, needs a new APK (written, waiting for the user's phone test)
+### Part B — driver app, needs a new APK (done, released in demo-ready-14)
 Decided (2026-10-05): rides from the form (`emergencyAlertId`) get the title
 "Emergency: Medical" (Other: "Emergency: [specifics]"); the Riders box says
 "Patients"; a peach box shows approximate age, conscious, breathing, and
@@ -395,3 +396,22 @@ resident on the phone (demo-ready-13 APK), a driver on a second phone.
   - No new APK and no new development build. Testers keep demo-ready-13.
     No new tag (the tags follow APK builds).
   - Tester message: tester-message.md, for dispatchers.
+- 2026-10-05: **demo-ready-14** (group lead feedback Part A + Part B, and
+  the log out fixes; website + APK).
+  - Website: master → main → Vercel, fast-forward 49482ea..3b71790. It
+    also carried 9013c99 (the form's release notes), b776d58 (log out
+    fixes: go to Log In first, then sign out; the driver saves "app
+    closed" first) and 024d60f (Impeccable for Codex, AGENTS.md). Live
+    checks passed: the form, the old driver app (demo-ready-13) shows the
+    quick facts in Ride details → Notes, and Log out.
+  - No rules change.
+  - Preview APK: EAS build 192088e9-01dd-4ee0-8ebc-ce328efba30b, profile
+    preview, built from commit 3b71790, finished 16:06,
+    `eas fingerprint:compare` says "matches". Tested on the phone.
+    Tagged demo-ready-14 (on 3b71790) and pushed. The APK also carries
+    the updated Privacy Policy.
+  - Tester message: tester-message.md with the new APK link and the
+    everyone, dispatcher and driver lines (commit 225d676).
+  - Not in this release: the patients box follow-up (11df96a, master
+    only). When it goes on the website, update the tester message's
+    "Number of patients" line.
