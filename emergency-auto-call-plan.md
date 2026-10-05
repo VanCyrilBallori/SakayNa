@@ -1,6 +1,8 @@
 # Emergency Auto Call Plan
 
 **Status: DONE. Released as demo-ready-12 (2026-10-04).** Step A (commit ab3ca7a) and Step B notes (commit 698cd91) done; tested on the phone.
+**Fix (2026-10-05):** which number is called, and no call button on the
+website. See "Fix: the dispatcher's own phone" at the bottom.
 
 ## Goal (in simple words)
 When a dispatcher taps **Answer** on a resident's emergency alert, the
@@ -14,8 +16,9 @@ alert's countdown is the one exception.
 
 ## What happens
 1. Dispatcher taps Answer. The alert gets their name and phone
-   (`dispatcherPhone` = their Operational phone, set by an admin in
-   Operations → Manage profile). Unchanged.
+   (`dispatcherPhone`). Since the 2026-10-05 fix: their own account
+   phone, else their Operational phone, else the office number (see
+   the fix section at the bottom).
 2. Resident's pop-up: "Dispatcher accepted", and if there is a number,
    **"Calling Maria in 3…"** (2…, 1…) with **Cancel call** underneath.
 3. At 0: `startPhoneCall` (lib/phoneCall.js), unchanged: a direct call if
@@ -99,3 +102,42 @@ alert's countdown is the one exception.
     Tagged demo-ready-12 (on 698cd91) and pushed.
   - Tester message: tester-message.md with the new APK link and the
     driver, dispatcher and resident lines (commit c7d337e).
+
+## Fix: the dispatcher's own phone (2026-10-05)
+The resident always calls the dispatcher, never the other way around,
+because dispatchers use a computer.
+
+1. **Which number the resident's phone calls** (Step 1, commit 5ebd525).
+   Before: `officePhone || operationalPhone`, and nothing ever saved an
+   `officePhone`, so it was always the Operational phone. Now, when the
+   dispatcher taps Answer (`answerIncomingCall` in
+   app/dispatcher-home.jsx):
+   1. the dispatcher's own account phone (`phoneNumber`, or the older
+      `phone`; an admin sets it in Users → Edit),
+   2. else their Operational phone (Operations → Manage profile),
+   3. else the office number (`systemSettings/operational` →
+      `publicOfficePhone`, the one residents see in ☰ → Help). Then the
+      alert also gets `dispatcherPhoneIsOffice: true`, and the
+      resident's phone says **"Calling the dispatch office in 3…"** and
+      **"Call the dispatch office (again)"** instead of the dispatcher's
+      name (app/resident-home.jsx, `autoCallLabel`).
+   - The countdown and Cancel call are unchanged.
+2. **No call button on the website** (Step 2, commit 67378fc). The
+   Incoming Emergency pop-up and the Active emergency card show
+   "Resident's number:" and the number as plain text, for reference
+   (`EmergencyCallerDetails` in app/dispatcher-home.jsx). Normal ride
+   requests still have tap-to-call.
+3. Not changed: anything after "Dispatcher accepted" except the names
+   above, and ride assignment (`handleAssignRequest` still saves
+   `officePhone || operationalPhone` for drivers to call dispatch).
+
+**Release:** website (both steps) + a new preview APK (only for the
+"dispatch office" wording). No rules change: dispatchers could already
+save any field on an alert. Older APKs (demo-ready-12 and before) call
+the right number with the new website, but on the office fallback they
+still say the dispatcher's name.
+
+**Privacy:** the resident now calls the dispatcher's own account phone
+when one is saved, so that number shows in the resident's dialer and
+call log. Dispatchers should know this. The Privacy Policy is about
+residents' and drivers' information, so it doesn't change.

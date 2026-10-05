@@ -335,7 +335,7 @@ not-verified pop-up in `app/resident-home.jsx`):
    | Not confirmed within 10 seconds (for example, offline) (`SEND_TIMEOUT_MS` in `app/resident-home.jsx:29`) | "Alert not confirmed" + **Try again** (+ **Call the office** if an office number exists) |
    | Saved, waiting | "Emergency alert sent", "Waiting for a dispatcher to accept." with a spinner |
    | Nobody accepted after 30 seconds (`NO_ANSWER_TIMEOUT_MS` in `app/resident-home.jsx:26`) | "No dispatcher has accepted yet" + **Call the office** (if a number exists) |
-   | A dispatcher accepted | "Dispatcher accepted". If the dispatcher has a phone number (phone app only): **"Calling {dispatcher name} in 3…"** (2…, 1…) with **Cancel call**, then the phone calls them (see item 12). After that: **Call {dispatcher name} again**. After Cancel call: **Call {dispatcher name}**. No number: no countdown, no Call button |
+   | A dispatcher accepted | "Dispatcher accepted". If there is a phone number (phone app only): **"Calling {dispatcher name} in 3…"** (2…, 1…) with **Cancel call**, then the phone calls them (see item 12). After that: **Call {dispatcher name} again**. After Cancel call: **Call {dispatcher name}**. When the number is the office number, "the dispatch office" replaces the name (item 12). No number at all: no countdown, no Call button |
    | Sending, waiting, or nobody accepted yet | A bold line: **"Keep this screen open until a dispatcher accepts."** |
    | Location line | "Location: sending…", "Location: sent", or "Location: not available — dispatchers will see your barangay." |
 
@@ -363,8 +363,16 @@ not-verified pop-up in `app/resident-home.jsx`):
     - **This deliberately changes the earlier rule "nothing calls unless the
       user taps a Call button".** The countdown is the one exception
       (written in the comment in `lib/phoneCall.js:3-6`).
-    - When the alert turns "connected" and the dispatcher has a phone
-      number, a 3-second countdown starts (`AUTO_CALL_SECONDS` in
+    - **Which number** (fixed 2026-10-05, see the fix section in
+      `emergency-auto-call-plan.md`): the website saves it when the
+      dispatcher taps Answer (section 5.3): the dispatcher's own account
+      phone, else their Operational phone, else the office number. For
+      the office number the alert also gets `dispatcherPhoneIsOffice:
+      true`, and the countdown and button say **"the dispatch office"**
+      instead of the dispatcher's name (`autoCallLabel` in
+      `app/resident-home.jsx:918`).
+    - When the alert turns "connected" and there is a phone number, a
+      3-second countdown starts (`AUTO_CALL_SECONDS` in
       `app/resident-home.jsx:36`): "Calling {name} in 3…" + **Cancel
       call**. At 0 it calls through `startPhoneCall`, like the Call buttons.
     - Only once per alert, only on the phone app, only while SakayNa is on
@@ -605,7 +613,7 @@ works the same from History and from the home card (`requestCancellation` in
 | `closeEmergencyAlert` | `app/resident-home.jsx:363` | Marks the alert cancelled or ended, then resets the pop-up. |
 | `handleAlertBack` | `app/resident-home.jsx:389` | Asks "Cancel your emergency alert?" before closing an alert that is still live. |
 | `openPhone` | `app/resident-home.jsx:469` | Used by every Call button on the alert pop-up. Calls `startPhoneCall`. |
-| auto call, part 1 (`useEffect` in `ResidentHome`) | `app/resident-home.jsx:205` | When a dispatcher with a phone number answers, starts the 3-second "Calling {name} in 3…" countdown (once per alert). Added 2026-10-04. |
+| auto call, part 1 (`useEffect` in `ResidentHome`) | `app/resident-home.jsx:205` | When a dispatcher answers and the alert has a phone number, starts the 3-second "Calling {name} in 3…" countdown (once per alert; "the dispatch office" for the office number). Added 2026-10-04. |
 | auto call, part 2 (`useEffect` in `ResidentHome`) | `app/resident-home.jsx:218` | Counts down once a second, then calls `startPhoneCall`. Leaving the app cancels it. |
 | `startPhoneCall` | `lib/phoneCall.js:9` | Android with permission: starts the call right away. Otherwise: opens the dialer with the number filled in. Called by the Call buttons and by the auto call countdown (the one exception to "only from a tapped button"). |
 | `loadOfficePhone` | `app/resident-home.jsx:180` | Reads the public office phone number from `systemSettings/operational`. |
@@ -852,10 +860,18 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
     changed in Firestore, so the alert is still `"ringing"` there. If the
     signal starts again, the alert shows again.
 - **Answer** → sets `status: "connected"`, `dispatcherId`, `dispatcherName`,
-  and `dispatcherPhone` (from the dispatcher's `officePhone` or
-  `operationalPhone`) (`answerIncomingCall` in
-  `app/dispatcher-home.jsx:541-558`). The resident sees "Dispatcher accepted"
-  and a Call button. The heartbeat and keep-awake then stop.
+  `dispatcherPhone` and `dispatcherPhoneIsOffice` (`answerIncomingCall` in
+  `app/dispatcher-home.jsx:805`). `dispatcherPhone` is the dispatcher's own
+  account phone (`phoneNumber` or `phone`), else their `operationalPhone`,
+  else the office number (`publicOfficePhone`, then
+  `dispatcherPhoneIsOffice` is true) (changed 2026-10-05). The resident sees
+  "Dispatcher accepted" and the call countdown. The heartbeat and
+  keep-awake then stop.
+- **The resident always calls the dispatcher**, never the other way around,
+  because dispatchers use a computer. The Incoming Emergency pop-up and the
+  Active emergency card show the resident's number as **plain text** for
+  reference, not a call button (`EmergencyCallerDetails` in
+  `app/dispatcher-home.jsx:88`, changed 2026-10-05).
 - **Decline** → adds the dispatcher's uid to `declinedBy`. The alert keeps
   ringing for the **other** dispatchers (`declineIncomingCall` in
   `app/dispatcher-home.jsx:560-574`).

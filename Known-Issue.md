@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked against the app: Oct 4, 2026 (after emergency-auto-call-plan.md Step A: auto call after a dispatcher answers).
+Last checked against the app: Oct 5, 2026 (after the emergency call fix in emergency-auto-call-plan.md: the dispatcher's own phone, plain-text number on the website).
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -22,7 +22,10 @@ Skills/resident.md section 6.
   - if SakayNa is in the background, or the resident leaves the app
     during the countdown,
   - on APKs before demo-ready-12 (they still need a tap on Call),
-  - if the dispatcher has no Operational phone saved.
+  - if there is no number at all: the dispatcher has no account phone
+    and no Operational phone, and no office number is saved.
+- Older APKs (demo-ready-12 and before) on the office fallback still
+  say "Calling {dispatcher name}" even though the office phone rings.
 - **What to do:** the **Call {name}** button stays on the pop-up in all
   of these cases; the office number is in the ☰ menu.
 - **Status:** Open. Fine for the Capstone demo.

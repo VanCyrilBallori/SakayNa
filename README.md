@@ -75,7 +75,7 @@ copy its **UID**, then create a Firestore document at `users/{that-UID}`:
 | Document | Fields |
 | --- | --- |
 | `users/{admin}` | `role: "Admin"`, `accountStatus: "Active"`, `fullName`, `email`, `barangay`, `createdAt` |
-| `users/{dispatcher}` | `role: "Dispatcher"`, `accountStatus: "Active"`, `fullName`, `email`, `createdAt` |
+| `users/{dispatcher}` | `role: "Dispatcher"`, `accountStatus: "Active"`, `fullName`, `email`, `createdAt`, and optional `phoneNumber` (the number a resident's phone calls after an emergency alert; without it: `operationalPhone`, then the office number) |
 | `users/{resident}` | `role: "Resident"`, `accountStatus: "Active"`, `fullName`, `email`, `barangay`, `phone`, `phoneNumber`, `createdAt` |
 | `users/{driver}` | `role: "Driver"`, `accountStatus: "Approved"`, `fullName`, `email`, `barangay`, `createdAt` |
 
