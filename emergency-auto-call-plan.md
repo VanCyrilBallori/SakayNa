@@ -2,7 +2,8 @@
 
 **Status: DONE. Released as demo-ready-12 (2026-10-04).** Step A (commit ab3ca7a) and Step B notes (commit 698cd91) done; tested on the phone.
 **Fix (2026-10-05):** which number is called, and no call button on the
-website. See "Fix: the dispatcher's own phone" at the bottom.
+website. See "Fix: the dispatcher's own phone" at the bottom. Released
+as demo-ready-13 (2026-10-05).
 
 ## Goal (in simple words)
 When a dispatcher taps **Answer** on a resident's emergency alert, the
@@ -102,6 +103,20 @@ alert's countdown is the one exception.
     Tagged demo-ready-12 (on 698cd91) and pushed.
   - Tester message: tester-message.md with the new APK link and the
     driver, dispatcher and resident lines (commit c7d337e).
+- 2026-10-05: **demo-ready-13** (emergency call fix, see the section
+  below).
+  - Website: master → main → Vercel, fast-forward 698cd91..f020676.
+    Live checks passed: the resident's number is plain text on the
+    Incoming Emergency pop-up and the Active emergency card, and
+    Answer calls the dispatcher's own account phone.
+  - No rules change.
+  - Preview APK: EAS build 7c77a24c-c5f7-43c1-9307-258a2ec2b17c,
+    profile preview, built from commit f020676, finished 08:27,
+    `eas fingerprint:compare` says "matches". Tested on the phone.
+    Tagged demo-ready-13 (on f020676) and pushed. demo-ready-12 was
+    left where it was (on 698cd91).
+  - Tester message: tester-message.md with the new APK link and the
+    resident, dispatcher and driver lines (commit ae47f44).
 
 ## Fix: the dispatcher's own phone (2026-10-05)
 The resident always calls the dispatcher, never the other way around,
