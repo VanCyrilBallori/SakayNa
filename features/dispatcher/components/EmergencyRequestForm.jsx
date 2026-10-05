@@ -224,6 +224,10 @@ export default function EmergencyRequestForm({
           <MaterialCommunityIcons name="arrow-left" size={24} color={DESIGN_COLORS.ink} />
           <Text style={styles.backText}>Back</Text>
         </Pressable>
+        {/* A round red badge: red means emergency (DESIGN.md). */}
+        <View style={styles.headerBadge}>
+          <MaterialCommunityIcons name="alarm-light-outline" size={28} color={DESIGN_COLORS.paperWhite} />
+        </View>
         <View style={styles.headerCopy}>
           <Text style={styles.title} accessibilityRole="header">
             Emergency request form
@@ -237,7 +241,8 @@ export default function EmergencyRequestForm({
 
       <View style={[styles.card, desktop && styles.desktopCard]}>
         {/* ---- Caller information (filled in from the alert) ---- */}
-        <SectionTitle icon="account-outline" text="Caller information" />
+        <View style={[styles.section, desktop && styles.desktopSection, styles.greenSection]}>
+        <SectionTitle icon="account-outline" text="Caller information" tone="green" />
         <View style={[styles.row, !desktop && styles.stackedRow]}>
           <Field label="Caller name" required error={errors.callerName}>
             <TextInput
@@ -319,11 +324,11 @@ export default function EmergencyRequestForm({
         ) : (
           <Text style={styles.hint}>Location not sent (yet). Ask the caller where they are.</Text>
         )}
-
-        <View style={styles.divider} />
+        </View>
 
         {/* ---- Emergency details (typed during the call) ---- */}
-        <SectionTitle icon="medical-bag" text="Emergency details" />
+        <View style={[styles.section, desktop && styles.desktopSection, styles.redSection]}>
+        <SectionTitle icon="medical-bag" text="Emergency details" tone="red" />
         <View style={[styles.row, !desktop && styles.stackedRow]}>
           <Field label="Emergency type" required error={errors.emergencyType}>
             <Dropdown
@@ -347,7 +352,15 @@ export default function EmergencyRequestForm({
           <Field label="Priority" required>
             <View style={styles.choiceWrap}>
               {EMERGENCY_PRIORITIES.map((priority) => (
-                <Choice key={priority} label={priority} accessibilityLabel={`Priority: ${priority}`} selected={form.priority === priority} onPress={() => setValue("priority", priority)} />
+                // "Emergency" fills red when chosen (red means emergency); the others fill green.
+                <Choice
+                  key={priority}
+                  label={priority}
+                  accessibilityLabel={`Priority: ${priority}`}
+                  selected={form.priority === priority}
+                  red={priority === "Emergency"}
+                  onPress={() => setValue("priority", priority)}
+                />
               ))}
             </View>
           </Field>
@@ -439,11 +452,11 @@ export default function EmergencyRequestForm({
             accessibilityLabel="Destination or hospital"
           />
         </Field>
-
-        <View style={styles.divider} />
+        </View>
 
         {/* ---- Driver and vehicle (like the Assign window) ---- */}
-        <SectionTitle icon="van-utility" text="Driver and vehicle" />
+        <View style={[styles.section, desktop && styles.desktopSection, styles.peachSection]}>
+        <SectionTitle icon="van-utility" text="Driver and vehicle" tone="orange" />
         <View style={[styles.row, !desktop && styles.stackedRow]}>
           <Field label="Driver" required error={errors.driver} wide>
             {/* Without the resident's GPS there is nothing to measure from. */}
@@ -503,18 +516,17 @@ export default function EmergencyRequestForm({
             </Field>
           ) : null}
         </View>
-
-        <View style={styles.divider} />
+        </View>
 
         {/* ---- Call information (filled in by itself, can't be changed) ---- */}
-        <SectionTitle icon="phone-outline" text="Call information" />
+        <View style={[styles.section, desktop && styles.desktopSection, styles.greenSection]}>
+        <SectionTitle icon="phone-outline" text="Call information" tone="green" />
         <View style={[styles.row, !desktop && styles.stackedRow]}>
           <ReadOnly label="Date received" value={receivedAt ? formatShortDay(receivedAt) : "Not known"} />
           <ReadOnly label="Time received" value={receivedAt ? formatClockTime(receivedAt) : "Not known"} />
           <ReadOnly label="Dispatcher" value={dispatcherName || "Dispatcher"} />
         </View>
-
-        <View style={styles.divider} />
+        </View>
 
         {hasErrors ? (
           <Text style={styles.errorBox} accessibilityRole="alert">
@@ -527,42 +539,57 @@ export default function EmergencyRequestForm({
           </Text>
         ) : null}
 
-        {/* DESIGN.md: the main action on top, Cancel underneath. */}
-        <Pressable
-          style={({ pressed }) => [styles.submitButton, pressed && styles.submitPressed, saving && styles.submitSaving]}
-          onPress={submit}
-          disabled={saving}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: saving, busy: saving }}
-        >
-          <MaterialCommunityIcons name="send-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-          <Text style={styles.submitText}>{saving ? "Saving…" : "Submit request"}</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.cancelButton, pressed && styles.outlinePressed]}
-          onPress={onCancel}
-          accessibilityRole="button"
-          accessibilityLabel="Cancel. Nothing is saved."
-          // Not while saving: the save would still finish, so "Cancel" would not be true.
-          disabled={saving}
-          accessibilityState={{ disabled: saving }}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </Pressable>
-        <View style={styles.infoLine}>
-          <MaterialCommunityIcons name="information-outline" size={22} color={DESIGN_COLORS.inkMuted} />
-          <Text style={styles.hint}>After Submit, the driver gets the ride and the resident sees it in their &quot;Your ride&quot; card.</Text>
+        {/* DESIGN.md website exception: the note on the left, [Submit request] [Cancel] side by side on the right. */}
+        <View style={styles.footer}>
+          <View style={styles.infoLine}>
+            <MaterialCommunityIcons name="information-outline" size={22} color={DESIGN_COLORS.inkMuted} />
+            <Text style={[styles.hint, styles.infoText]}>After Submit, the driver gets the ride and the resident sees it in their &quot;Your ride&quot; card.</Text>
+          </View>
+          <View style={styles.footerButtons}>
+            <Pressable
+              style={({ pressed }) => [styles.submitButton, pressed && styles.submitPressed, saving && styles.submitSaving]}
+              onPress={submit}
+              disabled={saving}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: saving, busy: saving }}
+            >
+              <MaterialCommunityIcons name="send-outline" size={20} color={DESIGN_COLORS.paperWhite} />
+              <Text style={styles.submitText}>{saving ? "Saving…" : "Submit request"}</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.cancelButton, pressed && styles.outlinePressed]}
+              onPress={onCancel}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel. Nothing is saved."
+              // Not while saving: the save would still finish, so "Cancel" would not be true.
+              disabled={saving}
+              accessibilityState={{ disabled: saving }}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
   );
 }
 
-function SectionTitle({ icon, text }) {
+// The colors of each section's round badge and title. tone = "green", "red" or "orange".
+// Orange has dark words and a dark icon (DESIGN.md: never white on orange).
+const SECTION_TONES = {
+  green: { badge: DESIGN_COLORS.hallGreen, icon: DESIGN_COLORS.paperWhite, title: DESIGN_COLORS.hallGreen },
+  red: { badge: DESIGN_COLORS.emergencyRed, icon: DESIGN_COLORS.paperWhite, title: DESIGN_COLORS.emergencyRed },
+  orange: { badge: DESIGN_COLORS.sakayOrange, icon: DESIGN_COLORS.ink, title: DESIGN_COLORS.ink },
+};
+
+function SectionTitle({ icon, text, tone }) {
+  const colors = SECTION_TONES[tone];
   return (
     <View style={styles.sectionTitleRow}>
-      <MaterialCommunityIcons name={icon} size={26} color={DESIGN_COLORS.hallGreen} />
-      <Text style={styles.sectionTitle} accessibilityRole="header">
+      <View style={[styles.sectionBadge, { backgroundColor: colors.badge }]}>
+        <MaterialCommunityIcons name={icon} size={22} color={colors.icon} />
+      </View>
+      <Text style={[styles.sectionTitle, { color: colors.title }]} accessibilityRole="header">
         {text}
       </Text>
     </View>
@@ -583,27 +610,34 @@ function Field({ label, required, error, wide, style, children }) {
   );
 }
 
-// One choice in a group (like a radio button): a round mark and a word.
-function Choice({ label, accessibilityLabel, selected, onPress }) {
+// One choice in a group (like a radio button): a pill with a round mark and a word.
+// The chosen one fills green (or red, when red is true) with white words.
+function Choice({ label, accessibilityLabel, selected, red, onPress }) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.choice, selected && styles.choiceSelected, pressed && styles.outlinePressed]}
+      style={({ pressed }) => [
+        styles.choice,
+        selected && styles.choiceSelected,
+        selected && red && styles.choiceSelectedRed,
+        // The pressed color only on choices that are not chosen, so white words never sit on a pale background.
+        pressed && !selected && styles.outlinePressed,
+      ]}
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityLabel={accessibilityLabel || label}
       accessibilityState={{ selected }}
     >
-      <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={24} color={selected ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.controlOutline} />
-      <Text style={styles.choiceText}>{label}</Text>
+      <MaterialCommunityIcons name={selected ? "radiobox-marked" : "radiobox-blank"} size={24} color={selected ? DESIGN_COLORS.paperWhite : DESIGN_COLORS.controlOutline} />
+      <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
     </Pressable>
   );
 }
 
-// One driver or vehicle to pick: an outlined row with a round mark (selected = green edge), not a card inside the card.
+// One driver or vehicle to pick: an outlined white row with a round mark (selected = green edge), not a card inside the card.
 function OptionRow({ selected, onPress, accessibilityLabel, children }) {
   return (
     <Pressable
-      style={({ pressed }) => [styles.optionRow, selected && styles.choiceSelected, pressed && styles.outlinePressed]}
+      style={({ pressed }) => [styles.optionRow, selected && styles.optionSelected, pressed && styles.outlinePressed]}
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
@@ -648,7 +682,8 @@ function ReadOnly({ label, value }) {
   );
 }
 
-// DESIGN.md look: flat, corners 16 (controls) and 24 (the card), Hall Green titles, red only for errors.
+// DESIGN.md look (website exception for this form): flat, corners 16 (inputs, buttons) and 24 (the card, sections,
+// driver/vehicle rows), pill choices and round +/− buttons. Soft green, red and peach sections; red only for the emergency itself.
 const styles = StyleSheet.create({
   page: { width: "100%", maxWidth: 1280, alignSelf: "center", gap: 12 },
   header: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16 },
@@ -664,16 +699,24 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   backText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.emergencyRed },
   headerCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 280 },
   title: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink },
   subtitle: { marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  referenceTag: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
+  // A small orange tag with dark words (DESIGN.md: orange has dark words).
+  referenceTag: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
   referenceText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   card: { padding: 24, gap: 16, borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
   desktopCard: { padding: 16, gap: 12 },
+  // Each part of the form sits on its own soft color, inside the white card (Board Tint fields, DESIGN.md).
+  section: { padding: 24, gap: 16, borderRadius: 24 },
+  desktopSection: { padding: 16, gap: 12 },
+  greenSection: { backgroundColor: DESIGN_COLORS.boardTint },
+  redSection: { backgroundColor: DESIGN_COLORS.redTint },
+  peachSection: { backgroundColor: DESIGN_COLORS.peachTint },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.hallGreen },
-  divider: { height: 1, backgroundColor: DESIGN_COLORS.rule },
+  sectionBadge: { width: 36, height: 36, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800" },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-start" },
   stackedRow: { flexDirection: "column", alignItems: "stretch" },
   field: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0, gap: 4 },
@@ -718,31 +761,37 @@ const styles = StyleSheet.create({
   smallOutlineText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   outlinePressed: { backgroundColor: DESIGN_COLORS.boardTint },
   choiceWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  // Pill-shaped choices.
   choice: {
     minHeight: 48,
-    paddingHorizontal: 14,
+    paddingLeft: 12,
+    paddingRight: 18,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    borderRadius: 16,
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  choiceSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
+  choiceSelected: { borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.hallGreen },
+  choiceSelectedRed: { borderColor: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.emergencyRed },
   choiceText: { fontSize: 17, fontWeight: "600", color: DESIGN_COLORS.ink },
+  choiceTextSelected: { color: DESIGN_COLORS.paperWhite },
   optionList: { gap: 8 },
   optionRow: {
     minHeight: 56,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
+  optionSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen },
   optionCopy: { flex: 1, gap: 2 },
   optionTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   optionTitle: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
@@ -752,14 +801,15 @@ const styles = StyleSheet.create({
   // Same green badge as the Drivers column ("Available" = Hall Green with white words).
   availableBadge: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
   availableBadgeText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
-  emptyBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.boardTint },
+  emptyBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.paperWhite },
   stepper: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   stepperButton: {
     width: 48,
     height: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 16,
+    // Round buttons.
+    borderRadius: 999,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
@@ -773,20 +823,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderRadius: 16,
-    backgroundColor: DESIGN_COLORS.boardTint,
+    backgroundColor: DESIGN_COLORS.paperWhite,
     fontSize: 17,
     color: DESIGN_COLORS.ink,
     overflow: "hidden",
   },
   errorBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
+  // The note on the left, the two buttons on the right. On a narrow screen the buttons wrap under the note.
+  footer: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", rowGap: 12, columnGap: 24 },
+  footerButtons: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 12 },
+  // As wide as its words, 48 tall (the smallest allowed).
   submitButton: {
-    width: "100%",
-    maxWidth: 480,
-    minHeight: 56,
+    minHeight: 48,
+    paddingHorizontal: 24,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 8,
     borderRadius: 16,
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
@@ -794,9 +847,9 @@ const styles = StyleSheet.create({
   submitSaving: { opacity: 0.7 },
   submitText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
   cancelButton: {
-    width: "100%",
-    maxWidth: 480,
-    minHeight: 52,
+    minWidth: 120,
+    minHeight: 48,
+    paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 16,
@@ -805,5 +858,6 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   cancelText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
-  infoLine: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  infoLine: { flexGrow: 1, flexShrink: 1, flexBasis: 320, minWidth: 0, flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  infoText: { flexShrink: 1 },
 });

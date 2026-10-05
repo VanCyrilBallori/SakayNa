@@ -137,7 +137,8 @@ capitals only for proper names.
 
 - 16dp side margins. Spacing from the existing scale: 4, 8, 12, 16, 24, 32.
 - One column. A choice that matters is never two equal buttons side by side:
-  the main action goes on top at full width, Cancel underneath.
+  the main action goes on top at full width, Cancel underneath. (Only
+  exception: the website Emergency request form, see "Website exception".)
 - Touch targets at least 48dp, main actions at least 56dp, Emergency at least
   76dp, with at least 8dp between targets.
 - Main actions sit in the lower half of the screen (thumb reach). The place
@@ -164,8 +165,9 @@ Soft, round corners. Two corner sizes, plus fully round for a few small things:
 - **Card corner (24dp):** cards, banners, info boxes, and the top corners of
   bottom sheets.
 - **Fully round:** small tags and count badges, status dots, the destination
-  dot, profile pictures, the logo disc on the landing page. Main buttons are
-  never pill-shaped.
+  dot, profile pictures, the logo disc on the landing page, and the choices
+  and +/− buttons of the website Emergency request form (see "Website
+  exception"). Main buttons are never pill-shaped.
 
 A status band at the top of a card follows the card's 24dp top corners.
 
@@ -198,8 +200,25 @@ screens it may use 2–3 columns, with 12dp gaps and 16dp outer padding, to
 reduce scrolling. Incident details and the quick facts sit beside each
 other; driver and vehicle choices sit beside each other. Narrow screens
 stack in one column. Keep the existing type scale, 48dp minimum controls,
-16/24dp corners, and Submit above Cancel. This exception applies only to
-this form; the dispatcher header and other screens keep their own layout.
+and 16/24dp corners. This exception applies only to this form; the
+dispatcher header and other screens keep their own layout.
+
+Look of this form (approved by the group, Oct 2026):
+- Each section sits on its own soft color inside the white card: Board
+  Tint for caller and call information, Red Tint for emergency details,
+  Peach Tint for driver and vehicle. Each section title has a round
+  color badge (Hall Green or Emergency Red with a white icon, Sakay
+  Orange with an Ink icon). Red is used for the emergency itself: the
+  Emergency details section and the Emergency priority choice.
+- Choices (Priority, Conscious, Breathing) are pill-shaped (fully
+  round). The chosen one fills Hall Green with white words; a chosen
+  "Emergency" priority fills Emergency Red with white words. The patient
+  + and − buttons are fully round (48 × 48). The reference tag is a
+  Sakay Orange pill with Ink words.
+- Submit request and Cancel sit side by side on the right:
+  [Submit request] [Cancel], each as wide as its words and 48dp tall.
+  The "After Submit" note sits to their left. On a narrow screen they
+  wrap under the note.
 
 The website landing page (app/index.jsx) and the green left panel of the
 website Log In and Create Account pages (wide screens only,
