@@ -146,10 +146,21 @@ Skills/resident.md section 6.
   that long shift.
 - **Also:** a shift is read up to the end of the day after it started.
   A shift left open longer than that shows as "Still on duty".
+- **Also (Oct 5, 2026):** logging out does not punch out. A driver who
+  taps Log Out while punched in stays "Available" (the dispatcher sees
+  "Available · app closed").
 - **What to do for now:** the driver punches out (the record can't be
   edited afterward, on purpose).
 - **Future work:** auto-closing forgotten shifts, admin corrections
   (driver-duty-plan.md, "Not now").
+- **Possible improvement (small to medium, needs a new APK):** when a
+  punched-in driver taps Log Out, ask "You're still on duty. Punch out
+  before logging out?" with **Punch out and log out**, **Log out and
+  stay on duty**, and **Cancel**. About 30–40 lines in
+  app/driver-home.jsx, reusing `punchOut` (driverDutyService.js); no
+  rules change. It must handle "On a run" (can't punch out: "Finish your
+  ride first"), "On break" (`punchOut` only covers Available today), and
+  erase the last known location like the duty card does.
 - **Status:** Open. Fine for the Capstone demo.
 
 ### "App closed" only shows when the app closes normally

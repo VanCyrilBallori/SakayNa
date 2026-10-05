@@ -1183,9 +1183,11 @@ export default function AdminHome() {
               style={styles.logoutMenuButton}
               onPress={async () => {
                 try {
-                  await logoutCurrentUser();
+                  // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
+                  // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
                   setProfileMenuOpen(false);
                   router.replace("/login");
+                  await logoutCurrentUser();
                 } catch (error) {
                   const message = getAuthErrorMessage(error, "We could not log you out. Please try again.");
                   if (Platform.OS === "web") {

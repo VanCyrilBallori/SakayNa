@@ -80,8 +80,10 @@ export default function DriverStatus() {
 
   const handleLogout = async () => {
     try {
-      await logoutCurrentUser();
+      // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
+      // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
       router.replace("/login");
+      await logoutCurrentUser();
     } catch (error) {
       Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
     }

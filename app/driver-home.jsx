@@ -274,7 +274,9 @@ export default function DriverHome() {
         window.removeEventListener("beforeunload", markAppClosed);
       }
 
-      markAppClosed();
+      // Only while someone is signed in. After sign-out Firebase refuses the save ("Missing or insufficient
+      // permissions"); Log Out already saved "Offline" before signing out.
+      if (auth.currentUser) markAppClosed();
     };
   }, [accessStatus, authUser?.uid, authUser?.email, displayName, profile?.email, profile?.fullName]);
 
@@ -977,9 +979,19 @@ export default function DriverHome() {
                 style={styles.logoutMenuButton}
                 onPress={async () => {
                   try {
-                    await logoutCurrentUser();
+                    // Save "app closed" (Offline) while still signed in, so the dispatcher sees it.
+                    // Wait at most 3 seconds: with no internet the save would never finish.
+                    if (authUser?.uid) {
+                      const saveOffline = setDoc(doc(db, "users", authUser.uid), { presence: "Offline", lastSeenAt: serverTimestamp() }, { merge: true }).catch(
+                        (error) => console.log("Driver presence offline warning:", error)
+                      );
+                      await Promise.race([saveOffline, new Promise((resolve) => setTimeout(resolve, 3000))]);
+                    }
+                    // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
+                    // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
                     setProfileMenuOpen(false);
                     router.replace("/login");
+                    await logoutCurrentUser();
                   } catch (error) {
                     Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
                   }
