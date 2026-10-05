@@ -120,11 +120,11 @@ Press `w` for the browser, or open the SakayNa development build on the phone an
 | Collection | Purpose |
 | --- | --- |
 | `users` | Profiles, roles, account state. Drivers also have their duty status (`dutyStatus`: Off duty, Available, On break, On a run) and `presence` (is the app open) |
-| `transportRequests` | Resident transport requests. `purpose`: Medical / Health, Community / Personal Trip, or Other. `timing`: `asap` or `scheduled` (with `scheduledFor`, 1 hour to 7 days ahead). Emergencies use `callSessions`, not this form. |
+| `transportRequests` | Resident transport requests. `purpose`: Medical / Health, Community / Personal Trip, or Other. `timing`: `asap` or `scheduled` (with `scheduledFor`, 1 hour to 7 days ahead). Emergencies use `callSessions`, not this form. A dispatcher can also create one from an emergency alert they answered (Emergency request form: `requestType: "Emergency Request"`, `emergencyType`, `emergencyAlertId`, `createdBy`; firestore.rules checks the alert). |
 | `driverAssignments` | Dispatcher-to-driver assignments. Status Assigned, In Progress, Completed, Cancelled, or Unable (the driver sent "I can't do this ride": an inability report with the reason, shown to the dispatcher and in the admin's Duty Records). Old "Declined" ones are kept (older APKs can still decline) |
 | `dutyRecords` | Driver time card lines: punch in / out, break start / end, run start / end, with Firestore's time. Never edited or deleted. The admin's Duty Records (DTR) are worked out from these |
 | `driverLocations` | One document per driver (id = their uid): last known location (`latitude`, `longitude`, `step`, `at`), saved only when the driver taps Punch in, Accept, En route, Arrived or Picked up. Each step replaces it; Punch out erases it. Only dispatchers can read it (for "Show on map") |
-| `callSessions` | In-app emergency alerts (the red Emergency button) |
+| `callSessions` | In-app emergency alerts (the red Emergency button). After the dispatcher submits the Emergency request form: `linkedRequestId`, `linkedRequestReference`, `emergencyType` |
 | `residentVerifications` | Resident proof-of-residency photo link, for the barangay Admin's review |
 | `Driver_Applications` | Driver applications + document photo links, for the barangay Admin's review |
 | `vehicles` | City and barangay vehicle records (drivers do not register vehicles) |
@@ -145,7 +145,9 @@ Centralized names, roles, statuses, and priorities live in [`constants/app.js`](
    driver + vehicle → Driver runs the mission (Accept → En Route → Arrived → Picked Up →
    Complete) → Resident sees it "Completed" → Admin Overview count increases.
 5. **Emergency alert:** Resident taps **Emergency** → Send alert → Dispatcher "Answer" →
-   "Dispatcher accepted" on the resident's phone → end.
+   "Dispatcher accepted" and the call countdown on the resident's phone → the Dispatcher fills in
+   the **Emergency request form** (driver + vehicle) → Submit → the resident's "Your ride" card
+   shows the driver, and the driver gets the ride → end.
 6. **Driver approval:** a new driver applies (Choose Role → Driver) → the Admin of the same
    barangay approves them in **Driver Applications** → the driver can reach `/driver-home`.
 7. **Driver can't do a ride:** Dispatcher assigns → Driver taps **I can't do this ride** (before

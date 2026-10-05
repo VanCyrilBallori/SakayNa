@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked against the app: Oct 5, 2026 (after the emergency call fix in emergency-auto-call-plan.md: the dispatcher's own phone, plain-text number on the website).
+Last checked against the app: Oct 5, 2026 (after emergency-request-form-plan.md: the dispatcher's Emergency request form).
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,6 +10,31 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### Emergency request form: limits
+
+- **Found:** Oct 5, 2026 (emergency-request-form-plan.md).
+- **What it is:**
+  - If the resident taps **Done** and the dispatcher then closes the form
+    without submitting, the form can't be opened again: the Active
+    emergency card (with its **Open emergency form** button) is gone
+    once the alert ends. While the form stays open, Submit still works.
+  - Cancel, Back, closing the browser or reloading the page throw away
+    what was typed (the caller information fills in again).
+  - "About 2 km" is a straight line from the driver's **last known**
+    location (where they last tapped a step), not the road distance, and
+    the location can be old (its age is shown). No resident GPS = no
+    distances.
+  - The GPS pin is saved on the ride only if the dispatcher kept the GPS
+    address as the pickup; a typed address saves no pin.
+  - With no internet, Submit can stay on "Saving…" for a while before the
+    red "could not be saved" message (no time limit, like resident #11).
+  - firestore.rules checks that the alert was answered by this
+    dispatcher for this resident, but not the other fields. That is not
+    new: dispatchers can already change any field of any ride.
+- **What to do:** keep the form open until Submit. If it was lost, the
+  resident can still send a normal Request a Ride.
+- **Status:** Open. Fine for the Capstone demo.
 
 ### Auto call after a dispatcher answers: when it doesn't call
 

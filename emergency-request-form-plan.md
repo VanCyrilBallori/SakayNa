@@ -1,6 +1,6 @@
 # Emergency Request Form Plan
 
-**Status: approved 2026-10-05. Steps 1 (3521461), 2a (7709c51), 3 (rules, 269a2b1) and 4 (b403e55) done and tested. Step 2b written, waiting for the test. Then Step 5 (notes).** Freeze: around Oct 8-9.
+**Status: DONE (2026-10-05). Steps 1 (3521461), 2a (7709c51), 3 (rules, 269a2b1), 4 (b403e55) and 2b (627ea2d) tested; Step 5 notes written.** Not released yet.
 **Decisions (2026-10-05):** the alert stays connected after Submit; the
 description is saved as Notes, with the hint "The driver and the resident
 can see this." under the box; drivers are listed nearest first.
@@ -172,7 +172,15 @@ way (one transaction = everything is saved together, or nothing is):
 4. Save the `driverAssignments` document (same fields as the Assign window).
 5. Mark the vehicle "Assigned".
 6. Link the alert: `linkedRequestId`, `linkedRequestReference`,
-   `emergencyType`.
+   `emergencyType` (and `linkedDriverName`, `linkedVehicleName` for the
+   card's "Ride created" line).
+
+Decided while building (Step 4, 2026-10-05):
+- The GPS pin is saved on the ride only if the dispatcher kept the GPS
+  address as the pickup. A typed address saves no pin, so the driver's map
+  never points to the wrong place.
+- Back and Cancel can't be tapped while Submit is saving (the save would
+  still finish, so "nothing saved" would not be true).
 
 ## The alert and the Active emergency card after Submit
 - The alert **stays "connected"**. Its status does not change, so the

@@ -744,7 +744,7 @@ Rejected (section 5.4).
 | `users/{uid}` | **delete**: nobody can | `firestore.rules:80` |
 | `residentVerifications/{uid}` | **create** only their own (document id = their uid), only as `status: "Pending"`; **read** only their own. Only the Admin of their barangay may read it too, and only that Admin may change it (to Active or Rejected) | `match /residentVerifications` in `firestore.rules:149-159` |
 | `transportRequests` | **read** only requests where `residentId` is their own uid | `match /transportRequests` in `firestore.rules:85-87` |
-| `transportRequests` | **create** only if they are an **Active** Resident and `residentId` is their own uid | `isActiveResident` in `firestore.rules:32-35`, `match /transportRequests` in `88` |
+| `transportRequests` | **create** only if they are an **Active** Resident and `residentId` is their own uid. (Since 2026-10-05 a **dispatcher** may also create one for them, but only from an emergency alert that dispatcher answered, for that same resident: section 5.3.) | `isActiveResident` in `firestore.rules:32-35`, `dispatcherRideFromAlertIsSafe` and `match /transportRequests` in `firestore.rules` |
 | `transportRequests` | **update** any request where `residentId` is their own uid (any field, see #3) | `firestore.rules:89-91` |
 | `transportRequests` | **delete**: Admin only | `firestore.rules:92` |
 | `callSessions` | **read** their own alerts, **and** an alert ID that does not exist yet (so the app can start watching a new alert before it is saved) | `match /callSessions` in `firestore.rules:120` |
@@ -867,6 +867,39 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
   `dispatcherPhoneIsOffice` is true) (changed 2026-10-05). The resident sees
   "Dispatcher accepted" and the call countdown. The heartbeat and
   keep-awake then stop.
+- **Emergency request form** (added 2026-10-05,
+  `emergency-request-form-plan.md`; `EmergencyRequestForm` in
+  `features/dispatcher/components/EmergencyRequestForm.jsx`): Answer also
+  opens a form on the dispatcher's website (only if no form is open yet;
+  otherwise the alert's Active emergency card has an **Open emergency
+  form** button).
+  - Filled in by itself: caller name and number (from the alert), barangay
+    (from the resident's profile), pickup location (the GPS address once it
+    arrives), date / time received, dispatcher. The dispatcher types the
+    emergency type, priority, number of patients, a short description ("The
+    driver and the resident can see this."), the destination, and picks an
+    Available driver and a vehicle (the same vehicle list as the Assign
+    window). Each driver shows a rough straight-line distance from the
+    resident's GPS ("about 2 km away (location from 5 min ago)"), nearest
+    first.
+  - **Submit** (`createEmergencyRide` in
+    `features/dispatcher/services/dispatcherAssignmentService.js`) saves in
+    one transaction: a new `transportRequests` ride for the resident,
+    already `"Assigned"` (`requestType: "Emergency Request"`, `purpose`
+    "Medical / Health" or "Other", `emergencyType`, `title` "Emergency: …",
+    the description as `additionalNotes`, `dispatcherName`,
+    `emergencyAlertId`, `createdBy`), the driver's assignment, the vehicle
+    marked busy, and the alert's link (`linkedRequestId`,
+    `linkedRequestReference`, `emergencyType`). The GPS pin is saved only if
+    the dispatcher kept the GPS address as the pickup.
+  - The resident sees it like any assigned ride: the "Your ride" card
+    (under the alert pop-up, then after Done), Request Details (with
+    "Dispatcher"), and they can cancel it while it is Assigned.
+  - The alert stays `"connected"`, so the resident's pop-up does not change.
+    The dispatcher's card shows "Ride SKN-… created · driver · vehicle"
+    until the alert ends as before.
+  - Cancel or Back saves nothing. One ride per alert (Submit checks the
+    alert has no ride yet).
 - **The resident always calls the dispatcher**, never the other way around,
   because dispatchers use a computer. The Incoming Emergency pop-up and the
   Active emergency card show the resident's number as **plain text** for
@@ -988,11 +1021,12 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
    alert's `status` in Firestore, and the Admin call list still shows it as
    unanswered forever, because it does not look at `lastActiveAt`
    (`useAdminCallSessions.js:52`). See also #33 and #34.
-9. **Still open — `latestRequestId` is saved on each alert**
+9. **Partly fixed — `latestRequestId` is saved on each alert**
    (`writeAlert` in `app/resident-home.jsx:297`), but nothing reads it. The
    Admin alert list shows "Type:" using `emergencyType/serviceType`
-   (`AdminCallSessionsSection.jsx:63`), which the resident never saves, so it
-   always says "Not specified".
+   (`AdminCallSessionsSection.jsx:63`). The resident never saves it; since
+   2026-10-05 the dispatcher's Emergency request form does (section 5.3), so
+   only alerts without a form ride still say "Not specified".
 10. **Still open — "Location: sending…" may take longer than 15 seconds.**
     Only the GPS reading has a 15-second limit. Turning the coordinates into
     an address (`reverseGeocodeAsync` in `useCurrentLocation.js`) has no time
@@ -1030,12 +1064,12 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
     needed and notes** (Passenger card in `app/driver-home.jsx:718-735`;
     resident overhaul Step 1). "Patient" is now "Passenger", and the name is
     the passenger's, not the account owner's.
-15. **Still open — Some Request Details fields are never filled in:**
-    `assignedDriverPhone`, `driverContactNumber`, `dispatcherName`,
-    `dispatcherOfficePhone` (`ResidentRequestDetails.jsx`). No code writes
-    these to the request (the dispatcher's name is only saved on the
-    assignment, `dispatcherAssignmentService.js:41`). So the resident always
-    sees "Contact is not available yet" and no dispatcher.
+15. **Partly fixed — Some Request Details fields are not always filled in:**
+    `driverContactNumber`, `dispatcherName`, `dispatcherOfficePhone`
+    (`ResidentRequestDetails.jsx`). `assignedDriverPhone` is saved when a
+    driver is assigned. `dispatcherName` and `dispatcherOfficePhone` are
+    saved only on rides made with the Emergency request form (2026-10-05,
+    section 5.3). On normal rides the resident still sees no dispatcher.
 16. **Still open — A "Rejected" request status is displayed but never set.**
     The timeline and labels handle it (`statusMeta` in `requestMapper.js:40`,
     `getRequestTimeline` in `96`), but no code sets a request to "Rejected".
