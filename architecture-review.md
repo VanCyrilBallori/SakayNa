@@ -29,7 +29,7 @@ The problems, most important first:
 
 | ID | Problem | Category | What the fix touches |
 |---|---|---|---|
-| C1 | An unapproved "driver" account can change every vehicle | CRITICAL | rules only |
+| C1 | An unapproved "driver" account can change every vehicle | CRITICAL, **Fixed** (93867d3) | rules only |
 | C2 | The Admin's Emergency Calls list may not show a new alert | CRITICAL | website, 1 line |
 | C3 | A real alert can disappear from every dispatcher after 2 minutes | CRITICAL (KNOWN #33) | test first; website, 1 number |
 | A1 | Two dispatchers can answer the same alert | After the demo | website |
@@ -40,8 +40,7 @@ The problems, most important first:
 
 **If the app stays frozen until the demo:** use the demo-day checklist
 (section 9). It avoids C2, C3 and A1 without changing code.
-**If you allow one change:** C1. It is a rules-only change, it doesn't need
-a new APK or a website release, and the risk is low.
+**C1 is fixed** (rules only, commit 93867d3, 2026-10-05).
 
 ### What is already done well (useful for the defense)
 
@@ -241,6 +240,12 @@ are only repeated here when they matter for the demo, and are marked KNOWN.
 ## 5. CRITICAL: fix before the demo (or use the workaround)
 
 ### C1. An unapproved "driver" account can change every vehicle (NEW, security)
+
+**Fixed (2026-10-05, commit 93867d3).** Rules only: vehicles, driver
+schedules and checklists now need `isApprovedDriver()`. Deployed the safe
+way: the live rules matched 269a2b1 before and 93867d3 after (live
+ruleset afa530d9). Tested by hand: Complete, "I can't do this ride",
+resident cancel, emergency form, and admin vehicle edit.
 
 **What is happening?**
 In the rules, `isDriver()` only asks "is this account's role Driver?"
