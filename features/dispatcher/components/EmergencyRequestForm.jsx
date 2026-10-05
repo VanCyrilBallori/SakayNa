@@ -8,6 +8,7 @@ import { DESIGN_COLORS } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
+import { formatDutyDuration } from "../../../lib/dutyTime";
 import { MAX_PASSENGERS } from "../../resident/utils/requestOptions";
 import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
 import { createEmergencyRide } from "../services/dispatcherAssignmentService";
@@ -16,6 +17,20 @@ import { createEmergencyRide } from "../services/dispatcherAssignmentService";
 export const EMERGENCY_TYPES = ["Medical emergency", "Accident / injury", "Pregnancy / labor", "Other"];
 // Our existing priority names (constants/app.js), without "Planned": an emergency is never scheduled.
 export const EMERGENCY_PRIORITIES = ["Emergency", "Urgent", "Non-Urgent"];
+
+// The straight-line ("as the crow flies") distance in km between two GPS points (the haversine formula).
+// Roads are longer, so it is only a rough guide.
+const distanceKm = (from, to) => {
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const latitudeChange = toRadians(to.latitude - from.latitude);
+  const longitudeChange = toRadians(to.longitude - from.longitude);
+  const a =
+    Math.sin(latitudeChange / 2) ** 2 + Math.cos(toRadians(from.latitude)) * Math.cos(toRadians(to.latitude)) * Math.sin(longitudeChange / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+// "less than 1 km away" or "about 2 km away".
+const getDistanceLabel = (km) => (km < 1 ? "less than 1 km away" : `about ${Math.round(km)} km away`);
 
 // Checks the form. Returns { fieldName: "message" } for every field that needs fixing (empty = all good).
 // chosenDriver / chosenVehicle = the picked driver and vehicle, or null if none (or no longer on the list).
@@ -114,6 +129,13 @@ export default function EmergencyRequestForm({
     form.barangay && !TOLEDO_BARANGAY_PICKER_OPTIONS.some((option) => option.value === form.barangay)
       ? [{ label: form.barangay, value: form.barangay }, ...TOLEDO_BARANGAY_PICKER_OPTIONS]
       : TOLEDO_BARANGAY_PICKER_OPTIONS;
+
+  // Each driver's rough distance from the resident's GPS spot, using the driver's last known location
+  // (driver-location-plan.md). null = unknown. Nearest first; unknown at the bottom.
+  const now = Date.now();
+  const driverRows = drivers
+    .map((driver) => ({ ...driver, km: hasLocation && driver.location ? distanceKm(location, driver.location) : null }))
+    .sort((first, second) => (first.km ?? Infinity) - (second.km ?? Infinity));
 
   // The picked driver, only while they are still on the Available list (they may start a break while the form is open).
   const chosenDriver = drivers.find((driver) => driver.id === form.driverId) ?? null;
@@ -337,9 +359,11 @@ export default function EmergencyRequestForm({
         {/* ---- Driver and vehicle (like the Assign window) ---- */}
         <SectionTitle icon="van-utility" text="Driver and vehicle" />
         <Field label="Driver" required error={errors.driver} wide>
+          {/* Without the resident's GPS there is nothing to measure from. */}
+          {drivers.length && !hasLocation ? <Text style={styles.hint}>Distance not shown: the resident&apos;s location was not sent.</Text> : null}
           {drivers.length ? (
             <View style={styles.optionList}>
-              {drivers.map((driver) => (
+              {driverRows.map((driver) => (
                 <OptionRow key={driver.id} selected={form.driverId === driver.id} onPress={() => chooseDriver(driver)} accessibilityLabel={`${driver.name}, Available`}>
                   <View style={styles.optionTop}>
                     <Text style={styles.optionTitle}>{driver.name}</Text>
@@ -348,6 +372,17 @@ export default function EmergencyRequestForm({
                     </View>
                   </View>
                   <Text style={styles.optionMeta}>{driver.barangay}</Text>
+                  {/* The location is where the driver last tapped a step, so its age is shown too: it can be old. */}
+                  {driver.km !== null ? (
+                    <Text style={styles.optionDistance}>
+                      {getDistanceLabel(driver.km)}
+                      {driver.location.atMs != null
+                        ? ` (location from ${now - driver.location.atMs < 60_000 ? "just now" : `${formatDutyDuration(now - driver.location.atMs)} ago`})`
+                        : ""}
+                    </Text>
+                  ) : hasLocation ? (
+                    <Text style={styles.optionMeta}>Distance unknown (no location shared)</Text>
+                  ) : null}
                   {/* Punched in, but the app is closed: the driver may not see the ride (same warning as the Drivers column). */}
                   {driver.presence === "Offline" ? <Text style={styles.optionWarning}>App closed. Call the driver first.</Text> : null}
                 </OptionRow>
@@ -608,6 +643,7 @@ const styles = StyleSheet.create({
   optionTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   optionTitle: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
   optionMeta: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  optionDistance: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
   optionWarning: { marginTop: 4, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.orangeDeep },
   // Same green badge as the Drivers column ("Available" = Hall Green with white words).
   availableBadge: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
