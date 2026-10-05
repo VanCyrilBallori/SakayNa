@@ -192,16 +192,19 @@ service cloud.firestore {
     }
 
     // ---- Vehicles ----
+    // Drivers free a van when they complete a ride, can't do it, or the resident cancelled.
+    // Only an Approved driver: a Pending applicant has the Driver role too (architecture-review.md C1).
     match /vehicles/{vehicleId} {
       allow read:           if isStaff() || isDriver();
       allow create, delete: if isAdmin();
-      allow update:         if isAdmin() || isStaff() || isDriver();
+      allow update:         if isAdmin() || isStaff() || isApprovedDriver();
     }
 
     // ---- Driver availability schedules ----
+    // Approved drivers only, like vehicles (architecture-review.md C1).
     match /driverSchedules/{scheduleId} {
       allow read:  if isStaff() || isDriver();
-      allow write: if isStaff() || isDriver();
+      allow write: if isStaff() || isApprovedDriver();
     }
 
     // ---- Driver duty records (the DTR) ----
@@ -277,9 +280,10 @@ service cloud.firestore {
     }
 
     // ---- Vehicle readiness checklists ----
+    // Approved drivers only, like vehicles (architecture-review.md C1).
     match /vehicleChecklists/{checklistId} {
       allow read:           if isStaff() || isDriver();
-      allow create, update: if isDriver();
+      allow create, update: if isApprovedDriver();
       allow delete:         if false;
     }
 
