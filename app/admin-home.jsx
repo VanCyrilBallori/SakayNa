@@ -41,7 +41,6 @@ import {
   formatDateTime,
   getAverageDuration,
   getDateFromValue,
-  getDurationLabel,
 } from "../lib/dates";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
@@ -485,22 +484,20 @@ export default function AdminHome() {
   );
 
   // Totals prefer the server-side count; the client tally is the fallback until it loads.
-  const overviewCards = [
-    { label: "Medical / Health Rides", value: counts.medicalRequests ?? countRequestsByPurpose("Medical / Health") },
-    { label: "Community / Personal Trips", value: counts.communityRequests ?? countRequestsByPurpose("Community / Personal Trip") },
-    { label: "Other Rides", value: counts.otherRequests ?? countRequestsByPurpose("Other") },
-    { label: "Active Requests", value: counts.activeRequests ?? activeRequestsCount },
-    { label: "Completed Requests", value: counts.completedRequests ?? completedRequestsCount },
-    { label: "Cancelled Requests", value: counts.cancelledRequests ?? cancelledRequestsCount },
-    { label: "Total Registered Drivers", value: counts.registeredDrivers ?? totalRegisteredDrivers },
-    { label: "Available Drivers", value: counts.availableDrivers ?? availableDrivers },
-    { label: "Total Registered Vehicles", value: counts.registeredVehicles ?? vehicles.length },
-    { label: "Average Response Time", value: getDurationLabel(averageResponseTime) },
-    { label: "Average Dispatch Time", value: getDurationLabel(averageDispatchTime) },
-  ];
+  const overviewNumbers = {
+    medical: counts.medicalRequests ?? countRequestsByPurpose("Medical / Health"),
+    community: counts.communityRequests ?? countRequestsByPurpose("Community / Personal Trip"),
+    other: counts.otherRequests ?? countRequestsByPurpose("Other"),
+    active: counts.activeRequests ?? activeRequestsCount,
+    completed: counts.completedRequests ?? completedRequestsCount,
+    cancelled: counts.cancelledRequests ?? cancelledRequestsCount,
+    drivers: counts.registeredDrivers ?? totalRegisteredDrivers,
+    availableDrivers: counts.availableDrivers ?? availableDrivers,
+    vehicles: counts.registeredVehicles ?? vehicles.length,
+  };
 
-  const requestStatusStats = requestStatusFilters
-    .filter((status) => status !== "All")
+  // The split of the active requests (Overview shows it under "Active").
+  const requestStatusStats = ["Pending", "Assigned", "In Progress"]
     .map((status) => ({
       label: status,
       value: requestsWithDerivedFields.filter((request) => (request.status || "Pending") === status).length,
@@ -510,13 +507,6 @@ export default function AdminHome() {
     () => buildActivityBuckets(rangeLabel, requestsWithDerivedFields),
     [rangeLabel, requestsWithDerivedFields]
   );
-  const maxActivity = Math.max(...activityBuckets.map((bucket) => bucket.value), 1);
-
-  const notifications = [
-    `${pendingApplications.length} driver ${pendingApplications.length === 1 ? "application" : "applications"} waiting for review.`,
-    `${dispatcherAccounts.length} dispatcher ${dispatcherAccounts.length === 1 ? "account" : "accounts"} currently registered.`,
-    `${activeRequestsCount} request${activeRequestsCount === 1 ? "" : "s"} still active in the system.`,
-  ];
 
   const menuItems = [
     {
@@ -813,14 +803,14 @@ export default function AdminHome() {
 
     return (
       <AdminOverviewSection
-        theme={theme}
-        styles={styles}
-        notifications={notifications}
-        overviewCards={overviewCards}
+        numbers={overviewNumbers}
+        pendingApplicationsCount={pendingApplications.length}
+        dispatcherCount={dispatcherAccounts.length}
+        averageDispatchTime={averageDispatchTime}
+        averageResponseTime={averageResponseTime}
         rangeLabel={rangeLabel}
         setRangeLabel={setRangeLabel}
         activityBuckets={activityBuckets}
-        maxActivity={maxActivity}
         requestStatusStats={requestStatusStats}
         atLimit={requestsAtLimit}
         collectionLimit={collectionLimit}
@@ -1289,38 +1279,6 @@ const styles = StyleSheet.create({
   contentPanel: { padding: 14, borderRadius: 18, borderWidth: 1 },
   contentPanelFixed: { flex: 1, minHeight: 0 },
   contentPanelScrollContent: { paddingBottom: 2 },
-  notificationPanel: {
-    marginTop: 12,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 7,
-  },
-  notificationHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  notificationTitle: { fontSize: 16, fontWeight: "900" },
-  notificationText: { fontSize: 13, lineHeight: 20, fontWeight: "700" },
-  metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 12 },
-  metricCard: { flexGrow: 1, flexBasis: 180, padding: 16, borderRadius: 16, borderWidth: 1 },
-  metricLabel: { fontSize: 12, fontWeight: "800" },
-  metricValue: { marginTop: 10, fontSize: 28, fontWeight: "900" },
-  chartCard: { marginTop: 12, padding: 18, borderRadius: 16, borderWidth: 1 },
-  chartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
-  chartTitle: { fontSize: 20, fontWeight: "900" },
-  chartSubtitle: { marginTop: 4, fontSize: 13, lineHeight: 19 },
-  rangeButton: { minHeight: 38, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  rangeButtonText: { fontSize: 13, fontWeight: "800" },
-  barRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: 10, marginTop: 18, minHeight: 200 },
-  barItem: { flex: 1, minWidth: 0, alignItems: "center" },
-  barValue: { marginBottom: 6, fontSize: 16, fontWeight: "900" },
-  barTrack: { width: 34, height: 142, borderRadius: 12, justifyContent: "flex-end", alignItems: "center", padding: 4 },
-  bar: { width: "100%", borderRadius: 10 },
-  dayText: { marginTop: 10, fontSize: 11, fontWeight: "800", paddingVertical: 4, paddingHorizontal: 6, borderRadius: 999 },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 12 },
-  statsPanel: { flexGrow: 1, flexBasis: 260, padding: 18, borderRadius: 16, borderWidth: 1 },
-  statsPanelTitle: { fontSize: 16, fontWeight: "900", marginBottom: 12 },
-  statLine: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "rgba(127,127,127,0.18)" },
-  statLineLabel: { flex: 1, fontSize: 13, fontWeight: "700" },
-  statLineValue: { fontSize: 15, fontWeight: "900" },
   verificationSection: { marginTop: 14 },
   subsectionTitle: { fontSize: 18, fontWeight: "900" },
   verificationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 14 },
