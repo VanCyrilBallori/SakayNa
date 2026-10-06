@@ -745,8 +745,7 @@ export default function AdminHome() {
     if (selectedSection === "Requests") {
       return (
         <AdminRequestsSection
-          theme={theme}
-          styles={styles}
+          requests={requestsWithDerivedFields}
           requestTypeFilters={requestTypeFilters}
           requestTypeFilter={requestTypeFilter}
           setRequestTypeFilter={setRequestTypeFilter}
@@ -1310,16 +1309,6 @@ const styles = StyleSheet.create({
   dropdownContainer: { borderWidth: 1, borderRadius: 10 },
   dropdownText: { fontSize: 14, fontWeight: "700" },
   limitNotice: { marginTop: 10, fontSize: 12, fontWeight: "700", fontStyle: "italic" },
-  requestGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 6 },
-  requestCard: { flexGrow: 1, flexBasis: 320, padding: 18, borderRadius: 14, borderWidth: 1 },
-  requestCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  requestLevelPill: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 999 },
-  requestLevelText: { fontSize: 12, fontWeight: "900", color: "#111111" },
-  requestStatusText: { fontSize: 12, fontWeight: "800" },
-  requestTitle: { marginTop: 14, fontSize: 18, fontWeight: "900" },
-  requestMeta: { marginTop: 7, fontSize: 13, lineHeight: 19 },
-  requestViewButton: { marginTop: 16, minHeight: 42, borderRadius: 12, backgroundColor: "#06774B", alignItems: "center", justifyContent: "center" },
-  requestViewButtonText: { fontSize: 14, fontWeight: "900", color: "#FFFFFF" },
   usersGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 6 },
   userCard: { flexGrow: 1, flexBasis: 300, padding: 18, borderRadius: 14, borderWidth: 1 },
   userCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
