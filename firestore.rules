@@ -47,9 +47,9 @@ service cloud.firestore {
     }
 
     // A brand-new self-created profile may only be an unapproved Resident or an
-    // unapproved (Pending) Driver applicant. Dispatcher and Admin accounts are
-    // always provisioned by an Admin through the Firebase console, never by the
-    // app itself, so self-signup can never produce one.
+    // unapproved (Pending) Driver applicant. Dispatcher accounts are made by an
+    // Admin (see adminCreatesDispatcherIsSafe) and Admin accounts in the Firebase
+    // console, so self-signup can never produce either.
     // A new Resident starts "Pending" until an Admin verifies their proof of residency.
     // A new Driver starts "Pending" until an Admin reviews their application.
     // Both need a verified email (Google sign-ins are verified automatically).
@@ -60,6 +60,15 @@ service cloud.firestore {
         || (request.resource.data.role == "Driver"
           && request.resource.data.accountStatus == "Pending"
           && request.auth.token.email_verified == true);
+    }
+
+    // An Admin may create someone else's profile in Admin Operations, but only
+    // as an Active Dispatcher, stamped with that Admin's uid. Never an Admin,
+    // Driver or Resident.
+    function adminCreatesDispatcherIsSafe() {
+      return request.resource.data.role == "Dispatcher"
+        && request.resource.data.accountStatus == "Active"
+        && request.resource.data.get("createdBy", "") == request.auth.uid;
     }
 
     // A self-update (by the profile's own owner) may never change these
@@ -147,7 +156,9 @@ service cloud.firestore {
     match /users/{userId} {
       allow read:   if signedIn() && (request.auth.uid == userId || isStaff());
       // A new profile may not start with a duty status (a driver must punch in).
-      allow create: if signedIn() && request.auth.uid == userId && selfCreateProfileIsSafe()
+      allow create: if signedIn()
+        && ((request.auth.uid == userId && selfCreateProfileIsSafe())
+          || (isAdmin() && request.auth.uid != userId && adminCreatesDispatcherIsSafe()))
         && !request.resource.data.keys().hasAny(dutyFields());
       allow update: if signedIn() && (
         (request.auth.uid == userId && keepsAdminOnlyFields() && dutyChangeIsSafe()) || (isAdmin() && request.auth.uid != userId)

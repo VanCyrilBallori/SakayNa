@@ -1,7 +1,10 @@
-import { collection, doc, getDocs, limit, query, runTransaction, serverTimestamp, setDoc, where } from "firebase/firestore";
+import { getApps, initializeApp } from "firebase/app";
+import { createUserWithEmailAndPassword, deleteUser, getAuth, inMemoryPersistence, initializeAuth, signOut } from "firebase/auth";
+import { collection, doc, getDocs, limit, query, runTransaction, serverTimestamp, setDoc, where, writeBatch } from "firebase/firestore";
 
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLE_OPTIONS, ROLES, VEHICLE_MAINTENANCE_STATUSES } from "../../../constants/app";
-import { db } from "../../../firebase";
+import { app, db } from "../../../firebase";
+import { TOLEDO_BARANGAY_OPTIONS } from "../../../lib/barangays";
 
 const ACTIVE_MISSION_STATUSES = ["Assigned", "In Progress", "Accepted", "En Route", "Arrived", "Picked Up"];
 const ACTIVE_INVITATION_STATUS = "Pending Invitation";
@@ -235,6 +238,65 @@ export const createStaffInvitation = async ({ adminId, email, displayName, inten
   if (!existing.empty) throw new Error("A pending invitation already exists for this email address.");
   const invitationRef = doc(collection(db, FIRESTORE_COLLECTIONS.STAFF_INVITATIONS));
   await setDoc(invitationRef, { email: normalizedEmail, intendedRole, displayName: displayName.trim(), barangay: barangay.trim(), serviceAreas: [...new Set(serviceAreas.filter(Boolean))], operationalPhone: operationalPhone.trim(), status: ACTIVE_INVITATION_STATUS, createdBy: adminId, createdAt: serverTimestamp(), expiresAt: null });
+};
+
+// Making a new login normally switches the app over to that new person, which would log the Admin out.
+// So the new login is made on a second, separate Firebase connection that only keeps it in memory.
+// The Admin's own connection (auth in firebase.jsx) is never touched.
+const getHelperAuth = () => {
+  const helperApp = getApps().find((item) => item.name === "create-dispatcher") || initializeApp(app.options, "create-dispatcher");
+  try {
+    return initializeAuth(helperApp, { persistence: inMemoryPersistence });
+  } catch {
+    // Already set up by an earlier Create Dispatcher.
+    return getAuth(helperApp);
+  }
+};
+
+// Admin Operations → Add Dispatcher: makes the login (email + temporary password) and the users/{uid} profile.
+// firestore.rules only lets an Admin create an Active Dispatcher profile this way.
+export const createDispatcherAccount = async ({ adminId, fullName, email, phoneNumber, barangay, temporaryPassword }) => {
+  const cleanEmail = (email || "").trim().toLowerCase();
+  if (!hasText(fullName, 2)) throw new Error("Enter the dispatcher's full name.");
+  if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) throw new Error("Enter a valid email address.");
+  if (!hasText(phoneNumber, 7)) throw new Error("Enter the dispatcher's phone number.");
+  if (!TOLEDO_BARANGAY_OPTIONS.some((option) => option.value === barangay)) throw new Error("Choose the dispatcher's barangay.");
+  if (typeof temporaryPassword !== "string" || temporaryPassword.length < 8) throw new Error("The temporary password must be at least 8 characters.");
+
+  const helperAuth = getHelperAuth();
+  let newUser;
+  try {
+    ({ user: newUser } = await createUserWithEmailAndPassword(helperAuth, cleanEmail, temporaryPassword));
+  } catch (error) {
+    if (error?.code === "auth/email-already-in-use") throw new Error("This email already has an account.");
+    if (error?.code === "auth/invalid-email") throw new Error("Enter a valid email address.");
+    if (error?.code === "auth/weak-password") throw new Error("The temporary password is too weak. Use at least 8 characters.");
+    if (error?.code === "auth/network-request-failed") throw new Error("No connection. Check the internet and try again.");
+    throw new Error("The login could not be created. Please try again.");
+  }
+
+  try {
+    // Saved by the Admin (not by the new login), together with the activity log line.
+    const batch = writeBatch(db);
+    batch.set(doc(db, FIRESTORE_COLLECTIONS.USERS, newUser.uid), {
+      role: ROLES.DISPATCHER,
+      accountStatus: ACCOUNT_STATUSES.ACTIVE,
+      fullName: fullName.trim(),
+      email: cleanEmail,
+      phoneNumber: phoneNumber.trim(),
+      barangay,
+      createdAt: serverTimestamp(),
+      createdBy: adminId,
+    });
+    writeActivity(batch, adminId, "dispatcher-created", "user", newUser.uid, `Dispatcher account created for ${fullName.trim()}.`, { barangay });
+    await batch.commit();
+  } catch {
+    // No profile = a login nobody can use properly (they could even sign up as a Resident). Remove it.
+    await deleteUser(newUser).catch(() => {});
+    throw new Error("The dispatcher's profile could not be saved, so the login was removed. Check the connection and try again.");
+  } finally {
+    await signOut(helperAuth).catch(() => {});
+  }
 };
 
 export const requestPermanentDeletion = async ({ adminId, targetUser, reason }) => {
