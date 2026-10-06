@@ -1,12 +1,21 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { collection, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { DESIGN_COLORS } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
-import { buildDailyDtr, DAY_MS, formatDutyDuration, formatManilaDay, formatManilaTime, getManilaDayStart } from "../../../lib/dutyTime";
+import {
+  buildDailyDtr,
+  DAY_MS,
+  formatDutyDuration,
+  formatManilaDay,
+  formatManilaTime,
+  fromDateBoxValue,
+  getManilaDayStart,
+  toDateBoxValue,
+} from "../../../lib/dutyTime";
 
 // The ride step when the driver sent "I can't do this ride" (unableAtStep), in plain words.
 const STEP_WORDS = {
@@ -87,6 +96,13 @@ export default function AdminDutyRecordsSection() {
     .sort((first, second) => first.atMs - second.atMs);
   const isToday = dayStartMs >= todayStartMs;
 
+  // The calendar box gives a date like "2026-10-04". Days after today are ignored, like Next day.
+  const pickDay = (value) => {
+    const pickedMs = fromDateBoxValue(value);
+    if (pickedMs === null || pickedMs > todayStartMs) return;
+    setDayStartMs(pickedMs);
+  };
+
   return (
     <View>
       <Text style={styles.title} accessibilityRole="header">
@@ -97,7 +113,7 @@ export default function AdminDutyRecordsSection() {
         started. The records can&apos;t be changed.
       </Text>
 
-      {/* Day picker: one day back or forward. No date package needed. */}
+      {/* Day picker: one day back or forward, or any day from the calendar box. No date package needed. */}
       <View style={styles.dayPicker}>
         <Pressable
           style={({ pressed }) => [styles.dayButton, pressed && styles.dayButtonPressed]}
@@ -121,6 +137,17 @@ export default function AdminDutyRecordsSection() {
           <Text style={[styles.dayButtonText, isToday && styles.dayButtonTextDisabled]}>Next day</Text>
           <MaterialCommunityIcons name="chevron-right" size={24} color={isToday ? DESIGN_COLORS.inkMuted : DESIGN_COLORS.ink} />
         </Pressable>
+        {/* The browser's own calendar (a plain web date box). The admin panel is a website, so this is web only. */}
+        {Platform.OS === "web" ? (
+          <input
+            type="date"
+            aria-label="Pick a day"
+            value={toDateBoxValue(dayStartMs)}
+            max={toDateBoxValue(todayStartMs)}
+            onChange={(event) => pickDay(event.target.value)}
+            style={dateBoxStyle}
+          />
+        ) : null}
         {!isToday ? (
           <Pressable
             style={({ pressed }) => [styles.dayButton, pressed && styles.dayButtonPressed]}
@@ -165,6 +192,24 @@ export default function AdminDutyRecordsSection() {
                 <Cell label="Medical / Health rides" value={`${line.medicalRides}`} />
                 <Cell label="Community / Other rides" value={`${line.communityRides}`} />
               </View>
+
+              {/* Each break with its reason: "12:01 PM – 12:45 PM · Lunch · the driver's note". */}
+              {line.breaks.length ? (
+                <View style={styles.breakList}>
+                  <Text style={styles.cellLabel}>Breaks</Text>
+                  {line.breaks.map((breakItem) => (
+                    <Text key={breakItem.startMs} style={styles.breakLine}>
+                      {[
+                        `${formatManilaTime(breakItem.startMs)} – ${breakItem.endMs === null ? "Still on break" : formatManilaTime(breakItem.endMs)}`,
+                        breakItem.breakType || "Break",
+                        breakItem.breakNote ? `"${breakItem.breakNote}"` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
             </View>
           ))}
         </View>
@@ -230,6 +275,20 @@ function Cell({ label, value }) {
   );
 }
 
+// The calendar box is a plain web element, so it takes a web style (not a StyleSheet one). Same look as the day buttons.
+const dateBoxStyle = {
+  minHeight: 48,
+  boxSizing: "border-box",
+  padding: "0 12px",
+  borderRadius: 16,
+  border: `1.5px solid ${DESIGN_COLORS.controlOutline}`,
+  backgroundColor: DESIGN_COLORS.paperWhite,
+  color: DESIGN_COLORS.ink,
+  fontSize: 17,
+  fontWeight: 700,
+  fontFamily: "inherit",
+};
+
 const styles = StyleSheet.create({
   title: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
   intro: { marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, maxWidth: 760 },
@@ -266,6 +325,9 @@ const styles = StyleSheet.create({
   cells: { flexBasis: 480, flexGrow: 3, flexDirection: "row", flexWrap: "wrap", rowGap: 12, columnGap: 16 },
   cell: { flexBasis: 140, flexGrow: 1 },
   cellLabel: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  // The break list sits under the numbers, across the whole row.
+  breakList: { flexBasis: "100%", gap: 2 },
+  breakLine: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   cellValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   // Inability reports: same plain list as the time cards. Time on the left, then who, why, and which ride.
