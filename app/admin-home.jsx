@@ -54,7 +54,6 @@ const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Comp
 // "Ride for" filter: the choices from the resident's request form. Old requests have no purpose, so they show under "All" only.
 const requestTypeFilters = ["All", ...PURPOSE_OPTIONS];
 const accountStatusOptions = ["Active", "Approved", "Pending", "Rejected", "Deactivated"];
-const vehicleStatusOptions = ["Available", "Assigned", "In Use", "Inactive"];
 const cityVehicleOwnerOptions = [CITY_VEHICLE_OWNER];
 
 const normalizeRole = (role = "") => role.toLowerCase();
@@ -248,9 +247,6 @@ const emptyVehicleForm = {
   type: "",
   plateNumber: "",
   ownerType: CITY_VEHICLE_OWNER,
-  ownerUid: "",
-  driverName: "",
-  status: "Available",
 };
 
 export default function AdminHome() {
@@ -618,9 +614,6 @@ export default function AdminHome() {
             type: vehicle.type || "",
             plateNumber: vehicle.plateNumber || "",
             ownerType: vehicle.ownerType || CITY_VEHICLE_OWNER,
-            ownerUid: vehicle.ownerUid || "",
-            driverName: vehicle.driverName || "",
-            status: vehicle.derivedStatus || vehicle.status || "Available",
           }
         : emptyVehicleForm
     );
@@ -644,14 +637,15 @@ export default function AdminHome() {
         type: vehicleForm.type.trim(),
         plateNumber: vehicleForm.plateNumber.trim().toUpperCase(),
         ownerType: vehicleForm.ownerType,
-        ownerUid: vehicleForm.ownerUid || "",
-        driverName: vehicleForm.driverName.trim(),
-        status: vehicleForm.status,
         updatedAt: serverTimestamp(),
       };
 
+      // Vans are not tied to one driver: the dispatcher picks the van for each ride.
+      // The status is set by the app itself (Assigned when a ride is given, Available when it ends,
+      // Archived when deleted), so it is only set once here, for a new vehicle. Editing leaves it alone.
       if (!vehicleForm.id) {
         payload.createdAt = serverTimestamp();
+        payload.status = "Available";
       }
 
       await setDoc(doc(db, "vehicles", vehicleId), payload, { merge: true });
@@ -662,7 +656,7 @@ export default function AdminHome() {
         targetType: "vehicle",
         targetId: vehicleId,
         summary: `${payload.name} was ${vehicleForm.id ? "updated" : "created"}.`,
-        metadata: { plateNumber: payload.plateNumber, status: payload.status, ownerType: payload.ownerType },
+        metadata: { plateNumber: payload.plateNumber, ownerType: payload.ownerType },
       }).catch((error) => console.log("Activity log warning:", error));
 
       setVehicleMessage(vehicleForm.id ? "Vehicle updated successfully." : "Vehicle added successfully.");
@@ -1078,36 +1072,6 @@ export default function AdminHome() {
                     onPress={() => setVehicleForm((current) => ({ ...current, ownerType }))}
                   >
                     <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{ownerType}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Driver Name</Text>
-            <TextInput
-              style={[styles.profileInput, vehicleForm.ownerType === DRIVER_VEHICLE_OWNER && styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-              placeholder="Optional driver name"
-              placeholderTextColor={theme.subtleText}
-              value={vehicleForm.driverName}
-              onChangeText={(value) => setVehicleForm((current) => ({ ...current, driverName: value }))}
-              editable={vehicleForm.ownerType !== DRIVER_VEHICLE_OWNER}
-            />
-
-            <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Status</Text>
-            <View style={styles.filterRow}>
-              {vehicleStatusOptions.map((status) => {
-                const active = vehicleForm.status === status;
-
-                return (
-                  <TouchableOpacity
-                    key={status}
-                    style={[
-                      styles.filterChip,
-                      { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
-                    ]}
-                    onPress={() => setVehicleForm((current) => ({ ...current, status }))}
-                  >
-                    <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{status}</Text>
                   </TouchableOpacity>
                 );
               })}

@@ -45,19 +45,9 @@ export default function AdminVehiclesSection({
                     {vehicle.type || "Vehicle"} | {vehicle.plateNumber || "No plate number"}
                   </Text>
                 </View>
-                <View
-                  style={[
-                    styles.userStatusPill,
-                    { backgroundColor: vehicle.derivedStatus === "Inactive" ? "#F0E8E8" : "#DDF2E6" },
-                  ]}
-                >
-                  <Text style={styles.userStatusText}>{vehicle.derivedStatus}</Text>
-                </View>
               </View>
 
               <Text style={[styles.userLine, { color: theme.text }]}>Owner Type: {vehicle.ownerType || cityVehicleOwnerLabel}</Text>
-              <Text style={[styles.userLine, { color: theme.text }]}>Driver: {vehicle.driverName || "Not linked"}</Text>
-              <Text style={[styles.userLine, { color: theme.text }]}>Owner UID: {vehicle.ownerUid || "Not linked"}</Text>
               <Text style={[styles.userLine, { color: theme.mutedText }]}>Created: {formatDate(vehicle.createdAt)}</Text>
 
               <View style={styles.userActions}>
