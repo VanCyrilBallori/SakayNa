@@ -283,7 +283,7 @@ driverAssignments with status "Unable".
 ## PART 3 — Driver top area like the resident's + Ride history fix
 
 **Status: DONE 2026-10-05. Change 4 (e7ad6fb), Change 3 (a69fba5), both
-tested on the phone.**
+tested on the phone. Released as demo-ready-15, 2026-10-06.**
 
 ### Change 4 — Ride history window went under the clock (bug)
 - **Cause:** the app draws edge to edge, so pop-ups are drawn under the
@@ -353,3 +353,22 @@ tested on the phone.**
     (commit a0d3b4e).
   - Old APKs (demo-ready-10 and before) still work with this website;
     their Decline still gives the ride back (Known-Issue.md).
+- 2026-10-06: **demo-ready-15** (Part 3: the place strip and ☰ menu on
+  the driver home, and the Ride history window staying below the clock;
+  APK only).
+  - Website: already live before this release (master → main → Vercel,
+    fast-forward 665baa6..4103d0c, 2026-10-05). Nothing new to put on
+    the website.
+  - Also in this APK since demo-ready-14: the patients box with −10 /
+    −5 and typing (11df96a), the Admin's newest 100 alerts (ddda3f3,
+    C2), and the emergency form's new look (665baa6). The rules change
+    (93867d3, C1: only Approved drivers may change vehicles, schedules
+    and checklists) was already deployed and works for every APK.
+  - Preview APK: EAS build 165bcbcf-2b0a-4e7c-9ccb-eab5a982a37e,
+    profile preview, built from commit 4103d0c, finished 23:41 on
+    2026-10-05, `eas fingerprint:compare` says "matches" (same native
+    fingerprint as demo-ready-14). Tested on the phone. Tagged
+    demo-ready-15 (on 4103d0c) and pushed. The download link expires
+    2026-10-19.
+  - Tester message: tester-message.md with the new APK link and the
+    dispatcher and driver lines for this release (commit 6133c19).
