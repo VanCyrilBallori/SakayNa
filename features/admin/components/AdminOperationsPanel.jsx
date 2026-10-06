@@ -11,7 +11,6 @@ import { TOLEDO_BARANGAY_OPTIONS } from "../../../lib/barangays";
 import {
   buildCsv,
   changeAccountStatus,
-  changeUserRole,
   createStaffInvitation,
   getDate,
   getProfileName,
@@ -40,7 +39,6 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
   const [selectedUser, setSelectedUser] = useState(null);
   const [reason, setReason] = useState("");
   const [nextStatus, setNextStatus] = useState(ACCOUNT_STATUSES.DEACTIVATED);
-  const [nextRole, setNextRole] = useState(ROLES.RESIDENT);
   const [scopeAreas, setScopeAreas] = useState([]);
   const [scopePhone, setScopePhone] = useState("");
   const [scopeOffice, setScopeOffice] = useState("");
@@ -74,7 +72,6 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     setSelectedUser(user);
     setReason("");
     setNextStatus(statusOf(user));
-    setNextRole(user.role || ROLES.RESIDENT);
     setScopeAreas(user.serviceAreas || []);
     setScopePhone(user.operationalPhone || "");
     setScopeOffice(user.office || "");
@@ -197,15 +194,13 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
       <View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}>
         <Text style={[styles.title, { color: theme.text }]}>{selectedUser ? getProfileName(selectedUser) : "Account"}</Text>
         <Text style={[styles.copy, { color: theme.mutedText }]}>Authentication is not disabled by this client. Deactivation changes only the Firestore profile access state and preserves operational history.</Text>
-        <Text style={[styles.label, { color: theme.text }]}>Administrative reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reason} onChangeText={setReason} multiline placeholder="Required for lifecycle and role changes" placeholderTextColor={theme.subtleText} />
+        <Text style={[styles.label, { color: theme.text }]}>Administrative reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reason} onChangeText={setReason} multiline placeholder="Required for lifecycle changes" placeholderTextColor={theme.subtleText} />
         {/* A Resident sees the reason on their home screen when their account is Rejected, Suspended or Disabled. */}
         {selectedUser?.role === ROLES.RESIDENT && [ACCOUNT_STATUSES.REJECTED, ACCOUNT_STATUSES.SUSPENDED, ACCOUNT_STATUSES.DISABLED].includes(nextStatus) ? (
           <Text style={[styles.copy, { color: theme.mutedText }]}>The resident will see this reason.</Text>
         ) : null}
         <Text style={[styles.label, { color: theme.text }]}>Account status</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{Object.values(ACCOUNT_STATUSES).map((item) => chip(item, nextStatus === item, () => setNextStatus(item)))}</ScrollView>
         <AppButton label={`Apply status: ${nextStatus}`} loading={busy} onPress={() => confirm("Confirm account status", `Update this profile to ${nextStatus}? Active Driver missions must be resolved first.`, () => run(() => changeAccountStatus({ adminId, targetUser: selectedUser, nextStatus, reason, activeAssignments: assignments }), "Account status updated."))} style={styles.button} />
-        <Text style={[styles.label, { color: theme.text }]}>Role</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{ROLE_OPTIONS.map((item) => chip(item, nextRole === item, () => setNextRole(item)))}</ScrollView>
-        <AppButton label={`Change role to ${nextRole}`} variant="secondary" loading={busy} onPress={() => confirm("Confirm role change", "This updates the Firestore profile role only. Custom claims remain Phase 8.", () => run(() => changeUserRole({ adminId, targetUser: selectedUser, nextRole, reason, activeAssignments: assignments }), "Role updated."))} style={styles.button} />
         {selectedUser?.role === ROLES.DISPATCHER ? <><Text style={[styles.label, { color: theme.text }]}>Dispatcher office</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopeOffice} onChangeText={setScopeOffice} /><Text style={[styles.label, { color: theme.text }]}>Operational phone</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopePhone} onChangeText={setScopePhone} keyboardType="phone-pad" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{TOLEDO_BARANGAY_OPTIONS.map((item) => chip(item.label, scopeAreas.includes(item.value), () => setScopeAreas((current) => current.includes(item.value) ? current.filter((value) => value !== item.value) : [...current, item.value])))}</ScrollView><AppButton label="Save Dispatcher scope" variant="secondary" loading={busy} onPress={() => run(() => updateDispatcherScope({ adminId, targetUser: selectedUser, serviceAreas: scopeAreas, operationalPhone: scopePhone, office: scopeOffice }), "Dispatcher scope updated.")} style={styles.button} /></> : null}
         <Text style={[styles.copy, { color: theme.mutedText }]}>Active mission conflicts: {selectedUser ? getUserMissionConflicts(selectedUser.id, assignments).length : 0}</Text>
         <Text style={[styles.copy, { color: theme.mutedText }]}>Permanent deletion is coming soon. It requires a trusted backend to remove the Firebase Authentication account; nothing is queued or deleted from here. Use Deactivated status above to revoke access today.</Text>
