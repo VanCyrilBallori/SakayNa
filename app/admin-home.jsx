@@ -765,8 +765,7 @@ export default function AdminHome() {
     if (selectedSection === "Users") {
       return (
         <AdminUsersSection
-          theme={theme}
-          styles={styles}
+          users={users}
           userRoleViews={userRoleViews}
           userRoleView={userRoleView}
           setUserRoleView={setUserRoleView}
@@ -1303,28 +1302,11 @@ const styles = StyleSheet.create({
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 12 },
   filterChip: { paddingVertical: 9, paddingHorizontal: 13, borderRadius: 999, borderWidth: 1 },
   filterChipText: { fontSize: 13, fontWeight: "800" },
-  filterField: { flexGrow: 1, flexBasis: 220, marginTop: 12, marginBottom: 12 },
-  filterFieldLabel: { fontSize: 13, fontWeight: "800", marginBottom: 6 },
-  dropdown: { minHeight: 46, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14 },
-  dropdownContainer: { borderWidth: 1, borderRadius: 10 },
-  dropdownText: { fontSize: 14, fontWeight: "700" },
   limitNotice: { marginTop: 10, fontSize: 12, fontWeight: "700", fontStyle: "italic" },
-  usersGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 6 },
-  userCard: { flexGrow: 1, flexBasis: 300, padding: 18, borderRadius: 14, borderWidth: 1 },
-  userCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
-  userIdentity: { flexDirection: "row", gap: 12, flex: 1, minWidth: 0 },
-  userAvatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  avatarImage: { width: 48, height: 48, borderRadius: 24 },
-  userIdentityCopy: { flex: 1 },
-  userName: { fontSize: 18, fontWeight: "900" },
-  userRole: { marginTop: 4, fontSize: 13, fontWeight: "700" },
-  userStatusPill: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 999 },
-  userStatusText: { fontSize: 12, fontWeight: "900", color: "#111111" },
   userLine: { marginTop: 9, fontSize: 14, lineHeight: 21 },
   userActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
   smallActionButton: { minHeight: 38, paddingHorizontal: 12, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   editButton: { backgroundColor: "#06774B" },
-  deactivateButton: { backgroundColor: "#A86900" },
   deleteButton: { backgroundColor: "#C62828" },
   smallActionButtonText: { fontSize: 13, fontWeight: "900", color: "#FFFFFF" },
   vehicleToolbar: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
