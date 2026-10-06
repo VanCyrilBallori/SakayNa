@@ -20,6 +20,7 @@ import {
   saveSystemSettings,
   updateDispatcherScope,
 } from "../services/trustedAdminOperationsService";
+import AdminReportsSection from "./AdminReportsSection";
 
 const EMPTY_DISPATCHER = { fullName: "", email: "", phoneNumber: "", barangay: "", temporaryPassword: "" };
 const DEFAULT_MAINTENANCE ={ maintenanceType: "", description: "", reportedIssues: "", serviceProvider: "", cost: "", odometer: "", status: "Reported", startedAt: "", completedAt: "", nextServiceDate: "" };
@@ -184,14 +185,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     {vehicles.map((vehicle) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{vehicle.name || vehicle.id}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{vehicle.plateNumber || "No plate"} | Status: {vehicle.status || "Available"} | Maintenance: {vehicle.maintenanceStatus || "None recorded"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Next service: {toDateLabel(vehicle.nextMaintenanceDate)}</Text><AppButton label="Add maintenance record" variant="secondary" onPress={() => { setMaintenanceVehicle(vehicle); setMaintenance(DEFAULT_MAINTENANCE); }} style={styles.button} /></>, vehicle.id))}
   </>;
 
-  const renderReports = () => <>
-    <Text style={[styles.title, { color: theme.text }]}>Reports And Analytics</Text>
-    <Text style={[styles.copy, { color: theme.mutedText }]}>Metrics are calculated from the latest loaded records only. Records without valid timestamps are excluded from time-based calculations.</Text>
-    <View style={styles.summaryRow}>{card(<><Text style={[styles.metric, { color: theme.text }]}>{requests.filter((item) => item.status === "Completed").length}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>completed requests</Text></>, "completed")}{card(<><Text style={[styles.metric, { color: theme.text }]}>{requests.filter((item) => item.status === "Cancelled").length}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>cancelled requests</Text></>, "cancelled")}</View>
-    <Text style={[styles.cardTitle, { color: theme.text }]}>Requests by priority</Text>
-    {["Emergency", "Urgent", "Non-Urgent", "Planned"].map((priority) => <Text key={priority} style={[styles.copy, { color: theme.mutedText }]}>{priority}: {requests.filter((item) => (item.priorityLevel || item.level) === priority).length}</Text>)}
-    <AppButton label="Download request CSV (web)" onPress={exportRequests} style={styles.button} />
-  </>;
+  const renderReports = () => <AdminReportsSection requests={requests} onDownload={exportRequests} />;
 
   const renderSettings = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Operational Settings</Text>
@@ -261,5 +255,5 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
 }
 
 const styles = StyleSheet.create({
-  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 }, chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 12, borderRadius: 6, borderWidth: 1 }, chipText: { fontSize: 13, fontWeight: "700" }, title: { fontSize: 21, fontWeight: "800", marginTop: 8, marginBottom: 6 }, copy: { fontSize: 13, lineHeight: 19 }, label: { fontSize: 13, fontWeight: "800", marginTop: 12, marginBottom: 4 }, input: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }, dropdown: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: 6 }, dropdownText: { fontSize: 14 }, fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 }, accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontWeight: "800" }, card: { marginTop: 10, borderWidth: 1, borderRadius: 8, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontWeight: "800" }, button: { marginTop: 10 }, summaryRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" }, metric: { fontSize: 28, fontWeight: "800" }, overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.45)" }, modal: { width: "100%", maxHeight: "92%", borderRadius: 8, padding: 18 }
+  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 }, chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 12, borderRadius: 6, borderWidth: 1 }, chipText: { fontSize: 13, fontWeight: "700" }, title: { fontSize: 21, fontWeight: "800", marginTop: 8, marginBottom: 6 }, copy: { fontSize: 13, lineHeight: 19 }, label: { fontSize: 13, fontWeight: "800", marginTop: 12, marginBottom: 4 }, input: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }, dropdown: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: 6 }, dropdownText: { fontSize: 14 }, fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 }, accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontWeight: "800" }, card: { marginTop: 10, borderWidth: 1, borderRadius: 8, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontWeight: "800" }, button: { marginTop: 10 }, overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.45)" }, modal: { width: "100%", maxHeight: "92%", borderRadius: 8, padding: 18 }
 });
