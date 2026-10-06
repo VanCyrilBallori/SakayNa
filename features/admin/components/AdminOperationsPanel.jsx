@@ -11,7 +11,7 @@ import { TOLEDO_BARANGAY_OPTIONS } from "../../../lib/barangays";
 import {
   buildCsv,
   changeAccountStatus,
-  createStaffInvitation,
+  createDispatcherAccount,
   getDate,
   getProfileName,
   getUserMissionConflicts,
@@ -21,7 +21,8 @@ import {
   updateDispatcherScope,
 } from "../services/trustedAdminOperationsService";
 
-const DEFAULT_MAINTENANCE = { maintenanceType: "", description: "", reportedIssues: "", serviceProvider: "", cost: "", odometer: "", status: "Reported", startedAt: "", completedAt: "", nextServiceDate: "" };
+const EMPTY_DISPATCHER = { fullName: "", email: "", phoneNumber: "", barangay: "", temporaryPassword: "" };
+const DEFAULT_MAINTENANCE ={ maintenanceType: "", description: "", reportedIssues: "", serviceProvider: "", cost: "", odometer: "", status: "Reported", startedAt: "", completedAt: "", nextServiceDate: "" };
 const toDateLabel = (value) => {
   const date = getDate(value);
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }) : "Not available";
@@ -42,8 +43,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
   const [scopeAreas, setScopeAreas] = useState([]);
   const [scopePhone, setScopePhone] = useState("");
   const [scopeOffice, setScopeOffice] = useState("");
-  const [invitationOpen, setInvitationOpen] = useState(false);
-  const [invitation, setInvitation] = useState({ email: "", displayName: "", barangay: "", serviceAreas: [], operationalPhone: "" });
+  const [newDispatcher, setNewDispatcher] = useState(EMPTY_DISPATCHER);
   const [maintenanceVehicle, setMaintenanceVehicle] = useState(null);
   const [maintenance, setMaintenance] = useState(DEFAULT_MAINTENANCE);
   const [logs, setLogs] = useState([]);
@@ -143,10 +143,39 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     {filteredUsers.slice(0, 100).map((user) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{getProfileName(user)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{user.role || "No role"} | {statusOf(user)} | {user.barangay || user.office || "No operational area"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {user.operationalPhone || user.phoneNumber || user.phone || "Not provided"}</Text><AppButton label="Manage profile" variant="secondary" onPress={() => openUser(user)} style={styles.button} /></>, user.id))}
   </>;
 
+  const setDispatcherField = (key, value) => setNewDispatcher((current) => ({ ...current, [key]: value }));
+  const createDispatcher = () => run(async () => {
+    await createDispatcherAccount({ adminId, ...newDispatcher });
+    setNewDispatcher(EMPTY_DISPATCHER);
+  }, `Dispatcher account created for ${newDispatcher.fullName.trim()}. Give them the temporary password privately, and tell them to tap Forgot password? on the login screen to set their own.`);
+
   const renderStaff = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text>
-    <Text style={[styles.copy, { color: theme.mutedText }]}>Coming soon. Creating a Dispatcher requires a trusted backend that can provision a Firebase Authentication login, which this app does not have. Nothing is sent or queued from here. To add a Dispatcher today, create the account directly in the Firebase console (see README step 4).</Text>
-    <AppButton label="Add Dispatcher (coming soon)" disabled onPress={() => setInvitationOpen(true)} style={styles.button} />
+    <Text style={[styles.copy, { color: theme.mutedText }]}>Creates the login and profile for a new Dispatcher. You stay logged in. They log in with this email and the temporary password.</Text>
+    <Text style={[styles.label, { color: theme.text }]}>Full name</Text>
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.fullName} onChangeText={(value) => setDispatcherField("fullName", value)} autoCapitalize="words" />
+    <Text style={[styles.label, { color: theme.text }]}>Email</Text>
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.email} onChangeText={(value) => setDispatcherField("email", value)} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+    <Text style={[styles.label, { color: theme.text }]}>Phone number</Text>
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.phoneNumber} onChangeText={(value) => setDispatcherField("phoneNumber", value)} keyboardType="phone-pad" />
+    <Text style={[styles.label, { color: theme.text }]}>Barangay</Text>
+    <Dropdown
+      style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
+      containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      placeholderStyle={[styles.dropdownText, { color: theme.subtleText }]}
+      selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
+      itemTextStyle={[styles.dropdownText, { color: theme.text }]}
+      activeColor={theme.softSurface}
+      data={TOLEDO_BARANGAY_OPTIONS}
+      labelField="label"
+      valueField="value"
+      placeholder="Choose a barangay"
+      value={newDispatcher.barangay}
+      onChange={(item) => setDispatcherField("barangay", item.value)}
+    />
+    <Text style={[styles.label, { color: theme.text }]}>Temporary password (at least 8 characters)</Text>
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.temporaryPassword} onChangeText={(value) => setDispatcherField("temporaryPassword", value)} autoCapitalize="none" autoCorrect={false} />
+    <AppButton label="Create Dispatcher" loading={busy} onPress={createDispatcher} style={styles.button} />
   </>;
 
   const renderVehicles = () => <>
@@ -208,8 +237,6 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
         <AppButton label="Close" variant="secondary" onPress={() => setSelectedUser(null)} style={styles.button} />
       </ScrollView></View>
     </Modal>
-
-    <Modal visible={invitationOpen} transparent animationType="fade" onRequestClose={() => setInvitationOpen(false)}><View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}><Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text><Text style={[styles.copy, { color: theme.mutedText }]}>This creates a pending handoff record only — it does not create a Firebase Authentication user. Secure delivery and account provisioning remain Phase 8.</Text>{[["Display name", "displayName"], ["Email", "email"], ["Barangay", "barangay"], ["Operational phone", "operationalPhone"]].map(([label, key]) => <View key={key}><Text style={[styles.label, { color: theme.text }]}>{label}</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={invitation[key]} onChangeText={(value) => setInvitation((current) => ({ ...current, [key]: value }))} keyboardType={key === "email" ? "email-address" : key === "operationalPhone" ? "phone-pad" : "default"} autoCapitalize="none" /></View>)}<AppButton label="Add Dispatcher (coming soon)" disabled onPress={() => confirm("Add Dispatcher", "This does not create a login account.", () => run(async () => { await createStaffInvitation({ adminId, ...invitation, intendedRole: ROLES.DISPATCHER }); setInvitationOpen(false); }, "Dispatcher record created."))} style={styles.button} /><AppButton label="Close" variant="secondary" onPress={() => setInvitationOpen(false)} style={styles.button} /></ScrollView></View></Modal>
 
     <Modal visible={Boolean(maintenanceVehicle)} transparent animationType="fade" onRequestClose={() => setMaintenanceVehicle(null)}>
       <View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}>

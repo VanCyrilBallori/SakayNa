@@ -79,6 +79,11 @@ copy its **UID**, then create a Firestore document at `users/{that-UID}`:
 | `users/{resident}` | `role: "Resident"`, `accountStatus: "Active"`, `fullName`, `email`, `barangay`, `phone`, `phoneNumber`, `createdAt` |
 | `users/{driver}` | `role: "Driver"`, `accountStatus: "Approved"`, `fullName`, `email`, `barangay`, `createdAt` |
 
+After the first Admin exists, more Dispatchers can be made in the app instead: **Admin → Operations →
+Add Dispatcher** (name, email, phone, barangay, temporary password). The Admin stays logged in. The new
+Dispatcher logs in with the temporary password, then sets their own with **Forgot password?** on the
+login screen.
+
 Each Admin reviews only the residents and drivers of **their own barangay**, so every Admin needs a
 `barangay` (spelled exactly like the list in `lib/barangays.js`). New residents and drivers don't need
 seeding: they sign up in the app and wait as `Pending` until that barangay's Admin approves them.

@@ -11,6 +11,21 @@ Skills/resident.md section 6.
 
 ## Open
 
+### New Dispatcher: changing the temporary password is not forced
+
+- **Found:** Oct 6, 2026 (Admin Operations → Add Dispatcher).
+- **What it is:** The Admin picks a temporary password and gives it to
+  the new Dispatcher. The success message reminds the Admin to tell them
+  to tap **Forgot password?** on the login screen and set their own, but
+  nothing makes them do it. Until they do, the Admin also knows their
+  password.
+- **What to do for now:** give the temporary password privately, and
+  check with the Dispatcher that they changed it.
+- **Future work (option B):** after the first login, show a "Set a new
+  password" screen before Dispatcher home (a `mustChangePassword` flag on
+  the profile, cleared after the change).
+- **Status:** Open. Fine for the Capstone demo.
+
 ### Emergency request form: limits
 
 - **Found:** Oct 5, 2026 (emergency-request-form-plan.md).
