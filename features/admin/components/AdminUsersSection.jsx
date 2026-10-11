@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 
 import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDate } from "../../../lib/dates";
@@ -134,6 +135,17 @@ export default function AdminUsersSection({
   const wide = width >= 1100;
   const narrow = width < 520;
 
+  const [search, setSearch] = useState("");
+  const query = Platform.OS === "web" ? search.trim().toLowerCase() : "";
+  // The role filter has already been applied. Search only these loaded users, without reading Firebase again.
+  const visibleUsers = query
+    ? filteredUsers.filter((user) =>
+        [user.fullName, user.displayName, user.email, user.phoneNumber, user.phone, user.barangay].some((value) =>
+          String(value || "").toLowerCase().includes(query)
+        )
+      )
+    : filteredUsers;
+
   const countFor = (role) => (role === "All" ? users.length : users.filter((user) => user.role === role).length);
 
   return (
@@ -147,6 +159,35 @@ export default function AdminUsersSection({
           <Text style={styles.subtitle}>Everyone with a SakayNa account. Edit fixes contact details. Change status opens Operations.</Text>
         </View>
       </View>
+
+      {Platform.OS === "web" ? (
+        <View style={styles.filterGroup}>
+          <Text style={styles.label}>Search users</Text>
+          <View style={styles.searchBox}>
+            <MaterialCommunityIcons name="magnify" size={24} color={DESIGN_COLORS.inkMuted} />
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Name, email, phone or barangay"
+              placeholderTextColor={DESIGN_COLORS.placeholder}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="Search users by name, email, phone or barangay"
+            />
+            {search ? (
+              <Pressable
+                onPress={() => setSearch("")}
+                style={({ pressed }) => [styles.clearSearch, pressed && styles.outlineButtonPressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Clear user search"
+              >
+                <MaterialCommunityIcons name="close" size={24} color={DESIGN_COLORS.inkMuted} />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.filterGroup}>
         <Text style={styles.label}>Role</Text>
@@ -165,7 +206,7 @@ export default function AdminUsersSection({
           <ActivityIndicator color={DESIGN_COLORS.hallGreen} />
           <Text style={styles.body}>Loading registered users...</Text>
         </View>
-      ) : filteredUsers.length ? (
+      ) : visibleUsers.length ? (
         <View style={styles.list}>
           {wide ? (
             <View style={[styles.row, styles.listHeader]}>
@@ -177,7 +218,7 @@ export default function AdminUsersSection({
             </View>
           ) : null}
 
-          {filteredUsers.map((user, index) => (
+          {visibleUsers.map((user, index) => (
             <UserRow
               key={user.id}
               user={user}
@@ -191,8 +232,8 @@ export default function AdminUsersSection({
         </View>
       ) : (
         <View style={styles.emptyState}>
-          <Text style={styles.label}>No users match this role.</Text>
-          <Text style={styles.small}>Choose All to see everyone.</Text>
+          <Text style={styles.label}>{query ? "No users match your search and selected role." : "No users match this role."}</Text>
+          <Text style={styles.small}>{query ? "Try another search, clear it, or choose All." : "Choose All to see everyone."}</Text>
         </View>
       )}
 
@@ -213,6 +254,21 @@ const styles = StyleSheet.create({
   small: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   successText: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.hallGreenDeep, backgroundColor: DESIGN_COLORS.boardTint },
   errorText: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
+
+  searchBox: {
+    minHeight: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingLeft: 16,
+    paddingRight: 4,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: DESIGN_COLORS.controlOutline,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  searchInput: { flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 17, color: DESIGN_COLORS.ink },
+  clearSearch: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 16 },
 
   // Pill-shaped choices, like the Requests filters.
   filterGroup: { gap: 8 },
