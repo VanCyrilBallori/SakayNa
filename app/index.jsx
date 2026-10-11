@@ -87,16 +87,26 @@ function WebLandingPage() {
 
   return (
     <ScrollView ref={scrollViewRef} style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* The browser knows its width even before React starts, unlike the static website build. */}
+      <style>{`
+        @media (max-width: 959px) {
+          #landing-top-bar { flex-wrap: wrap; }
+        }
+        @media (max-width: 559px) {
+          #landing-top-actions { width: 100%; flex-wrap: wrap; }
+          #landing-top-logo { height: 42px !important; width: 127.9091px !important; }
+        }
+      `}</style>
       <View style={styles.heroWrap}>
         <View style={styles.heroGlowLeft} />
         <View style={styles.heroGlowRight} />
 
-        <View style={[styles.topBar, compact && styles.topBarCompact]}>
+        <View nativeID="landing-top-bar" style={styles.topBar}>
           <View style={styles.brandWrap}>
-            <BrandLogo variant="main" height={narrow ? 42 : 50} />
+            <BrandLogo nativeID="landing-top-logo" variant="main" height={50} />
           </View>
 
-          <View style={[styles.topActions, narrow && styles.topActionsNarrow]}>
+          <View nativeID="landing-top-actions" style={styles.topActions}>
             <TouchableOpacity style={styles.topButtonSecondary} onPress={() => router.push("/login")}>
               <Text style={styles.topButtonSecondaryText}>Log In</Text>
             </TouchableOpacity>
@@ -244,9 +254,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#D9E7E0",
   },
-  topBarCompact: {
-    flexWrap: "wrap",
-  },
   brandWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -255,10 +262,6 @@ const styles = StyleSheet.create({
   topActions: {
     flexDirection: "row",
     gap: 10,
-  },
-  topActionsNarrow: {
-    width: "100%",
-    flexWrap: "wrap",
   },
   topButtonPrimary: {
     paddingVertical: 13,
