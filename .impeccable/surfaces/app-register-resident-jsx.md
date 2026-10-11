@@ -19,7 +19,7 @@ LAYOUT (owner's reference design-refs/resident-form.png, screens 3-6): real Saka
 
 DETAILS: Full Name (prefilled from Google), Phone Number (PH mobile, saved normalized +63), Barangay (searchable dropdown, 38 Toledo barangays), House No. / Street / Purok. Each label has a green outline icon.
 
-PROOF: document type as four always-visible radio rows (not a dropdown): Barangay Certificate of Residency, Barangay ID, Certificate of Indigency, Other government document with your address. Dashed green photo box "Take a photo or choose from gallery"; after picking, a full (contain) preview with a "Change photo" button. Hint: "Make sure your name and address are clear in the photo."
+PROOF: document type as five always-visible radio rows (not a dropdown): Barangay Certificate of Residency, Barangay ID, Certificate of Indigency, National ID, Other government document with your address. Dashed green photo box "Take a photo or choose from gallery"; after picking, a full (contain) preview with a "Change photo" button. Hint: "Make sure your name and address are clear in the photo."
 
 REVIEW: one light panel of rows (Full Name, Phone Number, Email, Barangay, Address, Document), document photo preview, confirm checkbox. Submit stays green; an unticked box shows an error message instead of a disabled button.
 

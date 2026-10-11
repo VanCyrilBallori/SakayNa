@@ -61,7 +61,8 @@ Everyone chooses "Are you a Resident or a Driver?" once, after signing in:
 - Full Name, Phone Number, Barangay, Address (house no. / street / purok)
   (Phone stays: emergency alerts already send it so dispatchers can call.)
 - 1 proof-of-residency photo + what it is: Barangay Certificate of
-  Residency / Barangay ID / other government document with address
+  Residency / Barangay ID / Certificate of Indigency / National ID /
+  Other government document with your address
 - Submit → Pending → admin of the SAME barangay approves (Active) or
   rejects with a reason → resident uploads a new proof → Pending again.
 

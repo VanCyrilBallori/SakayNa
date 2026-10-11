@@ -147,7 +147,7 @@ Submitted**.
 | Page | Fills in | Checks (`checkPage` in `app/register-resident.jsx:40-56`) |
 |---|---|---|
 | Details | Full Name, Phone Number, Barangay (Toledo City list), Address (house no. / street / purok) | name at least 2 letters; a real PH mobile number; a barangay; address at least 3 letters |
-| Proof | What the document is (Barangay Certificate of Residency, Barangay ID, Certificate of Indigency, or Other government document with your address — `DOCUMENT_TYPES` in `app/register-resident.jsx:32-37`) + one photo (camera or gallery) | a document type and a photo |
+| Proof | What the document is (Barangay Certificate of Residency, Barangay ID, Certificate of Indigency, National ID, or Other government document with your address — `DOCUMENT_TYPES` in `app/register-resident.jsx`) + one photo (camera or gallery) | a document type and a photo |
 | Review | Everything above | a tick box confirming the details |
 
 **Submit** (`handleSubmit` in `app/register-resident.jsx:146-196`):

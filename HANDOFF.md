@@ -1,4 +1,4 @@
-﻿# SakayNa handoff
+# SakayNa handoff
 
 Checked October 11, 2026. This records the current state; it does not approve new code changes.
 
@@ -34,6 +34,14 @@ Resident/Driver application reviews belong to their barangay's Admin. Other Admi
 - Released master to main at **d62b195**: landing header fix, Terms/Privacy links in a new tab with a back arrow to Home, Admin Users search, and corrected landing wording. Vercel's production deployment succeeded; the owner confirms live checks passed.
 - **No new APK is needed for this website-only release.**
 - **Next: phone changes** — National ID, Completion Notes, fade backdrop, and hold-to-show eye. These are not included in this release.
+
+### Phone changes (October 11, 2026)
+
+- #6 (remove Completion Notes), #7 (fade the completion backdrop), and #8 (hold to show passwords) are tested and committed by the owner.
+- #5 adds **National ID** between Certificate of Indigency and Other government document with your address. It is ready for the owner's phone test; it is not yet tested or committed.
+- The existing `documentType` field saves the label. Admin review already uses the saved label, and the photo viewer uses the saved photo link. No database rules change or deployment is needed, and older records keep their labels.
+- The Privacy Policy draft names National ID as a government ID and says document photos, including National ID photos, use public Cloudinary links. Use sample documents for testing (Known-Issue.md).
+- These four changes need a new APK after testing and committing. The outcome/issues saving problem remains open in Known-Issue.md. Plan that small fix separately after all four changes are tested and committed, only if no rules change is needed.
 
 ### Android APK (the installation file)
 

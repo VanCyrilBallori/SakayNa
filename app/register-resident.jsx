@@ -43,6 +43,7 @@ const DOCUMENT_TYPES = [
   "Barangay Certificate of Residency",
   "Barangay ID",
   "Certificate of Indigency",
+  "National ID",
   "Other government document with your address",
 ];
 
@@ -374,7 +375,7 @@ function ProofPage({ form, updateField, photo, onAddPhoto }) {
       </Text>
 
       <Field icon="file-document-outline" label="What document is it?">
-        {/* All four choices are shown at once (no dropdown), so nobody has to find them. */}
+        {/* All choices are shown at once (no dropdown), so nobody has to find them. */}
         <View style={styles.choiceList} accessibilityRole="radiogroup">
           {DOCUMENT_TYPES.map((type) => {
             const selected = form.documentType === type;
