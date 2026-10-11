@@ -2,8 +2,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
-import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
@@ -193,33 +193,122 @@ function Field({ icon, label, children }) {
   );
 }
 
-// Password input with an eye button that shows or hides what was typed.
+// Passwords show only while the eye is held. Releasing or leaving the button hides them.
 function PasswordBox({ value, onChangeText, placeholder, label, editable }) {
   const [visible, setVisible] = useState(false);
+  const inputRef = useRef(null);
+  const showing = visible && editable;
+  const hintId = `password-hold-${label.replace(/\s+/g, "-").toLowerCase()}`;
+  const hidePassword = () => setVisible(false);
+  const showPassword = () => {
+    if (!editable) return;
+    // Native buttons keep the input focused, so the keyboard and cursor stay in place.
+    if (Platform.OS !== "web") inputRef.current?.focus();
+    setVisible(true);
+  };
+
+  useEffect(() => {
+    if (!editable) setVisible(false);
+  }, [editable]);
+
+  useEffect(() => {
+    const hide = () => setVisible(false);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") hide();
+    });
+    // Also hide when a browser tab or window is left during a hold.
+    if (Platform.OS === "web") {
+      window.addEventListener("blur", hide);
+      document.addEventListener("visibilitychange", hide);
+    }
+    return () => {
+      subscription.remove();
+      if (Platform.OS === "web") {
+        window.removeEventListener("blur", hide);
+        document.removeEventListener("visibilitychange", hide);
+      }
+    };
+  }, []);
+
+  const eyeProps = Platform.OS === "web" ? {
+    "aria-describedby": hintId,
+    onPointerDown: (event) => {
+      if (!editable || event.button !== 0 || event.isPrimary === false) return;
+      // Stop the eye taking focus away from the input, including on a phone browser.
+      event.preventDefault();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      inputRef.current?.focus();
+      showPassword();
+    },
+    onPointerMove: (event) => {
+      const bounds = event.currentTarget.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX >= bounds.right || event.clientY < bounds.top || event.clientY >= bounds.bottom) hidePassword();
+    },
+    onPointerUp: hidePassword,
+    onPointerCancel: hidePassword,
+    onPointerLeave: hidePassword,
+    onLostPointerCapture: hidePassword,
+    onMouseDown: (event) => event.preventDefault(),
+    onContextMenu: (event) => event.preventDefault(),
+    onKeyDown: (event) => {
+      if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+        event.preventDefault();
+        showPassword();
+      }
+    },
+    onKeyUp: (event) => {
+      if (event.key === " " || event.key === "Enter") hidePassword();
+    },
+  } : {
+    onPressIn: showPassword,
+    onPressOut: hidePassword,
+    pressRetentionOffset: 0,
+    onPressMove: (event) => {
+      const { locationX, locationY } = event.nativeEvent;
+      // The eye is 52 x 52. Hide immediately when a finger moves outside it.
+      if (locationX < 0 || locationX >= 52 || locationY < 0 || locationY >= 52) hidePassword();
+    },
+  };
 
   return (
     <View style={styles.passwordBox}>
       <TextInput
+        ref={inputRef}
         style={styles.passwordInput}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={DESIGN_COLORS.placeholder}
-        secureTextEntry={!visible}
+        secureTextEntry={!showing}
         autoCapitalize="none"
         autoCorrect={false}
         editable={editable}
         accessibilityLabel={label}
+        onBlur={hidePassword}
       />
       <Pressable
-        style={styles.eyeButton}
-        onPress={() => setVisible(!visible)}
+        {...eyeProps}
+        style={[styles.eyeButton, Platform.OS === "web" && styles.webEyeButton]}
+        disabled={!editable}
+        onPress={hidePassword}
+        onTouchEnd={hidePassword}
+        onTouchCancel={hidePassword}
+        onBlur={hidePassword}
         android_ripple={{ color: "rgba(11, 122, 75, 0.12)", borderless: true }}
         accessibilityRole="button"
-        accessibilityLabel={visible ? `Hide ${label}` : `Show ${label}`}
+        accessibilityLabel="Hold to show password"
+        accessibilityHint={`${label}. Double-tap and hold to show. Release to hide.`}
+        accessibilityState={{ disabled: !editable }}
       >
-        <MaterialCommunityIcons name={visible ? "eye-off-outline" : "eye-outline"} size={24} color={DESIGN_COLORS.inkMuted} />
+        <View pointerEvents="none" accessible={false}>
+          <MaterialCommunityIcons name={showing ? "eye-off-outline" : "eye-outline"} size={24} color={DESIGN_COLORS.inkMuted} selectable={false} />
+        </View>
       </Pressable>
+      {Platform.OS === "web" ? (
+        <Text nativeID={hintId} style={styles.webEyeHint}>
+          {label}. Hold Space or Enter to show. Release to hide.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -254,6 +343,9 @@ const styles = StyleSheet.create({
   },
   passwordInput: { flex: 1, minHeight: 56, paddingLeft: 14, paddingRight: 4, fontSize: 17, color: DESIGN_COLORS.ink },
   eyeButton: { width: 52, height: 52, alignItems: "center", justifyContent: "center", borderRadius: 26 },
+  // Prevent selection and the long-press menu only on the eye, never in the input.
+  webEyeButton: { userSelect: "none", WebkitTouchCallout: "none", touchAction: "none" },
+  webEyeHint: { position: "absolute", width: 1, height: 1, overflow: "hidden", clipPath: "inset(50%)" },
   helperText: { marginTop: 8, fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.inkMuted },
   spacer: { flexGrow: 1, minHeight: 28 },
   errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: DESIGN_COLORS.emergencyRed },
