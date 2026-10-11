@@ -1,5 +1,5 @@
 import { Link } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import PageBackButton from "../components/PageBackButton";
 
@@ -91,7 +91,12 @@ export default function TermsOfService() {
           </View>
         ))}
 
-        <Link href="/privacy" style={styles.link}>
+        <Link
+          href="/privacy"
+          target={Platform.OS === "web" ? "_blank" : undefined}
+          rel={Platform.OS === "web" ? "noopener noreferrer" : undefined}
+          style={styles.link}
+        >
           Read our Privacy Policy
         </Link>
       </View>

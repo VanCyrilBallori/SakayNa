@@ -191,10 +191,10 @@ function WebLandingPage() {
             <Text style={styles.footerHeading}>Company</Text>
             <Text style={styles.footerLink}>About</Text>
             {/* Link makes a real web link, so Google can see the homepage links to these pages. */}
-            <Link href="/terms" style={styles.footerLink}>
+            <Link href="/terms" target="_blank" rel="noopener noreferrer" style={styles.footerLink}>
               Terms of Service
             </Link>
-            <Link href="/privacy" style={styles.footerLink}>
+            <Link href="/privacy" target="_blank" rel="noopener noreferrer" style={styles.footerLink}>
               Privacy Policy
             </Link>
             <TouchableOpacity onPress={() => router.push("/apply-to-drive")}>

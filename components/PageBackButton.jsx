@@ -3,24 +3,30 @@ import { useRouter } from "expo-router";
 import { Platform, Pressable, StyleSheet, Text } from "react-native";
 
 // "← Back" at the top of the Terms and Privacy pages, so nobody feels stuck after opening them from the menu.
-// Phone app only: on the website these pages stay as they are (the browser has its own Back button).
+// Website: always go Home, because a new tab may have no previous page.
 export default function PageBackButton({ color = "#0F6B4F" }) {
   const router = useRouter();
 
-  if (Platform.OS === "web") return null;
+  const isWeb = Platform.OS === "web";
 
-  // Go back to the screen before. If there is none (the page was opened directly), go to the start screen.
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  // On Android, keep going back to the previous screen, or the start screen if there is none.
+  const goBack = () => {
+    if (isWeb) {
+      router.replace("/");
+      return;
+    }
+    return router.canGoBack() ? router.back() : router.replace("/");
+  };
 
   return (
     <Pressable
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
       onPress={goBack}
       accessibilityRole="button"
-      accessibilityLabel="Go back"
+      accessibilityLabel={isWeb ? "Back to home" : "Go back"}
     >
       <MaterialCommunityIcons name="arrow-left" size={26} color={color} />
-      <Text style={[styles.text, { color }]}>Back</Text>
+      <Text style={[styles.text, { color }]}>{isWeb ? "Back to home" : "Back"}</Text>
     </Pressable>
   );
 }

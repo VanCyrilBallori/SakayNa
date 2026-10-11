@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Animated, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Alert, Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ProfileAvatar from "../../../components/profile/ProfileAvatar";
@@ -40,6 +40,15 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
   const go = (action) => {
     onClose();
     action();
+  };
+
+  // Website legal pages open separately; the phone app keeps its normal page navigation.
+  const openLegalPage = (path) => {
+    if (Platform.OS === "web") {
+      window.open(path, "_blank", "noopener,noreferrer");
+      return;
+    }
+    router.push(path);
   };
 
   const logOut = async () => {
@@ -104,8 +113,8 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
               <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
               <MenuRow icon="phone-outline" label="Help / Contact office" theme={theme} onPress={() => go(() => setHelpOpen(true))} />
-              <MenuRow icon="file-document-outline" label="Terms of Service" theme={theme} onPress={() => go(() => router.push("/terms"))} />
-              <MenuRow icon="shield-lock-outline" label="Privacy Policy" theme={theme} onPress={() => go(() => router.push("/privacy"))} />
+              <MenuRow icon="file-document-outline" label="Terms of Service" theme={theme} onPress={() => go(() => openLegalPage("/terms"))} />
+              <MenuRow icon="shield-lock-outline" label="Privacy Policy" theme={theme} onPress={() => go(() => openLegalPage("/privacy"))} />
 
               {/* Pushes Log out to the bottom of the menu when there is room. */}
               <View style={styles.spacer} />
