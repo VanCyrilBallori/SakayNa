@@ -11,6 +11,26 @@ Skills/resident.md section 6.
 
 ## Open
 
+### Complete mission: outcome and issues are collected but not saved yet
+
+- **Found:** Oct 11, 2026, while removing the Completion notes box (#6).
+- **What it is:** The Complete mission pop-up collects the selected
+  outcome and the optional "Issues encountered" text, but neither is
+  saved to Firestore yet. The form passes both to `advanceMission` in
+  `features/driver/services/driverMissionService.js`, which currently
+  reads only `completion.notes` and ignores `completion.outcome` and
+  `completion.issues`. This problem existed before #6.
+- **What still works:** The ride's Completed status, completion time,
+  driver/vehicle availability, and duty record are saved as before.
+  New completions have empty `completionNotes`; old saved notes are kept.
+- **For now:** Do not rely on the outcome or issues text being kept or
+  appearing in history/Admin screens. The issues box stays unchanged
+  for #6, as requested by the owner.
+- **Separate next step:** After changes #6, #7, #8 and #5 are tested and
+  committed, plan a small saving fix only if no rules change is needed.
+  Wait for approval before implementing that separate fix.
+- **Status:** Open. Left unchanged on purpose for these four changes.
+
 ### New Dispatcher: changing the temporary password is not forced
 
 - **Found:** Oct 6, 2026 (Admin Operations → Add Dispatcher).

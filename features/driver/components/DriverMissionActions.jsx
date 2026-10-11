@@ -27,7 +27,6 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [outcome, setOutcome] = useState("");
-  const [notes, setNotes] = useState("");
   const [completionIssues, setCompletionIssues] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -75,12 +74,12 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
   };
 
   const complete = () => {
-    if (!validateCompletion(outcome, notes)) {
-      setError("Choose an outcome and enter completion notes (1-500 characters).");
+    if (!validateCompletion(outcome)) {
+      setError("Choose an outcome.");
       return;
     }
     run(async () => {
-      await advanceMission({ assignmentId: assignment.id, driverId, nextStatus: MISSION_STATUSES.COMPLETED, completion: { outcome, notes: notes.trim(), issues: completionIssues.trim() } });
+      await advanceMission({ assignmentId: assignment.id, driverId, nextStatus: MISSION_STATUSES.COMPLETED, completion: { outcome, notes: "", issues: completionIssues.trim() } });
       setCompleteOpen(false);
     }, "Mission completed successfully.");
   };
@@ -100,7 +99,6 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
             label="Complete mission"
             onPress={() => {
               setOutcome("");
-              setNotes("");
               setCompletionIssues("");
               setError("");
               setCompleteOpen(true);
@@ -190,20 +188,21 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={completeOpen} transparent animationType="slide" onRequestClose={() => !saving && setCompleteOpen(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.modal}>
-            <Text style={styles.title}>Complete mission</Text>
-            <Dropdown style={styles.dropdown} data={COMPLETION_OUTCOMES.map((value) => ({ label: value, value }))} labelField="label" valueField="value" value={outcome} onChange={(item) => setOutcome(item.value)} placeholder="Choose outcome" />
-            <TextInput style={styles.input} value={notes} onChangeText={setNotes} placeholder="Completion notes" multiline maxLength={500} textAlignVertical="top" />
-            <TextInput style={styles.input} value={completionIssues} onChangeText={setCompletionIssues} placeholder="Issues encountered (optional)" multiline maxLength={300} textAlignVertical="top" />
-            {error ? <FeedbackMessage message={error} tone="error" /> : null}
-            <View style={styles.row}>
-              <AppButton label="Back" variant="secondary" onPress={() => setCompleteOpen(false)} style={styles.action} />
-              <AppButton label="Confirm completion" loading={saving} onPress={complete} style={styles.action} />
-            </View>
+      <Modal visible={completeOpen} transparent animationType="slide" onRequestClose={() => !saving && setCompleteOpen(false)} statusBarTranslucent navigationBarTranslucent>
+        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { paddingTop: insets.top + SPACING.lg, paddingBottom: insets.bottom + SPACING.lg }]}>
+          <View style={[styles.modal, styles.completionModal]}>
+            <ScrollView style={styles.completionScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={styles.title}>Complete mission</Text>
+              <Dropdown style={styles.dropdown} data={COMPLETION_OUTCOMES.map((value) => ({ label: value, value }))} labelField="label" valueField="value" value={outcome} onChange={(item) => setOutcome(item.value)} placeholder="Choose outcome" />
+              <TextInput style={styles.input} value={completionIssues} onChangeText={setCompletionIssues} placeholder="Issues encountered (optional)" multiline maxLength={300} textAlignVertical="top" />
+              {error ? <FeedbackMessage message={error} tone="error" /> : null}
+              <View style={styles.row}>
+                <AppButton label="Confirm completion" loading={saving} onPress={complete} style={styles.action} />
+                <AppButton label="Back" variant="secondary" disabled={saving} onPress={() => setCompleteOpen(false)} style={styles.action} />
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -225,8 +224,10 @@ const styles = StyleSheet.create({
   callButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   noPhoneText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
 
-  row: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.lg },
-  action: { flex: 1 },
+  row: { gap: SPACING.sm, marginTop: SPACING.lg },
+  action: { width: "100%", minHeight: 56 },
+  completionModal: { maxHeight: "100%", flexShrink: 1 },
+  completionScroll: { flexGrow: 0 },
   overlay: { flex: 1, justifyContent: "center", padding: SPACING.lg, backgroundColor: "rgba(13,31,24,.62)" },
   modal: { width: "100%", maxWidth: 560, maxHeight: "90%", alignSelf: "center", padding: SPACING.lg, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
   title: { color: COLORS.text, fontSize: 21, fontWeight: "800" },

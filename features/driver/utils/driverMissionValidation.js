@@ -8,5 +8,6 @@ export const REQUIRED_CHECKLIST_ITEMS = ["fuel", "tires", "brakes", "lights", "f
 export const validateDecline = (reason, details) => reason && (reason !== "Other" || details.trim().length >= 3) && details.trim().length <= 300;
 // Same check as the old decline: a reason is required, "Other" needs at least 3 letters, at most 300.
 export const validateUnable = validateDecline;
-export const validateCompletion = (outcome, notes) => Boolean(outcome) && notes.trim().length > 0 && notes.trim().length <= 500;
+// Completion notes were removed from the form. Only an outcome is required.
+export const validateCompletion = (outcome) => Boolean(outcome);
 export const isChecklistReady = (items) => REQUIRED_CHECKLIST_ITEMS.every((key) => items[key] === true);
