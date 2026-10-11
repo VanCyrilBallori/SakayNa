@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRef, useState } from "react";
-import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Animated, Easing, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppButton from "../../../components/ui/AppButton";
@@ -22,8 +22,13 @@ const UNABLE_STEPS = [MISSION_STATUSES.ASSIGNED, MISSION_STATUSES.ACCEPTED, MISS
 // officePhone = the office number the admin saved ("" if none). onUnableSent(reason) = tells driver-home.jsx to show its note.
 export default function DriverMissionActions({ assignment, driverId, officePhone, onFeedback, onUnableSent }) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const [unableOpen, setUnableOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
+  // Same approach as MobileLanding: only the card moves; the full-screen dark layer fades.
+  const [completeY] = useState(() => new Animated.Value(0));
+  const completionClosingRef = useRef(false);
+  const completeBackdropOpacity = completeY.interpolate({ inputRange: [0, height], outputRange: [1, 0], extrapolate: "clamp" });
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -73,14 +78,42 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
     }, "");
   };
 
+  const slideCompleteIn = () => {
+    Animated.timing(completeY, { toValue: 0, duration: 250, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  };
+
+  const slideCompleteOut = () => new Promise((resolve) => {
+    Animated.timing(completeY, { toValue: height, duration: 200, useNativeDriver: true }).start(({ finished }) => resolve(finished));
+  });
+
+  // Back closes only after the slide/fade finishes. Ignore extra taps during closing or saving.
+  const closeComplete = async () => {
+    if (savingRef.current || completionClosingRef.current) return;
+    completionClosingRef.current = true;
+    if (await slideCompleteOut()) setCompleteOpen(false);
+    completionClosingRef.current = false;
+  };
+
   const complete = () => {
+    if (savingRef.current || completionClosingRef.current) return;
     if (!validateCompletion(outcome)) {
       setError("Choose an outcome.");
       return;
     }
     run(async () => {
-      await advanceMission({ assignmentId: assignment.id, driverId, nextStatus: MISSION_STATUSES.COMPLETED, completion: { outcome, notes: "", issues: completionIssues.trim() } });
-      setCompleteOpen(false);
+      // The saved ride removes this component. Finish the fade first so it cannot be cut off.
+      if (!(await slideCompleteOut())) {
+        slideCompleteIn();
+        throw new Error("Completion was interrupted. Try again.");
+      }
+      try {
+        await advanceMission({ assignmentId: assignment.id, driverId, nextStatus: MISSION_STATUSES.COMPLETED, completion: { outcome, notes: "", issues: completionIssues.trim() } });
+        setCompleteOpen(false);
+      } catch (e) {
+        // A failed save brings the form back with the same entries and the error.
+        slideCompleteIn();
+        throw e;
+      }
     }, "Mission completed successfully.");
   };
 
@@ -97,7 +130,10 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
         {status === MISSION_STATUSES.PICKED_UP ? (
           <AppButton
             label="Complete mission"
+            loading={saving}
             onPress={() => {
+              if (savingRef.current || completionClosingRef.current) return;
+              completeY.setValue(height);
               setOutcome("");
               setCompletionIssues("");
               setError("");
@@ -188,21 +224,24 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={completeOpen} transparent animationType="slide" onRequestClose={() => !saving && setCompleteOpen(false)} statusBarTranslucent navigationBarTranslucent>
-        <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { paddingTop: insets.top + SPACING.lg, paddingBottom: insets.bottom + SPACING.lg }]}>
-          <View style={[styles.modal, styles.completionModal]}>
-            <ScrollView style={styles.completionScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <Text style={styles.title}>Complete mission</Text>
-              <Dropdown style={styles.dropdown} data={COMPLETION_OUTCOMES.map((value) => ({ label: value, value }))} labelField="label" valueField="value" value={outcome} onChange={(item) => setOutcome(item.value)} placeholder="Choose outcome" />
-              <TextInput style={styles.input} value={completionIssues} onChangeText={setCompletionIssues} placeholder="Issues encountered (optional)" multiline maxLength={300} textAlignVertical="top" />
-              {error ? <FeedbackMessage message={error} tone="error" /> : null}
-              <View style={styles.row}>
-                <AppButton label="Confirm completion" loading={saving} onPress={complete} style={styles.action} />
-                <AppButton label="Back" variant="secondary" disabled={saving} onPress={() => setCompleteOpen(false)} style={styles.action} />
-              </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+      <Modal visible={completeOpen} transparent animationType="none" onShow={slideCompleteIn} onRequestClose={closeComplete} statusBarTranslucent navigationBarTranslucent>
+        <View style={styles.completionContainer}>
+          <Animated.View style={[styles.completionBackdrop, { opacity: completeBackdropOpacity }]} pointerEvents="none" />
+          <KeyboardAvoidingView behavior="padding" style={[styles.overlay, styles.completionOverlay, { paddingTop: insets.top + SPACING.lg, paddingBottom: insets.bottom + SPACING.lg }]}>
+            <Animated.View style={[styles.modal, styles.completionModal, { transform: [{ translateY: completeY }] }]}>
+              <ScrollView style={styles.completionScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={styles.title}>Complete mission</Text>
+                <Dropdown style={styles.dropdown} data={COMPLETION_OUTCOMES.map((value) => ({ label: value, value }))} labelField="label" valueField="value" value={outcome} onChange={(item) => setOutcome(item.value)} placeholder="Choose outcome" />
+                <TextInput style={styles.input} value={completionIssues} onChangeText={setCompletionIssues} placeholder="Issues encountered (optional)" multiline maxLength={300} textAlignVertical="top" />
+                {error ? <FeedbackMessage message={error} tone="error" /> : null}
+                <View style={styles.row}>
+                  <AppButton label="Confirm completion" loading={saving} onPress={complete} style={styles.action} />
+                  <AppButton label="Back" variant="secondary" disabled={saving} onPress={closeComplete} style={styles.action} />
+                </View>
+              </ScrollView>
+            </Animated.View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </>
   );
@@ -226,6 +265,9 @@ const styles = StyleSheet.create({
 
   row: { gap: SPACING.sm, marginTop: SPACING.lg },
   action: { width: "100%", minHeight: 56 },
+  completionContainer: { flex: 1 },
+  completionBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(13,31,24,.62)" },
+  completionOverlay: { backgroundColor: "transparent" },
   completionModal: { maxHeight: "100%", flexShrink: 1 },
   completionScroll: { flexGrow: 0 },
   overlay: { flex: 1, justifyContent: "center", padding: SPACING.lg, backgroundColor: "rgba(13,31,24,.62)" },
