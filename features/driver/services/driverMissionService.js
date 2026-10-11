@@ -40,7 +40,7 @@ export const saveVehicleChecklist = async ({ checklistId, driverId, assignment, 
 };
 
 // Moves a mission to its next step, updating the assignment and its linked request together.
-const transitionMission = async (assignmentId, nextStatus, notes = "") => {
+const transitionMission = async (assignmentId, nextStatus, notes = "", completion = {}) => {
   if (!assignmentId || !nextStatus) {
     throw new Error("Assignment and next mission status are required.");
   }
@@ -102,7 +102,10 @@ const transitionMission = async (assignmentId, nextStatus, notes = "") => {
 
     if (nextStatus === "Completed") {
       assignmentPatch.status = "Completed";
-      assignmentPatch.completionNotes = notes;
+      // Keep notes from the older app; the current form has no notes box.
+      assignmentPatch.completionNotes = notes || assignment.completionNotes || "";
+      assignmentPatch.completionOutcome = completion.outcome || "";
+      assignmentPatch.completionIssues = (completion.issues || "").trim().slice(0, 300);
       requestPatch.status = "Completed";
       if (assignment.vehicleId) {
         transaction.update(doc(db, "vehicles", assignment.vehicleId), {
@@ -240,7 +243,7 @@ export const acceptAssignment = async ({ assignmentId, driverId }) => {
 };
 
 export const advanceMission = async ({ assignmentId, driverId, nextStatus, completion = {} }) => {
-  const result = await transitionMission(assignmentId, nextStatus, completion.notes || "");
+  const result = await transitionMission(assignmentId, nextStatus, completion.notes || "", completion);
   if (LOCATION_STEPS.includes(nextStatus)) {
     saveDriverLocation({ driverId, step: nextStatus });
   }

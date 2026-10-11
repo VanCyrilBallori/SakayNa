@@ -11,25 +11,35 @@ Skills/resident.md section 6.
 
 ## Open
 
-### Complete mission: outcome and issues are collected but not saved yet
+### Complete mission saving fix: awaiting phone test
 
 - **Found:** Oct 11, 2026, while removing the Completion notes box (#6).
-- **What it is:** The Complete mission pop-up collects the selected
-  outcome and the optional "Issues encountered" text, but neither is
-  saved to Firestore yet. The form passes both to `advanceMission` in
-  `features/driver/services/driverMissionService.js`, which currently
-  reads only `completion.notes` and ignores `completion.outcome` and
-  `completion.issues`. This problem existed before #6.
-- **What still works:** The ride's Completed status, completion time,
-  driver/vehicle availability, and duty record are saved as before.
-  New completions have empty `completionNotes`; old saved notes are kept.
-- **For now:** Do not rely on the outcome or issues text being kept or
-  appearing in history/Admin screens. The issues box stays unchanged
-  for #6, as requested by the owner.
-- **Separate next step:** After changes #6, #7, #8 and #5 are tested and
-  committed, plan a small saving fix only if no rules change is needed.
-  Wait for approval before implementing that separate fix.
-- **Status:** Open. Left unchanged on purpose for these four changes.
+- **Original problem:** The pop-up collected the selected outcome and
+  optional "Issues encountered" text, but `advanceMission` saved only
+  `completion.notes` and ignored the outcome and issues. This problem
+  existed before #6 and was left unchanged during #6, #7, #8 and #5.
+- **Approved saving fix (Oct 11):** `driverMissionService.js` now saves
+  `completionOutcome` and `completionIssues` on the driver's assignment
+  only when completing the mission. Issues are trimmed and limited to
+  300 characters; blank or missing issues save as `""`.
+- **One save:** These fields use the same Firestore transaction as the
+  Completed status/time, van availability, driver availability and Run
+  end duty record. If completion fails, none of these changes are saved.
+  The duty record's outcome remains `"Completed"`, as before.
+- **Old data:** No records are rewritten. An existing `completionNotes`
+  value is kept when the current form sends no note. Older completed
+  assignments and duty records remain untouched.
+- **Where to check:** Firebase Console -> `driverAssignments` -> the
+  completed assignment. Existing history/Admin screens do not display
+  the two new fields; this change fixes saving only.
+- **Local checks passed:** With/without issues, spaces-only and missing
+  issues, exactly/over 300 characters, the full ride sequence, driver
+  and van availability, Run start/end duty records, old notes/records,
+  an older off-duty ride, failed save/retry, cancelled ride and missing
+  assignment. Checks used mocked transactions; no live data was changed.
+- **Status:** Implemented and locally checked; awaiting the owner's
+  phone/Firebase test and commit. No rules change or deployment needed.
+  A new APK is needed to include this service change.
 
 ### New Dispatcher: changing the temporary password is not forced
 

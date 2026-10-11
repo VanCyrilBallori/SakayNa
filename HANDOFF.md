@@ -29,7 +29,14 @@ Resident/Driver application reviews belong to their barangay's Admin. Other Admi
 
 ## 2. Current state
 
-### Latest update: website release d62b195 (October 11, 2026)
+### Latest update: website release a25dae1 (October 11, 2026)
+
+- Released master to main at **a25dae1**, one command at a time, with a fast-forward merge. Vercel completed successfully.
+- This includes the four tested and committed changes: remove Completion Notes, fade the completion backdrop, hold-to-show password eyes, and National ID proof of residency.
+- Live page checks confirmed one "Hold to show password" eye on Log in, two on Create Account, and the updated Privacy Policy text. The working folder returned to master.
+- The separate completion saving fix below is newer local work and is not part of this website release.
+
+### Earlier website release d62b195 (October 11, 2026)
 
 - Released master to main at **d62b195**: landing header fix, Terms/Privacy links in a new tab with a back arrow to Home, Admin Users search, and corrected landing wording. Vercel's production deployment succeeded; the owner confirms live checks passed.
 - **No new APK is needed for this website-only release.**
@@ -38,10 +45,20 @@ Resident/Driver application reviews belong to their barangay's Admin. Other Admi
 ### Phone changes (October 11, 2026)
 
 - #6 (remove Completion Notes), #7 (fade the completion backdrop), and #8 (hold to show passwords) are tested and committed by the owner.
-- #5 adds **National ID** between Certificate of Indigency and Other government document with your address. It is ready for the owner's phone test; it is not yet tested or committed.
+- #5 adds **National ID** between Certificate of Indigency and Other government document with your address. It is tested and committed by the owner.
 - The existing `documentType` field saves the label. Admin review already uses the saved label, and the photo viewer uses the saved photo link. No database rules change or deployment is needed, and older records keep their labels.
 - The Privacy Policy draft names National ID as a government ID and says document photos, including National ID photos, use public Cloudinary links. Use sample documents for testing (Known-Issue.md).
-- These four changes need a new APK after testing and committing. The outcome/issues saving problem remains open in Known-Issue.md. Plan that small fix separately after all four changes are tested and committed, only if no rules change is needed.
+- All four phone changes are tested and committed and released on the website at a25dae1. They still need a new APK. The separately approved outcome/issues saving fix is recorded below and in Known-Issue.md.
+
+### Completion saving fix (October 11, 2026)
+
+- The owner approved this separate fix after all four phone changes were tested and committed.
+- `features/driver/services/driverMissionService.js` now saves `completionOutcome` and `completionIssues` on `driverAssignments/{assignmentId}` when completion succeeds. Issues are trimmed, capped at 300 characters, and saved as `""` when blank.
+- The fields are written in the existing transaction with the ride's Completed status/time, driver/van availability, and Run end duty record. Failed completion saves nothing. Duty Records still use outcome `"Completed"`.
+- Old records are not rewritten. Existing `completionNotes` are preserved when the new form supplies no note.
+- Local mocked-transaction checks passed for with/without issues, blank/missing issues, 300-character limits, all ride steps, availability, duty records, older data, and failed/cancelled completion.
+- Awaiting the owner's real phone/Firebase test and commit. Check the two new fields in Firebase Console -> driverAssignments; existing history/Admin screens do not display them.
+- No rules change or deployment is needed. This local fix has not been released to the website or included in a new APK.
 
 ### Android APK (the installation file)
 
