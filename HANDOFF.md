@@ -1,0 +1,211 @@
+﻿# SakayNa handoff
+
+Checked October 11, 2026. This records the current state; it does not approve new code changes.
+
+The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
+
+## 1. What the system does
+
+SakayNa helps Toledo City residents ask for a barangay vehicle. A human Dispatcher chooses a driver and vehicle. There are no fares or payments. It is a Capstone project, not a confirmed LGU pilot or endorsement.
+
+| Person | Their job |
+|---|---|
+| Resident | Signs up with proof of residency, waits for approval, asks for a ride now or later, follows its progress, or sends an emergency alert. |
+| Dispatcher | Uses the website to answer alerts, assign rides, and check drivers' duty status and last known location. |
+| Driver | Punches in, takes breaks, accepts rides, marks each trip step, completes rides, and punches out. |
+| Admin | Reviews residents and driver applications, manages accounts/vehicles, creates Dispatchers, and reads emergency calls, duty records, reports, and activity logs. |
+
+A normal ride goes: request -> Dispatcher assigns -> Driver accepts -> En route -> Arrived -> Picked up -> Completed. Residents can cancel before Accept. Before pickup, **I can't do this ride** returns the ride to dispatch. After pickup, the driver calls dispatch about problems.
+
+For emergencies, an alert reaches the Dispatcher first. After Answer, the Resident's phone counts down three seconds, then calls the Dispatcher. The Resident can cancel the countdown. This uses their SIM, not an internet voice call. The number used is the Dispatcher's account phone, then their Operational phone, then the office number.
+
+During the call, the Dispatcher fills in an Emergency Request Form: type, priority, patient count, incident details, age, conscious/breathing facts, route, driver, and vehicle. Submit saves one assigned ride and links it to the alert. **Even 50 patients still creates only one driver/vehicle assignment.** The alert stays connected until someone ends it.
+
+Drivers share location only at Punch in, Accept, En route, Arrived, and Picked up. It is a last known place, not live tracking. Dispatchers and the driver themselves can read it. Punch out removes it.
+
+One Expo SDK 54 / React Native JavaScript project makes the Android app and website. Firebase handles login and the shared database. There is no separate server or Cloud Functions backend. `firestore.rules` guards database access; hiding buttons alone is not protection. Cloudinary stores document photos, OpenStreetMap/Nominatim provide maps/address lookup, and Vercel hosts the website.
+
+Resident/Driver application reviews belong to their barangay's Admin. Other Admin tools and dispatch remain largely city-wide. Trusted test staff are assumed for the demo.
+
+## 2. Current state
+
+### Android APK (the installation file)
+
+- Latest documented APK and highest numbered demo tag: **demo-ready-15**, pointing to **4103d0c**.
+- EAS preview build: **165bcbcf-2b0a-4e7c-9ccb-eab5a982a37e**. Release notes record phone testing and a matching native fingerprint. The build finished late October 5; tagging/release notes are dated October 6.
+- Download: https://expo.dev/artifacts/eas/Ftw2zrDvzb7KWdJRq_SuG_KlkMU2ilX0BH8kLlaKTQ4.apk
+- The recorded link expiry is **October 19, 2026**, before the defense. No later APK/tag is recorded in the checked files/history. A tag marks saved code; it does not update installed apps.
+- No over-the-air updates: new phone code needs a new APK.
+
+Most completed driver/emergency work was already done **by** APK 15, rather than after it:
+
+| Work | Release/evidence |
+|---|---|
+| Punch in/out, breaks, On a run, Admin daily time records (DTR) | APK 8; feedback in APK 9; driver-duty-plan.md |
+| Driver card restyle, Accept without checklist, navigation, step timeline | APK 10; driver-home-restyle-plan.md |
+| Ride/Map/Availability pages, inability reports, Call dispatch after pickup, Ride history | APK 11; driver-pages-plan.md |
+| Location saved at steps and emergency auto-call | APK 12; location/auto-call plans |
+| Correct Dispatcher phone choice and office wording | APK 13; emergency-auto-call-plan.md |
+| Emergency form, quick facts, driver emergency card, logout fix | Form first released on website; later updates in APK 14 |
+| Patients typing/step buttons, form colors, driver place strip/menu, Ride history below clock | Included by APK 15; 11df96a, 665baa6, a69fba5, e7ad6fb |
+| C1: Approved drivers only for vehicle/schedule/checklist writes | 93867d3; rules deployed/tested per architecture-review.md; applies to installed APKs too |
+| C2: Admin loads newest 100 alerts | ddda3f3; website tested/released per review; current query still sorts newest first |
+
+### Website, branches, and later work
+
+Website: https://sakay-na-delta.vercel.app. Vercel builds **main**; development uses **master**.
+
+Before this handoff, local main/master and cached origin/main/origin/master all pointed to **d9ff664**, Admin Reports, October 6. A read-only GitHub check also confirmed both remote branch tips at d9ff664. The working folder was clean. **No committed app/rules work was only on master.**
+
+The owner reports the later Admin changes are live. Git proves they reached remote main; it does not prove Vercel built them successfully. The public web reader could not open the site during this review. Vercel Ready status and signed-in pages were not independently checked.
+
+After this file's local commit, **HANDOFF.md itself will be master-only** until separately pushed/released. This task does not push, deploy, switch branches, build, or change rules.
+
+Changes after APK 15, already on both remote branches when checked:
+
+| Commit | Change |
+|---|---|
+| 6133c19, d850e39 | Tester message and APK 15 release notes |
+| be2d09a | Duty Records calendar date picker and break reasons |
+| e9aa42e | Removed driver name, manual status, and owner UID from Admin vehicle cards/form |
+| ba1c4c2 | Removed Change role from Admin Operations |
+| 2683e6c, deb4c61 | Rules/service and form for Add Dispatcher |
+| e8e0ddb, 77044ca, 728de68, 9a2b366, d9ff664 | Admin Emergency Calls, Overview, Requests, Users, Reports redesign |
+
+Add Dispatcher exists in code/rules. The owner says its rules are deployed. Unlike C1, the requested notes do not record this newer deploy's before/after live comparison. Live Firebase rules were not downloaded in this task.
+
+Vehicle **status still exists in the database** for dispatch. Only the Admin's manual choice/display was removed. New vehicles start Available; ride saves change their status. Existing records were not erased by the screen change.
+
+### New APK decision
+
+There are no direct Resident/Driver screen or service edits after APK 15 in the checked range. However, **be2d09a changes shared lib/dutyTime.js**, which DriverDutyCard.jsx also uses. It adds break details/calendar helpers for Admin records while preserving existing duty-time calculations. That shared phone code is absent from APK 15. Later Admin screens are also absent when Admins use the installed APK.
+
+If all current code must reach phones, build a new APK. The history does not show a new Resident/Driver feature requiring everyone to replace APK 15 immediately. This remains a decision, not permission to build automatically.
+
+## 3. Open items, most important first
+
+This list is not approval to implement. The October 5 architecture review is a backlog, not a request to do every improvement during the freeze.
+
+### First: test C3, without changing code
+
+**C3 / resident issue #33:** a real waiting emergency alert may be hidden after two minutes in the background. Current dispatcher-home.jsx still uses `STUCK_ALERT_MS = 120_000`. The Resident's 20-second 'I'm still here' timer may pause when Call the office opens the Phone app. The Dispatcher then treats the real alert as stuck. It is hidden on Dispatcher screens, not deleted; Admin may still see it.
+
+No phone test result is recorded. Smallest next step:
+
+1. Resident on APK 15 sends an alert. Dispatcher watches without answering.
+2. After the fallback appears, tap **Call the office** and stay in the Phone app/on the call for three minutes.
+3. Watch whether the alert disappears. Record the result before choosing a fix.
+
+If confirmed, the review proposes increasing the website delay from two to ten minutes. This also keeps crashed-phone alerts visible longer. It is proposed, not tested. For now keep SakayNa visible until Answer and have one Dispatcher answer promptly.
+
+Related #8/#34: old alerts still marked ringing can reappear after Dispatcher reload and block a fresh alert for two minutes. Keep test data tidy and office/Dispatcher numbers set before rehearsal. Real-data cleanup needs separate approval.
+
+### Next: defense readiness / APK choice
+
+- Decide whether the defense uses APK 15 or a new build of current code, using the shared-file finding above.
+- Arrange a working APK download before the recorded October 19 expiry; do not assume the old link works October 23.
+- Rehearse normal ride, cancellation, emergency form, duty/break, and Admin approval using the chosen APK and current website.
+
+### Safety/security backlog: before real use; outside the freeze unless separately approved
+
+| Item | Problem / handling now |
+|---|---|
+| A1 | Two Dispatchers can answer the same alert at once. Use one answering Dispatcher for the defense. |
+| A8 | Two Dispatchers can assign one van at once. Use one assigning Dispatcher. Later saves should check the van as well as the driver. |
+| A2 | Removed staff can retain direct database powers and Firebase login. Old advice to change role in Operations is outdated: that option was removed. Staff-removal handling now needs Firebase Console; plan rules fixes separately. C1 already tightened driver vehicle/schedule/checklist writes. |
+| A3; resident #3/#4 | Owners can change too many fields of their rides/alerts/assignments if they bypass the app. Later rules should preserve ownership and restrict fields, one collection at a time. |
+| A4 | Sign-up proof/application rules need stronger checks against fake submissions/photo links. |
+| City-wide Admin tools | Users/Operations/Duty Records are not fully barangay-limited. Must fix before a real pilot. Changing a resident's barangay can leave proof with the old Admin. |
+| Public photos; F12 | Exact Cloudinary links open document photos publicly. Use sample documents for tests. Health-data access/retention needs real-use decisions. |
+| Dispatcher passwords | Temporary password changes are not forced. Share privately and confirm the Dispatcher resets it through Forgot password. |
+| Vehicle problem / after pickup | A reported faulty van becomes assignable again: manually pick another. After pickup, call dispatch; no separate incident report is saved. |
+
+### Other bugs/limits: consider only if needed for the defense
+
+- A5: Activity log still loads any 50 entries before sorting; recent actions may be missing.
+- A6: Some refused emergency-form saves show a misleading internet error.
+- A7: Dispatcher alerts have no sound. Keep the tab visible.
+- A9: Opening the driver app may overwrite a full name because of loading order. Unconfirmed: test before fixing.
+- Form drafts are lost on Cancel/Back/reload/browser close. After the Resident ends the alert, a closed form cannot be reopened. Keep it open until Submit.
+- Offline request/form saves can wait a long time. Resident #10/#11/#32 cover slow address lookup, missing ride-save timeout, and untested offline startup.
+- Forgotten punch outs stay on duty; logout does not punch out. A crash/dead phone may still look app-open. Cancelled assigned rides free driver/van when the driver's app is open again.
+- Scheduled rides have no reminders; early assignment holds the vehicle. Location/distance can be old/rough. Auto-call needs load/signal and does not run in the background.
+- Other resident follow-ups remain in Skills/resident.md section 6: temporary wrong newest-request order (#19), hidden Settings success message (#22), uncertain email changes (#23), rejected-proof resubmission (#35), Google/email account duplication, unused declined/rejected states, and old-APK timeline behavior. This handoff does not mark them fixed.
+
+### Vehicle pictures: lower priority
+
+The owner calls this **#11**, but no matching numbered vehicle-picture requirement was found in the checked notes. **Resident issue #11 means offline request-save timeout.** Admin vehicle cards/form have no picture feature. DESIGN.md also has an unfinished barangay-van illustration placeholder; it may be a different request. Confirm the intended requirement before planning it. It is not an automatic freeze exception.
+
+### Deferred cleanup from architecture-review.md
+
+| IDs | Deferred work |
+|---|---|
+| A10-A11 | Repeated ride defaults, references, office-phone reads, date helpers, logout code. Different patient/passenger steppers can stay. |
+| A12-A13 | Growing Dispatcher downloads and retired schedules/driver-owned-vehicle logic. Check remaining uses first. |
+| A14-A15 | Duplicate Driver assignment reads and Resident history limits applied after downloading. |
+| A16 | Repeated map/address downloads and provider reliability. |
+| A17-A18 | Large screens and old-APK compatibility code. Do not remove working compatibility during the freeze; old availability still has current uses. |
+| A19-A21 | Recheck hard-coded colors/status words and unused assignment messages. Recent Admin redesigns may cover some styling, not the entire backlog. |
+
+### Future work for thesis/pilot, not implementation now
+
+| IDs | Ideas only |
+|---|---|
+| F1-F5 | Barangay dispatch, vehicle pools, office numbers, other cities, measuring Firebase usage. |
+| F6-F7 | Trusted server for alert/shift cleanup, account management, private photos, abuse limits, real push notifications. |
+| F8-F10 | Multiple vehicles per incident, live driver tracking, map-provider plan. |
+| F11-F12 | Automated rules/helper tests; health-data privacy, access, retention, removal decisions. |
+
+Other optional plans stay deferred: Driver My DTR, automatic shift closing/corrections, DTR exports, Dispatcher Take back/Free driver tools, Android Back switching driver pages. None is newly approved.
+
+## 4. Rules for continuing
+
+1. Read AGENTS.md, DESIGN.md, PRODUCT.md, Known-Issue.md, Skills/resident.md, and the relevant plan before changes. Other role guides do not exist yet. Later releases/current code and the owner's newest instructions resolve stale notes.
+2. **Plan first, wait for OK before code changes.** Explain current behavior, cause, smallest fix, intended files, and test in everyday words.
+3. **One small change.** Give exact phone/website test steps, then stop. Owner tests and commits before the next. This documentation-only commit is explicitly requested; code keeps the usual routine.
+4. Keep the Capstone simple and frozen. No unrelated refactoring, architecture, dependencies, server, or extra features. Stop when the approved requirement works.
+5. Necessary approved packages use **npx expo install**, never plain npm install.
+6. Follow DESIGN.md: light only, readable system font, green/orange (dark words on orange), emergency red, large tap areas, flat simple layout, documented website exceptions, large-text support, no unapproved LGU branding.
+
+### Safe Firestore rules deploy
+
+Commit approved rules. Download live rules and compare to the **previously deployed committed version**; intended new changes should differ from live. Stop on unexpected differences. Deploy with **--project sakayna-571e8**. Download again and confirm live matches the newly committed firestore.rules. Record the commit and comparison. Git alone cannot prove live rules.
+
+### APK checklist
+
+1. Test and commit first; git status clean.
+2. Run `npx expo install --check`.
+3. Build the approved Android preview, then `eas fingerprint:compare --build-id <id>` must say **matches**.
+4. Uninstall old app, install new APK, phone-test, record build ID/commit/tag/link. Do not move the APK 15 tag to newer code.
+
+### Website release checklist
+
+Follow AGENTS.md / Claude.md. Everything tested/committed, folder clean. **Everything on master goes live**, not just the last change. Check APK compatibility before emergency changes.
+
+Run one at a time:
+
+1. `git push origin master`
+2. `git switch main`
+3. `git merge --ff-only master` - expect Fast-forward for new work; stop if impossible. Already up to date means nothing new to merge.
+4. `git push origin main`
+5. `git switch master`
+
+Check Vercel **Ready**, then test changed live pages. No release is part of this handoff.
+
+## 5. Outdated or inconsistent notes
+
+- The completed list matches history, but 'done since APK 15' is too broad: duty, location, auto-call, three Driver pages, emergency quick facts, C1/C2 were already done by APK 15.
+- PRODUCT.md still says survey underway and Dispatchers created only in Firebase Console. Owner says survey finished; Add Dispatcher now works. Admin provisioning still uses Console.
+- PRODUCT.md says no notification package installed. package.json contains expo-notifications; lib/permissions.js asks permission. **Actual push notifications remain absent.** Its two disabled Phase 8 entry-point description also needs updating for working Add Dispatcher; permanent deletion stays deferred.
+- Skills/resident.md says checked September 30 despite October updates. It still describes Dark/Light, older Driver layout, Change role in Operations, and tap-to-call resident number in issue #6. Later code/plans say light only, three Driver pages/menu, no Change role, and plain-text resident number on Dispatcher emergency screens.
+- Known-Issue.md says checked October 5 but includes October 6 password issue; it does not fully describe later Admin redesigns.
+- driver-duty-plan.md says close X fix not released and describes pre-duty behavior under What exists today. 43938cd is already in APK 10, therefore APK 15. My DTR remains optional, not done.
+- emergency-request-form-plan.md still calls patient typing/step buttons master-only near the top. Later release/tag/branches supersede that. Original 1-6 patient sketch/layout is historical: emergency count is now 1-50.
+- driver-location-plan.md lists distance/nearest sorting as Not now, but the later emergency form includes rough straight-line distance and nearest-first sorting. Live tracking/road distance remain absent.
+- architecture-review.md is an October 5 snapshot at 798072a with C1/C2 updates. Checklist still says APK 14 and suggests doing C2 although APK 15 is newer and C2 fixed. A2's Operations role-change workaround is gone. Recheck old line numbers/counts before work. Cleanup suggestions are not current implementation requests.
+- The actual filename is **Claude.md**, while plans refer to CLAUDE.md; Windows resolves both to this rulebook.
+- Vehicle pictures #11 is owner-supplied context, not a matching numbered item found in the checked files.
+
+## Evidence and limits
+
+Read all requested files plus Claude.md. Checked git log --oneline -30, git tag, APK 15 tag contents, changed filenames since the tag, local/remote branch tips, and selected code where notes disagreed. No phone tests, new APK build, authenticated website/Vercel checks, or live Firebase rules comparison occurred. Git proves saved source state, not every live-service or test result. Only HANDOFF.md is authorized for this task's commit.
