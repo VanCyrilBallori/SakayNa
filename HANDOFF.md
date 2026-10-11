@@ -29,6 +29,12 @@ Resident/Driver application reviews belong to their barangay's Admin. Other Admi
 
 ## 2. Current state
 
+### Latest update: website release d62b195 (October 11, 2026)
+
+- Released master to main at **d62b195**: landing header fix, Terms/Privacy links in a new tab with a back arrow to Home, Admin Users search, and corrected landing wording. Vercel's production deployment succeeded; the owner confirms live checks passed.
+- **No new APK is needed for this website-only release.**
+- **Next: phone changes** — National ID, Completion Notes, fade backdrop, and hold-to-show eye. These are not included in this release.
+
 ### Android APK (the installation file)
 
 - Latest documented APK and highest numbered demo tag: **demo-ready-15**, pointing to **4103d0c**.
