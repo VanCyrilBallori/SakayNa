@@ -1,4 +1,4 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Link, Redirect, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -40,42 +40,42 @@ function WebLandingPage() {
 
   const features = [
     {
-      icon: <FontAwesome name="globe" size={24} color="#FFFFFF" />,
-      title: "Web and Mobile Access",
-      text: "Residents and responders can use the system on desktop or mobile.",
-    },
-    {
       icon: <FontAwesome name="warning" size={24} color="#FFFFFF" />,
-      title: "Emergency Request",
-      text: "Residents can quickly send emergency requests when urgent help is needed.",
+      title: "Emergency Alerts",
+      text: "Verified residents can alert a Dispatcher, who can answer and arrange an emergency ride.",
     },
     {
-      icon: <FontAwesome name="ambulance" size={20} color="#FFFFFF" />,
-      title: "Vehicle Assignment",
-      text: "Available vehicles can be matched to active requests.",
+      icon: <FontAwesome name="globe" size={24} color="#FFFFFF" />,
+      title: "Android App and Website",
+      text: "Residents and Drivers can use the Android app. Dispatchers and Admins can manage requests on the website.",
+    },
+    {
+      icon: <MaterialCommunityIcons name="van-passenger" size={20} color="#FFFFFF" />,
+      title: "Driver and Vehicle Assignment",
+      text: "A Dispatcher chooses an available driver and barangay vehicle for each ride.",
     },
     {
       icon: <FontAwesome name="exclamation-triangle" size={24} color="#FFFFFF" />,
-      title: "Disaster Response Mode",
-      text: "Supports evacuation and emergency transport during disaster response.",
+      title: "Ride Requests Now or Later",
+      text: "Request a ride as soon as possible, or schedule one 1 hour to 7 days ahead.",
     },
     {
       icon: <FontAwesome name="pie-chart" size={22} color="#FFFFFF" />,
-      title: "Reports and Analytics",
-      text: "View reports and response activity in one place.",
+      title: "Admin Reports",
+      text: "Admins can review summaries, waiting times and priority breakdowns from ride requests, and download them as a spreadsheet.",
     },
     {
       icon: <FontAwesome name="dashboard" size={22} color="#FFFFFF" />,
-      title: "Role-Based Dashboards",
-      text: "Separate dashboards are available for each user role.",
+      title: "Four Role Dashboards",
+      text: "Separate tools for Residents, Drivers, Dispatchers, and Admins.",
     },
   ];
 
   const steps = [
-    { number: "1", label: "Open SakayNa" },
-    { number: "2", label: "Send Request" },
-    { number: "3", label: "Dispatch Team" },
-    { number: "4", label: "Track Response" },
+    { number: "1", label: "Log in" },
+    { number: "2", label: "Request a ride" },
+    { number: "3", label: "Dispatcher assigns", description: "a driver and vehicle" },
+    { number: "4", label: "Follow your ride's progress" },
   ];
 
   const scrollToFeatures = () => {
@@ -141,7 +141,7 @@ function WebLandingPage() {
       <View style={styles.sectionShell} onLayout={(event) => setFeaturesSectionY(event.nativeEvent.layout.y)}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionEyebrow}>Features</Text>
-          <Text style={[styles.sectionTitle, narrow && styles.sectionTitleNarrow]}>Powerful Features</Text>
+          <Text style={[styles.sectionTitle, narrow && styles.sectionTitleNarrow]}>What SakayNa Does</Text>
         </View>
 
         <View style={styles.featureGrid}>
@@ -158,7 +158,10 @@ function WebLandingPage() {
       <View style={[styles.sectionShell, styles.stepsShell]}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionEyebrow}>Workflow</Text>
-          <Text style={[styles.sectionTitle, narrow && styles.sectionTitleNarrow]}>How It Works</Text>
+          <Text style={[styles.sectionTitle, narrow && styles.sectionTitleNarrow]}>How Ride Requests Work</Text>
+          <Text style={styles.featureText}>
+            After signing up, submitting proof of residency, and getting approved, you can request a ride.
+          </Text>
         </View>
 
         <View style={styles.stepsRow}>
@@ -168,6 +171,7 @@ function WebLandingPage() {
                 <Text style={styles.stepNumber}>{step.number}</Text>
               </View>
               <Text style={styles.stepLabel}>{step.label}</Text>
+              {step.description ? <Text style={[styles.featureText, { textAlign: "center" }]}>{step.description}</Text> : null}
             </View>
           ))}
         </View>
