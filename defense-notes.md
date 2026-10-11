@@ -2,7 +2,7 @@
 
 Prepared October 11, 2026, for the October 23 defense. These are short practice answers, based on the current project notes and code. Say the first sentence, then add the next one if the panel asks for more detail.
 
-Last checked October 11, 2026, against master at **57f4d03**, the previous notes commit. There were no later commits on the checked branches or uncommitted app changes. The latest app-code commit remains **d9ff664**; local main and both GitHub branches still point there. The corrections below clarify existing behavior, not newly released features.
+Last checked October 11, 2026, against **demo-ready-16**, tagged at app-code commit **39e4583**. The owner tested this APK on their phone, and its EAS fingerprint says **matches** (the built app matches the checked source). Later release-note commits do not change the app. The live website remains at **a25dae1**: it has the hold-to-show eyes and Privacy Policy update, but not the separate outcome/issues saving fix included in APK 16.
 
 **Keep the facts clear:** C1 and C2 are fixed according to the recorded tests/releases. C3 is still untested. Future work is proposed, not already built. The survey demo is finished, but do not invent survey scores, response-time improvements, or LGU approval.
 
@@ -132,6 +132,8 @@ Some update rules still allow too many fields on a person's own requests, alerts
 
 Important operations use an all-or-nothing save. For example, assignment updates the request, driver assignment, and vehicle together. Some checks are still missing, such as a complete check against two Dispatchers choosing the same van at once.
 
+APK 16 also saves the selected completion outcome and optional issues on the driver's assignment in the same save as completion, driver/van availability, and the Run end duty record. Issues are trimmed to 300 characters and empty when blank; failed completion saves none of these changes. Old completion notes and records are kept. The duty record still says Completed, and history/Admin do not yet display the two new fields.
+
 ## Security findings, fixes, and tests
 
 ### 31. What was C1?
@@ -228,7 +230,7 @@ Its new residents and drivers can remain Pending because nobody is assigned to r
 
 ### 53. Are uploaded document photos private?
 
-The app shows them only to the owner and their barangay's Admin, but anyone with the exact Cloudinary link can open the photo. We use sample documents for tests; private uploads and controlled access are future work.
+The app shows them only to the owner and their barangay's Admin, but anyone with the exact Cloudinary link can open the photo. National ID is now a proof-of-residency option, between Certificate of Indigency and Other government document with your address. The Privacy Policy identifies it as a government ID and explains that document photos, including National ID photos, use public links. We use sample documents for tests; private uploads and controlled access are future work.
 
 ### 54. Are new Dispatchers forced to change their temporary password?
 
@@ -244,7 +246,9 @@ Yes, the same email used through both methods can lead to duplicate accounts or 
 
 ### 57. Do old APKs still work?
 
-Compatibility code is kept, but very old Driver APKs cannot receive assignments because they lack Punch in. APKs before 11 still show Decline, before 12 lack auto-call, and older Driver APKs do not share location. The latest documented APK is **demo-ready-15**; testers should use the agreed release.
+Compatibility code is kept, but very old Driver APKs cannot receive assignments because they lack Punch in. APKs before 11 still show Decline, before 12 lack auto-call and driver location sharing. The latest phone-tested APK is **demo-ready-16** at **39e4583**; testers should install that release.
+
+APK 16 removes only the Completion notes box and fades the completion pop-up's dark background separately from its sliding card. It keeps Issues encountered optional and saves outcome/issues when completion succeeds. Log in and Create Account show passwords only while holding the eye; releasing or sliding off hides them. The eyes are 52 × 52 pixels, labelled "Hold to show password", with screen-reader labels and Space/Enter hold controls on the web. Pressing the eye keeps the input's keyboard and cursor, and the phone-browser selection/context menu is suppressed on the eye. The Resident and Driver registration forms have no separate password boxes; both use Create Account first. National ID is also available as proof of residency.
 
 ## Future work and honest conclusions
 
@@ -280,7 +284,7 @@ We have recorded phone and website workflow tests and specific C1/C2 test result
 - **Location:** five action points, no background tracking, latest record only, Dispatcher/self read access, Punch out deletion attempt.
 - **No backend:** Firebase servers exist; no custom trusted background program.
 - **Privacy:** current safeguards are not proof of full compliance; policy and retention remain unfinished.
-- **Release:** latest documented APK 15 at 4103d0c; later Admin code is on main. Do not say every newest source change is already installed on phones.
+- **Release:** phone-tested APK 16 at 39e4583; EAS fingerprint matches. Website at a25dae1 includes the four UI changes and Privacy Policy update, but not the completion-saving fix.
 
 ## Project references
 
@@ -294,4 +298,4 @@ We have recorded phone and website workflow tests and specific C1/C2 test result
 
 The legal links beside questions 16-19 are the National Privacy Commission's published text of RA 10173. Their relevance to SakayNa is an explanation of design choices and open responsibilities, not a legal compliance certification. No code, rules, or live data were changed to prepare these notes.
 
-This update checked Git history and current source for calling, duty/location, assignment, security rules, and Admin emergency calls. It did not run new phone tests or compare deployed Firebase rules. C1/C2 test results remain the previously recorded evidence; C3 remains untested in the project notes.
+This text-only update checked the demo-ready-16 source and recorded releases. It did not run new phone tests or compare deployed Firebase rules. APK 16's phone test is the owner's recorded confirmation. C1/C2 test results remain the previously recorded evidence; C3 still needs its separate three-minute phone test.

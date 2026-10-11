@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked against the app: Oct 5, 2026 (after emergency-request-form-plan.md: the dispatcher's Emergency request form).
+Last checked October 11, 2026, against **demo-ready-16** at **39e4583**. The owner tested this APK on their phone; its EAS fingerprint says **matches**. The website remains at **a25dae1** and does not include the separate completion-saving fix. General APK testing does not close the other open issues below.
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,36 +10,6 @@ Skills/resident.md section 6.
 ---
 
 ## Open
-
-### Complete mission saving fix: awaiting phone test
-
-- **Found:** Oct 11, 2026, while removing the Completion notes box (#6).
-- **Original problem:** The pop-up collected the selected outcome and
-  optional "Issues encountered" text, but `advanceMission` saved only
-  `completion.notes` and ignored the outcome and issues. This problem
-  existed before #6 and was left unchanged during #6, #7, #8 and #5.
-- **Approved saving fix (Oct 11):** `driverMissionService.js` now saves
-  `completionOutcome` and `completionIssues` on the driver's assignment
-  only when completing the mission. Issues are trimmed and limited to
-  300 characters; blank or missing issues save as `""`.
-- **One save:** These fields use the same Firestore transaction as the
-  Completed status/time, van availability, driver availability and Run
-  end duty record. If completion fails, none of these changes are saved.
-  The duty record's outcome remains `"Completed"`, as before.
-- **Old data:** No records are rewritten. An existing `completionNotes`
-  value is kept when the current form sends no note. Older completed
-  assignments and duty records remain untouched.
-- **Where to check:** Firebase Console -> `driverAssignments` -> the
-  completed assignment. Existing history/Admin screens do not display
-  the two new fields; this change fixes saving only.
-- **Local checks passed:** With/without issues, spaces-only and missing
-  issues, exactly/over 300 characters, the full ride sequence, driver
-  and van availability, Run start/end duty records, old notes/records,
-  an older off-duty ride, failed save/retry, cancelled ride and missing
-  assignment. Checks used mocked transactions; no live data was changed.
-- **Status:** Implemented and locally checked; awaiting the owner's
-  phone/Firebase test and commit. No rules change or deployment needed.
-  A new APK is needed to include this service change.
 
 ### New Dispatcher: changing the temporary password is not forced
 
@@ -115,7 +85,7 @@ Skills/resident.md section 6.
     to dispatchers until they punch out.
   - If the driver chose "Approximate" in Android's location pop-up, the
     pin can be a few km off.
-  - Drivers on the website or on an APK before this release never share
+  - Drivers on the website or on APKs before demo-ready-12 never share
     a location ("No location shared.").
   - On a narrow screen the map is above the driver list, so the
     dispatcher scrolls up after tapping Show on map.
@@ -130,7 +100,8 @@ Skills/resident.md section 6.
   check").
 - **What it is:** The rules check that only the driver saves their own
   location, only while on duty, with one of the five steps and
-  Firestore's clock, and that only dispatchers can read it. But they
+  Firestore's clock. Dispatchers and the driver themselves can read it;
+  Admins and Residents cannot. But the rules
   can't check that the latitude and longitude are real (a tampered app
   could send a fake place), or that the step matches what the driver
   just did.
@@ -162,14 +133,17 @@ Skills/resident.md section 6.
 - **What to do:** drivers install the newest APK.
 - **Status:** Intended (old data and code are kept on purpose).
 
-### After pickup, a problem can only be reported by phone
+### After pickup, an immediate problem is handled by phone
 
 - **Found:** Oct 4, 2026 (driver-pages-plan.md, answer 1).
 - **What it is:** Once the rider is on board, "I can't do this ride" is
   gone and the driver taps "Call dispatch" (the office number). If the
   admin has not saved an office number (Operations → operational
   settings), the driver only sees a sentence telling them to call the
-  barangay office. Nothing is saved in the app about the problem.
+  barangay office. That phone call does not create an incident report.
+  At completion, the driver can separately save optional Issues encountered
+  text on the assignment (APK 16, maximum 300 characters). This does not
+  provide an in-app response to a problem while the rider is on board.
 - **Status:** Open. Left out on purpose (a ride with the rider on board
   needs a person to decide).
 
@@ -271,8 +245,10 @@ Skills/resident.md section 6.
 
 - **Found:** Sept 29, 2026 (login-overhaul-plan.md, steps 7 and 10).
 - **What it is:** The Resident Verification and Driver Applications lists
-  only show the admin's own barangay. But the older Users and Operations
-  tools still work for every barangay. Any admin can set any resident
+  only show the admin's own barangay. The redesigned Overview, Emergency
+  Calls, Requests, Users, Operations, Vehicles and reports still read or
+  manage city-wide data; the redesign changed their layout, not this scope.
+  Any admin can set any resident
   "Active", or any driver "Approved", from any barangay there, skipping the
   document review.
 - **Also:** If an admin changes a Pending resident's barangay in Users →
@@ -300,12 +276,15 @@ Skills/resident.md section 6.
 ### Document photo links are public
 
 - **Found:** Sept 29, 2026 (login-overhaul-plan.md).
-- **What it is:** Proof-of-residency and driver document photos are stored
-  in Cloudinary as web links. SakayNa only shows these links to the owner
+- **What it is:** Proof-of-residency (including the National ID option,
+  a government ID) and driver document photos are stored in Cloudinary
+  as public web links. SakayNa only shows these links to the owner
   and their barangay's admin, but anyone who has the exact link can open the
   photo.
-- **Status:** Open. Written in the Privacy Policy draft. Use sample
-  documents, not real IDs, while testing.
+- **Status:** Open. The Privacy Policy draft now explicitly names National
+  ID as a government ID and explains that document photos, including
+  National ID photos, use public links. Use sample documents, not real
+  IDs, while testing.
 
 ### Free map server has a fair-use rule
 
@@ -330,21 +309,65 @@ Skills/resident.md section 6.
   them manually in the Firebase Console.
 - **Idea for fix:** Alerts should automatically expire (for example,
   after a few minutes with no answer).
-- **Status:** Partly fixed (commit cfc717b): dispatchers stop seeing stuck
-  alerts after 2 minutes. Firestore still says "ringing", and the Admin
-  Emergency Calls list still shows them as "Ringing — Unanswered".
-  Important before the pilot.
+- **Status:** Partly fixed (commit cfc717b): Dispatchers hide alerts after
+  2 minutes without a heartbeat. Firestore still says "ringing". The
+  redesigned Admin Emergency Calls page calls overdue alerts **No answer**;
+  it fetches the newest 100, then puts overdue alerts first (oldest waiting
+  first). Older alerts outside those 100 may not appear.
+- **C3 remains open/unconfirmed:** a real waiting alert may also disappear
+  if Call the office puts the Resident app in the background and pauses
+  its heartbeat. Reloading Dispatcher can briefly bring old alerts back.
+  The separate three-minute phone-call test has no recorded result yet;
+  the general APK 16 phone test does not establish that C3 is fixed.
 
 ---
 
 ## Fixed / done
 
+### Complete mission outcome/issues saving — fixed in APK 16
+
+- **Found:** Oct 11, 2026, while removing the Completion notes box (#6).
+- **Original problem:** The pop-up collected the selected outcome and
+  optional "Issues encountered" text, but `advanceMission` saved only
+  `completion.notes` and ignored the outcome and issues. This problem
+  existed before #6 and was left unchanged during #6, #7, #8 and #5.
+- **Approved saving fix (Oct 11):** `driverMissionService.js` now saves
+  `completionOutcome` and `completionIssues` on the driver's assignment
+  only when completing the mission. Issues are trimmed and limited to
+  300 characters; blank or missing issues save as `""`.
+- **One save:** These fields use the same Firestore transaction as the
+  Completed status/time, van availability, driver availability and Run
+  end duty record. If completion fails, none of these changes are saved.
+  The duty record's outcome remains `"Completed"`, as before.
+- **Old data:** No records are rewritten. An existing `completionNotes`
+  value is kept when the current form sends no note. Older completed
+  assignments and duty records remain untouched.
+- **Where to check:** Firebase Console -> `driverAssignments` -> the
+  completed assignment. Existing history/Admin screens do not display
+  the two new fields; this change fixes saving only.
+- **Local checks passed:** With/without issues, spaces-only and missing
+  issues, exactly/over 300 characters, the full ride sequence, driver
+  and van availability, Run start/end duty records, old notes/records,
+  an older off-duty ride, failed save/retry, cancelled ride and missing
+  assignment. Checks used mocked transactions; no live data was changed.
+- **Status:** Fixed, tested and committed at **39e4583**, then included in
+  **demo-ready-16**. The owner confirmed both the saving-fix test and the
+  resulting APK's phone test. EAS fingerprint comparison says **matches**.
+  No rules change or deployment was needed. The production website at
+  a25dae1 does not yet include this saving fix.
+- **Related APK 16 changes:** Only the Completion notes box was removed;
+  Issues encountered remains optional. The completion backdrop fades
+  separately from the card, using the landing sheet's approach. Log in
+  and Create Account eyes show passwords only while held. National ID
+  was added to resident proof choices using the existing document label
+  and photo link; older labels/data are kept.
+
 ### Theme plan (was a future feature, not a bug)
 
 - **Decided (Sept 28, 2026):** the app uses light mode, not dark.
 - **Landing page, Get Started sheet and Choose Role:** Always light. They
-  do NOT change with the phone's theme or the app's Dark / Light switch.
-  This is on purpose.
+  do not follow the phone's theme. There is no Dark / Light switch in
+  the current app. This is on purpose.
 - **Rest of the app:** Always light (lib/theme.js). Dark mode was removed
   on 2026-10-03 for the redesign (the Dark / Light switch in resident
   Settings, driver Settings and the admin menu). It can come back after

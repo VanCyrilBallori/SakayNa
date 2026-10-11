@@ -5,9 +5,16 @@ Everything below comes from reading the code. Every claim has a file path
 the name of the function (or screen component) the line is in. "Unclear"
 means I could not confirm it from the code alone.
 
-Last checked against the code on 2026-09-30 (after the login overhaul and
-resident overhaul Steps 1–8a, commit 6b2c81e). Line numbers can move when
-the code changes; the function names are the safer guide.
+Last checked October 11, 2026, against **demo-ready-16** at **39e4583**.
+The owner tested the APK on their phone; its EAS fingerprint says **matches**.
+Older line numbers below can move; use the file and function names as the
+safer guide. This text update did not run new phone tests.
+
+APK 16 includes hold-to-show eyes, National ID proof of residency, and the
+Driver's Complete mission pop-up without notes and with a fading backdrop.
+It also saves completion outcome/issues on the driver's assignment. Old
+notes and records stay intact. The website at **a25dae1** has the four UI
+changes and Privacy Policy update, but not the separate saving fix.
 
 ---
 
@@ -29,8 +36,10 @@ residents can send. Pending, Rejected and "on hold" residents (for example
 Suspended) can log in and look around, but they **cannot send emergency
 alerts or transport requests** (sections 2.5 and 4.1).
 
-The home screen is a **map** with a fixed bottom sheet (big Emergency button,
-Request a Ride, latest request) and a **☰ side menu** (section 2.5).
+The home screen has a **green Toledo City/barangay heading** with a
+**☰ side menu**. Below it is a scrolling page with Emergency, Request a Ride,
+and **Your ride** (an active ride first, otherwise the newest request).
+It no longer has a full-screen home map (section 2.5).
 
 On the **Android app**, the resident stays logged in after closing the app
 (section 2.4), and the app asks for phone permissions right after a resident
@@ -69,7 +78,7 @@ The phone app and the website show different first pages (`Index` in
    `getPostAuthenticationRoute` in `lib/roles.js:46-62`).
 3. Otherwise, the **mobile landing page** appears (`MobileLanding` in
    `components/MobileLanding.jsx:48`). It is **always light** on purpose (it
-   does not follow the phone's theme or the app's Dark / Light switch). It
+   does not follow the phone's theme; the Dark / Light switch is removed). It
    shows:
    - **Get Started** → opens a slide-up sheet (`openSheet` in
      `components/MobileLanding.jsx:138`) with:
@@ -107,7 +116,13 @@ count as verified).
 **a) Create Account** (`Signup` in `app/signup.jsx`):
 
 - **Fills in:** Email, Password, Confirm Password (both password boxes have a
-  show/hide eye button).
+  hold-to-show eye button). The password is visible only while the eye is
+  held; releasing, sliding off, cancellation or lost focus hides it again.
+  Each eye is 52 × 52 pixels, labelled **Hold to show password**, with
+  screen-reader labels, a **Double-tap and hold to show. Release to hide.**
+  hint, and web Space/Enter hold instructions. Pressing the
+  eye keeps the input's keyboard and cursor; selection/context menus are
+  suppressed on the eye in a phone browser (`PasswordBox` in `app/signup.jsx`).
 - **Taps Next** (`handleNext` in `app/signup.jsx:41-75`):
   1. The email must not be empty.
   2. The password must have at least 6 characters (`MIN_PASSWORD_LENGTH` in
@@ -150,6 +165,17 @@ Submitted**.
 | Proof | What the document is (Barangay Certificate of Residency, Barangay ID, Certificate of Indigency, National ID, or Other government document with your address — `DOCUMENT_TYPES` in `app/register-resident.jsx`) + one photo (camera or gallery) | a document type and a photo |
 | Review | Everything above | a tick box confirming the details |
 
+**National ID** is a government ID and sits between Certificate of Indigency
+and Other government document with your address. The existing `documentType`
+field saves the label; Admin review and its photo viewer use that label/link.
+Older records keep their labels. No rules change was needed: the rules do
+not keep a list of allowed document names. The Privacy Policy explains that
+document photos, including National ID photos, use **public Cloudinary links**;
+anyone with the exact link can open them. Use sample documents for tests.
+
+Resident and Driver registration have no password boxes or eyes of their
+own; both roles create their password on Create Account first.
+
 **Submit** (`handleSubmit` in `app/register-resident.jsx:146-196`):
 
 1. Shrinks the photo on the phone and uploads it to Cloudinary
@@ -173,7 +199,11 @@ not enforced" screen is gone.
 
 ### 2.4 Log In — `app/login.jsx`
 
-- **Fills in:** Email and Password.
+- **Fills in:** Email and Password. The eye uses the same hold-to-show
+  behavior as Create Account: release or slide off to hide, with a
+  52 × 52 target and **Hold to show password** screen-reader label (`PasswordBox` in
+  `app/login.jsx`). It keeps the keyboard/cursor and suppresses phone-browser
+  selection/context menus on the eye. Web keyboard users hold Space/Enter.
 - **Taps "Log In"** (`handleLogin` in `app/login.jsx:30-63`):
   1. Checks both fields are filled in.
   2. Signs in with Firebase Authentication.
@@ -231,48 +261,22 @@ permissions, one after another:
 - Tapping "Don't allow" never blocks the resident. The app just moves on.
 - Other roles and the website are not asked.
 
-**What the resident sees** (`ResidentHome` in `app/resident-home.jsx:524-612`):
+**What the resident sees** (`ResidentHome` in `app/resident-home.jsx`):
 
-- **A full-screen map** of Toledo City (`LeafletMap` in
-  `app/resident-home.jsx:533-541`, `components/LeafletMap.jsx`). Free
-  OpenStreetMap pictures, no API key. The zoom buttons and the OpenStreetMap
-  credit sit bottom-right, lifted above the sheet (`SHEET_OVERLAP` in
-  `app/resident-home.jsx:37`).
-  - **Your location:** if the resident **already allowed** location and GPS
-    is on, the map centers on them with a pin labelled "You are here". The
-    home screen **never asks** for permission by itself
-    (`useHomeLocation` in `features/resident/hooks/useHomeLocation.js:17`,
-    `check` at `25-69`). It checks again when the resident comes back to the
-    app (`useHomeLocation.js:72-79`). The position is **not saved** anywhere.
-  - **Location messages** (a small card under ☰, `LocationNote` in
-    `app/resident-home.jsx:1024`):
-
-    | Situation | Card says | Button |
-    |---|---|---|
-    | Permission not allowed | "Location is off. You can still pin your pickup or type a landmark." (+ "In Settings, choose Permissions → Location → Allow." if Android won't ask again) | **Allow location**: shows the permission pop-up if Android can still ask, otherwise opens SakayNa's page in the phone's Settings (`allowLocation` in `useHomeLocation.js:82-95`) |
-    | GPS switched off | "Turn on Location (GPS) to see where you are on the map." | **Try again** |
-    | GPS too slow (15 s) or other error | "We couldn't find your location right now." | **Try again** |
-    | Allowed and found, never answered yet, or website | nothing | — |
-
-- **A round ☰ button** at the top left (`ResidentHome` in
-  `app/resident-home.jsx:585-593`) → the side menu (section 2.5 d).
-- **Account status banner** floating on the map for any resident who is
-  not Active, same light colors in Light and Dark mode (`ResidentHome` in
-  `app/resident-home.jsx`, the `notActive` banner):
-  - Pending (yellow): "Pending Verification — An admin from your barangay is
-    checking your proof of residency…"
-  - Rejected (red): "Rejected — Your proof of residency was not accepted…"
-  - Any other status, "on hold" (red, title = the status, e.g. "Suspended"):
-    "Your account is on hold, so you cannot send emergency alerts or
-    transport requests. Please contact the office (☰ → Help / Contact
-    office)."
-- **A fixed bottom sheet** that cannot be dragged away
-  (`ResidentHome` in `app/resident-home.jsx:545-581`). It scrolls inside if
-  it does not fit (for example with very large text). It holds:
-  1. A big red **Emergency** button, "Send an alert to the dispatchers"
-     (`ResidentHome` in `app/resident-home.jsx:547-561`)
-  2. A green **Request a Ride** button (`app/resident-home.jsx:563-571`)
-  3. The **latest request card** (section 2.5 c)
+- **Green place heading:** Toledo City and their barangay, with a white
+  **☰ Open menu** button at the left (section 2.5 d).
+- **A scrolling page below the heading**, so large text is not cut off:
+  1. An account banner if the Resident is not Active.
+  2. Big red **Emergency** — Send an alert to the dispatchers.
+  3. Green **Request a Ride**.
+  4. **Your ride** (section 2.5 c).
+- **Account banner:** Pending is peach/orange and says the barangay Admin is
+  checking their proof. Rejected is red and shows the rejection reason,
+  with Call the office if a number is saved. Other non-Active accounts get
+  a red on-hold banner and the saved reason. All screens are light only.
+- **No full-screen map or fixed bottom sheet on home.** The old
+  `useHomeLocation`/location-message home layout is no longer used.
+  Maps and pickup location still work inside the request/emergency flows.
 
 **Residents who are not Active** (`notActive` in `app/resident-home.jsx`,
 the same check as `isActiveResident` in `firestore.rules`) who tap Emergency
@@ -456,18 +460,17 @@ request**.
    (`SentPage` in `ResidentRequestForm.jsx:550`). If sending fails: "Your
    request could not be sent. Check your internet and try again."
 
-#### c) Latest request card — `LatestRequestCard` in `features/resident/components/LatestRequestCard.jsx:16`
+#### c) Your ride card — `LatestRequestCard` in `features/resident/components/LatestRequestCard.jsx`
 
-- Shows the resident's **newest** request: a status pill ("Pending review",
-  "Driver assigned", "In progress", "Completed", "Cancelled"), what the ride
-  is for, **When** ("Fri, Oct 2, 9:00 AM" or "As soon as possible"), the
-  pickup, and — once assigned — the driver and vehicle.
-- It updates **live** (for example when a dispatcher assigns a driver),
-  because the requests are watched live (`useResidentRequests` in
-  `features/resident/hooks/useResidentRequests.js:10`).
-- **Tap it** → Request Details (section 2.6), which also reads the live
-  request (`ResidentRequestDetails` in `app/resident-home.jsx:614`).
-- No requests: "No rides yet. Your latest request will show here."
+- Shows an **active ride first**, otherwise the newest request
+  (`getHomeRide` in `features/resident/utils/requestMapper.js`).
+- Shows the ride step in a colored status band, a progress bar, From/To,
+  when, and the assigned driver/vehicle/plate where available.
+- **Call driver** is shown only when the saved phone is available and the
+  passenger has not yet been picked up. Older rides may have no phone.
+- It updates **live** through `useResidentRequests`.
+- **See details** opens Request Details (section 2.6), which reads the live ride.
+- No requests: **No rides yet. When you request a ride, it will show here.**
 
 #### d) ☰ Side menu — `ResidentSideMenu` in `features/resident/components/ResidentSideMenu.jsx:18`
 
@@ -489,7 +492,7 @@ dark area, the ✕, or the phone's Back button.
 - **Terms of Service** / **Privacy Policy** → the real pages
   (`app/terms.jsx`, `app/privacy.jsx`). On the phone they have a **← Back**
   button at the top (`PageBackButton` in `components/PageBackButton.jsx:7`);
-  on the website they look as before.
+  on the website they open in a separate tab with **Back to home**.
 - **Log out** (`logOut` in `ResidentSideMenu.jsx:43-51`) → signs out and goes
   to `/login`. On the phone, this also removes the saved login
   (`logoutCurrentUser` in `lib/session.js:65`).
@@ -547,7 +550,8 @@ works the same from History and from the home card (`requestCancellation` in
 - **Can edit:** "Username" (this is really the Full Name), Phone Number, Email
   Address. **Barangay cannot be changed** by the resident (only an Admin can,
   `keepsAdminOnlyFields` in `firestore.rules:67-71`).
-- **Dark / Light** switch for the app colors. The app starts in Light.
+- The app is **light only**. The Dark / Light switch was removed; the
+  phone's dark setting does not change these screens.
 - **Save Settings** → `saveResidentSettings` (`saveResidentSettings` in
   `app/resident-home.jsx:407-475`):
   1. All three fields must be filled in.
@@ -597,12 +601,9 @@ works the same from History and from the home card (`requestCancellation` in
 | `askResidentPermissionsOnce` | `lib/permissions.js:15` | Asks for notifications, location and phone calls, each only once per install. |
 | `logoutCurrentUser` | `lib/session.js:65` | Signs the user out of Firebase. On the phone this also removes the saved login. |
 | `handleQuickAction` | `app/resident-home.jsx:226` | Emergency → confirm pop-up; Request a Ride → the form. Pending/Rejected → the "not verified" pop-up instead. |
-| `useHomeLocation` | `features/resident/hooks/useHomeLocation.js:17` | Home map location: checks only, never asks by itself; re-checks when the app comes back. |
-| `allowLocation` | `features/resident/hooks/useHomeLocation.js:82` | The "Allow location" button: permission pop-up if Android can still ask, else the phone's Settings. |
-| `LocationNote` | `app/resident-home.jsx:1024` | The "location off" / "GPS off" / "couldn't find you" card on the map. |
-| `LatestRequestCard` | `features/resident/components/LatestRequestCard.jsx:16` | The newest request on the home sheet; tap → Request Details. |
+| `LatestRequestCard` / `getHomeRide` | `features/resident/components/LatestRequestCard.jsx`, `features/resident/utils/requestMapper.js` | Your ride: active ride first, otherwise newest request; See details opens Request Details. |
 | `ResidentSideMenu` | `features/resident/components/ResidentSideMenu.jsx:18` | The ☰ menu, the Help pop-up, and Log out. |
-| `PageBackButton` | `components/PageBackButton.jsx:7` | "← Back" on the Terms and Privacy pages (phone app only). |
+| `PageBackButton` | `components/PageBackButton.jsx` | Back on phone legal pages; Back to home on website legal pages. |
 | `sendEmergencyAlert` | `app/resident-home.jsx:327` | Starts an emergency alert: opens the pop-up, saves the alert, and looks up the GPS. |
 | `writeAlert` | `app/resident-home.jsx:281` | Saves the alert to `callSessions` (including the first `lastActiveAt`), with a 10-second "not confirmed" limit. |
 | alert watcher (`useEffect` in `ResidentHome`) | `app/resident-home.jsx:96` | Watches the alert live, so the pop-up knows when it is saved and when a dispatcher accepts. |
@@ -736,26 +737,25 @@ Rejected (section 5.4).
 
 "Read" means see the data. "Write" means create, change or delete it.
 
-| Collection | Resident can… | Rule line |
+| Collection | Resident can… | Rule reference in `firestore.rules` |
 |---|---|---|
-| `users/{uid}` | **read** only their own profile | `match /users` in `firestore.rules:75` |
-| `users/{uid}` | **create** their own profile only as `role: "Resident"` + `accountStatus: "Pending"` with a **verified email** (or as a Pending Driver) | `selfCreateProfileIsSafe` in `firestore.rules:56-63`, `match /users` in `76` |
-| `users/{uid}` | **update** their own profile, but can **never change** `role`, `accountStatus`, `approvalStatus`, the review fields, or **`barangay`** | `keepsAdminOnlyFields` in `firestore.rules:67-71`, `match /users` in `77-79` |
-| `users/{uid}` | **delete**: nobody can | `firestore.rules:80` |
-| `residentVerifications/{uid}` | **create** only their own (document id = their uid), only as `status: "Pending"`; **read** only their own. Only the Admin of their barangay may read it too, and only that Admin may change it (to Active or Rejected) | `match /residentVerifications` in `firestore.rules:149-159` |
-| `transportRequests` | **read** only requests where `residentId` is their own uid | `match /transportRequests` in `firestore.rules:85-87` |
-| `transportRequests` | **create** only if they are an **Active** Resident and `residentId` is their own uid. (Since 2026-10-05 a **dispatcher** may also create one for them, but only from an emergency alert that dispatcher answered, for that same resident: section 5.3.) | `isActiveResident` in `firestore.rules:32-35`, `dispatcherRideFromAlertIsSafe` and `match /transportRequests` in `firestore.rules` |
-| `transportRequests` | **update** any request where `residentId` is their own uid (any field, see #3) | `firestore.rules:89-91` |
-| `transportRequests` | **delete**: Admin only | `firestore.rules:92` |
-| `callSessions` | **read** their own alerts, **and** an alert ID that does not exist yet (so the app can start watching a new alert before it is saved) | `match /callSessions` in `firestore.rules:120` |
-| `callSessions` | **create** only if they are an **Active** Resident and it is their own; **update** their own (any field, see #3); **delete**: staff only | `firestore.rules:121-123` |
-| `Driver_Applications` | **create** one only with their own uid as the id and `status: "Pending"`, and **read** their own. (Any logged-in user can, not only drivers.) The resident screens never do this. | `match /Driver_Applications` in `firestore.rules:128-144` |
-| `systemSettings/operational` | **read** only (for the office phone) | `firestore.rules:178-181` |
-| `driverAssignments`, `vehicles`, `driverSchedules`, `vehicleChecklists`, `activityLogs`, other `systemSettings` | **no access** | `firestore.rules:96-115`, `162-184` |
-| everything else | **no access** | `match /{document=**}` in `firestore.rules:188-190` |
+| `users/{uid}` | **read** only their own profile | `match /users` |
+| `users/{uid}` | **create** their own Pending Resident profile with a **verified email** (or a Pending Driver profile) | `selfCreateProfileIsSafe`, `match /users` |
+| `users/{uid}` | **update** their own profile, but cannot change role, account/review status or barangay | `keepsAdminOnlyFields`, `dutyChangeIsSafe`, `match /users` |
+| `users/{uid}` | **delete**: nobody can | `match /users` |
+| `residentVerifications/{uid}` | **create** their own Pending proof; **read** their own. Only their barangay Admin can review/change it to Active/Rejected, keeping the same barangay. Document type names are not restricted by a rules list. | `match /residentVerifications`, `isAdminOf` |
+| `transportRequests` | **read** their own requests | `match /transportRequests` |
+| `transportRequests` | **create** only as an Active Resident with their own residentId; a Dispatcher can also create a ride from an alert they answered for that Resident | `isActiveResident`, `dispatcherRideFromAlertIsSafe`, `match /transportRequests` |
+| `transportRequests` | **update** their own requests without a field restriction (open issue #3); **delete**: Admin only | `match /transportRequests` |
+| `callSessions` | **read** their own alerts and a not-yet-existing alert ID; **create** only as an Active Resident for themselves; **update** their own without a field restriction (#3); **delete**: staff only | `match /callSessions` |
+| `Driver_Applications` | **create** a Pending application with their uid as document ID and driverUid; **read** their own. Any logged-in user can do this, though Resident screens do not. | `match /Driver_Applications` |
+| `systemSettings/operational` | **read** only, for the office phone | `match /systemSettings/operational` |
+| `driverAssignments`, `vehicles`, `driverSchedules`, `vehicleChecklists`, `activityLogs`, other `systemSettings` | **no access** as a Resident | matching collection rules |
+| everything else | **no access** unless a specific rule allows it | `match /{document=**}` |
 
-Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
-`isActiveResident`, `isAdminOf` (`firestore.rules:10-47`).
+Helper functions: `signedIn`, `isStaff`, `isAdmin`, `isActiveResident` and
+`isAdminOf`. These are database permissions, not proof that all misuse is
+blocked; broad update permissions remain an open issue.
 
 ### 4.5 Bans and suspensions
 
@@ -803,7 +803,7 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
     `assignedDriverId/Name`, `assignedVehicleName`, `vehiclePlateNumber`,
     `assignedAt`
   - marks the vehicle as `"Assigned"`
-- The resident sees this live: the latest request card and Request Details
+- The resident sees this live: the Your ride card and Request Details
   show "Driver assigned" with the driver and vehicle.
 - Once a request is no longer Pending, it **drops out of the dispatcher's
   queue**.
@@ -812,20 +812,29 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
 
 - The Driver sees the assignment and watches the linked request live
   (`DriverHome` in `app/driver-home.jsx`).
-- **What the driver sees about the passenger** ("Current Ride" card,
-  `DriverHome` in `app/driver-home.jsx:700-735`, and "Review details"):
-  **When** (`app/driver-home.jsx:713`), the passenger's name, a tap-to-call
-  phone (`contactNumber`), people riding, help needed, notes, pickup +
-  landmark, destination, and the vehicle. The driver's map uses the
-  resident's exact pin (`getPickupCoordinates` in
-  `features/driver/utils/driverMissionMapper.js:15`).
+- The Driver home has **Ride, Map and Availability** pages with a bottom
+  bar and a ☰ menu for Profile, Settings, Help and Log out. Ride history is
+  on Availability (`DriverHome` in `app/driver-home.jsx`).
+- **Passenger details:** the Ride page's `DriverRideCard` shows when,
+  pickup/landmark, destination, riders/patients, vehicle, help needed and
+  Call passenger. **Ride details** opens the full details, including notes.
+  Emergency rides also show the saved emergency quick facts. The Map page
+  has a navigation button that follows the ride step and uses the resident's
+  exact pin (`getPickupCoordinates` in
+  `features/driver/utils/driverMissionMapper.js`).
 - Each driver step runs `transitionMission` (`transitionMission` in
   `features/driver/services/driverMissionService.js:35-100`). It updates
   **both** the assignment and the resident's request:
   - **Accepted / En Route / Arrived / Picked Up** → request `status: "In
     Progress"` plus `missionStatus` and a timestamp (`acceptedAt`,
     `enRouteAt`, `arrivedAt`, `pickedUpAt`)
-  - **Completed** → request `status: "Completed"`, `completedAt`
+  - **Completed** → request `status: "Completed"`, `completedAt`. The
+    assignment saves `completionOutcome` and `completionIssues` (trimmed,
+    maximum 300 characters, `""` when blank) in the same all-or-nothing save
+    as completion, van/driver availability and the Run end duty record.
+    Failed completion saves none of these changes. Old `completionNotes`
+    and old records stay intact; the duty record still uses outcome
+    `"Completed"`. History/Admin do not yet display the two new fields.
   - **Declined** (older APKs only) → request goes back to `status: "Pending"`,
     the driver fields are cleared, and `lastDeclinedDriverId` is set.
   - **Unable** ("I can't do this ride", driver-pages-plan.md) → the same, but it
@@ -833,6 +842,13 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
     times. The resident sees "Finding another driver" in both cases.
   - If the resident already **cancelled** the ride, none of these steps is
     saved; the driver sees "The resident cancelled this ride."
+- **Complete mission pop-up:** only an outcome is required. The Completion
+  notes box is removed; Issues encountered stays optional. Its dark backdrop
+  fades separately from the sliding card, using the landing sheet's approach
+  (`DriverMissionActions` and `validateCompletion` in
+  `features/driver/components/DriverMissionActions.jsx` and
+  `features/driver/utils/driverMissionValidation.js`). This change applies
+  only to that pop-up.
 - **The resident cancels while the ride is still Assigned:** the driver's
   app frees the driver and the vehicle by itself (`clearCancelledRide` in
   `features/driver/services/driverMissionService.js`) and shows a red note
@@ -939,15 +955,28 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
   The request cards and details show "Ride for" and **"When"**
   (`AdminRequestsSection.jsx:88-89`, `app/admin-home.jsx:928-929`), with a
   "Ride for" filter.
-- **Sees resident alerts:** the Admin "Emergency Calls" section lists alerts.
-  Alerts ringing for more than 30 seconds are marked as unanswered
-  (`STALE_RINGING_THRESHOLD_MS` in
-  `features/admin/hooks/useAdminCallSessions.js:8`, `52`). The Admin list
-  does **not** use the `lastActiveAt` signal.
+- **Sees resident alerts:** the redesigned Admin Emergency Calls page
+  fetches the **newest 100** alerts first, then puts overdue **No answer**
+  alerts first (oldest waiting first). An alert is overdue after 30 seconds.
+  It shows the resident/phone and answered-by/linked ride details where saved
+  (`useAdminCallSessions` and `AdminCallSessionsSection` in
+  `features/admin/hooks/useAdminCallSessions.js` and
+  `features/admin/components/AdminCallSessionsSection.jsx`). This list does
+  **not** use `lastActiveAt`; alerts outside the newest 100 may not appear.
 - **Edits resident profiles:** phone, barangay, address (Users → Edit in
   `app/admin-home.jsx`).
-- **Changes status or role:** `changeAccountStatus` and `changeUserRole`
-  (`adminOperationsService.js:162`, `201`). See section 4.5.
+- **Changes status:** `changeAccountStatus` in
+  `features/admin/services/adminOperationsService.js`, with a required
+  reason. **Change role is removed** from Operations. Deactivation does not
+  disable Firebase login; staff removal still needs Console handling.
+- **Creates Dispatchers:** Operations → Add Dispatcher creates a login and
+  profile with a temporary password (`createDispatcherAccount` in the same
+  service). Changing that password is recommended but not forced. Admin
+  accounts still need Firebase Console provisioning; permanent deletion is
+  unavailable/deferred.
+- The Admin redesign changed the layout, not the barangay boundary: application
+  reviews are own-barangay; the other management tools and Duty Records remain
+  city-wide (Known-Issue.md).
 - **Sets the office phone** the resident sees on the alert screen and in ☰ →
   Help: `saveSystemSettings` → `systemSettings/operational.publicOfficePhone`
   (`saveSystemSettings` in `adminOperationsService.js:266`).
@@ -959,7 +988,7 @@ Helper functions used above: `signedIn`, `isStaff`, `isAdmin`,
 ## 6. Unclear or possibly wrong
 
 This list keeps the same numbers as earlier reviews. Each item now says
-**Fixed**, **Partly fixed** or **Still open** (checked 2026-09-30). New items
+**Fixed**, **Partly fixed** or **Still open** (checked October 11, 2026). New items
 start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 
 ### Bigger problems
@@ -1014,8 +1043,8 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 
 6. **Fixed (2026-10-03) — The Dispatcher sees the resident's phone number and
    location.** The dispatcher's "Incoming Emergency Call" pop-up shows the
-   resident's phone (big, tap to call), their barangay or GPS address, and an
-   "Open location in Maps" button once the location arrives
+   resident's phone as plain text (the Resident makes the SIM call), their
+   barangay or GPS address, and an **Open location in Maps** button once the location arrives
    (`EmergencyCallerDetails` in `app/dispatcher-home.jsx`). After Answer, an
    "Active emergency" card at the top of the dispatcher screen keeps showing
    the same details until the resident taps Done or the dispatcher taps "End
@@ -1030,15 +1059,18 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 8. **Partly fixed — Old alerts no longer pop up for dispatchers, but they
    still stay "ringing" forever.** After 2 minutes without the heartbeat,
    dispatchers stop seeing the pop-up (section 5.3). But nothing changes the
-   alert's `status` in Firestore, and the Admin call list still shows it as
-   unanswered forever, because it does not look at `lastActiveAt`
-   (`useAdminCallSessions.js:52`). See also #33 and #34.
-9. **Partly fixed — `latestRequestId` is saved on each alert**
-   (`writeAlert` in `app/resident-home.jsx:297`), but nothing reads it. The
-   Admin alert list shows "Type:" using `emergencyType/serviceType`
-   (`AdminCallSessionsSection.jsx:63`). The resident never saves it; since
-   2026-10-05 the dispatcher's Emergency request form does (section 5.3), so
-   only alerts without a form ride still say "Not specified".
+   alert's `status` in Firestore. Admin can show it as No answer while it
+   is in the newest 100 fetched alerts, because it does not look at
+   `lastActiveAt` (`useAdminCallSessions.js`). See also #33 and #34; a real
+   backgrounded alert may also be hidden, and that C3 test remains unrecorded.
+9. **Partly fixed — The alert records an older request reference, and a
+   submitted emergency-form ride has its own link.** `writeAlert` in
+   `app/resident-home.jsx` saves `latestRequestId`, which current screens
+   do not read. The emergency form separately saves its linked ride details.
+   The redesigned `AdminCallSessionsSection` shows `emergencyType` when
+   available, the answering Dispatcher, and `linkedRequestReference` with
+   driver/vehicle. Without that saved ride link it says **No ride was made
+   from this call**; the old Type: Not specified description is obsolete.
 10. **Still open — "Location: sending…" may take longer than 15 seconds.**
     Only the GPS reading has a 15-second limit. Turning the coordinates into
     an address (`reverseGeocodeAsync` in `useCurrentLocation.js`) has no time
@@ -1049,8 +1081,8 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
     The heartbeat uses a normal timer (`setInterval` in
     `app/resident-home.jsx:142-158`). On phones, these timers usually pause
     when the app is in the background (power button, another app, or **"Call
-    the office"**). After 2 minutes away, every dispatcher's pop-up hides the
-    alert, while the resident's screen still says "No dispatcher has accepted
+    the office"**). If the heartbeat stops for 2 minutes, Dispatcher screens
+    may hide the alert while the resident still sees "No dispatcher has accepted
     yet". Needs a phone test: send an alert, tap "Call the office", stay on
     the call for 3 minutes, and watch the dispatcher screen.
 34. **Still open — Stuck alerts pop up again for 2 minutes every time a
@@ -1109,7 +1141,8 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
     proof" button. This is planned for later (login-overhaul-plan.md step 8).
     Today an Admin must fix it (for example in Users → Edit).
 36. **(new) Still open — Scheduled rides have no reminders.** Nobody is
-    reminded when a scheduled ride is near (the app has no notifications).
+    reminded when a scheduled ride is near. `expo-notifications` is installed
+    and permission is requested, but actual push/reminder delivery is absent.
     The dispatcher watches the list; the tag turns red if the time passes
     unassigned (section 5.1). Assigning early keeps the vehicle busy until
     the trip ends. Left out on purpose (resident-overhaul-plan.md).
@@ -1117,8 +1150,8 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
 ### Home screen, profile and settings
 
 21. **Fixed — The "View Status" button is gone.** The home screen now shows
-    the latest request card, which always shows the newest request
-    (resident overhaul Step 6b).
+    **Your ride** card: an active ride first, otherwise the newest request
+    (`getHomeRide` in `features/resident/utils/requestMapper.js`).
 22. **Still open — The "Settings updated successfully." message is never
     seen.** The Settings pop-up closes right after the message is set
     (`saveResidentSettings` in `app/resident-home.jsx:457-458`).
@@ -1172,5 +1205,6 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
     is remembered, the app still needs to read the profile from Firestore
     (`useCurrentUserProfile` in `lib/session.js:91-138`). Without internet,
     the profile may not load, and the resident may see the landing page or
-    "Account unavailable". The home map would also be grey. It needs a test
+    "Account unavailable". Maps in the pickup/emergency flows may also fail
+    to load without internet. It needs a test
     on a phone in airplane mode.
