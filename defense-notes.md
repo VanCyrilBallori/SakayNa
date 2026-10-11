@@ -2,6 +2,8 @@
 
 Prepared October 11, 2026, for the October 23 defense. These are short practice answers, based on the current project notes and code. Say the first sentence, then add the next one if the panel asks for more detail.
 
+Last checked October 11, 2026, against master at **57f4d03**, the previous notes commit. There were no later commits on the checked branches or uncommitted app changes. The latest app-code commit remains **d9ff664**; local main and both GitHub branches still point there. The corrections below clarify existing behavior, not newly released features.
+
 **Keep the facts clear:** C1 and C2 are fixed according to the recorded tests/releases. C3 is still untested. Future work is proposed, not already built. The survey demo is finished, but do not invent survey scores, response-time improvements, or LGU approval.
 
 ## Purpose and design choices
@@ -24,7 +26,7 @@ No. The office number is available in Help, and a waiting alert offers Call the 
 
 ### 5. Is the emergency voice call inside SakayNa?
 
-No. After a Dispatcher answers, the Resident's Android phone counts down three seconds and uses its normal Phone app. It calls the Dispatcher's account number, then their Operational number if needed, then the office number.
+No. After Answer, the Resident's Android phone counts down three seconds and uses its normal Phone app. The website chooses one saved number: the Dispatcher's account number, otherwise their Operational number, otherwise the office number. It does not automatically try another number if that call is unanswered.
 
 ### 6. Why make the Resident call the Dispatcher?
 
@@ -150,7 +152,7 @@ It was a missing-alert problem in the Admin list. The page fetched any 100 alert
 
 ### 35. How did you fix and test C2?
 
-Commit **ddda3f3** asks the database for the newest alerts first, then limits the result to 100. The recorded website test showed a new alert at the top, an unanswered badge after about 30 seconds, and a changed status after Answer. The list still shows only the newest 100, not the entire history.
+Commit **ddda3f3** fetches the newest 100 alerts from the database. The recorded test confirmed a new alert appeared, became marked unanswered after about 30 seconds, and changed status after Answer. The current Admin screen puts overdue unanswered alerts first, oldest first, with a red No answer label; the remaining alerts are newest first. Older alerts outside those 100 are not loaded.
 
 ### 36. What is C3, and is it fixed?
 
@@ -184,7 +186,7 @@ The alert needs internet, and a normal phone call needs working phone service. T
 
 It can remain ringing in the database. Dispatchers hide it after two minutes without an activity update, but Admin may still show it unanswered. Reloading the Dispatcher page can make old stuck alerts appear again temporarily.
 
-### 43. Can a saved emergency form be recovered after closing it?
+### 43. Can an unfinished emergency form be recovered after closing it?
 
 An unfinished form is not saved as a draft, so Cancel, Back, reload, or browser close loses typed details. If the Resident has ended the alert and the form is then closed, it cannot be reopened. Keeping an already open form allows Submit after Done.
 
@@ -291,3 +293,5 @@ We have recorded phone and website workflow tests and specific C1/C2 test result
 - [app/privacy.jsx](app/privacy.jsx): current draft privacy wording; unfinished retention periods.
 
 The legal links beside questions 16-19 are the National Privacy Commission's published text of RA 10173. Their relevance to SakayNa is an explanation of design choices and open responsibilities, not a legal compliance certification. No code, rules, or live data were changed to prepare these notes.
+
+This update checked Git history and current source for calling, duty/location, assignment, security rules, and Admin emergency calls. It did not run new phone tests or compare deployed Firebase rules. C1/C2 test results remain the previously recorded evidence; C3 remains untested in the project notes.
