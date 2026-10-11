@@ -29,12 +29,12 @@ Resident/Driver application reviews belong to their barangay's Admin. Other Admi
 
 ## 2. Current state
 
-### Latest update: website release a25dae1 (October 11, 2026)
+### Latest website release: a25dae1 (October 11, 2026)
 
 - Released master to main at **a25dae1**, one command at a time, with a fast-forward merge. Vercel completed successfully.
 - This includes the four tested and committed changes: remove Completion Notes, fade the completion backdrop, hold-to-show password eyes, and National ID proof of residency.
 - Live page checks confirmed one "Hold to show password" eye on Log in, two on Create Account, and the updated Privacy Policy text. The working folder returned to master.
-- The separate completion saving fix below is newer local work and is not part of this website release.
+- The separate completion saving fix below is tested and committed on master and included in APK 16. It is not part of this website release.
 
 ### Earlier website release d62b195 (October 11, 2026)
 
@@ -48,7 +48,7 @@ Resident/Driver application reviews belong to their barangay's Admin. Other Admi
 - #5 adds **National ID** between Certificate of Indigency and Other government document with your address. It is tested and committed by the owner.
 - The existing `documentType` field saves the label. Admin review already uses the saved label, and the photo viewer uses the saved photo link. No database rules change or deployment is needed, and older records keep their labels.
 - The Privacy Policy draft names National ID as a government ID and says document photos, including National ID photos, use public Cloudinary links. Use sample documents for testing (Known-Issue.md).
-- All four phone changes are tested and committed and released on the website at a25dae1. They still need a new APK. The separately approved outcome/issues saving fix is recorded below and in Known-Issue.md.
+- All four phone changes are tested and committed and released on the website at a25dae1. They are also included in the phone-tested **demo-ready-16** APK, along with the separately approved outcome/issues saving fix.
 
 ### Completion saving fix (October 11, 2026)
 
@@ -57,16 +57,28 @@ Resident/Driver application reviews belong to their barangay's Admin. Other Admi
 - The fields are written in the existing transaction with the ride's Completed status/time, driver/van availability, and Run end duty record. Failed completion saves nothing. Duty Records still use outcome `"Completed"`.
 - Old records are not rewritten. Existing `completionNotes` are preserved when the new form supplies no note.
 - Local mocked-transaction checks passed for with/without issues, blank/missing issues, 300-character limits, all ride steps, availability, duty records, older data, and failed/cancelled completion.
-- Awaiting the owner's real phone/Firebase test and commit. Check the two new fields in Firebase Console -> driverAssignments; existing history/Admin screens do not display them.
-- No rules change or deployment is needed. This local fix has not been released to the website or included in a new APK.
+- The owner confirms the saving fix was tested and committed at **39e4583**, and the resulting APK 16 was tested on their phone. Check the two new fields in Firebase Console -> driverAssignments; existing history/Admin screens do not display them.
+- No rules change or deployment was needed. The fix is included in **demo-ready-16**; the production website remains at a25dae1 and does not yet include this saving fix.
 
 ### Android APK (the installation file)
 
-- Latest documented APK and highest numbered demo tag: **demo-ready-15**, pointing to **4103d0c**.
-- EAS preview build: **165bcbcf-2b0a-4e7c-9ccb-eab5a982a37e**. Release notes record phone testing and a matching native fingerprint. The build finished late October 5; tagging/release notes are dated October 6.
-- Download: https://expo.dev/artifacts/eas/Ftw2zrDvzb7KWdJRq_SuG_KlkMU2ilX0BH8kLlaKTQ4.apk
-- The recorded link expiry is **October 19, 2026**, before the defense. No later APK/tag is recorded in the checked files/history. A tag marks saved code; it does not update installed apps.
-- No over-the-air updates: new phone code needs a new APK.
+#### Latest release: demo-ready-16 (October 11, 2026)
+
+- **Phone tested:** The owner confirms the new APK was tested on their phone.
+- **Tag/source:** Annotated tag **demo-ready-16** points exactly to **39e45831631c6bb417bc4f8dd941633f38df30ea** (`39e4583`), the code used for the APK. Later tester-message/release-note commits do not change the APK or the tag's source.
+- **EAS Android preview build:** **ed1042dd-1d81-4ba3-af4e-991d74108bd0**, completed October 11, 2026.
+- **Checklist passed:** master was clean before building; `npx expo install --check` reported "Dependencies are up to date"; `eas fingerprint:compare --build-id ed1042dd-1d81-4ba3-af4e-991d74108bd0 --environment preview --non-interactive` reported **matches**. Build and local fingerprint: `1a79f1aacec2bfe663831ac4e3819ea210c2392c`.
+- **Included:** Complete mission without the Completion notes box, with Issues encountered still optional, and with a fading dark background; hold-to-show password eyes; National ID proof of residency; the updated Privacy Policy; and saved `completionOutcome` / `completionIssues` on the driver's assignment. Issues are trimmed, capped at 300 characters, and empty when blank. Old completion notes and records are kept.
+- **Download:** https://expo.dev/artifacts/eas/bij3WUHjKK9mVaTYRiAxOApXahaGUPAluF7zEPWab2Y.apk
+- **EAS link expiry:** October 25, 2026, after the October 23 defense.
+- **Install:** Uninstall the old SakayNa app, then install this APK. No over-the-air updates: later phone code needs another APK.
+- `tester-message.md` contains the link, changes, and test instructions.
+
+#### Previous release: demo-ready-15
+
+- Source **4103d0c**; EAS preview build **165bcbcf-2b0a-4e7c-9ccb-eab5a982a37e**. Release notes record phone testing and a matching native fingerprint. The build finished late October 5; tagging/release notes are dated October 6.
+- Previous download: https://expo.dev/artifacts/eas/Ftw2zrDvzb7KWdJRq_SuG_KlkMU2ilX0BH8kLlaKTQ4.apk
+- Recorded expiry: **October 19, 2026**. Use the APK 16 link above for the latest tested release.
 
 Most completed driver/emergency work was already done **by** APK 15, rather than after it:
 
@@ -90,7 +102,7 @@ Before this handoff, local main/master and cached origin/main/origin/master all 
 
 The owner reports the later Admin changes are live. Git proves they reached remote main; it does not prove Vercel built them successfully. The public web reader could not open the site during this review. Vercel Ready status and signed-in pages were not independently checked.
 
-After this file's local commit, **HANDOFF.md itself will be master-only** until separately pushed/released. This task does not push, deploy, switch branches, build, or change rules.
+Current release state: master contains the APK 16 source **39e4583**, tester-message commit **1ab226c**, and the later release record. Main remains at **a25dae1**. Pushing master backs up these commits; Vercel's production website changes only when main is released.
 
 Changes after APK 15, already on both remote branches when checked:
 
