@@ -193,6 +193,8 @@ A status band at the top of a card follows the card's 24dp top corners.
 - Don't put white text on orange, and don't use orange for danger or errors.
 - Don't use tiny spaced-out ALL-CAPS labels, even if a reference picture has them.
 
+**Android illustration exception:** The Android landing middle illustration (`assets/images/landing-roadscape.png`) is an AI-generated picture allowed to have soft shading and several greens; this applies to this one picture only.
+
 ## Website exception
 
 The dispatcher's Emergency request form is a computer task. On wide website

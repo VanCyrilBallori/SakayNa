@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
 import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -36,13 +36,19 @@ const GOOGLE_G_LOGO = require("../assets/images/google-g.png");
 const BACKDROP_COLOR = "rgba(0, 0, 0, 0.4)";
 const RIPPLE_COLOR = "rgba(11, 122, 75, 0.12)";
 
-// The pale green of the map drawing. Used only in the drawing.
-const MAP_COLOR = "#DCEFE5";
+// AI-generated roadscape, with transparent margins trimmed and proportions preserved.
+const LANDING_MIDDLE_IMAGE = require("../assets/images/landing-roadscape.png");
+const LANDING_IMAGE_RATIO = 754 / 287;
+const MIN_PICTURE_HEIGHT = 48;
+const PICTURE_CARD_GAP = 2;
 
 export default function MobileLanding() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const [viewportHeight, setViewportHeight] = useState(height);
+  const [cardHeight, setCardHeight] = useState(0);
+  const landingScrollRef = useRef(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
 
@@ -78,10 +84,29 @@ export default function MobileLanding() {
     });
   }, [dragY, sheetHeight]);
 
-  // The drawing is made on a 320 x 230 grid and scaled to fit small and large phones.
-  const scale = Math.min((width - 48) / 320, (height * 0.36) / 230, 1.2);
-  const u = (value) => value * scale;
   const logoSize = Math.min(96, height * 0.12);
+  const paddingTop = insets.top + 24;
+  const paddingBottom = insets.bottom + 16;
+
+  // Reserve 16dp below the logo and 2dp above the card. The picture keeps its trimmed proportions.
+  const pictureSpacing = 16 + PICTURE_CARD_GAP;
+  const remainingPictureSpace = viewportHeight - paddingTop - paddingBottom - logoSize - cardHeight;
+  const availablePictureHeight = cardHeight > 0 ? Math.max(MIN_PICTURE_HEIGHT, remainingPictureSpace - pictureSpacing) : MIN_PICTURE_HEIGHT;
+  const pictureWidth = Math.min(width - 32, 480, availablePictureHeight * LANDING_IMAGE_RATIO);
+  const pictureHeight = pictureWidth / LANDING_IMAGE_RATIO;
+  const spareLogoSpace = cardHeight > 0 ? Math.max(0, remainingPictureSpace - pictureHeight - pictureSpacing) : 0;
+  // Aim the logo's middle at 20% of the screen; move it up only enough to clear the picture.
+  const desiredLogoTopGap = Math.max(0, viewportHeight * 0.20 - logoSize / 2 - paddingTop);
+  const logoTopGap = Math.min(spareLogoSpace, desiredLogoTopGap);
+  const logoBottomGap = spareLogoSpace - logoTopGap + 16;
+  const pictureAreaHeight = pictureHeight + PICTURE_CARD_GAP;
+  // Allow a 1dp rounding difference. Scroll only when the card and minimum picture cannot fit.
+  const needsScroll = cardHeight > 0 && remainingPictureSpace < MIN_PICTURE_HEIGHT + pictureSpacing - 1;
+
+  // Returning to a text size that fits also returns the page to its normal top position.
+  useEffect(() => {
+    if (!needsScroll) landingScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [needsScroll]);
 
   const openTerms = () => {
     WebBrowser.openBrowserAsync(TERMS_URL).catch((error) => console.log("Terms page warning:", error));
@@ -175,14 +200,17 @@ export default function MobileLanding() {
       {/* Dark clock/battery icons so they stay visible on the white page, even when the phone is in dark mode. */}
       <StatusBar style="dark" />
 
-      {/* The landing page (logo, map drawing, card), in the DESIGN.md colors. Scrolls on small phones and with big text. */}
+      {/* One screen normally; scrolling is a safety net when large text leaves too little room. */}
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}
+        ref={landingScrollRef}
+        onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
+        contentContainerStyle={[styles.content, { paddingTop, paddingBottom }]}
+        scrollEnabled={needsScroll}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
         <View
-          style={[styles.logoDisc, { width: logoSize, height: logoSize, borderRadius: logoSize / 2 }]}
+          style={[styles.logoDisc, { width: logoSize, height: logoSize, borderRadius: logoSize / 2, marginTop: logoTopGap, marginBottom: logoBottomGap }]}
           accessible
           accessibilityRole="image"
           accessibilityLabel="SakayNa"
@@ -190,31 +218,21 @@ export default function MobileLanding() {
           <BrandLogo variant="secondary" height={logoSize * 0.56} style={styles.logoMark} />
         </View>
 
-        {/* The map drawing is one picture: TalkBack reads only its label, and nothing happens when you tap it. */}
-        {/* "Toledo City" keeps a fixed size (allowFontScaling={false}) so it stays inside the drawn map. */}
-        <View style={styles.artArea}>
-          <View
-            style={[styles.map, { width: u(320), height: u(230) }]}
+        {/* One non-interactive picture: TalkBack reads its label once. */}
+        <View style={[styles.artArea, { height: pictureAreaHeight }]} pointerEvents="none">
+          <Image
+            source={LANDING_MIDDLE_IMAGE}
+            style={{ width: pictureWidth, height: pictureHeight }}
+            resizeMode="contain"
             accessible
             accessibilityRole="image"
-            accessibilityLabel="Map of Toledo City"
-          >
-            {/* Two white roads crossing the map */}
-            <View style={[styles.road, { top: u(78), height: u(8), transform: [{ rotate: "-24deg" }] }]} />
-            <View style={[styles.road, { top: u(152), height: u(8), transform: [{ rotate: "18deg" }] }]} />
-
-            {/* Orange pin on Toledo City */}
-            <View style={styles.mapCenter}>
-              <MaterialCommunityIcons name="map-marker" size={u(72)} color={DESIGN_COLORS.sakayOrange} />
-              <Text allowFontScaling={false} style={{ fontSize: u(20), fontWeight: "700", color: DESIGN_COLORS.ink }}>
-                Toledo City
-              </Text>
-            </View>
-          </View>
+            accessibilityLabel="Illustration of a barangay van on a curved road, with barangay buildings and location pins."
+            accessibilityIgnoresInvertColors
+          />
         </View>
 
         {/* Flat card (no shadow, DESIGN.md "Flat Board Rule") with the approved words and the buttons in thumb reach. */}
-        <View style={styles.card}>
+        <View style={styles.card} onLayout={(event) => setCardHeight(event.nativeEvent.layout.height)}>
           <Text style={styles.heading}>Request a Ride now</Text>
 
           <Pressable
@@ -339,13 +357,8 @@ const styles = StyleSheet.create({
   // Round Hall Green disc with the white SakayNa mark.
   logoDisc: { alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   logoMark: { tintColor: "#FFFFFF" },
-  // Takes the free space between the logo and the card, with the drawing in the middle.
-  artArea: { flex: 1, width: "100%", minHeight: 160, alignItems: "center", justifyContent: "center", paddingVertical: 16 },
-  // Pale green map with 24 corners (DESIGN.md card corner). overflow "hidden" cuts the roads at the map's edge.
-  map: { borderRadius: 24, overflow: "hidden", backgroundColor: MAP_COLOR },
-  // Wider than the map, so the tilted roads still reach both sides.
-  road: { position: "absolute", left: -60, right: -60, backgroundColor: DESIGN_COLORS.paperWhite },
-  mapCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
+  // Trimmed visible picture, followed by its 2dp gap above the card.
+  artArea: { flexShrink: 0, width: "100%", alignItems: "center", paddingBottom: PICTURE_CARD_GAP },
   // Flat Board Tint card, 24 corners (DESIGN.md card corner), no shadow.
   card: {
     width: "100%",
