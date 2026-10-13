@@ -4,6 +4,75 @@
 **Code checked:** `master` at commit 798072a (after demo-ready-14 and the patients box)
 **Type:** review only. No code, rules or data were changed. Only this file was added.
 
+## Task 1.1 update — October 13, 2026
+
+- **Rules commit:** `c92f5a1`, confirmed in the local Git history.
+- **Deployment:** the owner reports these rules are deployed to `sakayna-571e8`.
+  The owner supplied ruleset ID
+  `projects/sakayna-571e8/rulesets/a8ceb049-1e5f-41d8-aeb9-dfbdc1c51292`, recorded exactly
+  as provided. The owner confirms the after-deploy comparison said
+  `EXACT MATCH: c92f5a13ecb59f67b412ee5de117482c0d71189c` (Yes).
+  That full commit ID matches local Git. The before-deploy comparison and
+  dry-run results were not supplied. This documentation update did not read
+  live rules or independently repeat the tests.
+- **Fixed for user-profile writes:** an Admin may update another person's
+  `users/{userId}` profile only when it is not an Admin account and its non-empty
+  barangay exactly matches the caller's barangay. Role and barangay must stay
+  unchanged, and only the 24 approved fields may change, including
+  `accountStatusReason`. Role-change fields are excluded.
+- **Add Dispatcher:** the Admin's barangay must be non-empty, and the new
+  Dispatcher's barangay must match it exactly.
+- **Preserved:** the self-update clause and all other collection rules.
+- **Still city-wide:** Admin reads of the Users list. Task 1.1 does not scope
+  reads or fix staff account-status enforcement and other collections' writes.
+- **Screen release:** the owner confirms Step 1 (`b62c724`) was tested,
+  committed, released on the website, and checked live.
+
+### Owner-reported Task 1.1 test results
+
+These results use the owner's latest supplied list. Missing caller UIDs,
+expected results, changed values and generated document IDs are marked
+**not supplied**. Profile and review paths below are built from the supplied
+UIDs and the collection names in the code; their documents were not read during
+this documentation update. The names are exactly `Driver_Applications` and
+`residentVerifications`.
+
+**Playground:** every test used simulation type **update**, caller
+`kcwgrnPTETbVPS144oHfyyyAxfO2` (admin1, Daanglungsod).
+
+| Test | Caller UID | Document path | Change | Expected result | Actual result |
+|---|---|---|---|---|---|
+| 1 — another Admin | `kcwgrnPTETbVPS144oHfyyyAxfO2` | `users/WsAxwaVpOHTkPskShueufgJAVSV2` (admin0) | Change `phoneNumber`; new value not supplied | Denied | Denied |
+| 2 — another barangay | `kcwgrnPTETbVPS144oHfyyyAxfO2` | `users/OgZeS8yjIHUqWaJIkGleQ9RmPIA2` (VanDrive, Sangi) | Change `phoneNumber`; new value not supplied | Denied | Denied |
+| 3 — role change | `kcwgrnPTETbVPS144oHfyyyAxfO2` | `users/5hko6jxKJCfrsgEE4P6mcqi19DT2` (dispatcher0) | Change `role` to Admin | Denied | Denied |
+| 4 — barangay change | `kcwgrnPTETbVPS144oHfyyyAxfO2` | `users/5hko6jxKJCfrsgEE4P6mcqi19DT2` | Change `barangay`; new value not supplied | Denied | Denied |
+| 5 — non-whitelisted field | `kcwgrnPTETbVPS144oHfyyyAxfO2` | `users/5hko6jxKJCfrsgEE4P6mcqi19DT2` | Change `fullName` (not on the whitelist); new value not supplied | Denied | Denied |
+| 6 — approved field | `kcwgrnPTETbVPS144oHfyyyAxfO2` | `users/5hko6jxKJCfrsgEE4P6mcqi19DT2` | Change only `phoneNumber`, full document copied from the Console; new value not supplied | Allowed | Allowed |
+
+**Real app:** the owner reports using the live website and APK. No per-test
+caller UIDs or separate expected-result values were supplied for these tests;
+the APK build/version was not supplied. The actual-result wording is retained.
+
+| Test | Caller UID | Document path / screen | Change or check | Expected result | Actual result |
+|---|---|---|---|---|---|
+| 7 — Resident approval | not supplied | `users/VO4yjX1hnqPjnyWpyaai1Oyw0sw2`; `residentVerifications/VO4yjX1hnqPjnyWpyaai1Oyw0sw2` | Approve a new test resident in Daanglungsod | not supplied | Approved |
+| 8 — Driver application | not supplied | `users/6Wr8I1U3OPVb8knVk4wdjid7PMr1`; `Driver_Applications/6Wr8I1U3OPVb8knVk4wdjid7PMr1` | Approve or reject Gwen; specific decision/final saved status not supplied | not supplied | can Approve or Reject |
+| 9 — Driver status | not supplied | `users/haen0nBTWvh3yMIK84x7od95lWO2` (Driver jeb) | Change status and set it back; statuses not supplied | not supplied | Passed |
+| 10 — Users phone edit | not supplied | `users/5hko6jxKJCfrsgEE4P6mcqi19DT2` (dispatcher0) | Edit phone in Users and set it back; values not supplied | not supplied | Passed |
+| 11 — Punch in/out | not supplied (Driver jeb named) | `users/haen0nBTWvh3yMIK84x7od95lWO2`; duty-record IDs not supplied | Driver jeb punches in and out | not supplied | Passed |
+| 12 — Emergency | not supplied (dispatcher0 named as answering Dispatcher) | Emergency screen/form; alert, ride and assignment paths not supplied | Emergency alert answered by dispatcher0, form finished | not supplied | Passed |
+| 13 — Add Dispatcher | not tested | not tested; test UID: N/A | Listed test action: create a test account, then delete it from Firebase Authentication and Firestore | not supplied | **not tested** |
+| 14 — other-barangay UI | not supplied | Users screen; target UID not supplied | Another-barangay user shows "Other barangay: view only" with Edit and Change status disabled | not supplied | Passed |
+
+All six supplied Playground results match their supplied expectations. No
+failure was reported in this latest list. Test 13 remains **not tested**; the
+listed creation/cleanup action is not recorded as performed.
+
+The required missing/empty-barangay denial case has no supplied result and is
+**not tested** in this record. The emergency result covers the alert being
+answered and the form being finished; a subsequent Driver mission completion
+was not reported. The Driver review wording does not identify a saved decision.
+
 How to read this:
 - Start with section 1 (one page). Each problem has an ID (C1, A3, F2…),
   so the team can say "let's do A5".
@@ -211,8 +280,10 @@ phone CALLS the dispatcher (a normal call from the resident's SIM)
 
 - **Resident Verification** and **Driver Applications**: only the Admin of
   the same barangay can see and decide them (rules check the barangay).
-- **Accounts** (Operations): changing a status or a role needs a reason.
-  It is saved in a transaction together with an activity log line.
+- **Accounts** (Operations): changing a status needs a reason and is saved
+  together with an activity log line. Task 1.1 now limits Admin user-profile
+  writes to non-Admin accounts in their own barangay and approved fields.
+  Role and barangay changes are refused. Users-list reads remain city-wide.
 - **Vehicles**: add, edit, archive, and maintenance records.
 - **Overview, Requests, Users**: counts are made by the server; the lists
   show the newest 200.

@@ -2,7 +2,7 @@
 
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
-Last checked October 11, 2026, against **demo-ready-16** at **39e4583**. The owner tested this APK on their phone; its EAS fingerprint says **matches**. The website remains at **a25dae1** and does not include the separate completion-saving fix. General APK testing does not close the other open issues below.
+APK baseline checked October 11, 2026, against **demo-ready-16** at **39e4583**. The owner tested this APK on their phone; its EAS fingerprint says **matches**. Task 1.1 was updated October 13: the owner confirms the Step 1 website release at **b62c724**, deployment of rules **c92f5a1**, and the test results recorded in architecture-review.md. General APK testing does not close the other open issues below.
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,6 +10,22 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### Staff accounts made by hand: barangay spelling must match exactly
+
+- **Recorded:** October 13, 2026, during Task 1.1.
+- **What it is:** a Dispatcher or Admin profile made by hand in Firebase Console
+  can have a missing or mistyped barangay. `DaanLungsod`,
+  `Daanlungsod, Toledo City` and `Daanglungsod, Toledo City` are different values.
+- **Effect:** Task 1.1's strict rule refuses Admin management when the target's
+  barangay is missing or differs from the Admin's barangay. Admin accounts are
+  view only regardless of their barangay. The Admin's barangay must also be
+  non-empty when creating a Dispatcher.
+- **What to do:** the owner checks and fixes the saved Console value to match
+  the intended barangay exactly. The main test Admin uses
+  `Daanglungsod, Toledo City`. Keep the rules strict.
+- **Status:** data-entry risk remains open. No live data was changed by this
+  documentation update.
 
 ### New Dispatcher: changing the temporary password is not forced
 
@@ -241,21 +257,30 @@ Skills/resident.md section 6.
   passed") if nobody assigned it in time.
 - **Status:** Left out on purpose for the Capstone.
 
-### Admin tools are still city-wide — MUST FIX BEFORE A REAL PILOT
+### Admin Users reads and other tools remain city-wide
 
 - **Found:** Sept 29, 2026 (login-overhaul-plan.md, steps 7 and 10).
-- **What it is:** The Resident Verification and Driver Applications lists
-  only show the admin's own barangay. The redesigned Overview, Emergency
-  Calls, Requests, Users, Operations, Vehicles and reports still read or
-  manage city-wide data; the redesign changed their layout, not this scope.
-  Any admin can set any resident
-  "Active", or any driver "Approved", from any barangay there, skipping the
-  document review.
-- **Also:** If an admin changes a Pending resident's barangay in Users →
-  Edit, the resident's verification stays with the old barangay's admin.
+- **Fixed for user profiles (Task 1.1, rules commit `c92f5a1`):** Admin writes
+  now require a non-Admin target in the Admin's exact, non-empty barangay and
+  only approved fields. Role and barangay cannot change. Add Dispatcher is
+  restricted to the Admin's own non-empty barangay. The owner reports ruleset
+  `projects/sakayna-571e8/rulesets/a8ceb049-1e5f-41d8-aeb9-dfbdc1c51292` and confirms
+  `EXACT MATCH: c92f5a13ecb59f67b412ee5de117482c0d71189c` after deployment.
+  Both values are recorded exactly as supplied, without an independent live read.
+- **Owner-reported tests:** the five Playground denial cases were Denied;
+  the phone-only update was Allowed, all as expected. The real-app results are
+  recorded as supplied in architecture-review.md. No failure appears in the
+  latest list. Add Dispatcher is **not tested** (UID N/A); the missing/empty-
+  barangay denial case has no supplied result and is **not tested** in the record.
+- **Still open:** Admin reads of the Users list remain city-wide. Overview,
+  Emergency Calls, Requests, Vehicles, reports and other management tools
+  are not made barangay-limited by Task 1.1. Resident Verification and Driver
+  Applications remain limited to their barangay's Admin.
 - **Also (Oct 4, 2026):** the new Duty Records (driver DTR) list shows
   the drivers of every barangay.
-- **Status:** Open. Fine for the Capstone demo (trusted test admins).
+- **Status:** user-profile write issue fixed; city-wide reads and other tools
+  remain open. Test details and the remaining not-tested cases are in
+  architecture-review.md.
 
 ### A barangay with no admin leaves its people waiting
 

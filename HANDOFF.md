@@ -2,6 +2,8 @@
 
 Checked October 11, 2026. This records the current state; it does not approve new code changes.
 
+Task 1.1 deployment and owner-reported test results were added October 13, 2026.
+
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
 ## 1. What the system does
@@ -25,11 +27,22 @@ Drivers share location only at Punch in, Accept, En route, Arrived, and Picked u
 
 One Expo SDK 54 / React Native JavaScript project makes the Android app and website. Firebase handles login and the shared database. There is no separate server or Cloud Functions backend. `firestore.rules` guards database access; hiding buttons alone is not protection. Cloudinary stores document photos, OpenStreetMap/Nominatim provide maps/address lookup, and Vercel hosts the website.
 
-Resident/Driver application reviews belong to their barangay's Admin. Other Admin tools and dispatch remain largely city-wide. Trusted test staff are assumed for the demo.
+Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 now also limits Admin user-profile writes to non-Admin accounts in their own barangay and approved fields. Users-list reads, other Admin tools and dispatch remain largely city-wide. Trusted test staff are assumed for the demo.
 
 ## 2. Current state
 
-### Latest website release: a25dae1 (October 11, 2026)
+### Task 1.1: Admin user-profile write restriction (October 13, 2026)
+
+- **Rules:** `c92f5a1`, confirmed in local Git. The owner reports deployment to `sakayna-571e8`, ruleset `projects/sakayna-571e8/rulesets/a8ceb049-1e5f-41d8-aeb9-dfbdc` (copied exactly as supplied). The owner confirms the after comparison said `EXACT MATCH: c92f5a13ecb59f67b412ee5de117482c0d71189c` (Yes). Before-comparison and dry-run results were not supplied; no independent live check occurred during this documentation update.
+- Admin updates to other `users/{userId}` profiles now require a non-Admin target with a non-empty barangay exactly matching the Admin's barangay. Only the 24 approved fields may change; role and barangay stay unchanged. The field is `accountStatusReason`, and role-change fields are excluded.
+- Add Dispatcher requires the Admin's barangay to be non-empty and the new profile's barangay to match it. The self-update clause and other collection rules are unchanged.
+- **User-profile write issue fixed; Users-list reads remain city-wide.** Staff account-status enforcement and city-wide writes to other collections remain separate open items.
+- **Latest website release:** Step 1 at `b62c724`. The owner confirms testing, commit, website release and live checks passed. Edit Account's barangay is read-only; other-barangay/missing-barangay/Admin accounts are view only; Add Dispatcher uses the Admin's barangay; refused updates/reviews have a friendly message.
+- **Test record:** all 14 supplied results are recorded in `architecture-review.md`, with missing details marked **not supplied**. Playground tests 1-5 were Denied as expected; test 6 was Allowed as expected. The owner reports Resident approval, "can Approve or Reject" for Gwen, and Passed for Driver jeb status change/restore, dispatcher0 phone edit/restore, punch in/out, emergency alert answered/form finished, and the other-barangay view-only UI. No failure appears in the latest supplied list.
+- **Not tested:** Add Dispatcher (test 13, UID N/A) and the required missing/empty-barangay denial case, for which no result was supplied. Do not describe test 13's listed creation/deletion action as performed. Gwen's specific saved decision and emergency mission completion were not reported. Real-app caller UIDs, separate expected-result values and generated duty/emergency document IDs were not supplied.
+- Staff accounts made by hand in the Console must use the exact barangay spelling. A typo or missing value prevents Admin management; correct the data in the Console rather than loosening these rules. See Known-Issue.md.
+
+### Earlier website release: a25dae1 (October 11, 2026)
 
 - Released master to main at **a25dae1**, one command at a time, with a fast-forward merge. Vercel completed successfully.
 - This includes the four tested and committed changes: remove Completion Notes, fade the completion backdrop, hold-to-show password eyes, and National ID proof of residency.
@@ -102,7 +115,7 @@ Before this handoff, local main/master and cached origin/main/origin/master all 
 
 The owner reports the later Admin changes are live. Git proves they reached remote main; it does not prove Vercel built them successfully. The public web reader could not open the site during this review. Vercel Ready status and signed-in pages were not independently checked.
 
-Current release state: master contains the APK 16 source **39e4583**, tester-message commit **1ab226c**, and the later release record. Main remains at **a25dae1**. Pushing master backs up these commits; Vercel's production website changes only when main is released.
+Current release state for Task 1.1: local main is **b62c724**, and local master includes rules commit **c92f5a1**. The owner confirms the Step 1 website release and reports the rules deployed separately. Git alone does not verify live Firebase rules. A rules deployment does not require releasing main again.
 
 Changes after APK 15, already on both remote branches when checked:
 
@@ -158,7 +171,7 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 | A2 | Removed staff can retain direct database powers and Firebase login. Old advice to change role in Operations is outdated: that option was removed. Staff-removal handling now needs Firebase Console; plan rules fixes separately. C1 already tightened driver vehicle/schedule/checklist writes. |
 | A3; resident #3/#4 | Owners can change too many fields of their rides/alerts/assignments if they bypass the app. Later rules should preserve ownership and restrict fields, one collection at a time. |
 | A4 | Sign-up proof/application rules need stronger checks against fake submissions/photo links. |
-| City-wide Admin tools | Users/Operations/Duty Records are not fully barangay-limited. Must fix before a real pilot. Changing a resident's barangay can leave proof with the old Admin. |
+| City-wide Admin tools | Task 1.1 fixes Admin user-profile writes and keeps role/barangay unchanged. Users-list reads, Duty Records and other tools remain city-wide. Owner-reported tests and the remaining not-tested cases are in architecture-review.md. |
 | Public photos; F12 | Exact Cloudinary links open document photos publicly. Use sample documents for tests. Health-data access/retention needs real-use decisions. |
 | Dispatcher passwords | Temporary password changes are not forced. Share privately and confirm the Dispatcher resets it through Forgot password. |
 | Vehicle problem / after pickup | A reported faulty van becomes assignable again: manually pick another. After pickup, call dispatch; no separate incident report is saved. |
