@@ -22,7 +22,8 @@ import {
 } from "../services/trustedAdminOperationsService";
 import AdminReportsSection from "./AdminReportsSection";
 
-const EMPTY_DISPATCHER = { fullName: "", email: "", phoneNumber: "", barangay: "", temporaryPassword: "" };
+const EMPTY_DISPATCHER = { fullName: "", email: "", phoneNumber: "", temporaryPassword: "" };
+const ADMIN_CHANGE_REFUSED = "This change was not allowed. You can only manage non-Admin accounts in your own barangay. Check that this account belongs to your barangay.";
 const DEFAULT_MAINTENANCE ={ maintenanceType: "", description: "", reportedIssues: "", serviceProvider: "", cost: "", odometer: "", status: "Reported", startedAt: "", completedAt: "", nextServiceDate: "" };
 const toDateLabel = (value) => {
   const date = getDate(value);
@@ -30,7 +31,7 @@ const toDateLabel = (value) => {
 };
 const statusOf = (user) => user.accountStatus || user.approvalStatus || ACCOUNT_STATUSES.ACTIVE;
 
-export default function AdminOperationsPanel({ users, vehicles, assignments, requests, adminId, adminName, theme }) {
+export default function AdminOperationsPanel({ users, vehicles, assignments, requests, adminId, adminName, adminBarangay, canManageUser, theme }) {
   const [view, setView] = useState("Accounts");
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("All");
@@ -68,8 +69,15 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     });
   }, [filterRole, filterStatus, search, users]);
   const vehicleMaintenance = useMemo(() => vehicles.filter((vehicle) => vehicle.maintenanceStatus && vehicle.maintenanceStatus !== "Completed").length, [vehicles]);
+  const canManageSelectedUser = canManageUser(users.find((user) => user.id === selectedUser?.id));
 
   const openUser = (user) => {
+    setError("");
+    setMessage("");
+    if (!canManageUser(user)) {
+      setError(ADMIN_CHANGE_REFUSED);
+      return;
+    }
     setSelectedUser(user);
     setReason("");
     setNextStatus(statusOf(user));
@@ -77,9 +85,19 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     setScopePhone(user.operationalPhone || "");
     setScopeOffice(user.office || "");
   };
-  const run = async (work, success) => {
+  const run = async (work, success, targetUser = null) => {
     setBusy(true); setError(""); setMessage("");
-    try { await work(); setMessage(success); } catch (operationError) { setError(operationError?.message || "The requested change could not be completed."); } finally { setBusy(false); }
+    try {
+      if (targetUser && !canManageUser(users.find((user) => user.id === targetUser.id))) {
+        throw new Error(ADMIN_CHANGE_REFUSED);
+      }
+      await work();
+      setMessage(success);
+    } catch (operationError) {
+      setError(operationError?.code === "permission-denied" ? ADMIN_CHANGE_REFUSED : operationError?.message || "The requested change could not be completed.");
+    } finally {
+      setBusy(false);
+    }
   };
   const confirm = (title, copy, action) => {
     if (Platform.OS === "web") {
@@ -141,12 +159,13 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
         <Text style={[styles.accountsCountText, { color: theme.text }]}>Accounts: {filteredUsers.length}</Text>
       </View>
     </View>
-    {filteredUsers.slice(0, 100).map((user) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{getProfileName(user)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{user.role || "No role"} | {statusOf(user)} | {user.barangay || user.office || "No operational area"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {user.operationalPhone || user.phoneNumber || user.phone || "Not provided"}</Text><AppButton label="Manage profile" variant="secondary" onPress={() => openUser(user)} style={styles.button} /></>, user.id))}
+    {filteredUsers.slice(0, 100).map((user) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{getProfileName(user)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{user.role || "No role"} | {statusOf(user)} | {user.barangay || user.office || "No operational area"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {user.operationalPhone || user.phoneNumber || user.phone || "Not provided"}</Text>{!canManageUser(user) ? <Text style={[styles.copy, { color: theme.mutedText }]}>Other barangay: view only</Text> : null}<AppButton label="Manage profile" variant="secondary" disabled={!canManageUser(user)} onPress={() => openUser(user)} style={styles.button} /></>, user.id))}
   </>;
 
   const setDispatcherField = (key, value) => setNewDispatcher((current) => ({ ...current, [key]: value }));
   const createDispatcher = () => run(async () => {
-    await createDispatcherAccount({ adminId, ...newDispatcher });
+    if (!adminBarangay) throw new Error(ADMIN_CHANGE_REFUSED);
+    await createDispatcherAccount({ adminId, ...newDispatcher, barangay: adminBarangay });
     setNewDispatcher(EMPTY_DISPATCHER);
   }, `Dispatcher account created for ${newDispatcher.fullName.trim()}. Give them the temporary password privately, and tell them to tap Forgot password? on the login screen to set their own.`);
 
@@ -160,23 +179,16 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     <Text style={[styles.label, { color: theme.text }]}>Phone number</Text>
     <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.phoneNumber} onChangeText={(value) => setDispatcherField("phoneNumber", value)} keyboardType="phone-pad" />
     <Text style={[styles.label, { color: theme.text }]}>Barangay</Text>
-    <Dropdown
-      style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
-      containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
-      placeholderStyle={[styles.dropdownText, { color: theme.subtleText }]}
-      selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
-      itemTextStyle={[styles.dropdownText, { color: theme.text }]}
-      activeColor={theme.softSurface}
-      data={TOLEDO_BARANGAY_OPTIONS}
-      labelField="label"
-      valueField="value"
-      placeholder="Choose a barangay"
-      value={newDispatcher.barangay}
-      onChange={(item) => setDispatcherField("barangay", item.value)}
+    <TextInput
+      style={[styles.input, { color: theme.text, backgroundColor: theme.softSurface, borderColor: theme.border }]}
+      value={adminBarangay || "No barangay set"}
+      editable={false}
+      accessibilityLabel="Dispatcher barangay: your Admin barangay, read only"
     />
+    <Text style={[styles.copy, { color: theme.mutedText }]}>New Dispatchers belong to your barangay.</Text>
     <Text style={[styles.label, { color: theme.text }]}>Temporary password (at least 8 characters)</Text>
     <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.temporaryPassword} onChangeText={(value) => setDispatcherField("temporaryPassword", value)} autoCapitalize="none" autoCorrect={false} />
-    <AppButton label="Create Dispatcher" loading={busy} onPress={createDispatcher} style={styles.button} />
+    <AppButton label="Create Dispatcher" loading={busy} disabled={!adminBarangay} onPress={createDispatcher} style={styles.button} />
   </>;
 
   const renderVehicles = () => <>
@@ -216,6 +228,9 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     <Modal visible={Boolean(selectedUser)} transparent animationType="fade" onRequestClose={() => setSelectedUser(null)}>
       <View style={styles.overlay}><ScrollView contentContainerStyle={[styles.modal, { backgroundColor: theme.surface }]}>
         <Text style={[styles.title, { color: theme.text }]}>{selectedUser ? getProfileName(selectedUser) : "Account"}</Text>
+        <FeedbackMessage message={error} tone="error" />
+        <FeedbackMessage message={message} tone="success" />
+        {!canManageSelectedUser ? <Text style={[styles.copy, { color: theme.mutedText }]}>Other barangay: view only</Text> : null}
         <Text style={[styles.copy, { color: theme.mutedText }]}>Authentication is not disabled by this client. Deactivation changes only the Firestore profile access state and preserves operational history.</Text>
         <Text style={[styles.label, { color: theme.text }]}>Administrative reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reason} onChangeText={setReason} multiline placeholder="Required for lifecycle changes" placeholderTextColor={theme.subtleText} />
         {/* A Resident sees the reason on their home screen when their account is Rejected, Suspended or Disabled. */}
@@ -223,8 +238,8 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
           <Text style={[styles.copy, { color: theme.mutedText }]}>The resident will see this reason.</Text>
         ) : null}
         <Text style={[styles.label, { color: theme.text }]}>Account status</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{Object.values(ACCOUNT_STATUSES).map((item) => chip(item, nextStatus === item, () => setNextStatus(item)))}</ScrollView>
-        <AppButton label={`Apply status: ${nextStatus}`} loading={busy} onPress={() => confirm("Confirm account status", `Update this profile to ${nextStatus}? Active Driver missions must be resolved first.`, () => run(() => changeAccountStatus({ adminId, targetUser: selectedUser, nextStatus, reason, activeAssignments: assignments }), "Account status updated."))} style={styles.button} />
-        {selectedUser?.role === ROLES.DISPATCHER ? <><Text style={[styles.label, { color: theme.text }]}>Dispatcher office</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopeOffice} onChangeText={setScopeOffice} /><Text style={[styles.label, { color: theme.text }]}>Operational phone</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopePhone} onChangeText={setScopePhone} keyboardType="phone-pad" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{TOLEDO_BARANGAY_OPTIONS.map((item) => chip(item.label, scopeAreas.includes(item.value), () => setScopeAreas((current) => current.includes(item.value) ? current.filter((value) => value !== item.value) : [...current, item.value])))}</ScrollView><AppButton label="Save Dispatcher scope" variant="secondary" loading={busy} onPress={() => run(() => updateDispatcherScope({ adminId, targetUser: selectedUser, serviceAreas: scopeAreas, operationalPhone: scopePhone, office: scopeOffice }), "Dispatcher scope updated.")} style={styles.button} /></> : null}
+        <AppButton label={`Apply status: ${nextStatus}`} loading={busy} disabled={!canManageSelectedUser} onPress={() => confirm("Confirm account status", `Update this profile to ${nextStatus}? Active Driver missions must be resolved first.`, () => run(() => changeAccountStatus({ adminId, targetUser: selectedUser, nextStatus, reason, activeAssignments: assignments }), "Account status updated.", selectedUser))} style={styles.button} />
+        {selectedUser?.role === ROLES.DISPATCHER ? <><Text style={[styles.label, { color: theme.text }]}>Dispatcher office</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopeOffice} onChangeText={setScopeOffice} /><Text style={[styles.label, { color: theme.text }]}>Operational phone</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopePhone} onChangeText={setScopePhone} keyboardType="phone-pad" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{TOLEDO_BARANGAY_OPTIONS.map((item) => chip(item.label, scopeAreas.includes(item.value), () => setScopeAreas((current) => current.includes(item.value) ? current.filter((value) => value !== item.value) : [...current, item.value])))}</ScrollView><AppButton label="Save Dispatcher scope" variant="secondary" loading={busy} disabled={!canManageSelectedUser} onPress={() => run(() => updateDispatcherScope({ adminId, targetUser: selectedUser, serviceAreas: scopeAreas, operationalPhone: scopePhone, office: scopeOffice }), "Dispatcher scope updated.", selectedUser)} style={styles.button} /></> : null}
         <Text style={[styles.copy, { color: theme.mutedText }]}>Active mission conflicts: {selectedUser ? getUserMissionConflicts(selectedUser.id, assignments).length : 0}</Text>
         <Text style={[styles.copy, { color: theme.mutedText }]}>Permanent deletion is coming soon. It requires a trusted backend to remove the Firebase Authentication account; nothing is queued or deleted from here. Use Deactivated status above to revoke access today.</Text>
         <AppButton label="Permanent deletion (coming soon)" variant="danger" disabled onPress={() => confirm("Request permanent deletion", "This creates a pending Phase 8 backend request. It does not delete Authentication or Firestore data now.", () => run(() => requestPermanentDeletion({ adminId, targetUser: selectedUser, reason }), "Permanent deletion request queued for backend review."))} style={styles.button} />

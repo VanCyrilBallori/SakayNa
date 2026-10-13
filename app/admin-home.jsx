@@ -20,6 +20,7 @@ import {
 
 import BrandLogo from "../components/BrandLogo";
 import CloseButton from "../components/ui/CloseButton";
+import FeedbackMessage from "../components/ui/FeedbackMessage";
 import AdminCallSessionsSection from "../features/admin/components/AdminCallSessionsSection";
 import AdminDriverApplicationsSection from "../features/admin/components/AdminDriverApplicationsSection";
 import AdminDutyRecordsSection from "../features/admin/components/AdminDutyRecordsSection";
@@ -54,6 +55,7 @@ const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Comp
 const requestTypeFilters = ["All", ...PURPOSE_OPTIONS];
 const accountStatusOptions = ["Active", "Approved", "Pending", "Rejected", "Deactivated"];
 const cityVehicleOwnerOptions = [CITY_VEHICLE_OWNER];
+const ADMIN_CHANGE_REFUSED = "This change was not allowed. You can only manage non-Admin accounts in your own barangay. Check that this account belongs to your barangay.";
 
 const normalizeRole = (role = "") => role.toLowerCase();
 const getRequestTypeLabel = (request) => {
@@ -527,8 +529,24 @@ export default function AdminHome() {
     setVehicleMessage("");
   };
 
+  // Match the saved barangay exactly; a different spelling is view only.
+  const canManageUser = (user) => Boolean(
+    profile?.role === "Admin"
+    && user?.id
+    && user.id !== authUser?.uid
+    && user.role !== "Admin"
+    && typeof user.barangay === "string"
+    && user.barangay !== ""
+    && user.barangay === adminBarangay
+  );
+
   const openUserEditor = (user) => {
     clearSectionMessages();
+    if (!canManageUser(user)) {
+      setUsersError(ADMIN_CHANGE_REFUSED);
+      return;
+    }
+    setUsersError("");
     setEditingUser(user);
     setUserForm({
       id: user.id,
@@ -544,6 +562,10 @@ export default function AdminHome() {
     if (!editingUser?.id) {
       return;
     }
+    if (!canManageUser(users.find((user) => user.id === editingUser.id))) {
+      setUsersError(ADMIN_CHANGE_REFUSED);
+      return;
+    }
 
     setSavingUser(true);
     setUsersError("");
@@ -553,7 +575,6 @@ export default function AdminHome() {
       const nextValues = {
         phoneNumber: userForm.phoneNumber.trim(),
         phone: userForm.phoneNumber.trim(),
-        barangay: userForm.barangay.trim(),
         address: userForm.address.trim(),
       };
       const changedFields = Object.keys(nextValues).filter((field) => nextValues[field] !== (editingUser[field] || ""));
@@ -579,7 +600,7 @@ export default function AdminHome() {
       setUserForm(emptyUserForm);
     } catch (error) {
       console.log("User update failed:", error);
-      setUsersError("User account could not be updated. Please check Firestore permissions.");
+      setUsersError(error?.code === "permission-denied" ? ADMIN_CHANGE_REFUSED : "User account could not be updated. Please try again.");
     } finally {
       setSavingUser(false);
     }
@@ -739,7 +760,7 @@ export default function AdminHome() {
     }
 
     if (selectedSection === "Operations") {
-      return <AdminOperationsPanel users={users} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} theme={theme} />;
+      return <AdminOperationsPanel users={users} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} adminBarangay={adminBarangay} canManageUser={canManageUser} theme={theme} />;
     }
 
     if (selectedSection === "Requests") {
@@ -774,6 +795,7 @@ export default function AdminHome() {
           usersError={usersError}
           userMessage={userMessage}
           openUserEditor={openUserEditor}
+          canManageUser={canManageUser}
           setSelectedSection={setSelectedSection}
           atLimit={usersAtLimit}
           collectionLimit={collectionLimit}
@@ -944,7 +966,7 @@ export default function AdminHome() {
 
             <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Account</Text>
             <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>
-              Update phone, barangay, address, and account status. Passwords are not editable from this client.
+              Update phone and address. Barangay is read only. Account status is managed in Operations.
             </Text>
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
@@ -966,11 +988,11 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
               placeholder="Barangay"
               placeholderTextColor={theme.subtleText}
               value={userForm.barangay}
-              onChangeText={(value) => setUserForm((current) => ({ ...current, barangay: value }))}
+              editable={false}
             />
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
@@ -1002,6 +1024,7 @@ export default function AdminHome() {
               })}
             </View>
 
+            <FeedbackMessage message={usersError} tone="error" />
             <TouchableOpacity style={[styles.primarySaveButton, savingUser && styles.actionButtonDisabled]} onPress={saveUserChanges} disabled={savingUser}>
               <Text style={styles.primarySaveButtonText}>{savingUser ? "Saving..." : "Save Changes"}</Text>
             </TouchableOpacity>

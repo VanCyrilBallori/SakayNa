@@ -120,7 +120,7 @@ export default function AdminDriverApplicationsSection({ theme, adminId, adminBa
       setSelected(null);
     } catch (error) {
       console.log("Driver application review failed:", error);
-      setErrorMessage(error?.code === "permission-denied" ? "You can only review drivers of your own barangay." : error?.message || "The review could not be saved. Please try again.");
+      setErrorMessage(error?.code === "permission-denied" ? "This change was not allowed. You can only manage non-Admin accounts in your own barangay. Check that this account belongs to your barangay." : error?.message || "The review could not be saved. Please try again.");
     } finally {
       setSaving(false);
     }

@@ -52,11 +52,12 @@ function RolePill({ label, count, selected, onPress }) {
   );
 }
 
-function UserRow({ user, wide, narrow, isFirst, openUserEditor, setSelectedSection }) {
+function UserRow({ user, wide, narrow, isFirst, openUserEditor, setSelectedSection, canManageUser }) {
   const name = getUserName(user);
   const photo = getProfilePhoto(user);
   const status = getApprovalStatus(user);
   const pill = STATUS_PILLS[status] || OTHER_STATUS_PILL;
+  const viewOnly = !canManageUser(user);
 
   return (
     <View style={[styles.row, !wide && styles.rowStacked, !isFirst && styles.rowDivider]}>
@@ -93,10 +94,13 @@ function UserRow({ user, wide, narrow, isFirst, openUserEditor, setSelectedSecti
       </View>
 
       <View style={[styles.actions, wide && styles.columnActions]}>
+        {viewOnly ? <Text style={[styles.small, styles.viewOnlyNotice]}>Other barangay: view only</Text> : null}
         <Pressable
           onPress={() => openUserEditor(user)}
-          style={({ pressed }) => [styles.outlineButton, narrow && styles.buttonGrow, pressed && styles.outlineButtonPressed]}
+          disabled={viewOnly}
+          style={({ pressed }) => [styles.outlineButton, narrow && styles.buttonGrow, pressed && styles.outlineButtonPressed, viewOnly && styles.buttonDisabled]}
           accessibilityRole="button"
+          accessibilityState={{ disabled: viewOnly }}
           accessibilityLabel={`Edit ${name}`}
         >
           <MaterialCommunityIcons name="pencil-outline" size={18} color={DESIGN_COLORS.hallGreen} />
@@ -104,8 +108,10 @@ function UserRow({ user, wide, narrow, isFirst, openUserEditor, setSelectedSecti
         </Pressable>
         <Pressable
           onPress={() => setSelectedSection("Operations")}
-          style={({ pressed }) => [styles.outlineButton, narrow && styles.buttonGrow, pressed && styles.outlineButtonPressed]}
+          disabled={viewOnly}
+          style={({ pressed }) => [styles.outlineButton, narrow && styles.buttonGrow, pressed && styles.outlineButtonPressed, viewOnly && styles.buttonDisabled]}
           accessibilityRole="button"
+          accessibilityState={{ disabled: viewOnly }}
           accessibilityLabel={`Change status of ${name} in Operations`}
         >
           <Text style={styles.outlineButtonText}>Change status</Text>
@@ -126,6 +132,7 @@ export default function AdminUsersSection({
   usersError,
   userMessage,
   openUserEditor,
+  canManageUser,
   setSelectedSection,
   atLimit,
   collectionLimit,
@@ -226,6 +233,7 @@ export default function AdminUsersSection({
               narrow={narrow}
               isFirst={index === 0 && !wide}
               openUserEditor={openUserEditor}
+              canManageUser={canManageUser}
               setSelectedSection={setSelectedSection}
             />
           ))}
@@ -334,6 +342,8 @@ const styles = StyleSheet.create({
   outlineButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   outlineButtonText: { fontSize: 15, fontWeight: "700", color: DESIGN_COLORS.ink },
   buttonGrow: { flexGrow: 1 },
+  buttonDisabled: { opacity: 0.58 },
+  viewOnlyNotice: { width: "100%" },
 
   emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });
