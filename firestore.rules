@@ -68,6 +68,8 @@ service cloud.firestore {
     function adminCreatesDispatcherIsSafe() {
       return request.resource.data.role == "Dispatcher"
         && request.resource.data.accountStatus == "Active"
+        && myBarangay() != ""
+        && request.resource.data.barangay == myBarangay()
         && request.resource.data.get("createdBy", "") == request.auth.uid;
     }
 
@@ -154,6 +156,43 @@ service cloud.firestore {
 
     // ---- User profiles ----
     match /users/{userId} {
+      function adminUpdateUserIsSafe() {
+        return isAdmin()
+          && request.auth.uid != userId
+          && resource.data.role != "Admin"
+          && resource.data.get("barangay", "") is string
+          && resource.data.get("barangay", "") != ""
+          && resource.data.get("barangay", "") == myBarangay()
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.get("barangay", "") == resource.data.get("barangay", "")
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "accountStatus",
+            "previousAccountStatus",
+            "accountStatusChangedAt",
+            "accountStatusChangedBy",
+            "accountStatusReason",
+            "approvalStatus",
+            "approvalReviewedAt",
+            "approvalReviewedBy",
+            "deactivatedAt",
+            "deactivatedBy",
+            "deactivationReason",
+            "availability",
+            "restoredAt",
+            "restoredBy",
+            "restorationReason",
+            "serviceAreas",
+            "operationalPhone",
+            "office",
+            "scopeChangedAt",
+            "scopeChangedBy",
+            "phoneNumber",
+            "phone",
+            "address",
+            "updatedAt"
+          ]);
+      }
+
       allow read:   if signedIn() && (request.auth.uid == userId || isStaff());
       // A new profile may not start with a duty status (a driver must punch in).
       allow create: if signedIn()
@@ -161,7 +200,7 @@ service cloud.firestore {
           || (isAdmin() && request.auth.uid != userId && adminCreatesDispatcherIsSafe()))
         && !request.resource.data.keys().hasAny(dutyFields());
       allow update: if signedIn() && (
-        (request.auth.uid == userId && keepsAdminOnlyFields() && dutyChangeIsSafe()) || (isAdmin() && request.auth.uid != userId)
+        (request.auth.uid == userId && keepsAdminOnlyFields() && dutyChangeIsSafe()) || adminUpdateUserIsSafe()
       );
       allow delete: if false;
     }
