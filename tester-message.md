@@ -1,48 +1,37 @@
-SakayNa preview APK: password eye, National ID and mission completion
+SakayNa preview APK: new start screen and staff account checks
 
 Hi everyone! A new SakayNa preview app is ready for testing.
 Please update before your next test.
 
 EVERYONE
-- Uninstall the old SakayNa app, then install the new APK: https://expo.dev/artifacts/eas/bij3WUHjKK9mVaTYRiAxOApXahaGUPAluF7zEPWab2Y.apk
-- On Log in and Create Account, press and hold the eye to show your
-  password. Let go or slide your finger off the eye to hide it again.
-- While holding the eye, the keyboard should stay open and the cursor
-  should stay in the password box. No text-selection or context menu
-  should open.
-- The Privacy Policy now includes National ID as a government ID and
-  explains that document photos use public web links.
+- Uninstall the old SakayNa app, then install the new APK: https://expo.dev/artifacts/eas/4eXRn5WsIvf0c_fhgym1zO5GN4-7EpuD6CHzQBPSQEU.apk
+- The download link works until October 28, 2026.
+- The start screen has a new road picture, and the logo sits a little
+  higher. Check that the logo, picture and buttons fit on your phone,
+  with normal and with large text.
+- Everything from the last APK is still included: hold-to-show password
+  eye, National ID proof of residency, and the Complete mission changes.
 
-RESIDENTS
-- Proof of residency now includes National ID, between Certificate of
-  Indigency and Other government document with your address.
-- Use sample document photos when testing. Anyone with the exact photo
-  link can open it.
+RESIDENTS AND DRIVERS
+- Nothing new for you to learn. Please do one normal ride from request
+  to Completed, so we know nothing broke.
 
-DRIVERS
-- Complete mission no longer has a Completion notes box. The outcome
-  choice and Issues encountered (optional) box remain.
-- The dark background now fades in and out when the pop-up opens and
-  closes.
-- Your selected outcome and optional issues are now saved when
-  completion succeeds. Issues are limited to 300 characters; leaving
-  them blank is allowed.
-- Old completion notes and records are kept.
-- Test one ride with issues and one with issues blank. After each,
-  check that the ride is Completed and the driver and van are Available.
-- Logging out does not punch you out. If you are done for the day,
-  punch out first.
+DISPATCHERS AND ADMINS (if you log in on the phone)
+- Your account must be Active to get in. If it is Pending, Rejected,
+  Suspended, Disabled or blank, you will see "Account not active" with
+  "Please contact your Admin." and a Log Out button.
+- A Deactivated account still shows "Account disabled".
+- If an Admin changes your status while you are logged in, your screen
+  changes within a few seconds.
 
-ADMIN / TEST OWNER
-- Check the new fields in Firebase Console -> driverAssignments:
-  completionOutcome and completionIssues. Blank issues should be "".
-  Existing history/Admin screens do not display these two fields.
-- Check Duty Records after each completed ride and check an older
-  completed record still has its original notes.
-- For a National ID application, check the saved label, open the full
-  document photo and check approval still works.
+ADMINS
+- Edit Account no longer lets you change a person's barangay.
+- Accounts from another barangay, and Admin accounts, are view only.
+- Add Dispatcher uses your own barangay.
+- If a change is refused, you see a friendly message instead of an error.
+- Operations -> Logs shows the newest 50 lines first.
 
-This APK is awaiting the owner's final phone test. No release tag has
-been added yet.
+This APK was tested on the owner's phone on October 14, 2026 and is
+tagged demo-ready-17.
 
 Questions or problems? Message me.

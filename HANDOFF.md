@@ -5,6 +5,7 @@ Checked October 11, 2026. This records the current state; it does not approve ne
 Task 1.1 deployment and owner-reported test results were added October 13, 2026.
 Task 1.3 deployment and owner-reported test results were added October 14, 2026.
 Task 1.2 deployment and owner-reported test results were added October 14, 2026.
+The demo-ready-17 APK release was added October 14, 2026.
 
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
@@ -139,7 +140,36 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 
 ### Android APK (the installation file)
 
-#### Latest release: demo-ready-16 (October 11, 2026)
+#### Latest release: demo-ready-17 (October 14, 2026)
+
+- **Phone tested:** the owner reports passes for the start screen (normal and
+  large text), a full ride, an emergency with the form, dispatcher1 Active →
+  Pending → Active, and logout.
+- **Tag/source:** annotated tag **demo-ready-17** points exactly to
+  **258258e538c7991151eb3d39c269d8231ed236a8** (`258258e`), the code used for
+  the APK. The tag is pushed to GitHub. Later docs commits do not change the APK
+  or the tag's source.
+- **EAS Android preview build:** **34d17f8a-f311-43a7-bc86-7f2f7cfc33d2**,
+  completed October 14, 2026. EAS records commit `258258e`.
+- **Checklist passed:** master was clean before building (master, main and
+  origin at `258258e`); `npx expo install --check` reported "Dependencies are up
+  to date"; `eas fingerprint:compare --build-id 34d17f8a-f311-43a7-bc86-7f2f7cfc33d2 --environment preview --non-interactive`
+  reported **matches**. Build and local fingerprint:
+  `1a79f1aacec2bfe663831ac4e3819ea210c2392c` (same as APK 16: no native changes).
+- **Included since demo-ready-16:** new start screen road picture with the logo
+  at 20% (`960fca5`); Admin screens with the barangay locked, other-barangay and
+  Admin accounts view only, Add Dispatcher using the Admin's barangay, and
+  friendly refused messages (`b62c724`); Logs newest 50 first (`94d2cb3`);
+  staff must be Active to enter, otherwise "Account not active" with Log Out
+  (`258258e`); removal of unused files (`c0365c2`). Rules commits `c92f5a1`,
+  `98db008` and `d464a70` live on Firebase and apply to every installed APK.
+- **Download:** https://expo.dev/artifacts/eas/4eXRn5WsIvf0c_fhgym1zO5GN4-7EpuD6CHzQBPSQEU.apk
+- **EAS link expiry:** October 28, 2026, after the October 23 defense.
+- **Install:** Uninstall the old SakayNa app, then install this APK. No
+  over-the-air updates: later phone code needs another APK.
+- `tester-message.md` contains the link, changes, and test instructions.
+
+#### Previous release: demo-ready-16 (October 11, 2026)
 
 - **Phone tested:** The owner confirms the new APK was tested on their phone.
 - **Tag/source:** Annotated tag **demo-ready-16** points exactly to **39e45831631c6bb417bc4f8dd941633f38df30ea** (`39e4583`), the code used for the APK. Later tester-message/release-note commits do not change the APK or the tag's source.
@@ -149,13 +179,12 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 - **Download:** https://expo.dev/artifacts/eas/bij3WUHjKK9mVaTYRiAxOApXahaGUPAluF7zEPWab2Y.apk
 - **EAS link expiry:** October 25, 2026, after the October 23 defense.
 - **Install:** Uninstall the old SakayNa app, then install this APK. No over-the-air updates: later phone code needs another APK.
-- `tester-message.md` contains the link, changes, and test instructions.
 
-#### Previous release: demo-ready-15
+#### Older release: demo-ready-15
 
 - Source **4103d0c**; EAS preview build **165bcbcf-2b0a-4e7c-9ccb-eab5a982a37e**. Release notes record phone testing and a matching native fingerprint. The build finished late October 5; tagging/release notes are dated October 6.
 - Previous download: https://expo.dev/artifacts/eas/Ftw2zrDvzb7KWdJRq_SuG_KlkMU2ilX0BH8kLlaKTQ4.apk
-- Recorded expiry: **October 19, 2026**. Use the APK 16 link above for the latest tested release.
+- Recorded expiry: **October 19, 2026**. Use the APK 17 link above for the latest tested release.
 
 Most completed driver/emergency work was already done **by** APK 15, rather than after it:
 
@@ -179,7 +208,7 @@ Before this handoff, local main/master and cached origin/main/origin/master all 
 
 The owner reports the later Admin changes are live. Git proves they reached remote main; it does not prove Vercel built them successfully. The public web reader could not open the site during this review. Vercel Ready status and signed-in pages were not independently checked.
 
-At Task 1.1's release, local main was **b62c724**, and local master included rules commit **c92f5a1**. The latest owner-reported release is now Task 1.3: website query **94d2cb3**, and separately deployed rules **98db008**, with an owner-confirmed after comparison. Git alone does not verify live Firebase rules. A rules deployment does not require releasing main again.
+At Task 1.1's release, local main was **b62c724**, and local master included rules commit **c92f5a1**. The latest owner-reported release is now Task 1.2: website route gate **258258e** (main and origin/main at `258258e`), and separately deployed rules **d464a70**, with owner-confirmed before and after comparisons. Git alone does not verify live Firebase rules. A rules deployment does not require releasing main again.
 
 Changes after APK 15, already on both remote branches when checked:
 
@@ -222,8 +251,7 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 
 ### Next: defense readiness / APK choice
 
-- Decide whether the defense uses APK 15 or a new build of current code, using the shared-file finding above.
-- Arrange a working APK download before the recorded October 19 expiry; do not assume the old link works October 23.
+- Decided: the defense uses **demo-ready-17** (phone tested, tagged October 14). Its link expires October 28, after the defense.
 - Rehearse normal ride, cancellation, emergency form, duty/break, and Admin approval using the chosen APK and current website.
 
 ### Safety/security backlog: before real use; outside the freeze unless separately approved
