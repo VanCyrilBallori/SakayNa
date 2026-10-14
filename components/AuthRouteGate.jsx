@@ -84,7 +84,12 @@ export default function AuthRouteGate({ children }) {
     return <ScreenState title="Account disabled" message="This account is currently disabled. Please contact SakayNa support." actionLabel="Log Out" onAction={() => handleLogout(router)} />;
   }
 
-  if (!destination || destination !== currentRoute) {
+  // A Dispatcher or Admin whose account is not "Active" (lib/roles.js): no dashboard, no endless spinner.
+  if (!destination) {
+    return <ScreenState title="Account not active" message="Please contact your Admin." actionLabel="Log Out" onAction={() => handleLogout(router)} />;
+  }
+
+  if (destination !== currentRoute) {
     return <ScreenState loading message="Redirecting to your dashboard..." />;
   }
 
