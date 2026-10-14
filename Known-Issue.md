@@ -4,6 +4,7 @@ Problems found but not fixed yet, newest at the top. Fixed items are at the bott
 
 APK baseline checked October 11, 2026, against **demo-ready-16** at **39e4583**. The owner tested this APK on their phone; its EAS fingerprint says **matches**. Task 1.1 was updated October 13: the owner confirms the Step 1 website release at **b62c724**, deployment of rules **c92f5a1**, and the test results recorded in architecture-review.md. General APK testing does not close the other open issues below.
 Task 1.3 was updated October 14: owner-reported deployment/test results and the remaining log-test limits are recorded below and in architecture-review.md.
+Task 1.2 was updated October 14: staff must be Active (rules `d464a70`); results and remaining limits are recorded below and in architecture-review.md.
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -11,6 +12,16 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### Refused staff: sign-in still works, and some screens are unclear
+
+- **Recorded:** October 14, 2026, after Task 1.2 (`d464a70`).
+- **What it is:** the database now refuses staff who are not Active, but a
+  refused staff member can still sign in to Firebase. Blocking sign-in needs
+  a server. The screens for Pending, Rejected or blank staff still show a
+  spinner or empty lists. Deactivated staff already see "Account disabled".
+- **Next step:** the route gate fix (`lib/roles.js`, `AuthRouteGate.jsx`).
+- **Status:** Open. No data is exposed: the database refuses these accounts.
 
 ### Staff accounts made by hand: barangay spelling must match exactly
 
@@ -271,8 +282,8 @@ Skills/resident.md section 6.
 - **Owner-reported tests:** the five Playground denial cases were Denied;
   the phone-only update was Allowed, all as expected. The real-app results are
   recorded as supplied in architecture-review.md. No failure appears in the
-  latest list. Add Dispatcher: pass (live site, test account deleted
-  afterwards); the missing/empty-
+  latest list. Add Dispatcher: pass (live site; test account found still in
+  Firestore on 2026-10-14 and deleted then); the missing/empty-
   barangay denial case has no supplied result and is **not tested** in the record.
 - **Still open:** Admin reads of the Users list remain city-wide. Overview,
   Emergency Calls, Requests, Vehicles, reports and other management tools
@@ -351,6 +362,26 @@ Skills/resident.md section 6.
 
 ## Fixed / done
 
+### Task 1.2: staff must be Active (A2 fixed for database access)
+
+- **Rules commit:** `d464a70`, confirmed in local Git. The owner reports live
+  ruleset `projects/sakayna-571e8/rulesets/e9a236c9-131a-4e4a-b1c4-9436f87b7573`
+  in `sakayna-571e8`. The owner confirms the before comparison said **EXACT
+  MATCH: 98db008**, the dry run compiled successfully, and the after
+  comparison said **EXACT MATCH: yes**.
+- **New rule:** `isAdmin()` and `isDispatcher()` also require the caller's own
+  `accountStatus == "Active"`. Pending, Rejected, Deactivated or blank staff
+  are refused. Driver and Resident checks were not changed.
+- **Playground (Get):** admin1 and dispatcher0 reading a real log line:
+  Allowed. dispatcher1 (no `accountStatus` field) reading it: Denied; its own
+  profile: Allowed; dispatcher0's profile: Denied. Driver jeb reading a
+  vehicle: Allowed.
+- **Real app:** admin1 Overview/Users/Logs, dispatcher0 full emergency, Driver
+  jeb punch in/out, Resident ride request, and dispatcher1 deactivate ("Account
+  disabled") then restore: all pass. dispatcher1 is now "Active".
+- **Limits:** see the open item "Refused staff: sign-in still works, and some
+  screens are unclear".
+
 ### Task 1.3: activity log creation secured; A5 newest-first query fixed
 
 - **Rules commit:** `98db008`, confirmed in local Git. The owner reports live
@@ -370,15 +401,16 @@ Skills/resident.md section 6.
 - **Other real-app results:** Driver jeb status change/restore with both log
   lines: pass; dispatcher0 phone edit/restore: pass; vehicle create/edit/archive:
   pass; new test Resident approved: pass (test account deleted afterwards, UID
-  not recorded). Add Dispatcher test account: pass (live site, test account
-  deleted afterwards).
+  not recorded). Add Dispatcher test account: pass (live site; test account
+  found still in Firestore on 2026-10-14 and deleted then; its activityLogs
+  line is kept).
 - **Playground a-e:** another person's actorId, actorRole "Dispatcher", an extra
   field, create as dispatcher0, and signed-out create were each **Denied**.
   Caller was `kcwgrnPTETbVPS144oHfyyyAxfO2` except dispatcher0 and signed out.
   Exact request/document details were not supplied; the full reported test
   record, including f/g, is in `architecture-review.md`.
 - **Limits remain:** identity/time checks do not prove the action happened;
-  suspended Admin blocking is still Task 1.2; edit/delete denial was tested on
+  Task 1.2 (`d464a70`) later refused staff who are not Active; edit/delete denial was tested on
   one real log line only.
 
 ### Complete mission outcome/issues saving — fixed in APK 16

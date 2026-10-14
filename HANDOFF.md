@@ -4,6 +4,7 @@ Checked October 11, 2026. This records the current state; it does not approve ne
 
 Task 1.1 deployment and owner-reported test results were added October 13, 2026.
 Task 1.3 deployment and owner-reported test results were added October 14, 2026.
+Task 1.2 deployment and owner-reported test results were added October 14, 2026.
 
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
@@ -32,6 +33,36 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 
 ## 2. Current state
 
+### Task 1.2: staff must be Active (October 14, 2026)
+
+- **Rules:** `d464a70`, confirmed in local Git. The owner reports deployment to
+  `sakayna-571e8`, live ruleset
+  `projects/sakayna-571e8/rulesets/e9a236c9-131a-4e4a-b1c4-9436f87b7573`. The
+  owner confirms the before comparison said **EXACT MATCH: 98db008**, the dry
+  run compiled successfully, and the after comparison said **EXACT MATCH: yes**.
+- **Rule:** `isAdmin()` and `isDispatcher()` also require the caller's own
+  `accountStatus == "Active"` (new helper `myAccountStatus()`). `isStaff()` is
+  built from them. Driver and Resident checks were not changed.
+- **A2 fixed for database access:** Pending, Rejected, Deactivated or blank
+  staff accounts are refused. Staff may still read their own profile.
+- **Playground (Get):** admin1 and dispatcher0 reading
+  `activityLogs/0NDrR4BLui8JBXpSmgyK`: Allowed. dispatcher1 (no `accountStatus`
+  field) reading the same line: Denied; its own profile: Allowed;
+  dispatcher0's profile: Denied. Driver jeb reading a vehicle: Allowed.
+- **Real app:** admin1 Overview, Users and Logs: pass; dispatcher0 full
+  emergency (answer, form Submit, driver accepts): pass; Driver jeb punch
+  in/out: pass; Resident ride request: pass; dispatcher1 set Active,
+  deactivated by admin1, shows "Account disabled", restored to Active: pass.
+- **Staff data now:** dispatcher1 has `accountStatus` "Active" (set by the
+  owner in the Console for the deactivate test). The Add Dispatcher test
+  account `QEkP4aGH54OMZ6GVz9mdAmjl95J2` was found still in Firestore on
+  2026-10-14 and deleted then from Authentication and Firestore; its
+  activityLogs line is kept.
+- **Limits:** a refused staff member can still sign in to Firebase; blocking
+  sign-in needs a server. The screens for Pending, Rejected or blank staff
+  still show a spinner or empty lists. **Next step:** the route gate fix
+  (`lib/roles.js`, `AuthRouteGate.jsx`). Full results are in `architecture-review.md`.
+
 ### Task 1.3: Admin activity log (October 14, 2026)
 
 - **Rules:** `98db008`, confirmed in local Git. The owner reports deployment to
@@ -51,8 +82,8 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 - **Real-app results:** Driver jeb status change/restore with both log lines:
   pass; dispatcher0 phone edit/restore: pass; vehicle create/edit/archive:
   pass; new test Resident approval: pass (account deleted afterwards, UID not
-  recorded); newest-first Logs: pass. Add Dispatcher test account: pass (live site, test
-  account deleted afterwards).
+  recorded); newest-first Logs: pass. Add Dispatcher test account: pass (live site; test
+  account found still in Firestore on 2026-10-14 and deleted then).
 - **Playground:** caller `kcwgrnPTETbVPS144oHfyyyAxfO2` except dispatcher0 and
   signed-out cases. a: another person's actorId, b: actorRole "Dispatcher",
   c: extra field, d: create as dispatcher0, e: signed-out create — all **Denied**.
@@ -60,7 +91,7 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
   (`activityLogs/0NDrR4BLui8JBXpSmgyK`, from 2026-09-20); both were **Denied**.
   An earlier attempt without a real document ID is not counted.
 - **Limits:** the rule proves who wrote a line and when, not that the action
-  really happened. Task 1.2 still needs to stop suspended Admins. Edit/delete
+  really happened. Task 1.2 (`d464a70`) later refused staff who are not Active. Edit/delete
   denial was tested on one real log line only. Full supplied results
   and missing details are in `architecture-review.md`.
 
@@ -69,10 +100,10 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 - **Rules:** `c92f5a1`, confirmed in local Git. The owner reports deployment to `sakayna-571e8`, ruleset `projects/sakayna-571e8/rulesets/a8ceb049-1e5f-41d8-aeb9-dfbdc1c51292` (copied exactly as supplied). The owner confirms the after comparison said `EXACT MATCH: c92f5a13ecb59f67b412ee5de117482c0d71189c` (Yes). Before-comparison and dry-run results were not supplied; no independent live check occurred during this documentation update.
 - Admin updates to other `users/{userId}` profiles now require a non-Admin target with a non-empty barangay exactly matching the Admin's barangay. Only the 24 approved fields may change; role and barangay stay unchanged. The field is `accountStatusReason`, and role-change fields are excluded.
 - Add Dispatcher requires the Admin's barangay to be non-empty and the new profile's barangay to match it. The self-update clause and other collection rules are unchanged.
-- **User-profile write issue fixed; Users-list reads remain city-wide.** Staff account-status enforcement and city-wide writes to other collections remain separate open items.
+- **User-profile write issue fixed; Users-list reads remain city-wide.** Staff account-status enforcement was added later by Task 1.2 (`d464a70`); city-wide writes to other collections remain a separate open item.
 - **Task 1.1 website release:** Step 1 at `b62c724`. The owner confirms testing, commit, website release and live checks passed. Edit Account's barangay is read-only; other-barangay/missing-barangay/Admin accounts are view only; Add Dispatcher uses the Admin's barangay; refused updates/reviews have a friendly message.
 - **Test record:** all 14 supplied results are recorded in `architecture-review.md`, with missing details marked **not supplied**. Playground tests 1-5 were Denied as expected; test 6 was Allowed as expected. The owner reports Resident approval, "can Approve or Reject" for Gwen, and Passed for Driver jeb status change/restore, dispatcher0 phone edit/restore, punch in/out, emergency alert answered/form finished, and the other-barangay view-only UI. No failure appears in the latest supplied list.
-- **Add Dispatcher (test 13):** pass (live site, test account deleted afterwards). **Not tested:** the required missing/empty-barangay denial case, for which no result was supplied. Gwen's specific saved decision and emergency mission completion were not reported. Real-app caller UIDs, separate expected-result values and generated duty/emergency document IDs were not supplied.
+- **Add Dispatcher (test 13):** pass (live site; test account found still in Firestore on 2026-10-14 and deleted then). **Not tested:** the required missing/empty-barangay denial case, for which no result was supplied. Gwen's specific saved decision and emergency mission completion were not reported. Real-app caller UIDs, separate expected-result values and generated duty/emergency document IDs were not supplied.
 - Staff accounts made by hand in the Console must use the exact barangay spelling. A typo or missing value prevents Admin management; correct the data in the Console rather than loosening these rules. See Known-Issue.md.
 
 ### Earlier website release: a25dae1 (October 11, 2026)
@@ -201,7 +232,7 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 |---|---|
 | A1 | Two Dispatchers can answer the same alert at once. Use one answering Dispatcher for the defense. |
 | A8 | Two Dispatchers can assign one van at once. Use one assigning Dispatcher. Later saves should check the van as well as the driver. |
-| A2 | Removed staff can retain direct database powers and Firebase login. Old advice to change role in Operations is outdated: that option was removed. Staff-removal handling now needs Firebase Console; plan rules fixes separately. C1 already tightened driver vehicle/schedule/checklist writes. |
+| A2 | **Database access fixed for staff** by Task 1.2 (`d464a70`): staff must be Active. Still open: a refused staff member can still sign in to Firebase (blocking sign-in needs a server); Pending, Rejected or blank staff see a spinner or empty lists until the route gate fix. Old advice to change role in Operations is outdated: that option was removed. C1 already tightened driver vehicle/schedule/checklist writes. |
 | A3; resident #3/#4 | Owners can change too many fields of their rides/alerts/assignments if they bypass the app. Later rules should preserve ownership and restrict fields, one collection at a time. |
 | A4 | Sign-up proof/application rules need stronger checks against fake submissions/photo links. |
 | City-wide Admin tools | Task 1.1 fixes Admin user-profile writes and keeps role/barangay unchanged. Users-list reads, Duty Records and other tools remain city-wide. Owner-reported tests and the remaining not-tested cases are in architecture-review.md. |

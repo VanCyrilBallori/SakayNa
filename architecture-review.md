@@ -4,6 +4,51 @@
 **Code checked:** `master` at commit 798072a (after demo-ready-14 and the patients box)
 **Type:** review only. No code, rules or data were changed. Only this file was added.
 
+## Task 1.2 update — October 14, 2026
+
+- **Rules commit:** `d464a70`, confirmed in local Git. The owner reports deployment
+  to `sakayna-571e8`, live ruleset
+  `projects/sakayna-571e8/rulesets/e9a236c9-131a-4e4a-b1c4-9436f87b7573`.
+  The owner confirms the before comparison said **EXACT MATCH: 98db008**, the
+  dry run compiled successfully, and the after-deploy comparison said
+  **EXACT MATCH: yes**.
+- **Rule:** `isAdmin()` and `isDispatcher()` now also require the caller's own
+  `accountStatus` to be exactly `"Active"` (new helper `myAccountStatus()`,
+  `""` when missing). `isStaff()` is built from them, so every staff rule
+  changed at once. Driver and Resident checks were not changed.
+- **A2 fixed for database access:** a Pending, Rejected, Deactivated or blank
+  staff account is refused by the database. A staff member may still read
+  their own profile, so the app can show its message.
+- **Limits:** a refused staff member can still sign in to Firebase; blocking
+  sign-in needs a server. The screens for Pending, Rejected or blank staff
+  still show a spinner or empty lists; the route gate fix is the next step.
+
+### Owner-reported Task 1.2 test results
+
+Known UIDs: admin1 `kcwgrnPTETbVPS144oHfyyyAxfO2`, dispatcher0
+`5hko6jxKJCfrsgEE4P6mcqi19DT2`, dispatcher1 `3ex649iNGGgUTA6ZAReEG3cKnwX2`,
+Driver jeb `haen0nBTWvh3yMIK84x7od95lWO2`. The vehicle ID for P6 was not supplied.
+
+| Playground (Get) | Caller | Document | Reported result |
+|---|---|---|---|
+| P1 | admin1 | `activityLogs/0NDrR4BLui8JBXpSmgyK` | Allowed |
+| P2 | dispatcher0 | `activityLogs/0NDrR4BLui8JBXpSmgyK` | Allowed |
+| P3 | dispatcher1 (no `accountStatus` field) | `activityLogs/0NDrR4BLui8JBXpSmgyK` | Denied |
+| P4 | dispatcher1 | its own profile | Allowed |
+| P5 | dispatcher1 | dispatcher0's profile | Denied |
+| P6 | Driver jeb | a vehicle | Allowed |
+
+| Real-app test | Reported result |
+|---|---|
+| admin1 loads Overview, Users and Logs | pass |
+| dispatcher0 full emergency (answer, form Submit, driver accepts) | pass |
+| Driver jeb punches in and out | pass |
+| Resident ride request | pass |
+| dispatcher1 set Active, deactivated by admin1, shows "Account disabled", restored to Active | pass |
+
+After testing, dispatcher1 has `accountStatus` "Active" (set by the owner in
+the Console for the deactivate test).
+
 ## Task 1.3 update — October 14, 2026
 
 - **Rules commit:** `98db008`, confirmed in local Git. The owner reports deployment
@@ -23,8 +68,8 @@
   `targetId`, `summary`, `metadata`, `createdAt`. Staff reads remain allowed;
   updates and deletes remain denied in the rule.
 - **Limits:** the rule proves who wrote a line and when, not that the described
-  action really happened. Task 1.2 still needs to stop suspended Admins.
-  Edit/delete denial was tested on one real log line only (tests f and g).
+  action really happened. Task 1.2 (`d464a70`) later refused staff who are
+  not Active. Edit/delete denial was tested on one real log line only (tests f and g).
 
 ### Owner-reported Task 1.3 test results
 
@@ -37,7 +82,7 @@ afterwards. These tests were not independently repeated.
 |---|---|---|
 | 1 | Change Driver jeb's status and set it back; Logs show both lines | pass |
 | 2 | Edit dispatcher0's phone and set it back | pass |
-| 3 | Add Dispatcher test account on the live site (test UID `QEkP4aGH54OMZ6GVz9mdAmjl95J2`; deleted afterwards from Authentication and Firestore: yes) | pass |
+| 3 | Add Dispatcher test account on the live site (test UID `QEkP4aGH54OMZ6GVz9mdAmjl95J2`; found still in Firestore on 2026-10-14, then deleted from Authentication and Firestore: yes; its activityLogs line is kept) | pass |
 | 4 | Vehicle created, edited and archived | pass |
 | 5 | New test resident approved; test account deleted afterwards, UID not recorded | pass |
 | 6 | Logs screen shows the newest lines first | pass |
@@ -118,12 +163,13 @@ the APK build/version was not supplied. The actual-result wording is retained.
 | 10 — Users phone edit | not supplied | `users/5hko6jxKJCfrsgEE4P6mcqi19DT2` (dispatcher0) | Edit phone in Users and set it back; values not supplied | not supplied | Passed |
 | 11 — Punch in/out | not supplied (Driver jeb named) | `users/haen0nBTWvh3yMIK84x7od95lWO2`; duty-record IDs not supplied | Driver jeb punches in and out | not supplied | Passed |
 | 12 — Emergency | not supplied (dispatcher0 named as answering Dispatcher) | Emergency screen/form; alert, ride and assignment paths not supplied | Emergency alert answered by dispatcher0, form finished | not supplied | Passed |
-| 13 — Add Dispatcher | not supplied | Live site; test UID `QEkP4aGH54OMZ6GVz9mdAmjl95J2` | Create a test Dispatcher account, then delete it from Firebase Authentication and Firestore (deleted: yes) | not supplied | pass |
+| 13 — Add Dispatcher | not supplied | Live site; test UID `QEkP4aGH54OMZ6GVz9mdAmjl95J2` | Create a test Dispatcher account; found still in Firestore on 2026-10-14, then deleted from Firebase Authentication and Firestore (deleted: yes) | not supplied | pass |
 | 14 — other-barangay UI | not supplied | Users screen; target UID not supplied | Another-barangay user shows "Other barangay: view only" with Edit and Change status disabled | not supplied | Passed |
 
 All six supplied Playground results match their supplied expectations. No
 failure was reported in this latest list. Test 13 (Add Dispatcher) is a pass
-on the live site; the test account was deleted afterwards.
+on the live site; the test account was found still in Firestore on 2026-10-14
+and deleted then from Authentication and Firestore.
 
 The required missing/empty-barangay denial case has no supplied result and is
 **not tested** in this record. The emergency result covers the alert being
@@ -159,7 +205,7 @@ The problems, most important first:
 | C2 | The Admin's Emergency Calls list may not show a new alert | CRITICAL, **Fixed** (ddda3f3) | website, 1 line |
 | C3 | A real alert can disappear from every dispatcher after 2 minutes | CRITICAL (KNOWN #33) | test first; website, 1 number |
 | A1 | Two dispatchers can answer the same alert | After the demo | website |
-| A2 | Removed staff and drivers keep their database powers | After the demo | rules (+ a habit now) |
+| A2 | Removed staff and drivers keep their database powers | Staff database access **Fixed** (d464a70, rules deployed) | rules |
 | A5 | The Admin's activity log previously showed a random 50 lines | **Fixed** (94d2cb3, website released) | website query |
 | A7 | No sound when an alert rings on the dispatcher website | After the demo | website |
 | A12 | The dispatcher screen downloads whole collections, forever growing | After the demo | website |
@@ -567,6 +613,12 @@ today".
 - **Until then:** only one dispatcher answers alerts during the demo.
 
 #### A2. Removed staff and drivers keep their database powers (NEW; adds to Known-Issue "Deactivating does not disable the login")
+- **Fixed for staff database access (Task 1.2, `d464a70`, deployed
+  2026-10-14):** staff must be Active. Results are in the Task 1.2 update at
+  the top. Still open: a refused staff member can still sign in to Firebase
+  (blocking sign-in needs a server), and the screens for Pending, Rejected or
+  blank staff still show a spinner or empty lists (route gate fix next).
+  Driver checks were not changed. The text below is the original October 5 finding.
 - **What:** The rules decide who is staff or a driver by `role` only
   (`firestore.rules:25-28`). Deactivate, Suspend and Disable only change
   `accountStatus` (`features/admin/services/adminOperationsService.js:162-199`).
