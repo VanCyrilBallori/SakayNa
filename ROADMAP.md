@@ -4,6 +4,8 @@
 **Target Defense Date:** October 23, 2026 (10 days remaining)  
 **Rule:** One change at a time. Plan first -> Review & get user OK -> Implement smallest possible change -> Test on phone/web -> Commit -> Move to next.
 
+**Status (October 14, 2026):** Phase 1 is done except Task 1.4, which moved to future work (after the defense). Phase 2 is deferred until after the defense. The app is frozen: the defense uses APK **demo-ready-17** (`258258e`), website `258258e`, rules `d464a70`. Test results are in `architecture-review.md`.
+
 ---
 
 ## 🎯 Goal
@@ -16,6 +18,7 @@ Make the Admin system secure and easy to defend to the panel (barangay scoping, 
 These fixes directly solve the open security questions so you can confidently answer the panel: *"How do you prevent an Admin from modifying accounts outside their barangay or suspended staff from accessing data?"*
 
 ### Task 1.1: Restrict Admin Firestore Rules to Own Barangay & Allowed Fields
+- **Status: Done.** Rules `c92f5a1` (deployed), screens `b62c724` (released). Users-list reads stay city-wide.
 - **Problem:** Currently, `firestore.rules` allows an Admin to update any user profile without restricting barangay or fields (`isAdmin() && request.auth.uid != userId`).
 - **Solution:** 
   - Restrict Admin profile modifications so Admins can only manage users within their own assigned barangay (`isAdminOf(resource.data.barangay)`).
@@ -25,6 +28,7 @@ These fixes directly solve the open security questions so you can confidently an
   - Attempt (or test via emulator/rules test) to modify a user from another barangay -> correctly denied by rules.
 
 ### Task 1.2: Enforce Account Status for Staff in Security Rules & Route Gates
+- **Status: Done.** Rules `d464a70` (deployed). Route gate `258258e` (website and demo-ready-17): staff who are not Active see "Account not active" with Log Out, instead of being signed out automatically. Refused staff can still sign in to Firebase (blocking that needs a server).
 - **Problem:** `isStaff()` currently checks only `myRole() in ['Admin', 'Dispatcher']` without ensuring the account status is `"Active"`. If an Admin sets a Dispatcher or Admin to "Suspended" or "Disabled", their token role still allows database reads/writes.
 - **Solution:**
   - Update `isStaff()`, `isAdmin()`, and `isDispatcher()` helper functions in `firestore.rules` to require `accountStatus == "Active"`.
@@ -34,6 +38,7 @@ These fixes directly solve the open security questions so you can confidently an
   - Verify that the Dispatcher screen immediately prevents viewing requests or assigning vehicles.
 
 ### Task 1.3: Secure the Admin Activity Log (`activityLogs`)
+- **Status: Done.** Rules `98db008` (deployed; only Admins may create lines). Newest-first Logs `94d2cb3` (released), in `AdminOperationsPanel.jsx`.
 - **Problem:** Any staff member can create activity log entries with arbitrary `actorId` fields.
 - **Solution:**
   - In `firestore.rules`, require that `request.resource.data.actorId == request.auth.uid` and `actorRole == myRole()`.
@@ -42,6 +47,7 @@ These fixes directly solve the open security questions so you can confidently an
   - Perform an admin approval -> check that the activity log entry appears immediately at the top of the Admin Operations log with the correct admin ID.
 
 ### Task 1.4: Scope Admin Dashboard Views by Barangay (Where Applicable)
+- **Status: Moved to future work (after the defense).**
 - **Problem:** While Driver Applications and Resident Verifications are properly filtered by the Admin's barangay, parts of the Overview and User lists show city-wide totals without a clear barangay filter indicator.
 - **Solution:**
   - Add an active Barangay badge/filter pill to the Admin Users and Requests tabs so the Admin can seamlessly toggle between "My Barangay ({adminBarangay})" and "City-wide Overview".
@@ -51,6 +57,8 @@ These fixes directly solve the open security questions so you can confidently an
 ---
 
 ## 🎨 Phase 2: UI & UX Polish (Priority 2)
+
+**Status: Deferred until after the defense.**
 
 Enhance perceived performance, accessibility, and user feedback without altering core business logic or database schemas.
 

@@ -1,10 +1,16 @@
 ﻿# SakayNa defense notes
 
-Prepared October 11, 2026, for the October 23 defense. These are short practice answers, based on the current project notes and code. Say the first sentence, then add the next one if the panel asks for more detail.
+Prepared October 11, 2026, for the October 23 defense; updated October 14, 2026. These are short practice answers, based on the current project notes and code. Say the first sentence, then add the next one if the panel asks for more detail.
 
-Last checked October 11, 2026, against **demo-ready-16**, tagged at app-code commit **39e4583**. The owner tested this APK on their phone, and its EAS fingerprint says **matches** (the built app matches the checked source). Later release-note commits do not change the app. The live website remains at **a25dae1**: it has the hold-to-show eyes and Privacy Policy update, but not the separate outcome/issues saving fix included in APK 16.
+Last checked October 14, 2026, against Git:
 
-**Keep the facts clear:** C1 and C2 are fixed according to the recorded tests/releases. C3 is still untested. Future work is proposed, not already built. The survey demo is finished, but do not invent survey scores, response-time improvements, or LGU approval.
+- **APK:** **demo-ready-17**, tagged at app-code commit **258258e** (EAS build 34d17f8a). The owner tested this APK on their phone, and its EAS fingerprint says **matches** (the built app matches the checked source).
+- **Website:** **258258e**, the same app code as the APK.
+- **Firestore rules:** **d464a70**, live ruleset e9a236c9, as reported by the owner's before/after comparison. Git alone does not prove live rules.
+
+Later docs commits do not change the app. The app is frozen until the defense.
+
+**Keep the facts clear:** C1, C2 and the security hardening (Tasks 1.1, 1.3 and 1.2) are fixed according to the recorded tests/releases. C3 is still untested. Future work is proposed, not already built. The survey demo is finished, but do not invent survey scores, response-time improvements, or LGU approval.
 
 ## Purpose and design choices
 
@@ -132,7 +138,7 @@ Some update rules still allow too many fields on a person's own requests, alerts
 
 Important operations use an all-or-nothing save. For example, assignment updates the request, driver assignment, and vehicle together. Some checks are still missing, such as a complete check against two Dispatchers choosing the same van at once.
 
-APK 16 also saves the selected completion outcome and optional issues on the driver's assignment in the same save as completion, driver/van availability, and the Run end duty record. Issues are trimmed to 300 characters and empty when blank; failed completion saves none of these changes. Old completion notes and records are kept. The duty record still says Completed, and history/Admin do not yet display the two new fields.
+Since APK 16, the app also saves the selected completion outcome and optional issues on the driver's assignment in the same save as completion, driver/van availability, and the Run end duty record. Issues are trimmed to 300 characters and empty when blank; failed completion saves none of these changes. Old completion notes and records are kept. The duty record still says Completed, and history/Admin do not yet display the two new fields.
 
 ## Security findings, fixes, and tests
 
@@ -154,25 +160,60 @@ It was a missing-alert problem in the Admin list. The page fetched any 100 alert
 
 ### 35. How did you fix and test C2?
 
-Commit **ddda3f3** fetches the newest 100 alerts from the database. The recorded test confirmed a new alert appeared, became marked unanswered after about 30 seconds, and changed status after Answer. The current Admin screen puts overdue unanswered alerts first, oldest first, with a red No answer label; the remaining alerts are newest first. Older alerts outside those 100 are not loaded.
+Commit **ddda3f3** fetches the newest 100 alerts from the database. The recorded test confirmed a new unanswered alert appeared at the top with the unanswered badge, and its status changed after Answer. The current Admin screen puts overdue unanswered alerts first, oldest first, with a red No answer label; the remaining alerts are newest first. Older alerts outside those 100 are not loaded.
 
-### 36. What is C3, and is it fixed?
+### 36. What security hardening did you do after C1 and C2?
+
+Three rules changes, one at a time: Task 1.1 limits Admin edits to their own barangay, Task 1.3 protects the activity log, and Task 1.2 refuses staff who are not Active. Each was committed, deployed to **sakayna-571e8**, compared afterwards (the live rules exactly matched the commit), and tested in the Rules Playground and the real app. A before-deploy comparison is recorded only for Task 1.2. A small app change (**258258e**) then shows refused staff a clear "Account not active" screen.
+
+### 37. What was Task 1.1?
+
+Before, an Admin could change any user's profile in any barangay. Now (rules **c92f5a1**) an Admin may edit only non-Admin accounts in their own barangay, only an approved list of fields, and can never change a user's role or barangay. Add Dispatcher uses the Admin's own barangay. The screens (**b62c724**) lock the barangay and show other-barangay and Admin accounts as view only.
+
+### 38. How did you prove Task 1.1?
+
+In the Rules Playground, as the Daanglungsod Admin: editing another Admin, editing a user from another barangay, changing a role, changing a barangay, and changing a field not on the list were all Denied; changing only a Daanglungsod Dispatcher's phone number was Allowed. The real-app tests passed: Resident approval, Driver status change, phone edit, punch in/out, emergency form, Add Dispatcher, and the other-barangay view-only screen. The after-deploy comparison said exact match. Not tested: the denial when an Admin with a missing barangay tries Add Dispatcher.
+
+### 39. What was Task 1.3?
+
+The activity log is the list of Admin actions. Before, any staff member could write a log line in someone else's name. Now (rules **98db008**) only an Admin can create a line, using their own account ID, their own role, and Firebase's clock, with only eight allowed fields; lines cannot be edited or deleted. The Logs screen (**94d2cb3**) also loads the newest 50 lines first, so recent actions are not missed (A5).
+
+### 40. How did you prove Task 1.3?
+
+In the Rules Playground, creating a line with another person's ID, with the role "Dispatcher", with an extra field, as a Dispatcher, or while signed out was Denied each time. Editing and deleting one real log line were both Denied. In the real app, Admin actions (Driver status change, phone edit, vehicle create/edit/archive, Resident approval, Add Dispatcher) passed, and Logs showed the newest lines first. The after-deploy comparison said exact match.
+
+### 41. What was Task 1.2?
+
+Before, the rules checked only a staff member's role, so a Pending or Deactivated Dispatcher or Admin could still read and change data by going around the app (A2). Now (rules **d464a70**) the Admin and Dispatcher checks also require the person's own account status to be exactly "Active". They may still read their own profile, so the app can show them a message. Driver and Resident checks were not changed. The app change **258258e** then shows "Account not active" with Log Out, instead of a spinner or empty lists.
+
+### 42. How did you prove Task 1.2?
+
+Before deploying, the live rules matched the previous version (98db008); the dry run compiled; after deploying, live matched exactly. In the Rules Playground, the Active admin1 and dispatcher0 could read a log line; dispatcher1, with no account status, was Denied for the log line and for another Dispatcher's profile but Allowed for its own profile; a Driver could still read a vehicle. In the real app, Admin screens, a full emergency, punch in/out, and a ride request passed, and dispatcher1 was deactivated ("Account disabled") and then restored. On the demo-ready-17 APK, dispatcher1 Active → Pending → Active passed.
+
+### 43. What are the honest limits of this hardening?
+
+- **Reading the Users list is still city-wide.** An Admin can only edit users in their own barangay, but can still see the list for every barangay.
+- **Refused staff can still sign in.** The database refuses their data and the app shows "Account not active", but blocking the sign-in itself needs a server.
+- **The activity log proves who and when, not what.** The rules prove which Admin wrote a line and when, but not that the described action really happened.
+- **Some cases are tested only once or not at all.** Edit/delete of log lines was tested on one real line, and the Add Dispatcher missing-barangay case was not tested.
+
+### 44. What is C3, and is it fixed?
 
 It is a possible real alert disappearing from Dispatcher screens after two minutes without a phone activity update. Call the office can put SakayNa in the background and pause that update. **It is not fixed or confirmed by a recorded phone test yet**; the test is to keep the phone call open for three minutes and watch the Dispatcher screen.
 
-### 37. How would you approach C3?
+### 45. How would you approach C3?
 
 Test it first. If confirmed, the review suggests increasing the website hiding delay from two to ten minutes, with approval and testing. This also keeps crashed-phone alerts visible longer; automatic cleanup would need a stronger background design.
 
-### 38. What other important review findings remain?
+### 46. What other important review findings remain?
 
-Two Dispatchers may answer one alert or assign one vehicle at the same time. Removed staff may retain database powers, sign-up submissions need stronger checks, and the activity log may miss recent entries. These are open findings, not fixes already delivered.
+Two Dispatchers may answer one alert or assign one vehicle at the same time. Owners can change too many fields of their own rides and alerts by going around the app, and sign-up submissions need stronger checks. Task 1.2 changed staff only; Driver checks were not changed, although C1 already requires an Approved Driver for vehicle, schedule and checklist writes. These are open findings, not fixes already delivered.
 
-### 39. Does deactivating an account disable its Firebase login?
+### 47. Does deactivating an account disable its Firebase login?
 
-No. It changes the profile and affects app access, but does not switch off Firebase Authentication. Some staff rules also rely on role alone. Staff removal needs Console handling now; the old advice to change role in Operations is outdated because that option was removed.
+No. Firebase Authentication still lets the person sign in; blocking sign-in needs a server. But since Task 1.2 the database refuses any Admin or Dispatcher who is not Active, and the app shows "Account not active" (or "Account disabled" for a Deactivated account) with only a Log Out button. To fully remove someone now, also disable their login in Firebase Console → Authentication. The old advice to change role in Operations is outdated because that option was removed.
 
-### 40. How do you deploy rule changes safely?
+### 48. How do you deploy rule changes safely?
 
 We commit first, compare live rules against the previously deployed version, deploy to **sakayna-571e8**, then download and compare again. That checks we changed the intended project and did not silently overwrite unexpected live rules.
 
@@ -180,111 +221,117 @@ We commit first, compare live rules against the previously deployed version, dep
 
 These answers cover the open entries in Known-Issue.md. Many are deliberate Capstone limits; they are not proof the system is ready for real emergency operations.
 
-### 41. What if nobody answers, the phone has no load, or the app is in the background?
+### 49. What if nobody answers, the phone has no load, or the app is in the background?
 
 The alert needs internet, and a normal phone call needs working phone service. The fallback is Call the office when its number is saved. Auto-call does not run on the website, while backgrounded, or without any saved number; a manual Call button is available when there is a number.
 
-### 42. What happens to an alert from a crashed phone?
+### 50. What happens to an alert from a crashed phone?
 
 It can remain ringing in the database. Dispatchers hide it after two minutes without an activity update, but Admin may still show it unanswered. Reloading the Dispatcher page can make old stuck alerts appear again temporarily.
 
-### 43. Can an unfinished emergency form be recovered after closing it?
+### 51. Can an unfinished emergency form be recovered after closing it?
 
 An unfinished form is not saved as a draft, so Cancel, Back, reload, or browser close loses typed details. If the Resident has ended the alert and the form is then closed, it cannot be reopened. Keeping an already open form allows Submit after Done.
 
-### 44. Do 50 patients mean you dispatch enough vehicles for all of them?
+### 52. Do 50 patients mean you dispatch enough vehicles for all of them?
 
 No. The count describes the incident, but Submit creates one ride for one driver and vehicle. Multiple-vehicle response is future work; different patient conditions go in Incident details.
 
-### 45. Is 'about 2 km' road distance or a live arrival estimate?
+### 53. Is 'about 2 km' road distance or a live arrival estimate?
 
 No. It is a rough straight-line distance from saved locations, not a road distance or arrival estimate. A driver's location can be old or approximate, and no Resident GPS means no distance. A typed replacement pickup is saved without the original GPS pin.
 
-### 46. What happens if a driver reports a vehicle problem?
+### 54. What happens if a driver reports a vehicle problem?
 
 The ride returns to dispatch, but the vehicle becomes available again. The Dispatcher must choose another van and can ask the Admin to record maintenance. Automatically blocking that van until checked is future work.
 
-### 47. What happens if a driver forgets to punch out or the phone dies?
+### 55. What happens if a driver forgets to punch out or the phone dies?
 
 The shift stays open, and logout does not punch out. A phone crash or dead battery may also leave a stale app-open signal. Drivers must punch out, and Dispatchers should contact them if their availability is doubtful; automatic shift closing is not built.
 
-### 48. Do daily time records cover any shift length?
+### 56. Do daily time records cover any shift length?
 
 The daily view reads the start day and the following day, which covers normal overnight shifts. A shift left open longer can still show Still on duty instead of a complete record. The app does not calculate salary, and saved duty records are not editable.
 
-### 49. Does cancelling immediately free the driver and vehicle?
+### 57. Does cancelling immediately free the driver and vehicle?
 
 The request is cancelled first. The driver's app frees the assignment and van while it is open, or the next time it opens. Until then, dispatch can still see them as busy.
 
-### 50. Do scheduled rides have reminders?
+### 58. Do scheduled rides have reminders?
 
 No. The Dispatcher watches the list, with a warning when the time passes. Assigning too early makes the ride current and keeps the vehicle busy, so the assignment window warns when it is more than two hours away.
 
-### 51. Does every Admin see only their own barangay?
+### 59. Does every Admin see only their own barangay?
 
-Application reviews are limited to the Admin's barangay, but Users, Operations, and Duty Records remain city-wide. Changing a Resident's barangay can also leave their proof with the old Admin. These need work before a real pilot.
+Application reviews and, since Task 1.1, Admin edits of user profiles are limited to the Admin's barangay. Reading the Users list, Operations, and Duty Records remain city-wide. A user's barangay can no longer be changed in the app after sign-up, so a typo must be fixed in the Firebase Console. These need work before a real pilot.
 
-### 52. What if a barangay has no Admin?
+### 60. What if a barangay has no Admin?
 
 Its new residents and drivers can remain Pending because nobody is assigned to review them. Each participating barangay needs a provisioned Admin.
 
-### 53. Are uploaded document photos private?
+### 61. Are uploaded document photos private?
 
 The app shows them only to the owner and their barangay's Admin, but anyone with the exact Cloudinary link can open the photo. National ID is now a proof-of-residency option, between Certificate of Indigency and Other government document with your address. The Privacy Policy identifies it as a government ID and explains that document photos, including National ID photos, use public links. We use sample documents for tests; private uploads and controlled access are future work.
 
-### 54. Are new Dispatchers forced to change their temporary password?
+### 62. Are new Dispatchers forced to change their temporary password?
 
 No. The Admin should share it privately and confirm that the Dispatcher resets it through Forgot password. A required first-login password change is future work.
 
-### 55. What if the internet or map provider is unavailable?
+### 63. What if the internet or map provider is unavailable?
 
 Shared updates and submissions need internet, and some saves can wait a long time before failing. Free map/address services can also slow down or apply usage limits. SakayNa does not have a complete offline dispatch mode.
 
-### 56. Can Google and email sign-in create duplicate accounts?
+### 64. Can Google and email sign-in create duplicate accounts?
 
 Yes, the same email used through both methods can lead to duplicate accounts or changed login behavior, especially if email verification was unfinished. Account linking needs further work.
 
-### 57. Do old APKs still work?
+### 65. Do old APKs still work?
 
-Compatibility code is kept, but very old Driver APKs cannot receive assignments because they lack Punch in. APKs before 11 still show Decline, before 12 lack auto-call and driver location sharing. The latest phone-tested APK is **demo-ready-16** at **39e4583**; testers should install that release.
+Compatibility code is kept, but very old Driver APKs cannot receive assignments because they lack Punch in. APKs before 11 still show Decline, before 12 lack auto-call and driver location sharing. The latest phone-tested APK is **demo-ready-17** at **258258e**; testers should install that release.
+
+APK 17 adds the new start screen picture, the Admin barangay lock and view-only screens, newest-first Logs, and the "Account not active" screen for staff who are not Active. It has no native changes (same fingerprint as APK 16).
 
 APK 16 removes only the Completion notes box and fades the completion pop-up's dark background separately from its sliding card. It keeps Issues encountered optional and saves outcome/issues when completion succeeds. Log in and Create Account show passwords only while holding the eye; releasing or sliding off hides them. The eyes are 52 × 52 pixels, labelled "Hold to show password", with screen-reader labels and Space/Enter hold controls on the web. Pressing the eye keeps the input's keyboard and cursor, and the phone-browser selection/context menu is suppressed on the eye. The Resident and Driver registration forms have no separate password boxes; both use Create Account first. National ID is also available as proof of residency.
 
 ## Future work and honest conclusions
 
-### 58. What would you improve first after the defense?
+### 66. What would you improve first after the defense?
 
-First test C3, then prioritize emergency reliability, simultaneous-answer/assignment checks, stronger permissions, staff removal, barangay limits, and privacy gaps. Those come before pictures or general code cleanup.
+First test C3, then prioritize emergency reliability, simultaneous-answer/assignment checks, stronger permissions on rides and alerts, barangay-limited reads, and privacy gaps. Those come before pictures or general code cleanup.
 
-### 59. What could a trusted backend add later?
+### 67. What could a trusted backend add later?
 
-It could close stuck alerts and forgotten shifts, send real push notifications, manage account deletion, and support private document uploads. These are future possibilities, not features in the current app.
+It could close stuck alerts and forgotten shifts, send real push notifications, block sign-in for removed staff, manage account deletion, and support private document uploads. These are future possibilities, not features in the current app.
 
-### 60. What would a larger pilot need?
+### 68. What would a larger pilot need?
 
 Barangay-based queues, vehicle pools, office numbers, usage measurements, and agreed privacy/retention processes. Other ideas include several vehicles for one incident, live driver tracking, and a suitable map-provider plan.
 
-### 61. What maintenance improvements are proposed?
+### 69. What maintenance improvements are proposed?
 
 Smaller screen files, fewer repeated helpers, and fewer unnecessary database downloads. Automated tests could check permissions, time calculations, and form validation. These are deferred improvements, not requirements being added during the freeze.
 
-### 62. Is SakayNa ready to run real emergency services today?
+### 70. Is SakayNa ready to run real emergency services today?
 
 We can demonstrate the four-role Capstone workflow, but a real pilot needs further reliability, security, privacy, and operating arrangements. We do not claim guaranteed response times or government endorsement.
 
-### 63. What evidence supports your project?
+### 71. What evidence supports your project?
 
-We have recorded phone and website workflow tests and specific C1/C2 test results. The survey demo is finished, but any claim about scores or acceptance must use the actual thesis results. This document does not supply or invent those results.
+We have recorded phone and website workflow tests, specific C1/C2 test results, and Rules Playground and real-app results for Tasks 1.1, 1.3 and 1.2 (architecture-review.md). The survey demo is finished, but any claim about scores or acceptance must use the actual thesis results. This document does not supply or invent those results.
 
 ## Quick facts to remember
 
 - **C1:** unapproved Driver writes blocked; commit 93867d3; recorded deploy and tests.
 - **C2:** newest 100 Admin alerts fetched first; commit ddda3f3; recorded website test/release.
+- **Task 1.1:** Admin edits limited to own barangay, approved fields, no role/barangay change; rules c92f5a1, screens b62c724.
+- **Task 1.3:** activity log lines only by an Admin, as themselves, with Firebase's clock; no edit/delete; rules 98db008. Logs newest 50 first: 94d2cb3.
+- **Task 1.2:** staff must be Active; rules d464a70, "Account not active" screen 258258e.
+- **Hardening limits:** Users-list reads city-wide; refused staff can still sign in; the log proves who and when, not that the action happened.
 - **C3:** background alert-hiding risk; still needs the three-minute phone test.
 - **Location:** five action points, no background tracking, latest record only, Dispatcher/self read access, Punch out deletion attempt.
 - **No backend:** Firebase servers exist; no custom trusted background program.
 - **Privacy:** current safeguards are not proof of full compliance; policy and retention remain unfinished.
-- **Release:** phone-tested APK 16 at 39e4583; EAS fingerprint matches. Website at a25dae1 includes the four UI changes and Privacy Policy update, but not the completion-saving fix.
+- **Release:** phone-tested APK demo-ready-17 at 258258e (build 34d17f8a); EAS fingerprint matches. Website at 258258e. Rules at d464a70 (ruleset e9a236c9).
 
 ## Project references
 
@@ -298,4 +345,4 @@ We have recorded phone and website workflow tests and specific C1/C2 test result
 
 The legal links beside questions 16-19 are the National Privacy Commission's published text of RA 10173. Their relevance to SakayNa is an explanation of design choices and open responsibilities, not a legal compliance certification. No code, rules, or live data were changed to prepare these notes.
 
-This text-only update checked the demo-ready-16 source and recorded releases. It did not run new phone tests or compare deployed Firebase rules. APK 16's phone test is the owner's recorded confirmation. C1/C2 test results remain the previously recorded evidence; C3 still needs its separate three-minute phone test.
+This text-only update checked the demo-ready-17 tag, the website commit and the rules commit against Git. It did not run new phone tests or compare deployed Firebase rules. APK 17's phone test and the Task 1.1/1.3/1.2 results are the owner's recorded confirmations. C1/C2 test results remain the previously recorded evidence; C3 still needs its separate three-minute phone test.

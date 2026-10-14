@@ -20,8 +20,9 @@
   staff account is refused by the database. A staff member may still read
   their own profile, so the app can show its message.
 - **Limits:** a refused staff member can still sign in to Firebase; blocking
-  sign-in needs a server. The screens for Pending, Rejected or blank staff
-  still show a spinner or empty lists; the route gate fix is the next step.
+  sign-in needs a server. The screens are fixed by the route gate (`258258e`):
+  staff who are not Active see "Account not active"; tested on demo-ready-17
+  (dispatcher1 Active → Pending → Active).
 
 ### Owner-reported Task 1.2 test results
 
@@ -616,8 +617,8 @@ today".
 - **Fixed for staff database access (Task 1.2, `d464a70`, deployed
   2026-10-14):** staff must be Active. Results are in the Task 1.2 update at
   the top. Still open: a refused staff member can still sign in to Firebase
-  (blocking sign-in needs a server), and the screens for Pending, Rejected or
-  blank staff still show a spinner or empty lists (route gate fix next).
+  (blocking sign-in needs a server). The screens are fixed by the route gate
+  (`258258e`), tested on demo-ready-17 (dispatcher1 Active → Pending → Active).
   Driver checks were not changed. The text below is the original October 5 finding.
 - **What:** The rules decide who is staff or a driver by `role` only
   (`firestore.rules:25-28`). Deactivate, Suspend and Disable only change

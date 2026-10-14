@@ -60,9 +60,9 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
   2026-10-14 and deleted then from Authentication and Firestore; its
   activityLogs line is kept.
 - **Limits:** a refused staff member can still sign in to Firebase; blocking
-  sign-in needs a server. The screens for Pending, Rejected or blank staff
-  still show a spinner or empty lists. **Next step:** the route gate fix
-  (`lib/roles.js`, `AuthRouteGate.jsx`). Full results are in `architecture-review.md`.
+  sign-in needs a server. **Route gate fix done** in `258258e`: staff who are
+  not Active see "Account not active"; tested on demo-ready-17 (dispatcher1
+  Active → Pending → Active). Full results are in `architecture-review.md`.
 
 ### Task 1.3: Admin activity log (October 14, 2026)
 
@@ -260,7 +260,7 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 |---|---|
 | A1 | Two Dispatchers can answer the same alert at once. Use one answering Dispatcher for the defense. |
 | A8 | Two Dispatchers can assign one van at once. Use one assigning Dispatcher. Later saves should check the van as well as the driver. |
-| A2 | **Database access fixed for staff** by Task 1.2 (`d464a70`): staff must be Active. Still open: a refused staff member can still sign in to Firebase (blocking sign-in needs a server); Pending, Rejected or blank staff see a spinner or empty lists until the route gate fix. Old advice to change role in Operations is outdated: that option was removed. C1 already tightened driver vehicle/schedule/checklist writes. |
+| A2 | **Database access fixed for staff** by Task 1.2 (`d464a70`): staff must be Active. Still open: a refused staff member can still sign in to Firebase (blocking sign-in needs a server). The route gate fix (`258258e`) shows them "Account not active"; tested on demo-ready-17 (dispatcher1 Active → Pending → Active). Old advice to change role in Operations is outdated: that option was removed. C1 already tightened driver vehicle/schedule/checklist writes. |
 | A3; resident #3/#4 | Owners can change too many fields of their rides/alerts/assignments if they bypass the app. Later rules should preserve ownership and restrict fields, one collection at a time. |
 | A4 | Sign-up proof/application rules need stronger checks against fake submissions/photo links. |
 | City-wide Admin tools | Task 1.1 fixes Admin user-profile writes and keeps role/barangay unchanged. Users-list reads, Duty Records and other tools remain city-wide. Owner-reported tests and the remaining not-tested cases are in architecture-review.md. |

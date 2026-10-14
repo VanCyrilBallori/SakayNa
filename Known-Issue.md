@@ -5,6 +5,7 @@ Problems found but not fixed yet, newest at the top. Fixed items are at the bott
 APK baseline checked October 11, 2026, against **demo-ready-16** at **39e4583**. The owner tested this APK on their phone; its EAS fingerprint says **matches**. Task 1.1 was updated October 13: the owner confirms the Step 1 website release at **b62c724**, deployment of rules **c92f5a1**, and the test results recorded in architecture-review.md. General APK testing does not close the other open issues below.
 Task 1.3 was updated October 14: owner-reported deployment/test results and the remaining log-test limits are recorded below and in architecture-review.md.
 Task 1.2 was updated October 14: staff must be Active (rules `d464a70`); results and remaining limits are recorded below and in architecture-review.md.
+The route gate fix (`258258e`, October 14) is in the **demo-ready-17** APK and on the website.
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -13,15 +14,23 @@ Skills/resident.md section 6.
 
 ## Open
 
-### Refused staff: sign-in still works, and some screens are unclear
+### Refused staff: sign-in still works
 
-- **Recorded:** October 14, 2026, after Task 1.2 (`d464a70`).
-- **What it is:** the database now refuses staff who are not Active, but a
+- **Recorded:** October 14, 2026, after Task 1.2 (`d464a70`). Updated
+  October 14 after the route gate fix (`258258e`).
+- **What it is:** the database refuses staff who are not Active, but a
   refused staff member can still sign in to Firebase. Blocking sign-in needs
-  a server. The screens for Pending, Rejected or blank staff still show a
-  spinner or empty lists. Deactivated staff already see "Account disabled".
-- **Next step:** the route gate fix (`lib/roles.js`, `AuthRouteGate.jsx`).
-- **Status:** Open. No data is exposed: the database refuses these accounts.
+  a server.
+- **Screens: fixed by `258258e`.** A Dispatcher or Admin who is Pending,
+  Rejected, Suspended, Disabled or blank now sees "Account not active" with a
+  Log Out button, instead of a spinner or empty lists. The owner reports
+  dispatcher1 Active → Pending → Active passed in the demo-ready-17 phone test
+  (HANDOFF.md).
+- **Wording note:** "Disabled" staff see "Account not active", not "Account
+  disabled". Only a "Deactivated" account sees "Account disabled". Both
+  screens block entry; only the title differs.
+- **Status:** Open for sign-in only. No data is exposed: the database refuses
+  these accounts.
 
 ### Staff accounts made by hand: barangay spelling must match exactly
 
@@ -379,8 +388,9 @@ Skills/resident.md section 6.
 - **Real app:** admin1 Overview/Users/Logs, dispatcher0 full emergency, Driver
   jeb punch in/out, Resident ride request, and dispatcher1 deactivate ("Account
   disabled") then restore: all pass. dispatcher1 is now "Active".
-- **Limits:** see the open item "Refused staff: sign-in still works, and some
-  screens are unclear".
+- **Route gate (`258258e`):** staff who are not Active see "Account not
+  active" with Log Out. In demo-ready-17 and on the website.
+- **Limits:** see the open item "Refused staff: sign-in still works".
 
 ### Task 1.3: activity log creation secured; A5 newest-first query fixed
 
