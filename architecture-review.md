@@ -4,6 +4,64 @@
 **Code checked:** `master` at commit 798072a (after demo-ready-14 and the patients box)
 **Type:** review only. No code, rules or data were changed. Only this file was added.
 
+## Task 1.3 update — October 14, 2026
+
+- **Rules commit:** `98db008`, confirmed in local Git. The owner reports deployment
+  to `sakayna-571e8`, live ruleset
+  `projects/sakayna-571e8/rulesets/f4df0e81-6109-488e-9304-eb71ca94caa8`.
+  The owner confirms the after-deploy comparison said **EXACT MATCH: yes**.
+  Before-comparison and dry-run results were not supplied in this report.
+  This documentation update did not download live rules or repeat the tests.
+- **A5 fixed:** the Logs query now uses `orderBy("createdAt", "desc"), limit(50)`
+  in `features/admin/components/AdminOperationsPanel.jsx`. The website change
+  is committed at `94d2cb3`; the owner confirms it is tested and live, with
+  the newest lines first.
+- **New activityLogs rule:** only an Admin may create a line. `actorId` must
+  equal the signed-in user's UID, `actorRole` must equal `myRole()`, and
+  `createdAt` must equal `request.time` (Firebase's save time). Only these eight
+  field names are allowed: `action`, `actorId`, `actorRole`, `targetType`,
+  `targetId`, `summary`, `metadata`, `createdAt`. Staff reads remain allowed;
+  updates and deletes remain denied in the rule.
+- **Limits:** the rule proves who wrote a line and when, not that the described
+  action really happened. Task 1.2 still needs to stop suspended Admins.
+  Edit/delete denial is **not yet confirmed by a real-document test**.
+
+### Owner-reported Task 1.3 test results
+
+Only the owner's supplied results are recorded below. Real-app caller UIDs,
+changed values, generated log/vehicle IDs and APK version were not supplied.
+The new test Resident's UID was not recorded; their test account was deleted
+afterwards. These tests were not independently repeated.
+
+| Real-app test | Action or check | Reported result |
+|---|---|---|
+| 1 | Change Driver jeb's status and set it back; Logs show both lines | pass |
+| 2 | Edit dispatcher0's phone and set it back | pass |
+| 3 | Add Dispatcher test account | **not tested** |
+| 4 | Vehicle created, edited and archived | pass |
+| 5 | New test resident approved; test account deleted afterwards, UID not recorded | pass |
+| 6 | Logs screen shows the newest lines first | pass |
+
+**Playground caller:** `kcwgrnPTETbVPS144oHfyyyAxfO2`, except test d
+(dispatcher0; UID not supplied in this report) and test e (signed out).
+Exact document paths and request payloads were not supplied.
+
+| Playground test | Attempt | Reported result |
+|---|---|---|
+| a | Create with another person's `actorId` | Denied |
+| b | Create with `actorRole` "Dispatcher" | Denied |
+| c | Create with an extra field | Denied |
+| d | Create as dispatcher0 | Denied |
+| e | Create while signed out | Denied |
+| f | Update of a real log line | **NOT RECORDED**; redo with a real document ID |
+| g | Delete of a real log line | **NOT RECORDED**; redo with a real document ID |
+
+For f, the owner reports that the first attempt used no real document ID and
+returned "Allowed", which contradicts `allow update, delete: if false`.
+For g, the owner gives the same reason. These are not recorded as passing
+tests or confirmed real-document results. Both must be redone using an
+existing log document's actual ID; edit and delete denial remain unconfirmed.
+
 ## Task 1.1 update — October 13, 2026
 
 - **Rules commit:** `c92f5a1`, confirmed in the local Git history.
@@ -103,7 +161,7 @@ The problems, most important first:
 | C3 | A real alert can disappear from every dispatcher after 2 minutes | CRITICAL (KNOWN #33) | test first; website, 1 number |
 | A1 | Two dispatchers can answer the same alert | After the demo | website |
 | A2 | Removed staff and drivers keep their database powers | After the demo | rules (+ a habit now) |
-| A5 | The Admin's activity log shows a random 50 lines | After the demo | website, 1 line |
+| A5 | The Admin's activity log previously showed a random 50 lines | **Fixed** (94d2cb3, website released) | website query |
 | A7 | No sound when an alert rings on the dispatcher website | After the demo | website |
 | A12 | The dispatcher screen downloads whole collections, forever growing | After the demo | website |
 
@@ -570,17 +628,17 @@ today".
 
 ### Things that work wrong
 
-#### A5. The Admin's activity log shows a random 50 lines (NEW)
-- **What:** the same mistake as C2: `limit(50)` without "newest first"
-  (`features/admin/components/AdminOperationsPanel.jsx:55`). Once there are
-  more than 50 log lines, a new action may not appear in the log.
-- **Fix:** add `orderBy("createdAt", "desc")` before `limit(50)`. Every log
-  line has `createdAt` (`features/admin/services/adminOperationsService.js:31-42`).
-- **Risk: Low.**
-- **Test:** change a test account's status with a reason → the line appears
-  at the top of the log.
-- **Demo note:** if you plan to show the activity log in the demo, check it
-  first. This fix can go together with C2.
+#### A5. The Admin's activity log loads the newest 50 lines (FIXED)
+- **Before:** `limit(50)` without "newest first" could miss recent actions
+  once there were more than 50 logs.
+- **Fixed:** `orderBy("createdAt", "desc")` before `limit(50)` in
+  `features/admin/components/AdminOperationsPanel.jsx:55`, commit `94d2cb3`.
+  The owner confirms the change is tested and released on the website.
+- **Reported tests:** Driver jeb's status change and restoration show both
+  log lines (pass); the Logs screen shows the newest lines first (pass).
+- **Related Task 1.3:** rules commit `98db008` secures creation. The exact
+  deployment, supplied tests and remaining limits are recorded above.
+  Real-document edit/delete denial remains unconfirmed.
 
 #### A6. A misleading message when the emergency form is refused (NEW)
 - **What:** every Firebase error in the form shows "Check the internet

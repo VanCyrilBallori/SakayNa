@@ -3,6 +3,7 @@
 Checked October 11, 2026. This records the current state; it does not approve new code changes.
 
 Task 1.1 deployment and owner-reported test results were added October 13, 2026.
+Task 1.3 deployment and owner-reported test results were added October 14, 2026.
 
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
@@ -31,13 +32,45 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 
 ## 2. Current state
 
+### Task 1.3: Admin activity log (October 14, 2026)
+
+- **Rules:** `98db008`, confirmed in local Git. The owner reports deployment to
+  `sakayna-571e8`, live ruleset
+  `projects/sakayna-571e8/rulesets/f4df0e81-6109-488e-9304-eb71ca94caa8`, and
+  confirms the after comparison said **EXACT MATCH: yes**. Before-comparison
+  and dry-run results were not supplied in this report. No independent live
+  comparison or repeat tests occurred during this documentation update.
+- **Rule:** only an Admin may create `activityLogs` lines, using their real
+  signed-in UID (`actorId`), real role (`actorRole == myRole()`) and Firebase's
+  time (`createdAt == request.time`). Only eight field names are allowed:
+  `action`, `actorId`, `actorRole`, `targetType`, `targetId`, `summary`,
+  `metadata`, `createdAt`. Staff may still read; the rule denies updates/deletes.
+- **A5 fixed and website released:** `94d2cb3` loads the newest 50 with
+  `orderBy("createdAt", "desc"), limit(50)` in `AdminOperationsPanel.jsx`.
+  The owner confirms testing and website release; newest-first Logs passed.
+- **Real-app results:** Driver jeb status change/restore with both log lines:
+  pass; dispatcher0 phone edit/restore: pass; vehicle create/edit/archive:
+  pass; new test Resident approval: pass (account deleted afterwards, UID not
+  recorded); newest-first Logs: pass. Add Dispatcher test account: **not tested**.
+- **Playground:** caller `kcwgrnPTETbVPS144oHfyyyAxfO2` except dispatcher0 and
+  signed-out cases. a: another person's actorId, b: actorRole "Dispatcher",
+  c: extra field, d: create as dispatcher0, e: signed-out create — all **Denied**.
+  f: update of a real log line and g: delete of a real log line are both
+  **NOT RECORDED**, to be redone with a real document ID. The first f attempt
+  used no real ID and returned "Allowed", contradicting the rule; g has the
+  same reported reason. Neither is a passing or confirmed real-document test.
+- **Limits:** the rule proves who wrote a line and when, not that the action
+  really happened. Task 1.2 still needs to stop suspended Admins. Edit/delete
+  denial is not yet confirmed by a real-document test. Full supplied results
+  and missing details are in `architecture-review.md`.
+
 ### Task 1.1: Admin user-profile write restriction (October 13, 2026)
 
-- **Rules:** `c92f5a1`, confirmed in local Git. The owner reports deployment to `sakayna-571e8`, ruleset `projects/sakayna-571e8/rulesets/a8ceb049-1e5f-41d8-aeb9-dfbdc` (copied exactly as supplied). The owner confirms the after comparison said `EXACT MATCH: c92f5a13ecb59f67b412ee5de117482c0d71189c` (Yes). Before-comparison and dry-run results were not supplied; no independent live check occurred during this documentation update.
+- **Rules:** `c92f5a1`, confirmed in local Git. The owner reports deployment to `sakayna-571e8`, ruleset `projects/sakayna-571e8/rulesets/a8ceb049-1e5f-41d8-aeb9-dfbdc1c51292` (copied exactly as supplied). The owner confirms the after comparison said `EXACT MATCH: c92f5a13ecb59f67b412ee5de117482c0d71189c` (Yes). Before-comparison and dry-run results were not supplied; no independent live check occurred during this documentation update.
 - Admin updates to other `users/{userId}` profiles now require a non-Admin target with a non-empty barangay exactly matching the Admin's barangay. Only the 24 approved fields may change; role and barangay stay unchanged. The field is `accountStatusReason`, and role-change fields are excluded.
 - Add Dispatcher requires the Admin's barangay to be non-empty and the new profile's barangay to match it. The self-update clause and other collection rules are unchanged.
 - **User-profile write issue fixed; Users-list reads remain city-wide.** Staff account-status enforcement and city-wide writes to other collections remain separate open items.
-- **Latest website release:** Step 1 at `b62c724`. The owner confirms testing, commit, website release and live checks passed. Edit Account's barangay is read-only; other-barangay/missing-barangay/Admin accounts are view only; Add Dispatcher uses the Admin's barangay; refused updates/reviews have a friendly message.
+- **Task 1.1 website release:** Step 1 at `b62c724`. The owner confirms testing, commit, website release and live checks passed. Edit Account's barangay is read-only; other-barangay/missing-barangay/Admin accounts are view only; Add Dispatcher uses the Admin's barangay; refused updates/reviews have a friendly message.
 - **Test record:** all 14 supplied results are recorded in `architecture-review.md`, with missing details marked **not supplied**. Playground tests 1-5 were Denied as expected; test 6 was Allowed as expected. The owner reports Resident approval, "can Approve or Reject" for Gwen, and Passed for Driver jeb status change/restore, dispatcher0 phone edit/restore, punch in/out, emergency alert answered/form finished, and the other-barangay view-only UI. No failure appears in the latest supplied list.
 - **Not tested:** Add Dispatcher (test 13, UID N/A) and the required missing/empty-barangay denial case, for which no result was supplied. Do not describe test 13's listed creation/deletion action as performed. Gwen's specific saved decision and emergency mission completion were not reported. Real-app caller UIDs, separate expected-result values and generated duty/emergency document IDs were not supplied.
 - Staff accounts made by hand in the Console must use the exact barangay spelling. A typo or missing value prevents Admin management; correct the data in the Console rather than loosening these rules. See Known-Issue.md.
@@ -115,7 +148,7 @@ Before this handoff, local main/master and cached origin/main/origin/master all 
 
 The owner reports the later Admin changes are live. Git proves they reached remote main; it does not prove Vercel built them successfully. The public web reader could not open the site during this review. Vercel Ready status and signed-in pages were not independently checked.
 
-Current release state for Task 1.1: local main is **b62c724**, and local master includes rules commit **c92f5a1**. The owner confirms the Step 1 website release and reports the rules deployed separately. Git alone does not verify live Firebase rules. A rules deployment does not require releasing main again.
+At Task 1.1's release, local main was **b62c724**, and local master included rules commit **c92f5a1**. The latest owner-reported release is now Task 1.3: website query **94d2cb3**, and separately deployed rules **98db008**, with an owner-confirmed after comparison. Git alone does not verify live Firebase rules. A rules deployment does not require releasing main again.
 
 Changes after APK 15, already on both remote branches when checked:
 
@@ -178,7 +211,7 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 
 ### Other bugs/limits: consider only if needed for the defense
 
-- A5: Activity log still loads any 50 entries before sorting; recent actions may be missing.
+- A5 is fixed and released on the website: Logs load the newest 50. Task 1.3's real-document edit/delete denial tests remain unconfirmed; see section 2.
 - A6: Some refused emergency-form saves show a misleading internet error.
 - A7: Dispatcher alerts have no sound. Keep the tab visible.
 - A9: Opening the driver app may overwrite a full name because of loading order. Unconfirmed: test before fixing.

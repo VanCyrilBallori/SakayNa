@@ -3,6 +3,7 @@
 Problems found but not fixed yet, newest at the top. Fixed items are at the bottom.
 
 APK baseline checked October 11, 2026, against **demo-ready-16** at **39e4583**. The owner tested this APK on their phone; its EAS fingerprint says **matches**. Task 1.1 was updated October 13: the owner confirms the Step 1 website release at **b62c724**, deployment of rules **c92f5a1**, and the test results recorded in architecture-review.md. General APK testing does not close the other open issues below.
+Task 1.3 was updated October 14: owner-reported deployment/test results and the remaining log-test limits are recorded below and in architecture-review.md.
 
 More resident problems, with file and line numbers, are listed in
 Skills/resident.md section 6.
@@ -10,6 +11,21 @@ Skills/resident.md section 6.
 ---
 
 ## Open
+
+### Task 1.3: real-document edit/delete denial is not yet confirmed
+
+- **Recorded:** October 14, 2026, from the owner's supplied results.
+- **Rule:** `activityLogs` has `allow update, delete: if false`.
+- **Playground f (update) and g (delete):** both **NOT RECORDED**. The first
+  update attempt used no real document ID and returned "Allowed", contradicting
+  the rule. The owner reports the same reason for delete. Neither result is
+  recorded as a passing or confirmed test on a real document.
+- **Next check:** redo both simulations using an existing log line's actual
+  document ID. Edit/delete denial remains unconfirmed until those results are
+  supplied. Add Dispatcher is also **not tested** in Task 1.3.
+- **Remaining limits:** the rule proves who wrote a line and when, not that
+  the described action really happened. Task 1.2 still needs to stop suspended
+  Admins. Task 1.3 does not close that issue.
 
 ### Staff accounts made by hand: barangay spelling must match exactly
 
@@ -348,6 +364,33 @@ Skills/resident.md section 6.
 ---
 
 ## Fixed / done
+
+### Task 1.3: activity log creation secured; A5 newest-first query fixed
+
+- **Rules commit:** `98db008`, confirmed in local Git. The owner reports live
+  ruleset `projects/sakayna-571e8/rulesets/f4df0e81-6109-488e-9304-eb71ca94caa8`
+  in `sakayna-571e8`, and confirms the after comparison said **EXACT MATCH: yes**.
+  Before-comparison and dry-run results were not supplied in this report.
+  This documentation update did not independently check live rules or rerun tests.
+- **New rule:** an Admin creates a line using their real signed-in UID,
+  real role and Firebase's save time. Only these eight field names are allowed:
+  `action`, `actorId`, `actorRole`, `targetType`, `targetId`, `summary`,
+  `metadata`, `createdAt`. Staff reads are preserved; updates/deletes are denied
+  by the rule, with real-document tests still outstanding above.
+- **A5 fixed:** website commit `94d2cb3` queries `orderBy("createdAt", "desc"),
+  limit(50)`. The owner confirms the website release and newest-first Logs: pass.
+- **Other real-app results:** Driver jeb status change/restore with both log
+  lines: pass; dispatcher0 phone edit/restore: pass; vehicle create/edit/archive:
+  pass; new test Resident approved: pass (test account deleted afterwards, UID
+  not recorded). Add Dispatcher test account: **not tested**.
+- **Playground a-e:** another person's actorId, actorRole "Dispatcher", an extra
+  field, create as dispatcher0, and signed-out create were each **Denied**.
+  Caller was `kcwgrnPTETbVPS144oHfyyyAxfO2` except dispatcher0 and signed out.
+  Exact request/document details were not supplied; the full reported test
+  record, including f/g **NOT RECORDED**, is in `architecture-review.md`.
+- **Limits remain:** identity/time checks do not prove the action happened;
+  suspended Admin blocking is still Task 1.2; real-document edit/delete denial
+  is not yet confirmed.
 
 ### Complete mission outcome/issues saving — fixed in APK 16
 
