@@ -37,6 +37,23 @@ const getAssignBlockReason = (driver) => {
   return "";
 };
 
+// The "Driver availability" list order (Task 3.4). A smaller number is higher up:
+// 1 Available (app open), 2 Available (app closed), 3 On a run or a ride waiting for Accept,
+// 4 On break, 5 Off duty, 6 not approved or not active (Pending, Rejected, Deactivated…).
+const getDriverSortGroup = (driver) => {
+  if (driver.accountStatus !== "Approved") return 6;
+  if (driver.activeAssignment || driver.dutyStatus === "On a run") return 3;
+  if (driver.dutyStatus === "Available") return driver.presence === "Offline" ? 2 : 1;
+  if (driver.dutyStatus === "On break") return 4;
+  return 5;
+};
+
+// Inside each group: by name A to Z (upper/lower case ignored), then by account id so the order never jumps.
+const compareDriverRows = (first, second) =>
+  getDriverSortGroup(first) - getDriverSortGroup(second)
+  || first.name.localeCompare(second.name, undefined, { sensitivity: "base" })
+  || first.id.localeCompare(second.id);
+
 // The badge on each driver card: always a word with its color (DESIGN.md).
 const DUTY_BADGES = {
   Available: { label: "Available", backgroundColor: DESIGN_COLORS.hallGreen, color: DESIGN_COLORS.paperWhite },
@@ -463,6 +480,7 @@ export default function DispatcherHome() {
   }, [assignableVehicles, requestToAssign, selectedVehicle]);
   // One row per driver for the "Driver availability" list (driver-duty-plan.md Step 5).
   // Only an Approved, Available driver with no ride in hand can be assigned; everyone else shows the reason.
+  // Sorted with compareDriverRows: Available drivers first (app closed after app open), Off duty and not approved last.
   const dispatcherAvailabilityRows = useMemo(
     () =>
       driversWithAssignments.map((driver) => {
@@ -488,7 +506,7 @@ export default function DispatcherHome() {
           // Only while on duty. Punch out erases it, but an old app doesn't, so Off duty hides it here too.
           location: driver.dutyStatus !== "Off duty" ? driverLocations[driver.id] ?? null : null,
         };
-      }),
+      }).sort(compareDriverRows),
     [driverLocations, driversWithAssignments, unableReports, vehicles]
   );
   // The driver shown on the Live Map, if they still have a location (it goes away when they punch out).
