@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
-import { collection, doc, limit, onSnapshot, query } from "firebase/firestore";
+import { collection, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 
 import AppButton from "../../../components/ui/AppButton";
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
@@ -52,7 +52,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
   const [settings, setSettings] = useState({ supportedBarangays: [], requestCategories: [], vehicleTypes: [], publicOfficePhone: "", maintenanceReminderDays: "30" });
 
   useEffect(() => {
-    const unsubscribeLogs = onSnapshot(query(collection(db, FIRESTORE_COLLECTIONS.ACTIVITY_LOGS), limit(50)), (snapshot) => {
+    const unsubscribeLogs = onSnapshot(query(collection(db, FIRESTORE_COLLECTIONS.ACTIVITY_LOGS), orderBy("createdAt", "desc"), limit(50)), (snapshot) => {
       setLogs(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((first, second) => (getDate(second.createdAt)?.getTime() || 0) - (getDate(first.createdAt)?.getTime() || 0)));
     }, () => setError("Activity logs could not be loaded. Check the deployed Firestore rules."));
     const unsubscribeSettings = onSnapshot(doc(db, FIRESTORE_COLLECTIONS.SYSTEM_SETTINGS, "operational"), (snapshot) => {
