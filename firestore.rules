@@ -22,8 +22,17 @@ service cloud.firestore {
         : "";
     }
 
-    function isAdmin()      { return myRole() == "Admin"; }
-    function isDispatcher() { return myRole() == "Dispatcher"; }
+    // The caller's own accountStatus ("" if none).
+    function myAccountStatus() {
+      return profileExists()
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("accountStatus", "")
+        : "";
+    }
+
+    // Staff keep database access only while their account is "Active" (Task 1.2, A2).
+    // A Pending, Rejected, Deactivated, Suspended or blank staff account is refused, even if signed in.
+    function isAdmin()      { return myRole() == "Admin" && myAccountStatus() == "Active"; }
+    function isDispatcher() { return myRole() == "Dispatcher" && myAccountStatus() == "Active"; }
     function isStaff()      { return isAdmin() || isDispatcher(); }
     function isDriver()     { return myRole() == "Driver"; }
 
