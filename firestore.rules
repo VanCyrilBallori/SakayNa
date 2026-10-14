@@ -339,7 +339,21 @@ service cloud.firestore {
 
     // ---- Admin bookkeeping (used by the Operations panel) ----
     match /activityLogs/{logId} {
-      allow read, create:   if isStaff();
+      allow read: if isStaff();
+      allow create: if isAdmin()
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.actorRole == myRole()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly([
+          "action",
+          "actorId",
+          "actorRole",
+          "targetType",
+          "targetId",
+          "summary",
+          "metadata",
+          "createdAt"
+        ]);
       allow update, delete: if false;
     }
     match /vehicleMaintenance/{id} { allow read, write: if isAdmin(); }
