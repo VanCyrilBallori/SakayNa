@@ -910,13 +910,13 @@ export default function DriverHome() {
               return (
                 <Pressable
                   key={page.key}
-                  style={({ pressed }) => [styles.tabButton, pressed && styles.tabButtonPressed]}
+                  style={styles.tabButton}
                   onPress={() => setActivePage(page.key)}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isOpen }}
                   accessibilityLabel={showDot ? `${page.label}, new ride waiting` : page.label}
                 >
-                  <View style={[styles.tabIcon, isOpen && styles.tabIconOpen]}>
+                  <View style={styles.tabIcon}>
                     <MaterialCommunityIcons name={page.icon} size={24} color={isOpen ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.inkMuted} />
                     {showDot ? <View style={styles.tabDot} /> : null}
                   </View>
@@ -1270,9 +1270,8 @@ const styles = StyleSheet.create({
   tabButton: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 4, borderRadius: 16 },
   tabButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   tabIcon: { paddingHorizontal: 16, paddingVertical: 2, borderRadius: 16 },
-  // The open page's icon sits on a Board Tint box, so "open" is shown by more than color.
-  tabIconOpen: { backgroundColor: DESIGN_COLORS.boardTint },
-  // The "new ride" dot: Sakay Orange, fully round, with a white ring so it shows on the box.
+  // The open page is shown by a green icon and a green bold word (bold = more than color). No box behind the icon.
+  // The "new ride" dot: Sakay Orange, fully round, with a white ring.
   tabDot: { position: "absolute", top: 0, right: 10, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite, backgroundColor: DESIGN_COLORS.sakayOrange },
   tabLabel: { fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   tabLabelOpen: { fontWeight: "800", color: DESIGN_COLORS.hallGreen },
