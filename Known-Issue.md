@@ -12,21 +12,6 @@ Skills/resident.md section 6.
 
 ## Open
 
-### Task 1.3: real-document edit/delete denial is not yet confirmed
-
-- **Recorded:** October 14, 2026, from the owner's supplied results.
-- **Rule:** `activityLogs` has `allow update, delete: if false`.
-- **Playground f (update) and g (delete):** both **NOT RECORDED**. The first
-  update attempt used no real document ID and returned "Allowed", contradicting
-  the rule. The owner reports the same reason for delete. Neither result is
-  recorded as a passing or confirmed test on a real document.
-- **Next check:** redo both simulations using an existing log line's actual
-  document ID. Edit/delete denial remains unconfirmed until those results are
-  supplied. Add Dispatcher is also **not tested** in Task 1.3.
-- **Remaining limits:** the rule proves who wrote a line and when, not that
-  the described action really happened. Task 1.2 still needs to stop suspended
-  Admins. Task 1.3 does not close that issue.
-
 ### Staff accounts made by hand: barangay spelling must match exactly
 
 - **Recorded:** October 13, 2026, during Task 1.1.
@@ -286,7 +271,8 @@ Skills/resident.md section 6.
 - **Owner-reported tests:** the five Playground denial cases were Denied;
   the phone-only update was Allowed, all as expected. The real-app results are
   recorded as supplied in architecture-review.md. No failure appears in the
-  latest list. Add Dispatcher is **not tested** (UID N/A); the missing/empty-
+  latest list. Add Dispatcher: pass (live site, test account deleted
+  afterwards); the missing/empty-
   barangay denial case has no supplied result and is **not tested** in the record.
 - **Still open:** Admin reads of the Users list remain city-wide. Overview,
   Emergency Calls, Requests, Vehicles, reports and other management tools
@@ -376,21 +362,24 @@ Skills/resident.md section 6.
   real role and Firebase's save time. Only these eight field names are allowed:
   `action`, `actorId`, `actorRole`, `targetType`, `targetId`, `summary`,
   `metadata`, `createdAt`. Staff reads are preserved; updates/deletes are denied
-  by the rule, with real-document tests still outstanding above.
+  by the rule. Playground f (update) and g (delete) were run on one real
+  existing log line (`activityLogs/0NDrR4BLui8JBXpSmgyK`, from 2026-09-20);
+  both were **Denied**.
 - **A5 fixed:** website commit `94d2cb3` queries `orderBy("createdAt", "desc"),
   limit(50)`. The owner confirms the website release and newest-first Logs: pass.
 - **Other real-app results:** Driver jeb status change/restore with both log
   lines: pass; dispatcher0 phone edit/restore: pass; vehicle create/edit/archive:
   pass; new test Resident approved: pass (test account deleted afterwards, UID
-  not recorded). Add Dispatcher test account: **not tested**.
+  not recorded). Add Dispatcher test account: pass (live site, test account
+  deleted afterwards).
 - **Playground a-e:** another person's actorId, actorRole "Dispatcher", an extra
   field, create as dispatcher0, and signed-out create were each **Denied**.
   Caller was `kcwgrnPTETbVPS144oHfyyyAxfO2` except dispatcher0 and signed out.
   Exact request/document details were not supplied; the full reported test
-  record, including f/g **NOT RECORDED**, is in `architecture-review.md`.
+  record, including f/g, is in `architecture-review.md`.
 - **Limits remain:** identity/time checks do not prove the action happened;
-  suspended Admin blocking is still Task 1.2; real-document edit/delete denial
-  is not yet confirmed.
+  suspended Admin blocking is still Task 1.2; edit/delete denial was tested on
+  one real log line only.
 
 ### Complete mission outcome/issues saving — fixed in APK 16
 

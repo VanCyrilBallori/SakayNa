@@ -51,17 +51,17 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 - **Real-app results:** Driver jeb status change/restore with both log lines:
   pass; dispatcher0 phone edit/restore: pass; vehicle create/edit/archive:
   pass; new test Resident approval: pass (account deleted afterwards, UID not
-  recorded); newest-first Logs: pass. Add Dispatcher test account: **not tested**.
+  recorded); newest-first Logs: pass. Add Dispatcher test account: pass (live site, test
+  account deleted afterwards).
 - **Playground:** caller `kcwgrnPTETbVPS144oHfyyyAxfO2` except dispatcher0 and
   signed-out cases. a: another person's actorId, b: actorRole "Dispatcher",
   c: extra field, d: create as dispatcher0, e: signed-out create — all **Denied**.
-  f: update of a real log line and g: delete of a real log line are both
-  **NOT RECORDED**, to be redone with a real document ID. The first f attempt
-  used no real ID and returned "Allowed", contradicting the rule; g has the
-  same reported reason. Neither is a passing or confirmed real-document test.
+  f (update) and g (delete) were run on one real existing log line
+  (`activityLogs/0NDrR4BLui8JBXpSmgyK`, from 2026-09-20); both were **Denied**.
+  An earlier attempt without a real document ID is not counted.
 - **Limits:** the rule proves who wrote a line and when, not that the action
   really happened. Task 1.2 still needs to stop suspended Admins. Edit/delete
-  denial is not yet confirmed by a real-document test. Full supplied results
+  denial was tested on one real log line only. Full supplied results
   and missing details are in `architecture-review.md`.
 
 ### Task 1.1: Admin user-profile write restriction (October 13, 2026)
@@ -72,7 +72,7 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 - **User-profile write issue fixed; Users-list reads remain city-wide.** Staff account-status enforcement and city-wide writes to other collections remain separate open items.
 - **Task 1.1 website release:** Step 1 at `b62c724`. The owner confirms testing, commit, website release and live checks passed. Edit Account's barangay is read-only; other-barangay/missing-barangay/Admin accounts are view only; Add Dispatcher uses the Admin's barangay; refused updates/reviews have a friendly message.
 - **Test record:** all 14 supplied results are recorded in `architecture-review.md`, with missing details marked **not supplied**. Playground tests 1-5 were Denied as expected; test 6 was Allowed as expected. The owner reports Resident approval, "can Approve or Reject" for Gwen, and Passed for Driver jeb status change/restore, dispatcher0 phone edit/restore, punch in/out, emergency alert answered/form finished, and the other-barangay view-only UI. No failure appears in the latest supplied list.
-- **Not tested:** Add Dispatcher (test 13, UID N/A) and the required missing/empty-barangay denial case, for which no result was supplied. Do not describe test 13's listed creation/deletion action as performed. Gwen's specific saved decision and emergency mission completion were not reported. Real-app caller UIDs, separate expected-result values and generated duty/emergency document IDs were not supplied.
+- **Add Dispatcher (test 13):** pass (live site, test account deleted afterwards). **Not tested:** the required missing/empty-barangay denial case, for which no result was supplied. Gwen's specific saved decision and emergency mission completion were not reported. Real-app caller UIDs, separate expected-result values and generated duty/emergency document IDs were not supplied.
 - Staff accounts made by hand in the Console must use the exact barangay spelling. A typo or missing value prevents Admin management; correct the data in the Console rather than loosening these rules. See Known-Issue.md.
 
 ### Earlier website release: a25dae1 (October 11, 2026)
@@ -211,7 +211,7 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 
 ### Other bugs/limits: consider only if needed for the defense
 
-- A5 is fixed and released on the website: Logs load the newest 50. Task 1.3's real-document edit/delete denial tests remain unconfirmed; see section 2.
+- A5 is fixed and released on the website: Logs load the newest 50. Task 1.3's edit/delete tests on one real log line were both Denied; see section 2.
 - A6: Some refused emergency-form saves show a misleading internet error.
 - A7: Dispatcher alerts have no sound. Keep the tab visible.
 - A9: Opening the driver app may overwrite a full name because of loading order. Unconfirmed: test before fixing.

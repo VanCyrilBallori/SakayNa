@@ -24,7 +24,7 @@
   updates and deletes remain denied in the rule.
 - **Limits:** the rule proves who wrote a line and when, not that the described
   action really happened. Task 1.2 still needs to stop suspended Admins.
-  Edit/delete denial is **not yet confirmed by a real-document test**.
+  Edit/delete denial was tested on one real log line only (tests f and g).
 
 ### Owner-reported Task 1.3 test results
 
@@ -37,14 +37,15 @@ afterwards. These tests were not independently repeated.
 |---|---|---|
 | 1 | Change Driver jeb's status and set it back; Logs show both lines | pass |
 | 2 | Edit dispatcher0's phone and set it back | pass |
-| 3 | Add Dispatcher test account | **not tested** |
+| 3 | Add Dispatcher test account on the live site (test UID `QEkP4aGH54OMZ6GVz9mdAmjl95J2`; deleted afterwards from Authentication and Firestore: yes) | pass |
 | 4 | Vehicle created, edited and archived | pass |
 | 5 | New test resident approved; test account deleted afterwards, UID not recorded | pass |
 | 6 | Logs screen shows the newest lines first | pass |
 
 **Playground caller:** `kcwgrnPTETbVPS144oHfyyyAxfO2`, except test d
 (dispatcher0; UID not supplied in this report) and test e (signed out).
-Exact document paths and request payloads were not supplied.
+Exact document paths and request payloads were not supplied for tests a–e
+(f and g use `activityLogs/0NDrR4BLui8JBXpSmgyK`).
 
 | Playground test | Attempt | Reported result |
 |---|---|---|
@@ -53,14 +54,12 @@ Exact document paths and request payloads were not supplied.
 | c | Create with an extra field | Denied |
 | d | Create as dispatcher0 | Denied |
 | e | Create while signed out | Denied |
-| f | Update of a real log line | **NOT RECORDED**; redo with a real document ID |
-| g | Delete of a real log line | **NOT RECORDED**; redo with a real document ID |
+| f | Update of a real log line (`activityLogs/0NDrR4BLui8JBXpSmgyK`) | Denied |
+| g | Delete of the same log line (`activityLogs/0NDrR4BLui8JBXpSmgyK`) | Denied |
 
-For f, the owner reports that the first attempt used no real document ID and
-returned "Allowed", which contradicts `allow update, delete: if false`.
-For g, the owner gives the same reason. These are not recorded as passing
-tests or confirmed real-document results. Both must be redone using an
-existing log document's actual ID; edit and delete denial remain unconfirmed.
+Tests f and g were run on one real existing log line,
+`activityLogs/0NDrR4BLui8JBXpSmgyK` (from 2026-09-20), and both were
+**Denied**. An earlier attempt without a real document ID is not counted.
 
 ## Task 1.1 update — October 13, 2026
 
@@ -119,12 +118,12 @@ the APK build/version was not supplied. The actual-result wording is retained.
 | 10 — Users phone edit | not supplied | `users/5hko6jxKJCfrsgEE4P6mcqi19DT2` (dispatcher0) | Edit phone in Users and set it back; values not supplied | not supplied | Passed |
 | 11 — Punch in/out | not supplied (Driver jeb named) | `users/haen0nBTWvh3yMIK84x7od95lWO2`; duty-record IDs not supplied | Driver jeb punches in and out | not supplied | Passed |
 | 12 — Emergency | not supplied (dispatcher0 named as answering Dispatcher) | Emergency screen/form; alert, ride and assignment paths not supplied | Emergency alert answered by dispatcher0, form finished | not supplied | Passed |
-| 13 — Add Dispatcher | not tested | not tested; test UID: N/A | Listed test action: create a test account, then delete it from Firebase Authentication and Firestore | not supplied | **not tested** |
+| 13 — Add Dispatcher | not supplied | Live site; test UID `QEkP4aGH54OMZ6GVz9mdAmjl95J2` | Create a test Dispatcher account, then delete it from Firebase Authentication and Firestore (deleted: yes) | not supplied | pass |
 | 14 — other-barangay UI | not supplied | Users screen; target UID not supplied | Another-barangay user shows "Other barangay: view only" with Edit and Change status disabled | not supplied | Passed |
 
 All six supplied Playground results match their supplied expectations. No
-failure was reported in this latest list. Test 13 remains **not tested**; the
-listed creation/cleanup action is not recorded as performed.
+failure was reported in this latest list. Test 13 (Add Dispatcher) is a pass
+on the live site; the test account was deleted afterwards.
 
 The required missing/empty-barangay denial case has no supplied result and is
 **not tested** in this record. The emergency result covers the alert being
@@ -638,7 +637,8 @@ today".
   log lines (pass); the Logs screen shows the newest lines first (pass).
 - **Related Task 1.3:** rules commit `98db008` secures creation. The exact
   deployment, supplied tests and remaining limits are recorded above.
-  Real-document edit/delete denial remains unconfirmed.
+  Edit and delete of one real log line (`activityLogs/0NDrR4BLui8JBXpSmgyK`)
+  were both Denied.
 
 #### A6. A misleading message when the emergency form is refused (NEW)
 - **What:** every Firebase error in the form shows "Check the internet
