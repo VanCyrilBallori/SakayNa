@@ -82,6 +82,13 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
     setErrors((current) => ({ ...current, [key]: "" }));
   };
 
+  // "Me" hides the passenger boxes, so their old red messages are cleared too
+  // (otherwise "Please fix the item marked in red" would stay with nothing red on screen).
+  const setRidingFor = (value) => {
+    setValue("ridingFor", value);
+    if (value === "self") setErrors((current) => ({ ...current, passengerName: "", passengerPhone: "" }));
+  };
+
   const toggleAssistance = (option) => {
     const next = form.assistance.includes(option) ? form.assistance.filter((item) => item !== option) : [...form.assistance, option];
     setValue("assistance", next);
@@ -206,6 +213,7 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
                     residentName={residentName}
                     residentPhone={residentPhone}
                     setValue={setValue}
+                    setRidingFor={setRidingFor}
                     setScheduleDay={setScheduleDay}
                     setScheduleMinutes={setScheduleMinutes}
                     toggleAssistance={toggleAssistance}
@@ -273,7 +281,7 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
   );
 }
 
-function FillPage({ form, errors, residentName, residentPhone, setValue, setScheduleDay, setScheduleMinutes, toggleAssistance, changeCount, locating, locationMessage, onUseGps, onOpenMap }) {
+function FillPage({ form, errors, residentName, residentPhone, setValue, setRidingFor, setScheduleDay, setScheduleMinutes, toggleAssistance, changeCount, locating, locationMessage, onUseGps, onOpenMap }) {
   const hasExactSpot = form.pickup.latitude !== null;
 
   return (
@@ -295,7 +303,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
               style={[styles.input, styles.inputBelow, errors.purposeOther && styles.inputError]}
               value={form.purposeOther}
               onChangeText={(value) => setValue("purposeOther", value)}
-              placeholder="Tell us briefly, e.g. buying medicine"
+              placeholder="Tell us briefly"
               placeholderTextColor={colors.muted}
               maxLength={100}
               accessibilityLabel="What the ride is for"
@@ -315,8 +323,8 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
 
       <Field icon="account-outline" label="Who is riding?" error={errors.ridingFor}>
         <View style={styles.choiceList} accessibilityRole="radiogroup">
-          <ChoiceRow type="radio" label="Me" detail={[residentName, residentPhone].filter(Boolean).join(" · ")} selected={form.ridingFor === "self"} onPress={() => setValue("ridingFor", "self")} />
-          <ChoiceRow type="radio" label="Someone else" selected={form.ridingFor === "other"} onPress={() => setValue("ridingFor", "other")} />
+          <ChoiceRow type="radio" label="Me" detail={[residentName, residentPhone].filter(Boolean).join(" · ")} selected={form.ridingFor === "self"} onPress={() => setRidingFor("self")} />
+          <ChoiceRow type="radio" label="Someone else" selected={form.ridingFor === "other"} onPress={() => setRidingFor("other")} />
         </View>
       </Field>
 
@@ -334,7 +342,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
               accessibilityLabel="Passenger's name"
             />
           </Field>
-          <Field icon="phone-outline" label="Passenger's phone (optional)" error={errors.passengerPhone}>
+          <Field icon="phone-outline" label="Passenger's phone" error={errors.passengerPhone}>
             <TextInput
               style={[styles.input, errors.passengerPhone && styles.inputError]}
               value={form.passengerPhone}
@@ -343,9 +351,8 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
               placeholderTextColor={colors.muted}
               keyboardType="phone-pad"
               maxLength={16}
-              accessibilityLabel="Passenger's phone, optional"
+              accessibilityLabel="Passenger's phone"
             />
-            <Hint icon="information-outline" text="If they have no phone, the driver will call you." />
           </Field>
         </>
       ) : null}

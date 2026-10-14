@@ -50,8 +50,9 @@ export const validateResidentRequest = (form, residentPhone, now = new Date()) =
   }
   if (form.ridingFor === "other") {
     if (!hasText(form.passengerName, 80) || form.passengerName.length < 2) errors.passengerName = "Enter the passenger's name.";
-    // The passenger's phone is optional, but if something was typed it must be a real mobile number.
-    if (form.passengerPhone && !normalizePhilippinePhone(form.passengerPhone)) errors.passengerPhone = "Enter a mobile number like 0917 123 4567, or leave it empty.";
+    // The passenger's phone is required (Task 3.2) and must be a real mobile number.
+    if (!form.passengerPhone) errors.passengerPhone = "Enter the passenger's mobile number.";
+    else if (!normalizePhilippinePhone(form.passengerPhone)) errors.passengerPhone = "Enter a mobile number like 0917 123 4567.";
   }
 
   if (!(form.passengerCount >= 1 && form.passengerCount <= MAX_PASSENGERS)) errors.passengerCount = `Choose 1 to ${MAX_PASSENGERS} people.`;
