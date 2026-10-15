@@ -12,12 +12,14 @@ import { createResidentRequest } from "../services/residentRequestService";
 import { formatClockTime, formatShortDay } from "../../../lib/dates";
 import {
   ASSISTANCE_OPTIONS,
+  BIG_GROUP_NOTE,
   MAX_PASSENGERS,
   PURPOSE_OPTIONS,
   SCHEDULE_MAX_DAYS_AHEAD,
   buildScheduledDate,
   getScheduleDayOptions,
   getScheduleTimeOptions,
+  isBigGroup,
 } from "../utils/requestOptions";
 import { sanitizeRequestForm, validateResidentRequest } from "../utils/requestValidation";
 import MapLocationModal from "./MapLocationModal";
@@ -37,7 +39,7 @@ const newForm = (barangay) => ({
   ridingFor: "self", // "self" or "other"
   passengerName: "",
   passengerPhone: "",
-  passengerCount: 1,
+  passengerCount: "1", // text while typing (Task 3.10); sent as a number
   barangay: barangay || "",
   pickup: { latitude: null, longitude: null, address: "", source: "manual" },
   pickupDetails: "",
@@ -107,8 +109,9 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
     setErrors((current) => ({ ...current, schedule: "" }));
   };
 
+  // - and + work from whatever is in the box: empty or 0 counts as 0, so + makes it 1; 75 with - becomes 50.
   const changeCount = (step) => {
-    setValue("passengerCount", Math.min(MAX_PASSENGERS, Math.max(1, form.passengerCount + step)));
+    setValue("passengerCount", String(Math.min(MAX_PASSENGERS, Math.max(1, Number(form.passengerCount) + step))));
   };
 
   const addCurrentLocation = async () => {
@@ -149,7 +152,8 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
     setSaving(true);
     setSendError("");
     try {
-      const created = await createResidentRequest({ uid, residentName, residentPhone, form });
+      // The box holds text ("12"); Firestore gets the number (12), as before.
+      const created = await createResidentRequest({ uid, residentName, residentPhone, form: { ...form, passengerCount: Number(form.passengerCount) } });
       setReference(created.reference);
       setPage("sent");
       scrollToTop();
@@ -283,6 +287,7 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
 
 function FillPage({ form, errors, residentName, residentPhone, setValue, setRidingFor, setScheduleDay, setScheduleMinutes, toggleAssistance, changeCount, locating, locationMessage, onUseGps, onOpenMap }) {
   const hasExactSpot = form.pickup.latitude !== null;
+  const peopleCount = Number(form.passengerCount);
 
   return (
     <>
@@ -359,13 +364,24 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
 
       <Field icon="account-multiple-outline" label="How many people are riding?" error={errors.passengerCount}>
         <View style={styles.stepper}>
-          <StepperButton icon="minus" label="Fewer people" disabled={form.passengerCount <= 1} onPress={() => changeCount(-1)} />
-          <Text style={styles.stepperValue} accessibilityLiveRegion="polite" accessibilityLabel={peopleText(form.passengerCount)}>
-            {form.passengerCount}
-          </Text>
-          <StepperButton icon="plus" label="More people" disabled={form.passengerCount >= MAX_PASSENGERS} onPress={() => changeCount(1)} />
+          <StepperButton icon="minus" label="Fewer people" disabled={peopleCount <= 1} onPress={() => changeCount(-1)} />
+          {/* A box the resident can type in (Task 3.10), like the dispatcher's "Number of patients". */}
+          <TextInput
+            style={[styles.input, styles.countInput, errors.passengerCount && styles.inputError]}
+            value={form.passengerCount}
+            // Digits only: if the new text has a letter or any other sign, it is not added.
+            onChangeText={(text) => {
+              if (/^[0-9]*$/.test(text)) setValue("passengerCount", text);
+            }}
+            keyboardType="number-pad"
+            // 3 digits, so "100" can be typed and gets the red message (with 2 it would quietly become "10").
+            maxLength={3}
+            accessibilityLabel={`Number of people riding, 1 to ${MAX_PASSENGERS}`}
+          />
+          <StepperButton icon="plus" label="More people" disabled={peopleCount >= MAX_PASSENGERS} onPress={() => changeCount(1)} />
         </View>
         <Hint text={`Count everyone, including the passenger. Up to ${MAX_PASSENGERS}.`} />
+        {isBigGroup(peopleCount) ? <Hint icon="alert-outline" iconColor={COLORS.warning} text={BIG_GROUP_NOTE} strong /> : null}
       </Field>
 
       <Field icon="home-outline" label="Pickup barangay" error={errors.barangay}>
@@ -469,7 +485,7 @@ function ReviewPage({ form, residentName, residentPhone }) {
     ["clock-outline", "When", form.timing === "scheduled" ? scheduleText(form) : "As soon as possible"],
     ["account-outline", "Who is riding", riderIsMe ? `Me (${residentName})` : form.passengerName],
     ["phone-outline", "Contact number", riderIsMe || !form.passengerPhone ? `${residentPhone}${riderIsMe ? "" : " (yours)"}` : form.passengerPhone],
-    ["account-multiple-outline", "People riding", peopleText(form.passengerCount)],
+    ["account-multiple-outline", "People riding", peopleText(Number(form.passengerCount))],
     ["home-outline", "Pickup barangay", form.barangay],
     ["crosshairs-gps", "Exact pickup spot", form.pickup.latitude !== null ? form.pickup.address : "Not added"],
     ["map-marker-outline", "Landmark / pickup details", form.pickupDetails],
@@ -712,7 +728,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   stepperButtonDisabled: { borderColor: COLORS.disabled },
-  stepperValue: { minWidth: 56, fontSize: 34, lineHeight: 42, fontWeight: "800", textAlign: "center", color: colors.heading, fontVariant: ["tabular-nums"] },
+  countInput: { width: 88, paddingHorizontal: 6, textAlign: "center", fontSize: 22, fontWeight: "800", fontVariant: ["tabular-nums"] },
   actionButton: {
     minHeight: 56,
     paddingHorizontal: 14,

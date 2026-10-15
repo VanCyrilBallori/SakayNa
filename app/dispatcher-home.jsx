@@ -8,6 +8,7 @@ import AppBrandHeader from "../components/AppBrandHeader";
 import EmergencyRequestForm from "../features/dispatcher/components/EmergencyRequestForm";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
+import { BIG_GROUP_NOTE, isBigGroup } from "../features/resident/utils/requestOptions";
 import { startPhoneCall } from "../lib/phoneCall";
 import LeafletMap from "../components/LeafletMap";
 import { DESIGN_COLORS } from "../constants/design";
@@ -1051,6 +1052,12 @@ export default function DispatcherHome() {
                         </View>
                       ) : null}
                       <Text style={styles.requestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
+                      {isBigGroup(request.passengerCount) ? (
+                        <View style={styles.bigGroupRow}>
+                          <MaterialCommunityIcons name="alert-outline" size={16} color={DESIGN_COLORS.ink} />
+                          <Text style={[styles.requestMeta, styles.requestHelp, styles.bigGroupText]}>{BIG_GROUP_NOTE}</Text>
+                        </View>
+                      ) : null}
                       {getAssistanceText(request) !== "None" ? (
                         <Text style={[styles.requestMeta, styles.requestHelp]}>Needs help: {getAssistanceText(request)}</Text>
                       ) : null}
@@ -1131,6 +1138,12 @@ export default function DispatcherHome() {
                     <View style={styles.modalRequestCopy}>
                       <Text style={styles.modalRequestTitle}>{request.title}</Text>
                       <Text style={styles.modalRequestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
+                      {isBigGroup(request.passengerCount) ? (
+                        <View style={styles.bigGroupRow}>
+                          <MaterialCommunityIcons name="alert-outline" size={16} color={DESIGN_COLORS.ink} />
+                          <Text style={[styles.modalRequestMeta, styles.bigGroupText]}>{BIG_GROUP_NOTE}</Text>
+                        </View>
+                      ) : null}
                       <WhenLabel request={request} now={now} style={styles.modalRequestMeta} />
                     </View>
                   </TouchableOpacity>
@@ -1290,6 +1303,9 @@ const styles = StyleSheet.create({
   requestTitle: { marginTop: 10, fontSize: 18, fontWeight: "800", color: "#111111" },
   requestMeta: { marginTop: 10, fontSize: 12, lineHeight: 17, color: "#465752" },
   requestHelp: { marginTop: 6, fontWeight: "700", color: "#24342E" },
+  // 10 or more people (Task 3.10): dark bold words with a warning icon, readable on every card color.
+  bigGroupRow: { marginTop: 6, flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  bigGroupText: { flex: 1, marginTop: 0, fontWeight: "700", color: DESIGN_COLORS.ink },
   whenPassed: { color: "#B42318", fontWeight: "800" },
   assignEarlyWarning: { marginTop: 12, padding: 12, borderRadius: 12, overflow: "hidden", backgroundColor: "#FFF3CD", color: "#5C3F00", fontSize: 14, lineHeight: 20, fontWeight: "700" },
   detailsPanel: { padding: 20, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5E0" },

@@ -1,7 +1,11 @@
 import { formatClockTime, formatShortDay } from "../../../lib/dates";
 
-// The most people one request can carry (our biggest barangay vehicle).
-export const MAX_PASSENGERS = 6;
+// The most people one request can have (Task 3.10). A big group may need more than one vehicle.
+export const MAX_PASSENGERS = 50;
+// 10 or more people: the request form and the dispatcher show BIG_GROUP_NOTE.
+export const BIG_GROUP_SIZE = 10;
+export const BIG_GROUP_NOTE = "This is a big group. The dispatcher may need to send more than one vehicle.";
+export const isBigGroup = (count) => count >= BIG_GROUP_SIZE && count <= MAX_PASSENGERS;
 
 export const PURPOSE_OPTIONS = Object.freeze(["Medical / Health", "Community Activity", "Other"]);
 

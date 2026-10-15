@@ -55,7 +55,9 @@ export const validateResidentRequest = (form, residentPhone, now = new Date()) =
     else if (!normalizePhilippinePhone(form.passengerPhone)) errors.passengerPhone = "Enter a mobile number like 0917 123 4567.";
   }
 
-  if (!(form.passengerCount >= 1 && form.passengerCount <= MAX_PASSENGERS)) errors.passengerCount = `Choose 1 to ${MAX_PASSENGERS} people.`;
+  // The box holds what the resident typed, like "12": digits only, 1 to 50 (Task 3.10). Empty or "0" is not allowed.
+  const count = `${form.passengerCount}`;
+  if (!/^[0-9]+$/.test(count) || Number(count) < 1 || Number(count) > MAX_PASSENGERS) errors.passengerCount = `Enter a number from 1 to ${MAX_PASSENGERS}.`;
   if (!form.barangay) errors.barangay = "Choose the pickup barangay.";
   if (!hasText(form.pickupDetails, 300)) errors.pickupDetails = "Tell the driver how to find you, like a landmark or gate color.";
   if (!hasText(form.destination, 180)) errors.destination = "Enter where you are going.";
