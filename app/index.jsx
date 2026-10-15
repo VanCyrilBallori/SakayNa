@@ -57,7 +57,7 @@ function WebLandingPage() {
     {
       icon: <FontAwesome name="exclamation-triangle" size={24} color="#FFFFFF" />,
       title: "Ride Requests Now or Later",
-      text: "Request a ride as soon as possible, or schedule one 1 hour to 7 days ahead.",
+      text: "Request a ride as soon as possible, or schedule one 1 hour to 1 year ahead.",
     },
     {
       icon: <FontAwesome name="pie-chart" size={22} color="#FFFFFF" />,

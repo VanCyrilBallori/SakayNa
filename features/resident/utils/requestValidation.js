@@ -2,6 +2,9 @@ import { MAX_PASSENGERS, SCHEDULE_MIN_MINUTES_AHEAD, buildScheduledDate, isAllow
 
 const compactWhitespace = (value = "") => value.trim().replace(/\s+/g, " ");
 
+// Shown right after picking a day and time that may not be booked, and again on Review (Task 3.11).
+export const SCHEDULE_TIME_MESSAGE = `Choose a time at least ${SCHEDULE_MIN_MINUTES_AHEAD / 60} hour from now and within 1 year.`;
+
 export const normalizePhilippinePhone = (value = "") => {
   const digits = value.replace(/\D/g, "");
   if (/^09\d{9}$/.test(digits)) return `+63${digits.slice(1)}`;
@@ -40,8 +43,8 @@ export const validateResidentRequest = (form, residentPhone, now = new Date()) =
     if (!form.scheduleDay || form.scheduleMinutes === null) {
       errors.schedule = "Choose the day and time for the ride.";
     } else if (!isAllowedScheduleTime(buildScheduledDate(form.scheduleDay, form.scheduleMinutes), now)) {
-      // Happens when the form stays open until the chosen time is less than 1 hour away.
-      errors.schedule = `This time is now too soon. Choose a time at least ${SCHEDULE_MIN_MINUTES_AHEAD / 60} hour from now.`;
+      // Too soon, too far, or the form stayed open until the chosen time is less than 1 hour away.
+      errors.schedule = SCHEDULE_TIME_MESSAGE;
     }
   }
 

@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomSheetPicker from "../../../components/BottomSheetPicker";
@@ -16,12 +17,13 @@ import {
   MAX_PASSENGERS,
   PURPOSE_OPTIONS,
   SCHEDULE_MAX_DAYS_AHEAD,
+  SCHEDULE_MIN_MINUTES_AHEAD,
   buildScheduledDate,
-  getScheduleDayOptions,
-  getScheduleTimeOptions,
+  isAllowedScheduleTime,
   isBigGroup,
+  toDayValue,
 } from "../utils/requestOptions";
-import { sanitizeRequestForm, validateResidentRequest } from "../utils/requestValidation";
+import { SCHEDULE_TIME_MESSAGE, sanitizeRequestForm, validateResidentRequest } from "../utils/requestValidation";
 import MapLocationModal from "./MapLocationModal";
 
 // Resident transport request: one scrolling page → Review → Sent. It fills the whole screen.
@@ -98,15 +100,22 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
   };
 
   // Changing the day clears the time if that time can't be booked on the new day.
+  // Right after picking (Task 3.11): if the day and time are both chosen but may not be booked
+  // (less than 1 hour from now, or more than 1 year ahead), the red message shows at once. Otherwise it goes away.
+  const checkSchedule = (dayValue, minutes) => {
+    const notAllowed = Boolean(dayValue) && minutes !== null && !isAllowedScheduleTime(buildScheduledDate(dayValue, minutes));
+    setErrors((current) => ({ ...current, schedule: notAllowed ? SCHEDULE_TIME_MESSAGE : "" }));
+  };
+
+  // A new day keeps the chosen time; checkSchedule says if the two together are not allowed.
   const setScheduleDay = (dayValue) => {
-    const stillAllowed = getScheduleTimeOptions(dayValue).some((option) => option.value === form.scheduleMinutes);
-    setForm((current) => ({ ...current, scheduleDay: dayValue, scheduleMinutes: stillAllowed ? current.scheduleMinutes : null }));
-    setErrors((current) => ({ ...current, schedule: "" }));
+    setForm((current) => ({ ...current, scheduleDay: dayValue }));
+    checkSchedule(dayValue, form.scheduleMinutes);
   };
 
   const setScheduleMinutes = (minutes) => {
     setForm((current) => ({ ...current, scheduleMinutes: minutes }));
-    setErrors((current) => ({ ...current, schedule: "" }));
+    checkSchedule(form.scheduleDay, minutes);
   };
 
   // - and + work from whatever is in the box: empty or 0 counts as 0, so + makes it 1; 75 with - becomes 50.
@@ -518,40 +527,133 @@ const scheduleText = (form) => {
   return `${formatShortDay(date)}, ${formatClockTime(date)}`;
 };
 
-// The Day and Time pickers under "Schedule for later". Only times that can be booked are listed.
+// The Day and Time pickers under "Schedule for later" (Task 3.11).
+// Phone: two buttons. Day opens Android's own calendar (days before today and after 1 year are greyed out),
+//   Time opens Android's own scroll-wheel clock (hour | minute | AM/PM).
+// Website: the browser's own date and time boxes (DateTimePickerAndroid only works on Android).
 function SchedulePicker({ form, hasError, setScheduleDay, setScheduleMinutes }) {
-  const dayOptions = getScheduleDayOptions();
-  const timeOptions = form.scheduleDay ? getScheduleTimeOptions(form.scheduleDay) : [];
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + SCHEDULE_MAX_DAYS_AHEAD);
+  const chosenDay = form.scheduleDay ? buildScheduledDate(form.scheduleDay, 0) : null;
+  const chosenTime = form.scheduleDay && form.scheduleMinutes !== null ? buildScheduledDate(form.scheduleDay, form.scheduleMinutes) : null;
+
+  const openCalendar = () =>
+    DateTimePickerAndroid.open({
+      mode: "date",
+      value: chosenDay || firstDay,
+      minimumDate: firstDay,
+      maximumDate: lastDay,
+      // "set" = the resident pressed OK. Cancel ("dismissed") changes nothing.
+      onChange: (event, date) => {
+        if (event.type === "set" && date) setScheduleDay(toDayValue(date));
+      },
+    });
+
+  const openClock = () =>
+    DateTimePickerAndroid.open({
+      mode: "time",
+      display: "spinner",
+      is24Hour: false,
+      // Starts at the chosen time, or 1 hour from now.
+      value: chosenTime || new Date(now.getTime() + SCHEDULE_MIN_MINUTES_AHEAD * 60_000),
+      onChange: (event, date) => {
+        if (event.type === "set" && date) setScheduleMinutes(date.getHours() * 60 + date.getMinutes());
+      },
+    });
 
   return (
     <View style={styles.schedulePicker}>
       <Text style={styles.subLabel}>Day</Text>
-      <BottomSheetPicker
-        style={[styles.input, hasError && !form.scheduleDay && styles.inputError]}
-        title="Day of the ride"
-        options={dayOptions}
-        placeholder="Choose the day"
-        value={form.scheduleDay}
-        onChange={(value) => setScheduleDay(value)}
-        accessibilityLabel="Day of the ride"
-      />
+      {Platform.OS === "web" ? (
+        <input
+          type="date"
+          aria-label="Day of the ride"
+          value={form.scheduleDay}
+          min={toDayValue(firstDay)}
+          max={toDayValue(lastDay)}
+          onChange={(event) => setScheduleDay(event.target.value)}
+          style={{ ...webBoxStyle, ...(hasError && !form.scheduleDay ? webBoxErrorStyle : null) }}
+        />
+      ) : (
+        <PickerButton
+          icon="calendar-month-outline"
+          text={chosenDay ? `${formatShortDay(chosenDay)}, ${chosenDay.getFullYear()}` : "Choose the day"}
+          chosen={Boolean(chosenDay)}
+          hasError={hasError && !form.scheduleDay}
+          onPress={openCalendar}
+          accessibilityLabel="Day of the ride"
+        />
+      )}
 
       <Text style={[styles.subLabel, styles.subLabelSpaced]}>Time</Text>
-      <BottomSheetPicker
-        style={[styles.input, hasError && styles.inputError, !form.scheduleDay && styles.inputDisabled]}
-        title="Time of the ride"
-        options={timeOptions}
-        placeholder={form.scheduleDay ? "Choose the time" : "Choose the day first"}
-        value={form.scheduleMinutes}
-        onChange={(value) => setScheduleMinutes(value)}
-        disabled={!form.scheduleDay}
-        accessibilityLabel="Time of the ride"
-      />
+      {Platform.OS === "web" ? (
+        <input
+          type="time"
+          aria-label="Time of the ride"
+          value={toTimeValue(form.scheduleMinutes)}
+          onChange={(event) => setScheduleMinutes(fromTimeValue(event.target.value))}
+          disabled={!form.scheduleDay}
+          style={{ ...webBoxStyle, ...(hasError ? webBoxErrorStyle : null), ...(!form.scheduleDay ? webBoxDisabledStyle : null) }}
+        />
+      ) : (
+        <PickerButton
+          icon="clock-outline"
+          text={chosenTime ? formatClockTime(chosenTime) : form.scheduleDay ? "Choose the time" : "Choose the day first"}
+          chosen={Boolean(chosenTime)}
+          hasError={hasError}
+          disabled={!form.scheduleDay}
+          onPress={openClock}
+          accessibilityLabel="Time of the ride"
+        />
+      )}
 
-      <Hint icon="information-outline" text={`Book at least 1 hour ahead, up to ${SCHEDULE_MAX_DAYS_AHEAD} days.`} />
+      <Hint icon="information-outline" text="Book at least 1 hour ahead, up to 1 year." />
     </View>
   );
 }
+
+// The phone's Day / Time button: looks like the other boxes on the form, opens Android's calendar or clock.
+function PickerButton({ icon, text, chosen, hasError, disabled, onPress, accessibilityLabel }) {
+  return (
+    <Pressable
+      style={[styles.input, styles.pickerButton, hasError && styles.inputError, disabled && styles.inputDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      android_ripple={{ color: colors.ripple }}
+      accessibilityRole="button"
+      accessibilityLabel={`${accessibilityLabel}: ${text}`}
+      accessibilityState={{ disabled: Boolean(disabled) }}
+    >
+      <MaterialCommunityIcons name={icon} size={24} color={disabled ? COLORS.disabled : COLORS.primary} />
+      <Text style={[styles.pickerButtonText, !chosen && styles.pickerButtonPlaceholder]}>{text}</Text>
+    </Pressable>
+  );
+}
+
+// The website's time box uses "09:30"; the form keeps minutes after midnight (570).
+const toTimeValue = (minutes) => (minutes === null ? "" : `${`${Math.floor(minutes / 60)}`.padStart(2, "0")}:${`${minutes % 60}`.padStart(2, "0")}`);
+const fromTimeValue = (text) => {
+  if (!text) return null;
+  const [hours, minutes] = text.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+// The website's date and time boxes, styled like the form's other boxes (56 tall, 17 text, 12 corners).
+const webBoxStyle = {
+  width: "100%",
+  minHeight: 56,
+  boxSizing: "border-box",
+  padding: "0 14px",
+  borderRadius: 12,
+  border: `1.5px solid ${colors.outline}`,
+  backgroundColor: "#FFFFFF",
+  color: colors.heading,
+  fontSize: 17,
+  fontFamily: "inherit",
+};
+const webBoxErrorStyle = { border: `2px solid ${COLORS.emergency}` };
+const webBoxDisabledStyle = { backgroundColor: colors.card };
 
 function SentPage({ reference, onDone }) {
   return (
@@ -696,6 +798,9 @@ const styles = StyleSheet.create({
   inputError: { borderColor: COLORS.emergency, borderWidth: 2 },
   inputDisabled: { backgroundColor: colors.card },
   schedulePicker: { marginTop: 14 },
+  pickerButton: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, overflow: "hidden" },
+  pickerButtonText: { flex: 1, fontSize: 17, lineHeight: 23, color: colors.heading },
+  pickerButtonPlaceholder: { color: colors.muted },
   subLabel: { marginBottom: 8, fontSize: 16, fontWeight: "600", color: colors.heading },
   subLabelSpaced: { marginTop: 14 },
   multiline: { minHeight: 96, paddingTop: 14, paddingBottom: 14 },
