@@ -156,7 +156,7 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
           <Text style={[styles.smallText, styles.inkText]}>Dispatch can&apos;t give you rides. Your time on duty is paused.</Text>
 
           <Pressable
-            style={({ pressed }) => [styles.mainButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
+            style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
             onPress={handleResumeDuty}
             disabled={saving}
             android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
@@ -200,7 +200,7 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
           ) : null}
 
           <Pressable
-            style={({ pressed }) => [styles.mainButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
+            style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
             onPress={handlePunchIn}
             disabled={saving}
             android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
@@ -232,9 +232,10 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
               {activeRideStatus === "Assigned" ? "You have a new ride. Accept it on the Ride page first." : "Finish your current ride first."}
             </Text>
           ) : (
-            <>
+            // Side by side (Task 3.12); with large text they wrap onto two rows instead of being cut off.
+            <View style={styles.buttonRow}>
               <Pressable
-                style={({ pressed }) => [styles.mainButton, styles.whiteButton, pressed && styles.whiteButtonPressed, saving && styles.buttonBusy]}
+                style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.halfButton, styles.whiteButton, pressed && styles.whiteButtonPressed, saving && styles.buttonBusy]}
                 onPress={openBreakSheet}
                 disabled={saving}
                 android_ripple={{ color: "rgba(11, 122, 75, 0.12)" }}
@@ -245,7 +246,7 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
                 <Text style={styles.whiteButtonText}>Start break</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [styles.mainButton, styles.secondButton, styles.outlineOnGreen, pressed && styles.outlineOnGreenPressed, saving && styles.buttonBusy]}
+                style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.halfButton, styles.outlineOnGreen, pressed && styles.outlineOnGreenPressed, saving && styles.buttonBusy]}
                 onPress={() => setPunchOutOpen(true)}
                 disabled={saving}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.16)" }}
@@ -255,7 +256,7 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
                 {saving ? <ActivityIndicator color={DESIGN_COLORS.paperWhite} /> : <MaterialCommunityIcons name="logout" size={24} color={DESIGN_COLORS.paperWhite} />}
                 <Text style={styles.outlineOnGreenText}>{saving ? "Saving..." : "Punch out"}</Text>
               </Pressable>
-            </>
+            </View>
           )}
         </View>
       )}
@@ -404,14 +405,14 @@ function SummaryRow({ label, value, last = false }) {
 }
 
 const styles = StyleSheet.create({
-  // Card corner 24, flat (no shadow), one big word in Board size.
-  card: { borderRadius: 24, paddingHorizontal: 20, paddingVertical: 20 },
+  // Card corner 24, flat (no shadow), one big word in Board size. Padding 16 (compact, Task 3.12).
+  card: { borderRadius: 24, paddingHorizontal: 16, paddingVertical: 16 },
   cardOffDuty: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1, borderColor: DESIGN_COLORS.rule },
   cardAvailable: { backgroundColor: DESIGN_COLORS.hallGreen },
   // Light peach with an orange edge and dark words, like the resident's "account pending" banner
   // (approved by the group, Oct 2026). Bright orange stays for small accents only (the edge, the icon).
   // 2 dp edge, so the padding is 2 less to keep the same inside size.
-  cardOnBreak: { backgroundColor: DESIGN_COLORS.peachTint, borderWidth: 2, borderColor: DESIGN_COLORS.sakayOrange, paddingHorizontal: 18, paddingVertical: 18 },
+  cardOnBreak: { backgroundColor: DESIGN_COLORS.peachTint, borderWidth: 2, borderColor: DESIGN_COLORS.sakayOrange, paddingHorizontal: 14, paddingVertical: 14 },
   // Same deep green as the "Assigned" / "On the way" bands.
   cardOnRun: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   rideWaitingText: { marginTop: 16, fontSize: 17, lineHeight: 24, fontWeight: "700" },
@@ -439,18 +440,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
   },
-  punchInButton: { minHeight: 64, backgroundColor: DESIGN_COLORS.hallGreen },
+  // The card's own buttons (Task 3.12): 48 tall, 16 above. The pop-up buttons keep mainButton's 56.
+  dutyButton: { minHeight: 48, marginTop: 16 },
+  // Punch in / Resume duty: the main action, 56 tall (DESIGN.md main button).
+  punchInButton: { minHeight: 56, backgroundColor: DESIGN_COLORS.hallGreen },
+  // Start break + Punch out side by side; each at least 140 wide, so they wrap to two rows when they don't fit.
+  buttonRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 16 },
+  halfButton: { width: undefined, flexGrow: 1, flexBasis: 140, marginTop: 0 },
   punchInPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   punchInText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
-  secondButton: { marginTop: 12 },
   whiteButton: { backgroundColor: DESIGN_COLORS.paperWhite },
   whiteButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  whiteButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  whiteButtonText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
   buttonDisabled: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1.5, borderColor: DESIGN_COLORS.rule },
   buttonDisabledText: { color: DESIGN_COLORS.inkMuted },
   outlineOnGreen: { borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },
   outlineOnGreenPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  outlineOnGreenText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  outlineOnGreenText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
   buttonBusy: { opacity: 0.75 },
 
   messageBox: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },

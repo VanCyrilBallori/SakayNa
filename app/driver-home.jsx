@@ -23,6 +23,7 @@ import {
   isEmergencyFormRide,
 } from "../features/driver/utils/driverMissionMapper";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
+import { formatClockTime, formatShortDay } from "../lib/dates";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import LeafletMap from "../components/LeafletMap";
@@ -158,7 +159,6 @@ export default function DriverHome() {
   // The ☰ side menu (the same menu as the resident home).
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ fullName: "", phoneNumber: "", barangay: "", address: "", email: "" });
@@ -729,14 +729,6 @@ export default function DriverHome() {
     }
   };
 
-  const formatDateValue = (value) => {
-    if (!value?.toDate) {
-      return "Not available";
-    }
-
-    return value.toDate().toLocaleString();
-  };
-
   if (accessStatus !== "approved") {
     return (
       <View style={[styles.accessPage, { backgroundColor: theme.page }]}>
@@ -779,8 +771,35 @@ export default function DriverHome() {
           </View>
         </View>
 
-        {/* flexGrow: 1 lets the Map page's map fill the space; a page that is too tall scrolls instead of being cut off. */}
+        {/* Availability page (Task 3.12): the duty card stays fixed at the top and the ride history scrolls by itself
+            under it. The history's white panel starts 24 higher, behind the card, so its rows slide under the card's
+            round bottom edge. The card may use at most 60% of the space; if it is taller (small phone, large text),
+            the card scrolls inside itself, so the history always keeps room. */}
+        {activePage === "availability" ? (
+          <View style={[styles.pageColumn, styles.availabilityPage]}>
+            <ScrollView style={styles.dutyCardArea} showsVerticalScrollIndicator={false}>
+              <DriverDutyCard
+                driverId={authUser.uid}
+                driverName={profile?.fullName || displayName}
+                duty={duty}
+                activeRideStatus={assignedTransfer?.status ?? ""}
+                rideTitle={request?.title || assignedTransfer?.title || ""}
+              />
+            </ScrollView>
+            <ScrollView style={styles.historyPanel} contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
+              <Text style={styles.historyHeading} accessibilityRole="header">
+                Ride history
+              </Text>
+              {assignmentHistory.length ? (
+                assignmentHistory.map((assignment, index) => <HistoryRow key={assignment.id} assignment={assignment} first={index === 0} />)
+              ) : (
+                <Text style={styles.historyMeta}>No rides yet. Rides you get will show here.</Text>
+              )}
+            </ScrollView>
+          </View>
+        ) : (
         <ScrollView style={styles.pageScroll} contentContainerStyle={styles.pageScrollContent} showsVerticalScrollIndicator={false}>
+          {/* Ride and Map pages: flexGrow: 1 lets the Map page's map fill the space; a page that is too tall scrolls. */}
           <View style={styles.pageColumn}>
             {/* Ride page: the ride card, the green step button and the ride steps, or the empty inbox.
                 The "Ride Inbox" pill and "Current ride" title were removed (driver-pages-plan.md, answer 4). */}
@@ -876,29 +895,9 @@ export default function DriverHome() {
               </>
             ) : null}
 
-            {/* Availability page: the duty card (Punch in, Take a break, Resume duty, Punch out, On a run),
-                and "Ride history", which opens the same History window the profile menu used to open. */}
-            {activePage === "availability" ? (
-              <>
-                <DriverDutyCard
-                  driverId={authUser.uid}
-                  driverName={profile?.fullName || displayName}
-                  duty={duty}
-                  activeRideStatus={assignedTransfer?.status ?? ""}
-                  rideTitle={request?.title || assignedTransfer?.title || ""}
-                />
-                <Pressable
-                  style={({ pressed }) => [styles.historyButton, pressed && styles.tabButtonPressed]}
-                  onPress={() => setHistoryOpen(true)}
-                  accessibilityRole="button"
-                >
-                  <MaterialCommunityIcons name="history" size={24} color={DESIGN_COLORS.hallGreen} />
-                  <Text style={styles.historyButtonText}>Ride history</Text>
-                </Pressable>
-              </>
-            ) : null}
           </View>
         </ScrollView>
+        )}
 
         {/* Bottom bar: icon + word for each page. The open page is green and bold.
             An orange dot on Ride while a new ride waits for Accept. Words wrap with large text, never cut off. */}
@@ -1044,48 +1043,6 @@ export default function DriverHome() {
           </View>
         </Modal>
 
-        {/* Full-screen (translucent) like Settings: the gaps at the top and bottom include the clock area and the
-            phone's buttons, and the card shrinks to fit (editorCardFit) so a long list scrolls instead of going under the clock. */}
-        <Modal visible={historyOpen} transparent animationType="fade" onRequestClose={() => setHistoryOpen(false)} statusBarTranslucent navigationBarTranslucent>
-          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-            <View style={[styles.scheduleModalCard, compact && styles.scheduleModalCardCompact, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <View style={styles.scheduleModalHeader}>
-                <View style={styles.scheduleModalHeaderCopy}>
-                  <Text style={[styles.scheduleModalTitle, { color: theme.text }]}>History</Text>
-                  <Text style={[styles.scheduleModalSubtitle, { color: theme.mutedText }]}>Your current and past driver assignments are recorded here.</Text>
-                </View>
-                <CloseButton onPress={() => setHistoryOpen(false)} label="Close history" />
-              </View>
-
-              <ScrollView contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
-                {assignmentHistory.length ? (
-                  assignmentHistory.map((assignment) => (
-                    <View key={assignment.id} style={[styles.historyCard, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
-                      <View style={styles.historyHeader}>
-                        <Text style={[styles.historyTitle, { color: theme.text }]}>{assignment.title || assignment.requestType || assignment.emergencyType || "Transport Request"}</Text>
-                        <View style={styles.badge}>
-                          <Text style={styles.badgeText}>{assignment.status || "Pending"}</Text>
-                        </View>
-                      </View>
-                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Assignment ID: {assignment.id}</Text>
-                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Resident: {assignment.residentName || "Not available"}</Text>
-                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Pickup: {assignment.pickupLocation || "Not available"}</Text>
-                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Destination: {assignment.destination || "Not available"}</Text>
-                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Vehicle: {assignment.vehicle || assignment.assignedVehicleName || "Not available"}</Text>
-                      <Text style={[styles.historyText, { color: theme.mutedText }]}>Updated: {formatDateValue(assignment.updatedAt || assignment.createdAt)}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <View style={styles.emptyInbox}>
-                    <Text style={[styles.emptyTitle, { color: theme.text }]}>No history yet</Text>
-                    <Text style={[styles.emptyText, { color: theme.mutedText }]}>Your assignment history will appear here after you receive or complete transport tasks.</Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
         <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)} statusBarTranslucent navigationBarTranslucent>
           {/* The keyboard helper adds space for the keyboard; the card gets shorter and scrolls,
               so the box being typed in stays visible. Full-screen (translucent) so the space is measured correctly. */}
@@ -1225,6 +1182,24 @@ export default function DriverHome() {
   );
 }
 
+// One ride in the Availability page's history (Task 3.12): title and status, then place · date.
+function HistoryRow({ assignment, first }) {
+  const title = assignment.title || assignment.requestType || assignment.emergencyType || "Transport Request";
+  const date = getDateFromValue(assignment.updatedAt || assignment.createdAt);
+  const when = date ? `${formatShortDay(date)}, ${formatClockTime(date)}` : "Date not recorded";
+  return (
+    <View style={[styles.historyRow, !first && styles.historyRowLine]}>
+      <View style={styles.historyRowTop}>
+        <Text style={styles.historyTitle}>{title}</Text>
+        <Text style={styles.historyStatus}>{getMissionStatus(assignment)}</Text>
+      </View>
+      <Text style={styles.historyMeta}>
+        {assignment.pickupLocation || "Pickup not recorded"} · {when}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   // The whole screen: header, page, bottom bar. Board Tint behind the white cards (DESIGN.md).
   page: { flex: 1, backgroundColor: DESIGN_COLORS.boardTint },
@@ -1258,10 +1233,21 @@ const styles = StyleSheet.create({
   pageColumn: { flex: 1, width: "100%", maxWidth: 640, alignSelf: "center", padding: 16, gap: 12 },
   // Map page: the map takes all the space left above the button, but never less than 280.
   bigMap: { flex: 1, minHeight: 280, borderRadius: 24, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
-  // "Ride history" on the Availability page: white with a grey-green edge, green words, 56 tall
-  // (like "Call passenger"), so it doesn't compete with the duty card's buttons.
-  historyButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 56, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
-  historyButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  // Availability page (Task 3.12): no gap, so the history panel can tuck 24 under the card.
+  availabilityPage: { gap: 0 },
+  // The duty card: drawn above the history (zIndex) and at most 60% of the page; scrolls inside if taller.
+  dutyCardArea: { flexGrow: 0, maxHeight: "60%", zIndex: 1 },
+  // The history: a white panel that starts 24 up, behind the card's round bottom edge, and scrolls by itself.
+  historyPanel: { flex: 1, marginTop: -24, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
+  historyList: { paddingTop: 36, paddingBottom: 16, paddingHorizontal: 16 },
+  historyHeading: { marginBottom: 4, fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  // One short row per ride: title + status on top, place · date under it. A thin line between rows.
+  historyRow: { paddingVertical: 12, gap: 4 },
+  historyRowLine: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
+  historyRowTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  historyTitle: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  historyStatus: { paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.boardTint, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  historyMeta: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   mapNote: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   // Bottom bar: white, a thin line on top. paddingBottom (in the code) keeps it above the phone's own buttons.
   bottomBar: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
@@ -1275,7 +1261,7 @@ const styles = StyleSheet.create({
   tabDot: { position: "absolute", top: 0, right: 10, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite, backgroundColor: DESIGN_COLORS.sakayOrange },
   tabLabel: { fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   tabLabelOpen: { fontWeight: "800", color: DESIGN_COLORS.hallGreen },
-  // Empty inbox card. Own styles: the History pop-up still uses emptyInbox / emptyTitle / emptyText.
+  // Empty inbox card.
   inboxEmpty: { paddingHorizontal: 24, paddingVertical: 32, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite, alignItems: "center" },
   inboxEmptyTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
   inboxEmptyText: { marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
@@ -1301,9 +1287,6 @@ const styles = StyleSheet.create({
   acceptButton: { backgroundColor: "#06774B" },
   declineButton: { backgroundColor: "#C53A3A" },
   completeButton: { backgroundColor: "#FB7A2E" },
-  emptyInbox: { marginTop: 20, minHeight: 300, borderRadius: 18, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", padding: 24, borderWidth: 1, borderColor: "#D8E2DD" },
-  emptyTitle: { marginTop: 12, fontSize: 24, fontWeight: "800", color: "#2F3B46" },
-  emptyText: { marginTop: 8, maxWidth: 360, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
   scheduleModalCard: { width: "100%", maxWidth: 760, borderRadius: 24, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E2DD", padding: 22 },
   scheduleModalCardCompact: { padding: 18 },
   scheduleModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
@@ -1350,11 +1333,6 @@ const styles = StyleSheet.create({
   profileFieldLabel: { marginTop: 20, fontSize: 15, fontWeight: "700" },
   profileInput: { marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, fontSize: 15, color: "#111111" },
   profileFieldHint: { marginTop: 6, fontSize: 14, fontWeight: "600" },
-  historyList: { paddingTop: 18, paddingBottom: 6, gap: 14 },
-  historyCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 6 },
-  historyHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" },
-  historyTitle: { flex: 1, minWidth: 180, fontSize: 16, lineHeight: 22, fontWeight: "800" },
-  historyText: { fontSize: 14, lineHeight: 20 },
   secondaryActionButton: { marginTop: 16, minHeight: 52, borderRadius: 13, borderWidth: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   secondaryActionButtonText: { fontSize: 15, fontWeight: "800" },
   primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
