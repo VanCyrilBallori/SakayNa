@@ -979,7 +979,7 @@ export default function DispatcherHome() {
     }
   };
 
-  // The page under the red strip: the header, then the emergency form (when open) or the dashboard.
+  // The page under the header and the red strip: the emergency form (when open) or the dashboard.
   // fillWindow = the no-scrolling layout (Task 3.13); otherwise the stacked page, as before.
   const renderPageBody = () => {
     const topAlerts = activeCalls.length || givenBackRequests.length ? (
@@ -1101,17 +1101,6 @@ export default function DispatcherHome() {
 
     return (
       <>
-        <AppBrandHeader role="Dispatcher" name={displayName} email={authUser?.email || profile?.email || ""} barangay={profile?.barangay || ""} soundMuted={alertSound.muted} onToggleSound={alertSound.toggleMute} onLogoutPress={async () => {
-          try {
-            // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
-            // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
-            router.replace("/login");
-            await logoutCurrentUser();
-          } catch (error) {
-            Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
-          }
-        }} />
-
         {/* The emergency form scrolls inside the window in the no-scrolling layout. */}
         {formView && fillWindow ? (
           <ScrollView style={styles.fillScroll} showsVerticalScrollIndicator={false}>
@@ -1217,10 +1206,22 @@ export default function DispatcherHome() {
 
   return (
     <>
-      {/* Task 3.13: the whole page is one column: the red emergency strip (only while an alert rings), then the page.
+      {/* Task 3.13: the whole page is one column: the header (logo, Sound, profile), the red emergency strip just
+          under it (only while an alert rings), then the page. The header and the strip are outside the page's scroll,
+          so they stay at the top in both layouts and a new alert is always visible.
           Wide window (fillWindow): the page is exactly the window's height and doesn't scroll; each column scrolls inside itself.
-          Narrow or short window: the old stacked page that scrolls. */}
+          Narrow or short window: the stacked page scrolls under the header and the strip. */}
       <View style={[styles.screen, fillWindow && { height }]}>
+        <AppBrandHeader role="Dispatcher" name={displayName} email={authUser?.email || profile?.email || ""} barangay={profile?.barangay || ""} soundMuted={alertSound.muted} onToggleSound={alertSound.toggleMute} onLogoutPress={async () => {
+          try {
+            // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
+            // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
+            router.replace("/login");
+            await logoutCurrentUser();
+          } catch (error) {
+            Alert.alert("Logout failed", getAuthErrorMessage(error, "We could not log you out. Please try again."));
+          }
+        }} />
         <View onLayout={(event) => setStripHeight(event.nativeEvent.layout.height)}>
           <EmergencyAlertStrip
             calls={liveRingingCalls}
