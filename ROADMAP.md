@@ -95,7 +95,7 @@ Enhance perceived performance, accessibility, and user feedback without altering
 
 ## 🧭 Phase 3: Group Lead's Change List (big-update)
 
-**Status: Plan reviewed by the owner (decisions at the end of Phase 3). Nothing has been built yet.** Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
+**Status (October 15, 2026): Tasks 3.1 to 3.13 and 3.13b are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Tasks 3.14 onward are not started. Nothing is merged into `master`, so the defense set (demo-ready-17) is unchanged. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
 
 ### Ground rules for Phase 3
 
@@ -128,6 +128,7 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 | 3.11 | Schedule: real calendar + scroll-wheel time (or typed time) | M | Med | No | Yes | Yes (native package) |
 | 3.12 | Driver: history always shown under a fixed duty card; compact buttons | M | Med | No | Yes | Yes |
 | 3.13 | Dispatcher home: smaller map, no page scrolling | M | Med | No | Yes | No |
+| 3.13b | Dispatcher: alert sound while an emergency rings (added Oct 15) | S | Low | No | Yes | No |
 | 3.14 | Admin: compact Emergency Calls, shorter Operations buttons | M | Low–Med | No | Yes | No |
 | 3.15 | Settings: Change Password, Delete Account (profile editing moves to Profile) | M | Med–High | Maybe (check) | Yes | Yes |
 | 3.16 | Website: skeleton placeholders instead of spinners | M | Low | No | Yes | No |
@@ -155,51 +156,89 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 7. **3.24 Dark mode last** (or drop it). It touches every screen and goes against DESIGN.md.
 8. **Stage D** is its own plan after the defense.
 
+### Progress on big-update (October 15, 2026)
+
+All of these are tested by the owner and committed on `big-update`. Phone changes reach testers only with a new APK (ground rule 5); the website changes go live only after a merge into `master` → `main`.
+
+| Task | Commit(s) | Done |
+|---|---|---|
+| 3.1 Driver bottom bar | `c7205dd` | ✅ |
+| 3.2 Request form wording | `e8284da` | ✅ |
+| 3.3 Map pins | `993e62a` | ✅ |
+| 3.4 Dispatcher: Available drivers first | `9bbbc9c` | ✅ |
+| 3.5 Dispatcher: map follows the clicked request | `56ed795` | ✅ |
+| 3.6 Admin barangay under the logo | `620b147` | ✅ |
+| 3.7 Tap the profile picture | `6cb94fc` | ✅ |
+| 3.8 Phone loading without the card | `562400f` | ✅ |
+| 3.9 Compact Request a Ride form | `3b93770` | ✅ |
+| 3.10 People riding: typing, cap 50, big-group note | `611663f` | ✅ |
+| 3.11 Calendar and time picker | `ac5b02e` (package, Step A), `5521ea4` (pickers, Step B) | ✅ |
+| 3.12 Driver history under a fixed duty card | `6d3b908` | ✅ |
+| 3.13 Dispatcher home without page scrolling | `2ffc79e`, `0c9cd6b`, `ec954cd`, `c65da10` | ✅ |
+| 3.13b Alert sound | `5545656` | ✅ |
+
+**Changes made along the way (different from, or more than, the plan above):**
+- **3.2:** the passenger's phone is **required** (owner's decision 3).
+- **3.4:** inside Available, drivers with the app closed come after those with it open; then On a run, On break, Off duty, not approved. Same group = A to Z by name.
+- **3.5:** an exact pin is zoom 16; an address lookup is zoom **15** with its "(approximate geocoded match)" label open. The last thing clicked wins, including the orange "Needs a new driver" banner.
+- **3.6:** shows "Barangay Daanglungsod" (", Toledo City" left out), or "Barangay not set".
+- **3.8:** the website's loading screens lost the card too; loading words are dark and 17 so they read well on the grey page.
+- **3.9:** "Community / Personal Trip" was renamed **"Community Activity"**. Old rides keep the name they were saved with (History, Request Details, driver card, dispatcher), but the Admin counters and the "Ride for" filters count both names as one (`getPurpose` in `requestOptions.js`). The "Does anyone need help?" checkboxes also became plain.
+- **3.10:** empty or 0 gives "Enter a number from 1 to 50." on Review; the box takes 3 digits so "100" gets the message.
+- **3.11:** needed a new development build (`1efc5840-282f-4e5f-b222-06aa1b8c5437`, fingerprint matched). Any minute can be chosen; the message is "Choose a time at least 1 hour from now and within 1 year." The landing page and Privacy Policy now say "1 year" instead of "7 days".
+- **3.12:** the duty card uses at most 60% of the page (it scrolls inside itself if taller); Start break and Punch out sit side by side (48 tall); Punch in / Resume duty are 56 tall.
+- **3.13:**
+  - The full-screen "Incoming Emergency Call" pop-up was **replaced by a red emergency strip** just under the header: 2 alerts get their own row with fixed Answer / Decline, more alerts go into one "N more waiting" row. Only the extra details move like a ticker (paused on mouse hover, never with "reduce motion"). The tab title says "EMERGENCY – SakayNa" while something rings. All ringing alerts now show (before, only the first one did).
+  - Side columns are 260–280 wide; the three titles above the columns were removed (screen readers still get names).
+  - **Selected Request** runs along the bottom, full width, in 4 columns, and **never scrolls**: values are one line with "…" and the full text on hover (Notes 2 lines). If the window is too short for everything, the page uses the stacked layout instead, so nothing is cut off.
+  - Header: the shield icon with "SakayNa" written next to it and the barangay name under it; Log out moved into an account menu on the initials circle (closes on outside click or Escape). In the stacked layout the header and the strip stay pinned at the top.
+- **3.13b (new):** a soft "ding-dong" every 2 seconds while an alert rings (`public/sounds/emergency-alert.wav`, made with a small script, no new package). It stops when the alert is answered, declined or ends. **Mute lasts until the page is reloaded** (not remembered), with an orange "Sound off" button and a "Sound off" line in the strip. If the browser blocks sound until the page is clicked, the strip shows "Sound blocked: click to turn sound on".
+
 ---
 
 ### Stage A tasks
 
-#### Task 3.1: Driver bottom bar highlight
+#### Task 3.1: Driver bottom bar highlight ✅ Done (c7205dd)
 - **What changes:** in `app/driver-home.jsx`, the open tab shows a green icon and green bold word only. The grey-green box behind the icon (`tabIconOpen`) and the grey flash when pressed (`tabButtonPressed`) are removed.
 - **Could break:** nothing important. Only looks. The orange "new ride" dot stays.
 
-#### Task 3.2: Request form wording
+#### Task 3.2: Request form wording ✅ Done (e8284da)
 - **What changes:** `ResidentRequestForm.jsx`: the "Other" box placeholder becomes plain "Tell us briefly" (no "buying medicine"). The passenger phone label loses "(optional)".
 - **Decision needed:** should the passenger's phone become **required**? If yes, `requestValidation.js` must reject an empty phone, and the hint "If they have no phone, the driver will call you" goes away. If no, removing the word would mislead people (it would still be optional). Recommendation: make it required, as the lead seems to want.
 - **Could break:** a Resident booking for someone with no phone can't send the request (if required).
 
-#### Task 3.3: Map pins
+#### Task 3.3: Map pins ✅ Done (993e62a)
 - **What changes:** `components/LeafletMap.jsx` draws each pin as a small box with a 3px border and a corner rounding that is too small, so it looks like a square. Replace it with a teardrop "map pin" shape drawn in the same file (no new package): green for pickup, orange for the driver, and the destination in its own color.
 - **Could break:** every map uses this file (Resident pin picker, Driver map, Dispatcher map). Test all three. The pin's tip must sit exactly on the spot (anchor point), or pins will look shifted.
 
-#### Task 3.4: Dispatcher, Available drivers first
+#### Task 3.4: Dispatcher, Available drivers first ✅ Done (9bbbc9c)
 - **What changes:** `app/dispatcher-home.jsx` sorts the driver list: Available → On a run/Handling → On break → Off duty.
 - **Could break:** nothing in the data. A dispatcher used to the old order may look in the wrong place at first.
 
-#### Task 3.5: Dispatcher, map follows the clicked request
+#### Task 3.5: Dispatcher, map follows the clicked request ✅ Done (56ed795)
 - **What changes:** when a request is selected, the map centers on its pickup pin at zoom **16** (the map's max zoom 19 minus 3). If there is no exact pin, it uses the address lookup as today.
 - **Could break:** "Show on map" for a driver also moves the map; decide which wins when both are chosen (recommend: the last thing clicked).
 
-#### Task 3.6: Admin barangay under the logo
+#### Task 3.6: Admin barangay under the logo ✅ Done (620b147)
 - **What changes:** `app/admin-home.jsx` shows "Barangay {Admin's barangay}" under the logo (from the Admin's profile).
 - **Could break:** nothing. An Admin with no barangay shows "Barangay not set".
 
-#### Task 3.7: Tap the profile picture
+#### Task 3.7: Tap the profile picture ✅ Done (6cb94fc)
 - **What changes:** in the ☰ menu (`ResidentSideMenu.jsx`, used by Residents and Drivers), the picture becomes a button that opens the existing Profile window showing name, number, email, barangay.
 - **Could break:** nothing; Profile already exists. It just gets a second way in.
 
-#### Task 3.8: Phone loading without the card
+#### Task 3.8: Phone loading without the card ✅ Done (562400f)
 - **What changes:** `components/ui/ScreenState.jsx` shows only the spinner and message (no white card) **when loading**. Error screens like "Account not active" keep their card and Log Out button.
 - **Could break:** `AuthRouteGate.jsx` uses this for every role's start-up. Check all start-up screens after the change.
 
 ### Stage B tasks
 
-#### Task 3.9: Compact Request a Ride form
+#### Task 3.9: Compact Request a Ride form ✅ Done (3b93770)
 - **What changes:** `ResidentRequestForm.jsx`: "What is the ride for?" becomes three plain radio buttons (circle + word) with no border box around each one. The same plain style is used for "When" and "Who is riding" so the form looks the same throughout. Less space between sections (24 → 16). The red "Emergency?" note gets slimmer. Text and tap sizes stay as DESIGN.md says.
 - **Decision needed:** the lead's note says community transport is not for personal errands, but one option is called "Community / Personal Trip". Keep that name, or rename it?
 - **Could break:** nothing saved changes; only looks. Check with large phone text (1.3×) that nothing gets cut off.
 
-#### Task 3.10: People riding, typing and limit
+#### Task 3.10: People riding, typing and limit ✅ Done (611663f)
 - **What changes:**
   - The number between − and + becomes a box you can type in (numbers only). − and + stay.
   - The limit of 6 (`MAX_PASSENGERS` in `requestOptions.js`) goes up. "Unlimited" is risky (a typo like 500), so recommend a cap of **50**, the same as the emergency form's patients.
@@ -208,7 +247,7 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 - **Rules:** none. The rules do not check the people count.
 - **Could break:** older APKs keep the 6 limit (fine). Screens that show "{n} people" must still fit long numbers.
 
-#### Task 3.11: Calendar and time picker
+#### Task 3.11: Calendar and time picker ✅ Done (ac5b02e, 5521ea4)
 - **What changes:**
   - **Day:** a real calendar (any month, browse forward) instead of the list of the next 7 days. Past days and days too far ahead are greyed out.
   - **Time:** a scroll-wheel like the phone's alarm clock (|hour|minute|AM/PM|), which is Android's own "spinner" time picker, so it opens as a small pop-up instead of a full-screen list.
@@ -216,11 +255,11 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 - **Decision needed:** how far ahead can a ride be booked? The lead says "not limited dates". Recommend **up to 1 year**, keeping "at least 1 hour from now". Known-Issue.md warns that assigning a scheduled ride early keeps the vehicle busy, so a far-ahead booking makes dispatchers' lists longer.
 - **Could break:** the "too soon" check on Send must still work. A new native package means a **new development build** and changes the APK fingerprint (expected).
 
-#### Task 3.12: Driver history always shown
+#### Task 3.12: Driver history always shown ✅ Done (6d3b908)
 - **What changes:** on the Availability page of `app/driver-home.jsx`, the duty card (Punch in/out) stays fixed at the top. Under it, the ride history list scrolls by itself and slides under the card's bottom edge. The "Ride history" button and the History pop-up go away. History rows become short (title, place, date, status) instead of long text blocks. Duty buttons get the compact style.
 - **Could break:** the duty card is the punch in/out and break system. Only its layout may change, not `DriverDutyCard`'s logic. On a small phone with large text, the fixed card could fill most of the screen; it needs a check at 1.3× text.
 
-#### Task 3.13: Dispatcher home without page scrolling
+#### Task 3.13: Dispatcher home without page scrolling ✅ Done (2ffc79e, 0c9cd6b, ec954cd, c65da10; sound 3.13b: 5545656)
 - **What changes:** `app/dispatcher-home.jsx` uses the full browser height: requests (left), a smaller map (middle), drivers (right). Each column scrolls inside itself; the page itself does not scroll. Today's fixed 560px heights become "fill the window".
 - **Could break:** the incoming emergency alert and the active emergency card must stay visible at the top. Narrow screens (a phone using the website) still need a stacked layout that scrolls.
 
