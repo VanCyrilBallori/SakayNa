@@ -985,7 +985,11 @@ export default function DispatcherHome() {
               <Pressable
                 key={request.id}
                 style={({ pressed }) => [styles.givenBackBanner, pressed && styles.givenBackBannerPressed]}
-                onPress={() => setSelectedRequest(request)}
+                onPress={() => {
+                  setSelectedRequest(request);
+                  // Back to the ride's pins (hides a driver shown with "Show on map"), like the request cards.
+                  setMapDriverId(null);
+                }}
                 accessibilityRole="button"
                 accessibilityHint="Shows this ride in Selected Request"
               >
@@ -1074,7 +1078,7 @@ export default function DispatcherHome() {
               ]}
             >
               <View style={styles.mapPlaceholder}>
-                <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} driverCoordinates={mapDriverCoordinates} driverLabel={mapDriverLabel} />
+                <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} driverCoordinates={mapDriverCoordinates} driverLabel={mapDriverLabel} focusPickup />
               </View>
             </View>
 
