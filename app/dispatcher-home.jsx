@@ -166,15 +166,15 @@ function WhenLabel({ request, now, style, oneLine = false }) {
 // One line of card text in the Latest queue and Driver availability columns (Task 3.13): it never wraps.
 // If it doesn't fit, it ends with "…" and the mouse shows the full text (the browser's tooltip, the "title").
 // The website can't shrink text to fit (React Native's adjustsFontSizeToFit only works in the phone apps),
-// so the text keeps its size (15 or more).
-function OneLine({ style, children }) {
+// so the text keeps its size (15 or more). lines = how many lines before the "…" (1 unless said otherwise; Notes uses 2).
+function OneLine({ style, children, lines = 1 }) {
   const fullText = [].concat(children).filter((part) => typeof part === "string" || typeof part === "number").join("");
   // The website's Text doesn't pass a "title" on, so it is set on the page element directly.
   const setTooltip = (node) => {
     if (Platform.OS === "web" && node?.setAttribute) node.setAttribute("title", fullText);
   };
   return (
-    <Text ref={setTooltip} style={style} numberOfLines={1}>
+    <Text ref={setTooltip} style={style} numberOfLines={lines}>
       {children}
     </Text>
   );
@@ -299,65 +299,78 @@ function SelectedRequestDetails({ request, now }) {
 
   const phone = request.contactNumber || request.residentPhone || "";
   const bookedForSomeoneElse = request.ridingFor === "other";
-  const items = [
-    ["People riding", getPassengerCountText(request)],
-    ["Pickup", [request.pickupLocation, request.barangay].filter(Boolean).filter((value, index, list) => list.indexOf(value) === index).join(", ")],
-    ["Landmark / pickup details", request.pickupDetails || "Not provided"],
-    ["Going to", request.destination || "Not provided"],
-    ["Needs help", getAssistanceText(request)],
-    ["Notes", request.additionalNotes || "None"],
+
+  const pickup = [request.pickupLocation, request.barangay].filter(Boolean).filter((value, index, list) => list.indexOf(value) === index).join(", ");
+  // Columns 2-4 (column 1 is the passenger). Each value is one line (Notes: up to 2), then "…" and the full text on mouse hover.
+  const columns = [
+    [
+      ["Pickup", pickup],
+      ["Landmark / pickup details", request.pickupDetails || "Not provided"],
+    ],
+    [
+      ["Going to", request.destination || "Not provided"],
+      ["People riding", getPassengerCountText(request)],
+    ],
+    [
+      ["Needs help", getAssistanceText(request)],
+      ["Notes", request.additionalNotes || "None"],
+    ],
   ];
 
+  // One top line, then 4 columns side by side, so it fits without scrolling at 1366 x 768 and up.
+  // On a narrow window the columns go under each other.
   return (
     <View style={styles.detailsPanel}>
-      <Text style={styles.detailsHeading}>Selected Request</Text>
-
       <View style={styles.detailsTop}>
+        <Text style={styles.detailsHeading}>Selected Request</Text>
         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
           <Text style={styles.requestChipText}>{request.level}</Text>
         </View>
-        <Text style={styles.detailsTitle}>{request.title}</Text>
-        <Text style={styles.detailsMuted}>
-          <WhenLabel request={request} now={now} /> · {request.reference || request.id} · Sent {formatRequestDate(request.createdAt)}
-        </Text>
+        <OneLine style={styles.detailsTitle}>{request.title}</OneLine>
+        <WhenLabel request={request} now={now} style={[styles.detailsMuted, styles.detailsTopText]} oneLine />
+        <OneLine style={[styles.detailsMuted, styles.detailsTopText]}>{`${request.reference || request.id} · Sent ${formatRequestDate(request.createdAt)}`}</OneLine>
       </View>
 
       {/* A driver gave this ride back: say who and why (driver-pages-plan.md Step 2b). Peach = important info. */}
       {getGivenBackReason(request) ? (
         <View style={styles.givenBackBox}>
-          <Text style={styles.givenBackBoxText}>
-            <Text style={styles.givenBackBoxStrong}>Driver can&apos;t do this ride: </Text>
-            {getGivenBackReason(request)}
-            {request.lastUnableDriverName ? ` (${request.lastUnableDriverName})` : ""}
-          </Text>
+          <OneLine style={[styles.givenBackBoxText, styles.givenBackBoxStrong]}>
+            {`Driver can't do this ride: ${getGivenBackReason(request)}${request.lastUnableDriverName ? ` (${request.lastUnableDriverName})` : ""}`}
+          </OneLine>
         </View>
       ) : null}
 
-      <View style={styles.detailsPhoneBlock}>
-        <Text style={styles.detailsLabel}>Passenger</Text>
-        <Text style={styles.detailsPassenger}>{getPassengerName(request)}</Text>
-        {phone ? (
-          <TouchableOpacity onPress={() => startPhoneCall(phone)} accessibilityRole="button" accessibilityLabel={`Call ${formatPhoneForDialing(phone)}`}>
-            <Text style={styles.detailsPhone} selectable>
-              {formatPhoneForDialing(phone)}
-            </Text>
-          </TouchableOpacity>
-        ) : (
-          <Text style={styles.detailsValue}>No phone number</Text>
-        )}
-        {bookedForSomeoneElse ? (
-          <Text style={styles.detailsMuted}>
-            Booked by {request.residentName || "a resident"}
-            {request.residentPhone && request.residentPhone !== phone ? ` · ${formatPhoneForDialing(request.residentPhone)}` : " (this is the resident's number)"}
-          </Text>
-        ) : null}
-      </View>
+      <View style={styles.detailsColumns}>
+        {/* Column 1: who to call. */}
+        <View style={[styles.detailsColumn, styles.detailsPhoneBlock]}>
+          <Text style={styles.detailsLabel}>Passenger</Text>
+          <OneLine style={styles.detailsPassenger}>{getPassengerName(request)}</OneLine>
+          {phone ? (
+            <TouchableOpacity onPress={() => startPhoneCall(phone)} accessibilityRole="button" accessibilityLabel={`Call ${formatPhoneForDialing(phone)}`}>
+              <Text style={styles.detailsPhone} numberOfLines={1} selectable>
+                {formatPhoneForDialing(phone)}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={styles.detailsValue}>No phone number</Text>
+          )}
+          {bookedForSomeoneElse ? (
+            <OneLine style={styles.detailsMuted}>
+              {`Booked by ${request.residentName || "a resident"}${request.residentPhone && request.residentPhone !== phone ? ` · ${formatPhoneForDialing(request.residentPhone)}` : " (this is the resident's number)"}`}
+            </OneLine>
+          ) : null}
+        </View>
 
-      <View style={styles.detailsGrid}>
-        {items.map(([label, value]) => (
-          <View key={label} style={styles.detailsItem}>
-            <Text style={styles.detailsLabel}>{label}</Text>
-            <Text style={styles.detailsValue}>{value}</Text>
+        {columns.map((items) => (
+          <View key={items[0][0]} style={styles.detailsColumn}>
+            {items.map(([label, value]) => (
+              <View key={label}>
+                <Text style={styles.detailsLabel}>{label}</Text>
+                <OneLine style={styles.detailsValue} lines={label === "Notes" ? 2 : 1}>
+                  {value}
+                </OneLine>
+              </View>
+            ))}
           </View>
         ))}
       </View>
@@ -1059,7 +1072,7 @@ export default function DispatcherHome() {
 
     return (
       <>
-        <AppBrandHeader role="Dispatcher" name={displayName} onLogoutPress={async () => {
+        <AppBrandHeader role="Dispatcher" name={displayName} email={authUser?.email || profile?.email || ""} barangay={profile?.barangay || ""} onLogoutPress={async () => {
           try {
             // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
             // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
@@ -1385,19 +1398,22 @@ const styles = StyleSheet.create({
   bigGroupText: { flex: 1, marginTop: 0, fontWeight: "700", color: DESIGN_COLORS.ink },
   whenPassed: { color: "#B42318", fontWeight: "800" },
   assignEarlyWarning: { marginTop: 12, padding: 12, borderRadius: 12, overflow: "hidden", backgroundColor: "#FFF3CD", color: "#5C3F00", fontSize: 14, lineHeight: 20, fontWeight: "700" },
-  detailsPanel: { padding: 20, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5E0" },
-  detailsHeading: { fontSize: 24, fontWeight: "800", color: "#06774B" },
+  detailsPanel: { padding: 16, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5E0" },
+  detailsHeading: { flexShrink: 0, fontSize: 20, lineHeight: 26, fontWeight: "800", color: "#06774B" },
   detailsEmpty: { marginTop: 8, fontSize: 15, color: "#60716B" },
-  detailsTop: { marginTop: 14, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
-  detailsTitle: { fontSize: 22, fontWeight: "800", color: "#111111" },
-  detailsMuted: { fontSize: 14, lineHeight: 20, color: "#60716B" },
-  detailsPhoneBlock: { marginTop: 18, padding: 16, borderRadius: 16, backgroundColor: "#E5F4ED", gap: 4 },
-  detailsPassenger: { fontSize: 20, fontWeight: "800", color: "#111111" },
-  detailsPhone: { fontSize: 32, lineHeight: 40, fontWeight: "800", letterSpacing: 0.5, color: "#06774B", fontVariant: ["tabular-nums"] },
-  detailsGrid: { marginTop: 18, flexDirection: "row", flexWrap: "wrap", gap: 18 },
-  detailsItem: { flexGrow: 1, flexBasis: 240, maxWidth: 480 },
-  detailsLabel: { fontSize: 13, fontWeight: "700", color: "#496B5F" },
-  detailsValue: { marginTop: 4, fontSize: 16, lineHeight: 23, color: "#111111" },
+  // Top line: heading, chip, title, when, reference · sent. Wraps only on a narrow window; long parts get "…".
+  detailsTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 12, rowGap: 6 },
+  detailsTitle: { flexShrink: 1, fontSize: 20, lineHeight: 26, fontWeight: "800", color: "#111111" },
+  detailsTopText: { flexShrink: 1 },
+  detailsMuted: { fontSize: 15, lineHeight: 20, color: "#60716B" },
+  // 4 columns side by side (each at least 200 wide); on a narrow window they go under each other.
+  detailsColumns: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", columnGap: 24, rowGap: 12 },
+  detailsColumn: { flexGrow: 1, flexBasis: 200, minWidth: 0, gap: 10 },
+  detailsPhoneBlock: { padding: 12, borderRadius: 16, backgroundColor: "#E5F4ED", gap: 2 },
+  detailsPassenger: { fontSize: 18, lineHeight: 24, fontWeight: "800", color: "#111111" },
+  detailsPhone: { fontSize: 26, lineHeight: 32, fontWeight: "800", letterSpacing: 0.5, color: "#06774B", fontVariant: ["tabular-nums"] },
+  detailsLabel: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: "#496B5F" },
+  detailsValue: { marginTop: 2, fontSize: 17, lineHeight: 22, color: "#111111" },
   mapPanel: { flex: 4, minWidth: 360, height: 560, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D6DFDB", overflow: "hidden" },
   mapPanelCompact: { flexBasis: "100%", minWidth: 0, height: 560 },
   mapPlaceholder: { flex: 1, minHeight: 560, alignItems: "stretch", justifyContent: "flex-start", backgroundColor: "#F7F9F8" },
@@ -1572,7 +1588,7 @@ const styles = StyleSheet.create({
   givenBackTag: { alignSelf: "flex-start", maxWidth: "100%", marginTop: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, backgroundColor: DESIGN_COLORS.sakayOrange },
   givenBackTagText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
   // And in Selected Request: a peach box (important info).
-  givenBackBox: { marginTop: 14, padding: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
+  givenBackBox: { marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
   givenBackBoxText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   givenBackBoxStrong: { fontWeight: "800" },
   // White button with a clear grey edge ("End emergency" on the card, "Keep it open" in the question).
