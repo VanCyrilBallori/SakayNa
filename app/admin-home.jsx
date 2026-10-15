@@ -297,6 +297,8 @@ export default function AdminHome() {
   // Resident Verification and Driver Applications: only this Admin's own barangay.
   // The barangay is set on the Admin's profile in the Firebase Console.
   const adminBarangay = profile?.barangay || "";
+  // Under the logo (Task 3.6), like the resident's place strip: "Daanglungsod, Toledo City" shows as "Barangay Daanglungsod".
+  const adminBarangayName = adminBarangay.replace(/,\s*Toledo City$/i, "").trim();
 
   const {
     users,
@@ -851,7 +853,12 @@ export default function AdminHome() {
     <>
       <ScrollView style={[styles.page, { backgroundColor: theme.page }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
-          <BrandLogo variant="main" height={compact ? 30 : 36} />
+          <View style={styles.headerBrand}>
+            <BrandLogo variant="main" height={compact ? 30 : 36} />
+            <Text style={[styles.headerBarangay, { color: theme.mutedText }]}>
+              {adminBarangayName ? `Barangay ${adminBarangayName}` : "Barangay not set"}
+            </Text>
+          </View>
 
           <View style={[styles.headerRight, narrow && styles.headerRightCompact]}>
             <TouchableOpacity style={[styles.profileTrigger, { backgroundColor: theme.headerBg }]} onPress={() => setProfileMenuOpen(true)}>
@@ -1240,6 +1247,9 @@ const styles = StyleSheet.create({
     gap: 16,
     flexWrap: "wrap",
   },
+  // The logo with the Admin's barangay under it (Task 3.6). Body size (DESIGN.md: 17/24, 500).
+  headerBrand: { gap: 4, flexShrink: 1 },
+  headerBarangay: { fontSize: 17, lineHeight: 24, fontWeight: "500" },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
