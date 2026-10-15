@@ -287,7 +287,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
   return (
     <>
       <View style={styles.emergencyNote}>
-        <MaterialCommunityIcons name="alert-outline" size={26} color={COLORS.emergency} />
+        <MaterialCommunityIcons name="alert-outline" size={22} color={COLORS.emergency} />
         <Text style={styles.emergencyNoteText}>Emergency? Close this and tap the red Emergency button.</Text>
       </View>
 
@@ -383,7 +383,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
       </Field>
 
       <Field icon="crosshairs-gps" label="Exact pickup spot (optional)">
-        <View style={styles.choiceList}>
+        <View style={styles.buttonList}>
           <ActionButton icon="crosshairs-gps" label={locating ? "Finding your location..." : "Use Current Location"} disabled={locating} onPress={onUseGps} />
           <ActionButton icon="map-marker-plus-outline" label="Place Map Pin" disabled={locating} onPress={onOpenMap} />
         </View>
@@ -593,12 +593,13 @@ function Hint({ icon, iconColor, text, strong }) {
   );
 }
 
-// A big row you tap to choose: a round radio (pick one) or a square checkbox (pick any).
+// A plain row you tap to choose: a round radio (pick one) or a square checkbox (pick any), then the words.
+// No box around it (Task 3.9). The chosen one has a filled green mark and bold words, so it is not shown by color only.
 function ChoiceRow({ type, label, detail, selected, onPress }) {
   const icon = type === "radio" ? (selected ? "radiobox-marked" : "radiobox-blank") : selected ? "checkbox-marked" : "checkbox-blank-outline";
   return (
     <Pressable
-      style={[styles.choice, selected ? styles.choiceSelected : null]}
+      style={styles.choice}
       onPress={onPress}
       android_ripple={{ color: colors.ripple }}
       accessibilityRole={type}
@@ -606,7 +607,7 @@ function ChoiceRow({ type, label, detail, selected, onPress }) {
     >
       <MaterialCommunityIcons name={icon} size={26} color={selected ? COLORS.primary : colors.outline} />
       <View style={styles.choiceCopy}>
-        <Text style={styles.choiceText}>{label}</Text>
+        <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
         {detail ? <Text style={styles.choiceDetail}>{detail}</Text> : null}
       </View>
     </Pressable>
@@ -653,7 +654,7 @@ const styles = StyleSheet.create({
   closeButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   emergencyNote: {
     marginTop: 16,
-    padding: 14,
+    padding: 10,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -661,7 +662,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.emergencySurface,
   },
   emergencyNoteText: { flex: 1, fontSize: 16, lineHeight: 23, fontWeight: "700", color: colors.heading },
-  field: { marginTop: 24 },
+  // Task 3.9: sections 16 apart (was 24) so the form is shorter.
+  field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   label: { flexShrink: 1, fontSize: 16, fontWeight: "700", color: colors.heading },
   input: {
@@ -681,24 +683,22 @@ const styles = StyleSheet.create({
   subLabel: { marginBottom: 8, fontSize: 16, fontWeight: "600", color: colors.heading },
   subLabelSpaced: { marginTop: 14 },
   multiline: { minHeight: 96, paddingTop: 14, paddingBottom: 14 },
-  choiceList: { gap: 10 },
+  choiceList: { gap: 4 },
+  // The two boxed buttons under "Exact pickup spot" keep their old gap.
+  buttonList: { gap: 10 },
   choiceListBelow: { marginTop: 10 },
+  // At least 48 tall so it is easy to tap (DESIGN.md). It grows when the words wrap with large text.
   choice: {
-    minHeight: 56,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1.5,
-    borderColor: colors.outline,
-    borderRadius: 12,
+    minHeight: 48,
+    paddingVertical: 8,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFFFFF",
   },
-  choiceSelected: { borderWidth: 2, borderColor: COLORS.primary, backgroundColor: colors.card },
   choiceCopy: { flex: 1 },
   choiceText: { fontSize: 17, lineHeight: 23, color: colors.heading },
+  choiceTextSelected: { fontWeight: "700" },
   choiceDetail: { marginTop: 2, fontSize: 15, lineHeight: 21, color: colors.muted },
   stepper: { flexDirection: "row", alignItems: "center", gap: 16 },
   stepperButton: {

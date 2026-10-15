@@ -3,7 +3,14 @@ import { formatClockTime, formatShortDay } from "../../../lib/dates";
 // The most people one request can carry (our biggest barangay vehicle).
 export const MAX_PASSENGERS = 6;
 
-export const PURPOSE_OPTIONS = Object.freeze(["Medical / Health", "Community / Personal Trip", "Other"]);
+export const PURPOSE_OPTIONS = Object.freeze(["Medical / Health", "Community Activity", "Other"]);
+
+// "Community Activity" was called "Community / Personal Trip" before Task 3.9. Old rides (and old APKs that
+// are not updated yet) still save the old name. Counts and filters use getPurpose, so both names count as one.
+// Screens that show a ride's saved title still show the name it was saved with.
+export const COMMUNITY_PURPOSE = "Community Activity";
+export const OLD_COMMUNITY_PURPOSE = "Community / Personal Trip";
+export const getPurpose = (request) => (request?.purpose === OLD_COMMUNITY_PURPOSE ? COMMUNITY_PURPOSE : request?.purpose);
 
 export const ASSISTANCE_OPTIONS = Object.freeze([
   "Senior citizen",

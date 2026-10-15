@@ -6,7 +6,7 @@ import CloseButton from "../../../components/ui/CloseButton";
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
 import { COLORS, RADIUS, SPACING } from "../../../constants/design";
 import { canResidentCancel, formatRequestDate, getPickupLabel, getRequestStatusMeta, getScheduledDate, getWhenText } from "../utils/requestMapper";
-import { PURPOSE_OPTIONS } from "../utils/requestOptions";
+import { getPurpose, PURPOSE_OPTIONS } from "../utils/requestOptions";
 import ResidentRequestDetails from "./ResidentRequestDetails";
 
 const statusOptions = [{ label: "All statuses", value: "All" }, { label: "Active", value: "Active" }, { label: "Completed", value: "Completed" }, { label: "Cancelled", value: "Cancelled" }, { label: "Pending", value: "Pending" }, { label: "Assigned", value: "Assigned" }, { label: "In progress", value: "In Progress" }];
@@ -22,7 +22,7 @@ export default function ResidentRequestHistory({ visible, onClose, requests, loa
 
   const filteredRequests = useMemo(() => requests.filter((request) => {
     const matchesStatus = statusFilter === "All" || (statusFilter === "Active" ? isActive(request.status) : request.status === statusFilter);
-    const matchesType = typeFilter === "All" || request.purpose === typeFilter;
+    const matchesType = typeFilter === "All" || getPurpose(request) === typeFilter;
     const query = search.trim().toLowerCase();
     return matchesStatus && matchesType && (!query || request.reference.toLowerCase().includes(query) || request.id.toLowerCase().includes(query));
   }), [requests, search, statusFilter, typeFilter]);

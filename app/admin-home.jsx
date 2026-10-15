@@ -37,7 +37,7 @@ import useAdminDashboardData from "../features/admin/hooks/useAdminDashboardData
 import { logAdminActivity } from "../features/admin/services/adminOperationsService";
 import { getApprovalStatus, getUserName } from "../features/admin/utils/userFormatters";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
-import { PURPOSE_OPTIONS } from "../features/resident/utils/requestOptions";
+import { COMMUNITY_PURPOSE, getPurpose, PURPOSE_OPTIONS } from "../features/resident/utils/requestOptions";
 import {
   formatDateTime,
   getAverageDuration,
@@ -418,7 +418,7 @@ export default function AdminHome() {
     return requestsWithDerivedFields.filter((request) => {
       const requestStatus = request.status || "Pending";
       const matchesStatus = requestStatusFilter === "All" || requestStatus === requestStatusFilter;
-      const matchesType = requestTypeFilter === "All" || request.purpose === requestTypeFilter;
+      const matchesType = requestTypeFilter === "All" || getPurpose(request) === requestTypeFilter;
 
       return matchesStatus && matchesType;
     });
@@ -443,7 +443,8 @@ export default function AdminHome() {
   const filteredVehicles = vehiclesWithDerivedStatus;
 
   // How many loaded requests have this "ride for" choice (used until the server counts load).
-  const countRequestsByPurpose = (purpose) => requestsWithDerivedFields.filter((request) => request.purpose === purpose).length;
+  // getPurpose counts the old name "Community / Personal Trip" as "Community Activity".
+  const countRequestsByPurpose = (purpose) => requestsWithDerivedFields.filter((request) => getPurpose(request) === purpose).length;
 
   const activeRequestsCount = useMemo(
     () =>
@@ -490,7 +491,7 @@ export default function AdminHome() {
   // Totals prefer the server-side count; the client tally is the fallback until it loads.
   const overviewNumbers = {
     medical: counts.medicalRequests ?? countRequestsByPurpose("Medical / Health"),
-    community: counts.communityRequests ?? countRequestsByPurpose("Community / Personal Trip"),
+    community: counts.communityRequests ?? countRequestsByPurpose(COMMUNITY_PURPOSE),
     other: counts.otherRequests ?? countRequestsByPurpose("Other"),
     active: counts.activeRequests ?? activeRequestsCount,
     completed: counts.completedRequests ?? completedRequestsCount,

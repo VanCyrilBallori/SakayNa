@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
+import { COMMUNITY_PURPOSE, OLD_COMMUNITY_PURPOSE } from "../../resident/utils/requestOptions";
 
 const COLLECTION_LIMIT = 200;
 // Quiet period before re-counting, so bursts of listener fires (e.g. the driver
@@ -169,7 +170,8 @@ export default function useAdminDashboardData(enabled, adminBarangay) {
       Promise.all([
         // One count per "What is the ride for?" choice in the resident's request form.
         readCount(query(requestsRef, where("purpose", "==", "Medical / Health"))),
-        readCount(query(requestsRef, where("purpose", "==", "Community / Personal Trip"))),
+        // Old rides saved "Community / Personal Trip" (renamed in Task 3.9), so both names are counted.
+        readCount(query(requestsRef, where("purpose", "in", [COMMUNITY_PURPOSE, OLD_COMMUNITY_PURPOSE]))),
         readCount(query(requestsRef, where("purpose", "==", "Other"))),
         readCount(query(requestsRef, where("status", "not-in", ["Completed", "Cancelled"]))),
         readCount(query(requestsRef, where("status", "==", "Completed"))),
