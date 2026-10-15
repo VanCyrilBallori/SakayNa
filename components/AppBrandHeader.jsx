@@ -1,15 +1,18 @@
 import { useRef, useState } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import BrandLogo from "./BrandLogo";
 import ProfileAvatar from "./profile/ProfileAvatar";
-import { COLORS } from "../constants/design";
+import { COLORS, DESIGN_COLORS } from "../constants/design";
 
 // The dispatcher website's header: the SakayNa logo with the barangay under it, and the initials circle.
 // Clicking the circle opens a small account menu (like Gmail's): initials, name, email, role · barangay, Log out.
 // The menu closes when you click outside it or press Escape (the website's Modal calls onRequestClose on Escape).
 // barangay = the profile's barangay, e.g. "Daanglungsod, Toledo City" (", Toledo City" is not shown).
-export default function AppBrandHeader({ role = "Resident", name = "User", email = "", barangay = "", onLogoutPress = () => {} }) {
+// soundMuted / onToggleSound (optional): the "Sound on / Sound off" button for the emergency alert sound (Task 3.13b).
+//   "Sound off" is shown in orange so a muted page is hard to miss. Muting lasts until the page is reloaded.
+export default function AppBrandHeader({ role = "Resident", name = "User", email = "", barangay = "", onLogoutPress = () => {}, soundMuted = false, onToggleSound }) {
   const { width } = useWindowDimensions();
   const compact = width < 900;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -54,15 +57,28 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
         </View>
       </View>
 
-      <Pressable
-        ref={avatarRef}
-        style={({ pressed }) => [styles.avatarButton, pressed && styles.avatarButtonPressed]}
-        onPress={openMenu}
-        accessibilityRole="button"
-        accessibilityLabel={`Account menu for ${name}`}
-      >
-        <ProfileAvatar name={name} size={44} />
-      </Pressable>
+      <View style={styles.rightWrap}>
+        {onToggleSound ? (
+          <Pressable
+            style={({ pressed }) => [styles.soundButton, soundMuted && styles.soundButtonOff, pressed && styles.soundButtonPressed]}
+            onPress={onToggleSound}
+            accessibilityRole="button"
+            accessibilityLabel={soundMuted ? "Alert sound is off. Turn it on" : "Alert sound is on. Turn it off"}
+          >
+            <MaterialCommunityIcons name={soundMuted ? "bell-off-outline" : "bell-outline"} size={22} color={soundMuted ? DESIGN_COLORS.ink : DESIGN_COLORS.inkMuted} />
+            <Text style={[styles.soundText, soundMuted && styles.soundTextOff]}>{soundMuted ? "Sound off" : "Sound on"}</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          ref={avatarRef}
+          style={({ pressed }) => [styles.avatarButton, pressed && styles.avatarButtonPressed]}
+          onPress={openMenu}
+          accessibilityRole="button"
+          accessibilityLabel={`Account menu for ${name}`}
+        >
+          <ProfileAvatar name={name} size={44} />
+        </Pressable>
+      </View>
 
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         {/* Clicking anywhere outside the card closes the menu. */}
@@ -107,6 +123,13 @@ const styles = StyleSheet.create({
   wordmarkNa: { color: "#111111" },
   // The barangay name: small (15) and quiet (lighter gray-green, still 4.9:1 on white), so "SakayNa" stands out.
   barangay: { fontSize: 15, lineHeight: 20, fontWeight: "400", color: "#647570" },
+  rightWrap: { flexDirection: "row", alignItems: "center", gap: 12 },
+  // Sound on: quiet (no edge, muted words). Sound off: orange edge on peach, dark bold words (Task 3.13b).
+  soundButton: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, borderRadius: 16, borderWidth: 2, borderColor: "transparent" },
+  soundButtonOff: { borderColor: DESIGN_COLORS.sakayOrange, backgroundColor: DESIGN_COLORS.peachTint },
+  soundButtonPressed: { opacity: 0.75 },
+  soundText: { fontSize: 15, lineHeight: 20, fontWeight: "600", color: DESIGN_COLORS.inkMuted },
+  soundTextOff: { fontWeight: "800", color: DESIGN_COLORS.ink },
   // 48 x 48 tap area around the 44 circle.
   avatarButton: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   avatarButtonPressed: { opacity: 0.75 },

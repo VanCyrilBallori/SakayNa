@@ -7,6 +7,7 @@ import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Tex
 import AppBrandHeader from "../components/AppBrandHeader";
 import EmergencyAlertStrip from "../features/dispatcher/components/EmergencyAlertStrip";
 import EmergencyRequestForm from "../features/dispatcher/components/EmergencyRequestForm";
+import useAlertSound from "../features/dispatcher/hooks/useAlertSound";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
 import { BIG_GROUP_NOTE, isBigGroup } from "../features/resident/utils/requestOptions";
@@ -833,6 +834,8 @@ export default function DispatcherHome() {
     [ringingCalls, now]
   );
   const hasRingingCall = liveRingingCalls.length > 0;
+  // The alert sound (Task 3.13b): a ding-dong every 2 seconds while something rings. Mute lasts until reload.
+  const alertSound = useAlertSound(hasRingingCall);
 
   // Task 3.13: a wide and tall enough window shows everything at once with no page scrolling
   // (requests | map | drivers on top, Selected Request along the bottom). The height needed is worked out
@@ -1098,7 +1101,7 @@ export default function DispatcherHome() {
 
     return (
       <>
-        <AppBrandHeader role="Dispatcher" name={displayName} email={authUser?.email || profile?.email || ""} barangay={profile?.barangay || ""} onLogoutPress={async () => {
+        <AppBrandHeader role="Dispatcher" name={displayName} email={authUser?.email || profile?.email || ""} barangay={profile?.barangay || ""} soundMuted={alertSound.muted} onToggleSound={alertSound.toggleMute} onLogoutPress={async () => {
           try {
             // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
             // away, and then the move to Log In has nothing to run in ("REPLACE ... not handled").
@@ -1219,7 +1222,15 @@ export default function DispatcherHome() {
           Narrow or short window: the old stacked page that scrolls. */}
       <View style={[styles.screen, fillWindow && { height }]}>
         <View onLayout={(event) => setStripHeight(event.nativeEvent.layout.height)}>
-          <EmergencyAlertStrip calls={liveRingingCalls} onAnswer={answerIncomingCall} onDecline={declineIncomingCall} formatPhone={formatPhoneForDialing} />
+          <EmergencyAlertStrip
+            calls={liveRingingCalls}
+            onAnswer={answerIncomingCall}
+            onDecline={declineIncomingCall}
+            formatPhone={formatPhoneForDialing}
+            soundMuted={alertSound.muted}
+            soundBlocked={alertSound.blocked}
+            onEnableSound={alertSound.startSound}
+          />
         </View>
         {fillWindow ? (
           <View style={styles.pageFill}>

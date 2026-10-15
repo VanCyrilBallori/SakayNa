@@ -23,7 +23,9 @@ const formatRinging = (ms) => {
 
 // calls = the live ringing alerts, oldest first. onAnswer(call) / onDecline(call) = the dispatcher page's own Answer and Decline.
 // formatPhone = the page's phone formatter ("0917 123 4567").
-export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, formatPhone }) {
+// soundMuted / soundBlocked / onEnableSound = the alert sound (Task 3.13b, useAlertSound): a last line says
+// "Sound off" while muted, or offers "Sound blocked: click to turn sound on" when the browser refused to play.
+export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, formatPhone, soundMuted = false, soundBlocked = false, onEnableSound }) {
   // A 1-second clock for the ringing times, only while something rings.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -95,6 +97,24 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
             <Text style={styles.fixedText}>{waiting.length} more waiting</Text>
           </View>
           <Ticker text={waiting.map((call) => `${call.residentName || "Resident"} (${getBarangay(call)}, ${ringingFor(call)})`).join(" · ")} />
+        </View>
+      ) : null}
+      {/* The alert sound's state, as the last line so the alert rows above never move when it appears or goes. */}
+      {soundMuted ? (
+        <View style={styles.soundRow}>
+          <MaterialCommunityIcons name="bell-off-outline" size={22} color={DESIGN_COLORS.paperWhite} />
+          <Text style={styles.soundText}>Sound off (turn it back on with the Sound button at the top right)</Text>
+        </View>
+      ) : soundBlocked ? (
+        <View style={styles.soundRow}>
+          <Pressable
+            style={({ pressed }) => [styles.soundButton, pressed && styles.declinePressed]}
+            onPress={onEnableSound}
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons name="volume-off" size={22} color={DESIGN_COLORS.paperWhite} />
+            <Text style={styles.soundText}>Sound blocked: click to turn sound on</Text>
+          </Pressable>
         </View>
       ) : null}
     </View>
@@ -200,4 +220,8 @@ const styles = StyleSheet.create({
   answerButton: { backgroundColor: DESIGN_COLORS.paperWhite },
   answerPressed: { backgroundColor: DESIGN_COLORS.redTint },
   answerText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.emergencyRed },
+  // The last line about the alert sound (Task 3.13b).
+  soundRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6 },
+  soundButton: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, borderRadius: 16, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },
+  soundText: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
 });
