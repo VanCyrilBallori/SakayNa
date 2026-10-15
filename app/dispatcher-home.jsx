@@ -28,6 +28,18 @@ import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from ".
 const STUCK_ALERT_MS = 120_000;
 const STUCK_CHECK_INTERVAL_MS = 10_000;
 
+// Heights (px) for the no-scrolling dispatcher layout (Task 3.13). Selected Request never scrolls and never
+// shrinks: every value is one line (Notes two), so its height is known. If the window (minus the red strip)
+// is shorter than all the fixed parts plus the smallest useful columns, the page uses the stacked layout
+// (page scroll) instead, so nothing is ever cut off.
+const HEADER_HEIGHT = 90; // logo + barangay name + padding
+const PAGE_PADDING = 48; // 24 above and below
+const SECTION_GAP = 18;
+const DETAILS_HEIGHT = 208; // top line 36 + 12 + columns 126 (the passenger box) + padding 32 + border 2
+const DETAILS_GIVEN_BACK_EXTRA = 50; // the peach "Driver can't do this ride" line
+const COLUMNS_MIN_HEIGHT = 240; // requests, map and drivers: never shorter than this
+const TOP_ALERTS_MIN_HEIGHT = 140; // Active emergency cards: at least this much shows (they scroll inside)
+
 // Why a driver can't be given a ride right now, or "" if they can (driver-duty-plan.md Step 5).
 const getAssignBlockReason = (driver) => {
   if (driver.accountStatus !== "Approved") return "Not approved yet.";
@@ -287,7 +299,8 @@ function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
   );
 }
 
-function SelectedRequestDetails({ request, now }) {
+// oneRow = the no-scrolling layout: the top line never wraps (long parts get "…"), so the height stays the same.
+function SelectedRequestDetails({ request, now, oneRow = false }) {
   if (!request) {
     return (
       <View style={styles.detailsPanel}>
@@ -321,7 +334,7 @@ function SelectedRequestDetails({ request, now }) {
   // On a narrow window the columns go under each other.
   return (
     <View style={styles.detailsPanel}>
-      <View style={styles.detailsTop}>
+      <View style={[styles.detailsTop, oneRow && styles.detailsTopOneRow]}>
         <Text style={styles.detailsHeading}>Selected Request</Text>
         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
           <Text style={styles.requestChipText}>{request.level}</Text>
@@ -382,10 +395,8 @@ export default function DispatcherHome() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const compact = width < 1100;
-  // Task 3.13: a wide and tall enough window shows everything at once with no page scrolling
-  // (requests | map + Selected Request | drivers, each scrolling inside itself).
-  // A narrow window (a phone using the website) or a short one keeps the stacked page that scrolls.
-  const fillWindow = !compact && height >= 600;
+  // The red strip's height (0 when nothing rings), measured, because the strip sits above the page.
+  const [stripHeight, setStripHeight] = useState(0);
   const mapSquareSize = useMemo(() => {
     if (compact) {
       return Math.max(320, Math.min(width - 32, 640));
@@ -823,6 +834,21 @@ export default function DispatcherHome() {
   );
   const hasRingingCall = liveRingingCalls.length > 0;
 
+  // Task 3.13: a wide and tall enough window shows everything at once with no page scrolling
+  // (requests | map | drivers on top, Selected Request along the bottom). The height needed is worked out
+  // from the fixed parts above; a narrow window (a phone using the website) or a short one keeps the
+  // stacked page that scrolls, so nothing is ever cut off.
+  const hasTopAlerts = activeCalls.length > 0 || givenBackRequests.length > 0;
+  const neededHeight =
+    HEADER_HEIGHT +
+    PAGE_PADDING +
+    DETAILS_HEIGHT +
+    (selectedRequest && getGivenBackReason(selectedRequest) ? DETAILS_GIVEN_BACK_EXTRA : 0) +
+    SECTION_GAP +
+    COLUMNS_MIN_HEIGHT +
+    (hasTopAlerts ? TOP_ALERTS_MIN_HEIGHT + SECTION_GAP : 0);
+  const fillWindow = !compact && height - stripHeight >= neededHeight;
+
   // While an alert rings, the browser tab says "EMERGENCY – SakayNa", so it shows even from another tab.
   useEffect(() => {
     if (Platform.OS !== "web" || !hasRingingCall) return undefined;
@@ -1176,15 +1202,11 @@ export default function DispatcherHome() {
             </View>
           </View>
 
-          {/* Selected Request: under all three columns, full width. In the no-scrolling layout it takes the bottom 40%
-              and scrolls inside itself, so it is always on screen. */}
-          {fillWindow ? (
-            <ScrollView style={styles.detailsScroll} showsVerticalScrollIndicator={false}>
-              <SelectedRequestDetails request={selectedRequest} now={now} />
-            </ScrollView>
-          ) : (
-            <SelectedRequestDetails request={selectedRequest} now={now} />
-          )}
+          {/* Selected Request: under all three columns, full width. It never scrolls and never shrinks
+              (in the no-scrolling layout the columns above take whatever height is left). */}
+          <View style={fillWindow && styles.detailsFill}>
+            <SelectedRequestDetails request={selectedRequest} now={now} oneRow={fillWindow} />
+          </View>
         </View>
       </>
     );
@@ -1196,7 +1218,9 @@ export default function DispatcherHome() {
           Wide window (fillWindow): the page is exactly the window's height and doesn't scroll; each column scrolls inside itself.
           Narrow or short window: the old stacked page that scrolls. */}
       <View style={[styles.screen, fillWindow && { height }]}>
-        <EmergencyAlertStrip calls={liveRingingCalls} onAnswer={answerIncomingCall} onDecline={declineIncomingCall} formatPhone={formatPhoneForDialing} />
+        <View onLayout={(event) => setStripHeight(event.nativeEvent.layout.height)}>
+          <EmergencyAlertStrip calls={liveRingingCalls} onAnswer={answerIncomingCall} onDecline={declineIncomingCall} formatPhone={formatPhoneForDialing} />
+        </View>
         {fillWindow ? (
           <View style={styles.pageFill}>
             {renderPageBody()}
@@ -1365,14 +1389,16 @@ const styles = StyleSheet.create({
   pageFill: { flex: 1, minHeight: 0 },
   fillScroll: { flex: 1 },
   containerFill: { flex: 1, minHeight: 0 },
+  // Only as tall as its cards (at most 40%); the height check (neededHeight) keeps TOP_ALERTS_MIN_HEIGHT free for it.
   topAlertsFill: { flexGrow: 0, flexShrink: 1, maxHeight: "40%" },
   topAlertsContent: { gap: 18 },
-  // No-scrolling layout: the three columns take the top 60%, Selected Request (detailsScroll) the bottom 40%.
-  mainGridFill: { flex: 60, minHeight: 0, flexWrap: "nowrap" },
+  // No-scrolling layout: the three columns take all the height left after the fixed parts (at least COLUMNS_MIN_HEIGHT).
+  mainGridFill: { flex: 1, minHeight: COLUMNS_MIN_HEIGHT, flexWrap: "nowrap" },
   sidePanelFill: { height: "auto" },
   mapPanelFill: { flex: 1, minWidth: 360, height: "auto" },
   mapPlaceholderFill: { minHeight: 0 },
-  detailsScroll: { flex: 40, minHeight: 160 },
+  // Selected Request keeps its full height (it never shrinks).
+  detailsFill: { flexShrink: 0 },
   content: { paddingBottom: 24 },
   container: { width: "100%", maxWidth: 1480, alignSelf: "center", padding: 24, gap: 18 },
   containerCompact: { padding: 16, gap: 14 },
@@ -1388,7 +1414,7 @@ const styles = StyleSheet.create({
   // Chip and ASAP / Scheduled on one line (Task 3.13): the chip keeps its size, the time text gets the "…".
   requestTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
   requestChip: { flexShrink: 0, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, alignSelf: "flex-start" },
-  requestChipText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
+  requestChipText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: "#FFFFFF" },
   requestStatus: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: "700", color: "#344640" },
   requestTitle: { marginTop: 10, fontSize: 18, fontWeight: "800", color: "#111111" },
   requestMeta: { marginTop: 10, fontSize: 15, lineHeight: 20, color: "#465752" },
@@ -1403,6 +1429,7 @@ const styles = StyleSheet.create({
   detailsEmpty: { marginTop: 8, fontSize: 15, color: "#60716B" },
   // Top line: heading, chip, title, when, reference · sent. Wraps only on a narrow window; long parts get "…".
   detailsTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 12, rowGap: 6 },
+  detailsTopOneRow: { flexWrap: "nowrap" },
   detailsTitle: { flexShrink: 1, fontSize: 20, lineHeight: 26, fontWeight: "800", color: "#111111" },
   detailsTopText: { flexShrink: 1 },
   detailsMuted: { fontSize: 15, lineHeight: 20, color: "#60716B" },

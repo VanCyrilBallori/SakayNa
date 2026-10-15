@@ -25,6 +25,7 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
   };
 
   const barangayName = (barangay || "").replace(/,\s*Toledo City$/i, "").trim();
+  // Under the logo: only the name ("Daanglungsod"). The account menu still says "Barangay Daanglungsod".
   const barangayText = barangayName ? `Barangay ${barangayName}` : "Barangay not set";
 
   // Close the menu first, then log out (the page's own function goes to Log In first, then signs out).
@@ -35,11 +36,22 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
 
   return (
     <View style={[styles.header, compact && styles.headerCompact]}>
+      {/* The logo picture "Logo (main)" has the word SakayNa inside it, so the barangay can't sit under the word.
+          Instead: the icon alone ("secondary" logo), and next to it a text column with "SakayNa" and, right under it,
+          the barangay name, both left-aligned and centered beside the icon. */}
       <View style={styles.brandWrap}>
-        <BrandLogo variant="main" height={compact ? 34 : 42} />
-        <Text style={styles.barangay} numberOfLines={1}>
-          {barangayText}
-        </Text>
+        <BrandLogo variant="secondary" height={compact ? 36 : 44} accessible={false} />
+        <View style={styles.brandText}>
+          {/* Written like the logo: "Sakay" in the logo's own green, "Na" in black, bold italic.
+              The logo's exact lettering is a font the app doesn't load, so this uses the system's bold italic. */}
+          <Text style={[styles.wordmark, compact && styles.wordmarkCompact]} accessibilityRole="header">
+            <Text style={styles.wordmarkSakay}>Sakay</Text>
+            <Text style={styles.wordmarkNa}>Na</Text>
+          </Text>
+          <Text style={styles.barangay} numberOfLines={1}>
+            {barangayName || "Barangay not set"}
+          </Text>
+        </View>
       </View>
 
       <Pressable
@@ -85,9 +97,16 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
 const styles = StyleSheet.create({
   header: { width: "100%", paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#D7E2DC", backgroundColor: "#FFFFFF", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 18 },
   headerCompact: { paddingHorizontal: 16, paddingVertical: 10 },
-  // The logo with the barangay under it, the same look as the Admin's (Task 3.6): 17, quiet gray-green.
-  brandWrap: { gap: 2, flexShrink: 1, alignItems: "flex-start" },
-  barangay: { fontSize: 17, lineHeight: 24, fontWeight: "500", color: "#4F655C" },
+  // Icon on the left, then the text column (SakayNa over the barangay), centered beside the icon.
+  brandWrap: { flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 },
+  brandText: { flexShrink: 1, alignItems: "flex-start" },
+  // Tight line heights: no extra space under the text.
+  wordmark: { fontSize: 26, lineHeight: 30, fontWeight: "800", fontStyle: "italic" },
+  wordmarkCompact: { fontSize: 22, lineHeight: 26 },
+  wordmarkSakay: { color: "#3B6255" }, // the logo's own green (DESIGN.md: the logo keeps its own green)
+  wordmarkNa: { color: "#111111" },
+  // The barangay name: small (15) and quiet (lighter gray-green, still 4.9:1 on white), so "SakayNa" stands out.
+  barangay: { fontSize: 15, lineHeight: 20, fontWeight: "400", color: "#647570" },
   // 48 x 48 tap area around the 44 circle.
   avatarButton: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   avatarButtonPressed: { opacity: 0.75 },
