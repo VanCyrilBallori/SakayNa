@@ -2,9 +2,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { arrayUnion, collection, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
+import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import EmergencyAlertStrip from "../features/dispatcher/components/EmergencyAlertStrip";
 import EmergencyRequestForm from "../features/dispatcher/components/EmergencyRequestForm";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
@@ -153,11 +154,30 @@ const isScheduledFarAhead = (request, now) => {
 };
 
 // "ASAP", "Scheduled: Fri, Oct 2, 9:00 AM", or in red "Scheduled time passed: ..." when nobody assigned it in time.
-function WhenLabel({ request, now, style }) {
+function WhenLabel({ request, now, style, oneLine = false }) {
   const scheduled = getScheduledDate(request);
-  if (!scheduled) return <Text style={style}>ASAP</Text>;
+  // oneLine (the request cards): one line, "…" and the full text on mouse hover.
+  const Line = oneLine ? OneLine : Text;
+  if (!scheduled) return <Line style={style}>ASAP</Line>;
   const passed = scheduled.getTime() < now;
-  return <Text style={[style, passed && styles.whenPassed]}>{passed ? "Scheduled time passed" : "Scheduled"}: {getWhenText(request)}</Text>;
+  return <Line style={[style, passed && styles.whenPassed]}>{`${passed ? "Scheduled time passed" : "Scheduled"}: ${getWhenText(request)}`}</Line>;
+}
+
+// One line of card text in the Latest queue and Driver availability columns (Task 3.13): it never wraps.
+// If it doesn't fit, it ends with "…" and the mouse shows the full text (the browser's tooltip, the "title").
+// The website can't shrink text to fit (React Native's adjustsFontSizeToFit only works in the phone apps),
+// so the text keeps its size (15 or more).
+function OneLine({ style, children }) {
+  const fullText = [].concat(children).filter((part) => typeof part === "string" || typeof part === "number").join("");
+  // The website's Text doesn't pass a "title" on, so it is set on the page element directly.
+  const setTooltip = (node) => {
+    if (Platform.OS === "web" && node?.setAttribute) node.setAttribute("title", fullText);
+  };
+  return (
+    <Text ref={setTooltip} style={style} numberOfLines={1}>
+      {children}
+    </Text>
+  );
 }
 
 // Why a driver gave this ride back (driver-pages-plan.md Step 2b), e.g. "Vehicle problem", or "" if no driver did.
@@ -208,31 +228,29 @@ function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
       accessibilityState={{ disabled: !canAssign, selected }}
       accessibilityLabel={`${driver.name}, ${badgeLabel}. ${reportText ? `${reportText}. ` : ""}${canAssign ? "Tap to assign a ride." : `Can't assign: ${driver.blockReason}`}`}
     >
-      <Text style={[styles.driverName, !canAssign && styles.driverNameBlocked]}>{driver.name}</Text>
-      <Text style={styles.driverPlace}>{driver.barangay}</Text>
-
-      <View style={styles.dutyLine}>
+      {/* Name and status on one line: a long name gets the "…", the status never does. */}
+      <View style={styles.driverTopRow}>
+        <OneLine style={[styles.driverName, !canAssign && styles.driverNameBlocked]}>{driver.name}</OneLine>
         <View style={[styles.dutyBadge, { backgroundColor: badge.backgroundColor }]}>
-          <Text style={[styles.dutyBadgeText, { color: badge.color }]}>{badgeLabel}</Text>
-        </View>
-        {sinceMs !== null ? (
-          <Text style={styles.dutySince}>
-            since {formatManilaTime(sinceMs)} · {formatDutyDuration(now - sinceMs)}
+          <Text style={[styles.dutyBadgeText, { color: badge.color }]} numberOfLines={1}>
+            {badgeLabel}
           </Text>
-        ) : null}
+        </View>
       </View>
+      <OneLine style={styles.driverPlace}>{driver.barangay}</OneLine>
+      {sinceMs !== null ? (
+        <OneLine style={[styles.dutySince, styles.dutySinceLine]}>{`since ${formatManilaTime(sinceMs)} · ${formatDutyDuration(now - sinceMs)}`}</OneLine>
+      ) : null}
 
-      {driver.dutyStatus === "On break" && driver.breakNote ? <Text style={styles.driverMetaLine}>Note: {driver.breakNote}</Text> : null}
-      {driver.activeAssignment ? <Text style={styles.driverMetaLine}>Ride: {driver.activeAssignment.title || "Assigned ride"}</Text> : null}
-      <Text style={styles.driverMetaLine}>Vehicle: {driver.linkedVehicle?.name || "No linked vehicle"}</Text>
+      {driver.dutyStatus === "On break" && driver.breakNote ? <OneLine style={styles.driverMetaLine}>{`Note: ${driver.breakNote}`}</OneLine> : null}
+      {driver.activeAssignment ? <OneLine style={styles.driverMetaLine}>{`Ride: ${driver.activeAssignment.title || "Assigned ride"}`}</OneLine> : null}
+      <OneLine style={styles.driverMetaLine}>{`Vehicle: ${driver.linkedVehicle?.name || "No linked vehicle"}`}</OneLine>
 
       {/* Last known location: saved only when the driver tapped a step, never in the background (driver-location-plan.md). */}
       {/* The button has its own tap area, so it also works on a greyed-out card (a driver "On a run" is often the one to find). */}
       {location ? (
         <>
-          <Text style={styles.driverMetaLine}>
-            Last known location: {locationAgo} ({LOCATION_STEP_LABELS[location.step] || location.step})
-          </Text>
+          <OneLine style={styles.driverMetaLine}>{`Last known location: ${locationAgo} (${LOCATION_STEP_LABELS[location.step] || location.step})`}</OneLine>
           <Pressable
             style={({ pressed }) => [styles.showOnMapButton, pressed && styles.showOnMapButtonPressed]}
             onPress={(event) => {
@@ -248,25 +266,23 @@ function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
           </Pressable>
         </>
       ) : driver.dutyStatus !== "Off duty" ? (
-        <Text style={styles.driverMetaLine}>No location shared.</Text>
+        <OneLine style={styles.driverMetaLine}>No location shared.</OneLine>
       ) : null}
 
       {appClosed ? (
         <View style={styles.appClosedBox}>
           <MaterialCommunityIcons name="cellphone-off" size={22} color={DESIGN_COLORS.orangeDeep} />
-          <Text style={styles.appClosedText}>
-            Available · app closed. Call {driver.phoneNumber ? formatPhoneForDialing(driver.phoneNumber) : "the driver"} first.
-          </Text>
+          <OneLine style={styles.appClosedText}>{`Available · app closed. Call ${driver.phoneNumber ? formatPhoneForDialing(driver.phoneNumber) : "the driver"} first.`}</OneLine>
         </View>
       ) : null}
       {/* Same peach box as "app closed": the dispatcher should know before giving this driver another ride. */}
       {report ? (
         <View style={styles.appClosedBox}>
           <MaterialCommunityIcons name="alert-circle-outline" size={22} color={DESIGN_COLORS.orangeDeep} />
-          <Text style={styles.appClosedText}>{reportText}</Text>
+          <OneLine style={styles.appClosedText}>{reportText}</OneLine>
         </View>
       ) : null}
-      {!canAssign ? <Text style={styles.blockReasonText}>Can&apos;t assign: {driver.blockReason}</Text> : null}
+      {!canAssign ? <OneLine style={styles.blockReasonText}>{`Can't assign: ${driver.blockReason}`}</OneLine> : null}
     </Pressable>
   );
 }
@@ -351,8 +367,12 @@ function SelectedRequestDetails({ request, now }) {
 
 export default function DispatcherHome() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const compact = width < 1100;
+  // Task 3.13: a wide and tall enough window shows everything at once with no page scrolling
+  // (requests | map + Selected Request | drivers, each scrolling inside itself).
+  // A narrow window (a phone using the website) or a short one keeps the stacked page that scrolls.
+  const fillWindow = !compact && height >= 600;
   const mapSquareSize = useMemo(() => {
     if (compact) {
       return Math.max(320, Math.min(width - 32, 640));
@@ -372,7 +392,6 @@ export default function DispatcherHome() {
   const [assignError, setAssignError] = useState("");
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
   const [activeAssignments, setActiveAssignments] = useState([]);
-  const [incomingCall, setIncomingCall] = useState(null);
   const [ringingCalls, setRingingCalls] = useState([]);
   // Alerts this dispatcher answered that are still going ("Active emergency" cards).
   const [activeCalls, setActiveCalls] = useState([]);
@@ -777,14 +796,29 @@ export default function DispatcherHome() {
     return () => clearInterval(intervalId);
   }, []);
 
-  useEffect(() => {
-    const liveCall = ringingCalls.find((call) => {
-      const seenAt = lastSignOfLifeRef.current[call.id]?.seenAt ?? Date.now();
-      return now - seenAt < STUCK_ALERT_MS;
-    });
+  // Every ringing alert that isn't stuck, oldest first, for the red strip at the top (Task 3.13).
+  // Before, only the first one was shown and the others waited unseen.
+  const liveRingingCalls = useMemo(
+    () =>
+      ringingCalls
+        .filter((call) => {
+          const seenAt = lastSignOfLifeRef.current[call.id]?.seenAt ?? Date.now();
+          return now - seenAt < STUCK_ALERT_MS;
+        })
+        .sort((first, second) => (getTimestampMillis(first.createdAt) ?? 0) - (getTimestampMillis(second.createdAt) ?? 0)),
+    [ringingCalls, now]
+  );
+  const hasRingingCall = liveRingingCalls.length > 0;
 
-    setIncomingCall(liveCall ?? null);
-  }, [ringingCalls, now]);
+  // While an alert rings, the browser tab says "EMERGENCY – SakayNa", so it shows even from another tab.
+  useEffect(() => {
+    if (Platform.OS !== "web" || !hasRingingCall) return undefined;
+    const normalTitle = document.title;
+    document.title = "EMERGENCY – SakayNa";
+    return () => {
+      document.title = normalTitle;
+    };
+  }, [hasRingingCall]);
 
   const openAssignModal = (driver) => {
     setSelectedDriver(driver);
@@ -836,7 +870,9 @@ export default function DispatcherHome() {
     setAssignmentMessage("");
   };
 
-  const answerIncomingCall = async () => {
+  // Answer / Decline in the red strip: the same steps as the old pop-up, for the alert whose button was pressed.
+  // The alert leaves the strip by itself when its status changes (or this dispatcher is in declinedBy).
+  const answerIncomingCall = async (incomingCall) => {
     if (!incomingCall) {
       return;
     }
@@ -864,7 +900,6 @@ export default function DispatcherHome() {
       // Open the Emergency request form, unless one is already open (then this alert's card has its own button).
       const answeredCall = { ...incomingCall, dispatcherId: authUser?.uid ?? "", dispatcherName: displayName, dispatcherPhone, status: "connected" };
       setFormAlert((current) => current ?? answeredCall);
-      setIncomingCall(null);
     } catch (error) {
       console.log("Answer emergency call failed:", error);
     }
@@ -887,7 +922,7 @@ export default function DispatcherHome() {
     }
   };
 
-  const declineIncomingCall = async () => {
+  const declineIncomingCall = async (incomingCall) => {
     if (!incomingCall) {
       return;
     }
@@ -897,15 +932,133 @@ export default function DispatcherHome() {
         declinedBy: arrayUnion(authUser?.uid ?? ""),
         updatedAt: serverTimestamp(),
       });
-      setIncomingCall(null);
     } catch (error) {
       console.log("Decline emergency call failed:", error);
     }
   };
 
-  return (
-    <>
-      <ScrollView ref={pageScrollRef} style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+  // The page under the red strip: the header, then the emergency form (when open) or the dashboard.
+  // fillWindow = the no-scrolling layout (Task 3.13); otherwise the stacked page, as before.
+  const renderPageBody = () => {
+    const topAlerts = activeCalls.length || givenBackRequests.length ? (
+      <>
+        {/* One card per answered emergency that is still going, above everything else. */}
+        {activeCalls.map((call) => (
+          <View key={call.id} style={styles.activeCard}>
+            <Text style={styles.activeTitle} accessibilityRole="header">
+              Active emergency · {call.residentName || "Resident"}
+            </Text>
+            <EmergencyCallerDetails call={call} />
+            {/* One ride per alert: once the form's ride is saved, the button becomes a "Ride created" line. */}
+            {call.linkedRequestId ? (
+              <View style={styles.rideCreatedLine}>
+                <MaterialCommunityIcons name="check-circle-outline" size={24} color={DESIGN_COLORS.hallGreen} />
+                <Text style={styles.rideCreatedText}>
+                  Ride {call.linkedRequestReference} created · {call.linkedDriverName || "Driver"} · {call.linkedVehicleName || "Vehicle"}
+                </Text>
+              </View>
+            ) : (
+              <Pressable
+                style={({ pressed }) => [styles.formButton, pressed && styles.formButtonPressed]}
+                onPress={() => setFormAlert(call)}
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="clipboard-text-outline" size={24} color={DESIGN_COLORS.paperWhite} />
+                <Text style={styles.formButtonText}>Open emergency form</Text>
+              </Pressable>
+            )}
+            <Pressable
+              style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
+              onPress={() => {
+                setEndError("");
+                setEndingCall(call);
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.outlineButtonText}>End emergency</Text>
+            </Pressable>
+          </View>
+        ))}
+
+        {/* "Needs a new driver": one orange banner per ride a driver gave back (driver-pages-plan.md Step 2b).
+            Orange with dark words: important, but not an emergency. Tapping it shows the ride in Selected Request. */}
+        {givenBackRequests.map((request) => {
+          const driverName = request.lastUnableDriverName || "A driver";
+          const vehicleName = request.lastUnableVehicleName ? ` · ${request.lastUnableVehicleName}` : "";
+          return (
+            <Pressable
+              key={request.id}
+              style={({ pressed }) => [styles.givenBackBanner, pressed && styles.givenBackBannerPressed]}
+              onPress={() => {
+                setSelectedRequest(request);
+                // Back to the ride's pins (hides a driver shown with "Show on map"), like the request cards.
+                setMapDriverId(null);
+              }}
+              accessibilityRole="button"
+              accessibilityHint="Shows this ride in Selected Request"
+            >
+              <MaterialCommunityIcons name="alert-outline" size={28} color={DESIGN_COLORS.ink} />
+              <View style={styles.givenBackBannerCopy}>
+                <Text style={styles.givenBackBannerTitle} accessibilityRole="header">
+                  Needs a new driver: {request.title}
+                </Text>
+                <Text style={styles.givenBackBannerText}>
+                  {driverName} can&apos;t do this ride ({getGivenBackReason(request)}
+                  {vehicleName}). Choose another driver.
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </>
+    ) : null;
+
+    const formView = formAlert ? (
+      <View style={[styles.container, compact && styles.containerCompact]}>
+        {/* The form's driver choice uses the Assign window's memory (selectedDriver), so assignableVehicles
+            is that driver's vehicle list, worked out with the same rules. The two are never open together. */}
+        <EmergencyRequestForm
+          key={formAlert.id}
+          alert={formAlert}
+          dispatcherId={authUser?.uid ?? ""}
+          dispatcherName={displayName}
+          onCancel={() => setFormAlert(null)}
+          onSubmitted={() => setFormAlert(null)}
+          onOpenLocation={openLocationInMaps}
+          drivers={dispatcherAvailabilityRows.filter((driver) => !driver.blockReason)}
+          vehicles={assignableVehicles}
+          vehiclesDriverId={selectedDriver?.id ?? ""}
+          onChooseDriver={setSelectedDriver}
+        />
+      </View>
+    ) : null;
+
+    const mapPanelView = (
+      <View
+        role="region"
+        aria-label="Live map"
+        style={[
+          styles.mapPanel,
+          compact && styles.mapPanelCompact,
+          // No-scrolling layout: no square size; the map takes all the width between the side columns.
+          fillWindow
+            ? styles.mapPanelFill
+            : {
+                width: mapSquareSize,
+                height: mapSquareSize,
+                flexBasis: mapSquareSize,
+                maxWidth: mapSquareSize,
+              },
+        ]}
+      >
+        <View style={[styles.mapPlaceholder, fillWindow && styles.mapPlaceholderFill]}>
+          <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} driverCoordinates={mapDriverCoordinates} driverLabel={mapDriverLabel} focusPickup minHeight={fillWindow ? 0 : 280} />
+        </View>
+      </View>
+    );
+
+    return (
+      <>
         <AppBrandHeader role="Dispatcher" name={displayName} onLogoutPress={async () => {
           try {
             // Go to Log In first, then sign out. Signing out first makes AuthRouteGate take the screens
@@ -917,111 +1070,29 @@ export default function DispatcherHome() {
           }
         }} />
 
-        {formAlert ? (
-          <View style={[styles.container, compact && styles.containerCompact]}>
-            {/* The form's driver choice uses the Assign window's memory (selectedDriver), so assignableVehicles
-                is that driver's vehicle list, worked out with the same rules. The two are never open together. */}
-            <EmergencyRequestForm
-              key={formAlert.id}
-              alert={formAlert}
-              dispatcherId={authUser?.uid ?? ""}
-              dispatcherName={displayName}
-              onCancel={() => setFormAlert(null)}
-              onSubmitted={() => setFormAlert(null)}
-              onOpenLocation={openLocationInMaps}
-              drivers={dispatcherAvailabilityRows.filter((driver) => !driver.blockReason)}
-              vehicles={assignableVehicles}
-              vehiclesDriverId={selectedDriver?.id ?? ""}
-              onChooseDriver={setSelectedDriver}
-            />
-          </View>
-        ) : null}
+        {/* The emergency form scrolls inside the window in the no-scrolling layout. */}
+        {formView && fillWindow ? (
+          <ScrollView style={styles.fillScroll} showsVerticalScrollIndicator={false}>
+            {formView}
+          </ScrollView>
+        ) : (
+          formView
+        )}
 
         {/* While the form is open, the normal page is hidden, not removed, so the map doesn't reload when the form closes. */}
-        <View style={[styles.container, compact && styles.containerCompact, formAlert && styles.hidden]}>
-          {/* One card per answered emergency that is still going, above everything else. */}
-          {activeCalls.map((call) => (
-            <View key={call.id} style={styles.activeCard}>
-              <Text style={styles.activeTitle} accessibilityRole="header">
-                Active emergency · {call.residentName || "Resident"}
-              </Text>
-              <EmergencyCallerDetails call={call} />
-              {/* One ride per alert: once the form's ride is saved, the button becomes a "Ride created" line. */}
-              {call.linkedRequestId ? (
-                <View style={styles.rideCreatedLine}>
-                  <MaterialCommunityIcons name="check-circle-outline" size={24} color={DESIGN_COLORS.hallGreen} />
-                  <Text style={styles.rideCreatedText}>
-                    Ride {call.linkedRequestReference} created · {call.linkedDriverName || "Driver"} · {call.linkedVehicleName || "Vehicle"}
-                  </Text>
-                </View>
-              ) : (
-                <Pressable
-                  style={({ pressed }) => [styles.formButton, pressed && styles.formButtonPressed]}
-                  onPress={() => setFormAlert(call)}
-                  accessibilityRole="button"
-                >
-                  <MaterialCommunityIcons name="clipboard-text-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-                  <Text style={styles.formButtonText}>Open emergency form</Text>
-                </Pressable>
-              )}
-              <Pressable
-                style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
-                onPress={() => {
-                  setEndError("");
-                  setEndingCall(call);
-                }}
-                accessibilityRole="button"
-              >
-                <Text style={styles.outlineButtonText}>End emergency</Text>
-              </Pressable>
-            </View>
-          ))}
+        <View style={[styles.container, compact && styles.containerCompact, fillWindow && styles.containerFill, formAlert && styles.hidden]}>
+          {/* Active emergency cards and "Needs a new driver" banners stay at the top. In the no-scrolling layout they
+              use at most 40% of the height and scroll inside themselves if there are more, so the columns keep room. */}
+          {topAlerts && fillWindow ? (
+            <ScrollView style={styles.topAlertsFill} contentContainerStyle={styles.topAlertsContent} showsVerticalScrollIndicator={false}>
+              {topAlerts}
+            </ScrollView>
+          ) : (
+            topAlerts
+          )}
 
-          {/* "Needs a new driver": one orange banner per ride a driver gave back (driver-pages-plan.md Step 2b).
-              Orange with dark words: important, but not an emergency. Tapping it shows the ride in Selected Request. */}
-          {givenBackRequests.map((request) => {
-            const driverName = request.lastUnableDriverName || "A driver";
-            const vehicleName = request.lastUnableVehicleName ? ` · ${request.lastUnableVehicleName}` : "";
-            return (
-              <Pressable
-                key={request.id}
-                style={({ pressed }) => [styles.givenBackBanner, pressed && styles.givenBackBannerPressed]}
-                onPress={() => {
-                  setSelectedRequest(request);
-                  // Back to the ride's pins (hides a driver shown with "Show on map"), like the request cards.
-                  setMapDriverId(null);
-                }}
-                accessibilityRole="button"
-                accessibilityHint="Shows this ride in Selected Request"
-              >
-                <MaterialCommunityIcons name="alert-outline" size={28} color={DESIGN_COLORS.ink} />
-                <View style={styles.givenBackBannerCopy}>
-                  <Text style={styles.givenBackBannerTitle} accessibilityRole="header">
-                    Needs a new driver: {request.title}
-                  </Text>
-                  <Text style={styles.givenBackBannerText}>
-                    {driverName} can&apos;t do this ride ({getGivenBackReason(request)}
-                    {vehicleName}). Choose another driver.
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-
-          <View style={styles.sectionLabels}>
-            <View style={styles.sectionLabelLeft}>
-              <Text style={styles.sectionLabelText}>Pending Requests</Text>
-            </View>
-            <View style={styles.sectionLabelMap}>
-              <Text style={styles.sectionLabelText}>Live Map</Text>
-            </View>
-            <View style={styles.sectionLabelRight}>
-              <Text style={styles.sectionLabelText}>Drivers</Text>
-            </View>
-          </View>
-
-          <View style={styles.mainGrid}>
-            <View style={[styles.leftPanel, compact && styles.sidePanelCompact, { height: mapSquareSize }]}>
+          <View style={[styles.mainGrid, fillWindow && styles.mainGridFill]}>
+            <View role="region" aria-label="Pending requests" style={[styles.leftPanel, compact && styles.sidePanelCompact, fillWindow ? styles.sidePanelFill : { height: mapSquareSize }]}>
               <Text style={styles.panelLabel}>Latest queue</Text>
               <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
                 {visibleRequests.length ? (
@@ -1043,23 +1114,24 @@ export default function DispatcherHome() {
                         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
                           <Text style={styles.requestChipText}>{request.level}</Text>
                         </View>
-                        <WhenLabel request={request} now={now} style={styles.requestStatus} />
+                        <WhenLabel request={request} now={now} style={styles.requestStatus} oneLine />
                       </View>
-                      <Text style={styles.requestTitle}>{request.title}</Text>
+                      {/* Every line stays one line; a long one ends with "…" and shows in full on mouse hover. */}
+                      <OneLine style={styles.requestTitle}>{request.title}</OneLine>
                       {getGivenBackReason(request) ? (
                         <View style={styles.givenBackTag}>
-                          <Text style={styles.givenBackTagText}>Driver can&apos;t do this ride: {getGivenBackReason(request)}</Text>
+                          <OneLine style={styles.givenBackTagText}>{`Driver can't do this ride: ${getGivenBackReason(request)}`}</OneLine>
                         </View>
                       ) : null}
-                      <Text style={styles.requestMeta}>{getPassengerCountText(request)} · {request.barangay}</Text>
+                      <OneLine style={styles.requestMeta}>{`${getPassengerCountText(request)} · ${request.barangay}`}</OneLine>
                       {isBigGroup(request.passengerCount) ? (
                         <View style={styles.bigGroupRow}>
                           <MaterialCommunityIcons name="alert-outline" size={16} color={DESIGN_COLORS.ink} />
-                          <Text style={[styles.requestMeta, styles.requestHelp, styles.bigGroupText]}>{BIG_GROUP_NOTE}</Text>
+                          <OneLine style={[styles.requestMeta, styles.requestHelp, styles.bigGroupText]}>{BIG_GROUP_NOTE}</OneLine>
                         </View>
                       ) : null}
                       {getAssistanceText(request) !== "None" ? (
-                        <Text style={[styles.requestMeta, styles.requestHelp]}>Needs help: {getAssistanceText(request)}</Text>
+                        <OneLine style={[styles.requestMeta, styles.requestHelp]}>{`Needs help: ${getAssistanceText(request)}`}</OneLine>
                       ) : null}
                     </TouchableOpacity>
                   ))
@@ -1072,24 +1144,9 @@ export default function DispatcherHome() {
               </ScrollView>
             </View>
 
-            <View
-              style={[
-                styles.mapPanel,
-                compact && styles.mapPanelCompact,
-                {
-                  width: mapSquareSize,
-                  height: mapSquareSize,
-                  flexBasis: mapSquareSize,
-                  maxWidth: mapSquareSize,
-                },
-              ]}
-            >
-              <View style={styles.mapPlaceholder}>
-                <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} driverCoordinates={mapDriverCoordinates} driverLabel={mapDriverLabel} focusPickup />
-              </View>
-            </View>
+            {mapPanelView}
 
-            <View style={[styles.rightPanel, compact && styles.sidePanelCompact, { height: mapSquareSize }]}>
+            <View role="region" aria-label="Drivers" style={[styles.rightPanel, compact && styles.sidePanelCompact, fillWindow ? styles.sidePanelFill : { height: mapSquareSize }]}>
               <Text style={styles.panelLabel}>Driver availability</Text>
               <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
                 {dispatcherAvailabilityRows.length ? (
@@ -1106,10 +1163,37 @@ export default function DispatcherHome() {
             </View>
           </View>
 
-          <SelectedRequestDetails request={selectedRequest} now={now} />
+          {/* Selected Request: under all three columns, full width. In the no-scrolling layout it takes the bottom 40%
+              and scrolls inside itself, so it is always on screen. */}
+          {fillWindow ? (
+            <ScrollView style={styles.detailsScroll} showsVerticalScrollIndicator={false}>
+              <SelectedRequestDetails request={selectedRequest} now={now} />
+            </ScrollView>
+          ) : (
+            <SelectedRequestDetails request={selectedRequest} now={now} />
+          )}
         </View>
-      </ScrollView>
+      </>
+    );
+  };
 
+  return (
+    <>
+      {/* Task 3.13: the whole page is one column: the red emergency strip (only while an alert rings), then the page.
+          Wide window (fillWindow): the page is exactly the window's height and doesn't scroll; each column scrolls inside itself.
+          Narrow or short window: the old stacked page that scrolls. */}
+      <View style={[styles.screen, fillWindow && { height }]}>
+        <EmergencyAlertStrip calls={liveRingingCalls} onAnswer={answerIncomingCall} onDecline={declineIncomingCall} formatPhone={formatPhoneForDialing} />
+        {fillWindow ? (
+          <View style={styles.pageFill}>
+            {renderPageBody()}
+          </View>
+        ) : (
+          <ScrollView ref={pageScrollRef} style={styles.page} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            {renderPageBody()}
+          </ScrollView>
+        )}
+      </View>
       <Modal visible={assignModalOpen} transparent animationType="fade" onRequestClose={() => setAssignModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, compact && styles.modalCardCompact]}>
@@ -1256,55 +1340,48 @@ export default function DispatcherHome() {
         </View>
       </Modal>
 
-      <Modal visible={Boolean(incomingCall)} transparent animationType="fade" onRequestClose={declineIncomingCall}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, compact && styles.modalCardCompact]}>
-            <Text style={styles.modalTitle}>Incoming Emergency Call</Text>
-            <Text style={styles.modalSubtitle}>{incomingCall?.residentName || "Resident"} is calling the dispatcher station.</Text>
-            <EmergencyCallerDetails call={incomingCall} />
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.modalButton, styles.declineButton]} onPress={declineIncomingCall}>
-                <Text style={styles.declineButtonText}>Decline</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalButton, styles.answerButton]} onPress={answerIncomingCall}>
-                <Text style={styles.answerButtonText}>Answer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  // The red strip + the page, one column (Task 3.13). In the no-scrolling layout it gets the window's height (in the code).
+  screen: { flex: 1, backgroundColor: "#F5F7F6" },
   page: { flex: 1, backgroundColor: "#F5F7F6" },
+  // No-scrolling layout: the page under the strip fills the rest; minHeight 0 lets the columns shrink and scroll inside.
+  pageFill: { flex: 1, minHeight: 0 },
+  fillScroll: { flex: 1 },
+  containerFill: { flex: 1, minHeight: 0 },
+  topAlertsFill: { flexGrow: 0, flexShrink: 1, maxHeight: "40%" },
+  topAlertsContent: { gap: 18 },
+  // No-scrolling layout: the three columns take the top 60%, Selected Request (detailsScroll) the bottom 40%.
+  mainGridFill: { flex: 60, minHeight: 0, flexWrap: "nowrap" },
+  sidePanelFill: { height: "auto" },
+  mapPanelFill: { flex: 1, minWidth: 360, height: "auto" },
+  mapPlaceholderFill: { minHeight: 0 },
+  detailsScroll: { flex: 40, minHeight: 160 },
   content: { paddingBottom: 24 },
   container: { width: "100%", maxWidth: 1480, alignSelf: "center", padding: 24, gap: 18 },
   containerCompact: { padding: 16, gap: 14 },
-  sectionLabels: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end" },
-  sectionLabelLeft: { flexBasis: 220, maxWidth: 280, flexGrow: 1, alignItems: "flex-start" },
-  sectionLabelMap: { flex: 4, minWidth: 300, alignItems: "center" },
-  sectionLabelRight: { flexBasis: 220, maxWidth: 280, flexGrow: 1, alignItems: "flex-start" },
-  sectionLabelText: { fontSize: 24, fontWeight: "800", color: "#06774B" },
   mainGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "stretch" },
-  leftPanel: { flexBasis: 220, maxWidth: 280, flexGrow: 1, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
-  sidePanelCompact: { flexBasis: "100%", maxWidth: "100%", height: "auto" },
+  // Side columns 270 wide (never under 260 or over 280), so the map gets the rest (Task 3.13).
+  leftPanel: { flexBasis: 270, minWidth: 260, maxWidth: 280, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
+  sidePanelCompact: { flexBasis: "100%", minWidth: 0, maxWidth: "100%", height: "auto" },
   panelLabel: { fontSize: 16, fontWeight: "700", color: "#496B5F" },
   panelScrollArea: { flex: 1 },
   panelScrollContent: { gap: 10, paddingBottom: 2 },
   requestCard: { borderRadius: 18, padding: 16 },
   requestCardActive: { borderWidth: 2, borderColor: "#06774B" },
-  requestTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" },
-  requestChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, alignSelf: "flex-start" },
-  requestChipText: { fontSize: 12, fontWeight: "700", color: "#FFFFFF" },
-  requestStatus: { fontSize: 13, fontWeight: "700", color: "#344640" },
+  // Chip and ASAP / Scheduled on one line (Task 3.13): the chip keeps its size, the time text gets the "…".
+  requestTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  requestChip: { flexShrink: 0, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, alignSelf: "flex-start" },
+  requestChipText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
+  requestStatus: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: "700", color: "#344640" },
   requestTitle: { marginTop: 10, fontSize: 18, fontWeight: "800", color: "#111111" },
-  requestMeta: { marginTop: 10, fontSize: 12, lineHeight: 17, color: "#465752" },
+  requestMeta: { marginTop: 10, fontSize: 15, lineHeight: 20, color: "#465752" },
   requestHelp: { marginTop: 6, fontWeight: "700", color: "#24342E" },
   // 10 or more people (Task 3.10): dark bold words with a warning icon, readable on every card color.
-  bigGroupRow: { marginTop: 6, flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  bigGroupRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 6 },
   bigGroupText: { flex: 1, marginTop: 0, fontWeight: "700", color: DESIGN_COLORS.ink },
   whenPassed: { color: "#B42318", fontWeight: "800" },
   assignEarlyWarning: { marginTop: 12, padding: 12, borderRadius: 12, overflow: "hidden", backgroundColor: "#FFF3CD", color: "#5C3F00", fontSize: 14, lineHeight: 20, fontWeight: "700" },
@@ -1328,22 +1405,24 @@ const styles = StyleSheet.create({
   mapCross: { fontSize: 58, lineHeight: 58, color: "#A4B0AA" },
   mapPlaceholderTitle: { marginTop: 18, fontSize: 26, fontWeight: "800", color: "#2D3934", textAlign: "center" },
   mapPlaceholderText: { marginTop: 12, maxWidth: 520, fontSize: 16, lineHeight: 24, color: "#61716B", textAlign: "center" },
-  rightPanel: { flexBasis: 220, maxWidth: 280, flexGrow: 1, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
+  rightPanel: { flexBasis: 270, minWidth: 260, maxWidth: 280, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
   // Driver cards (driver-duty-plan.md Step 5, DESIGN.md look). Flat: no shadows.
   driverCard: { padding: 14, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
   driverCardSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen },
   driverCardPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   // Greyed out: this driver can't be given a ride now (the reason is written on the card).
   driverCardBlocked: { borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
-  driverName: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  driverName: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
   driverNameBlocked: { color: DESIGN_COLORS.inkMuted },
   driverPlace: { marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  dutyLine: { marginTop: 10, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
-  dutyBadge: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999 },
+  dutyBadge: { flexShrink: 0, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999 },
+  // Driver card's first line (Task 3.13): the name (shrinks, gets the "…") then the status badge (never shrinks).
+  driverTopRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dutySinceLine: { marginTop: 6 },
   dutyBadgeText: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
   dutySince: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, fontVariant: ["tabular-nums"] },
   driverMetaLine: { marginTop: 6, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.ink },
-  appClosedBox: { marginTop: 10, flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
+  appClosedBox: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
   appClosedText: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
   // Outline button (DESIGN.md: corner 16, at least 48 tall, icon with a word).
   showOnMapButton: {
@@ -1365,10 +1444,10 @@ const styles = StyleSheet.create({
   assignErrorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 15, lineHeight: 20, fontWeight: "600", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
   emptyRequestsCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
   emptyRequestsTitle: { fontSize: 16, fontWeight: "800", color: "#24342E" },
-  emptyRequestsText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#66776F" },
+  emptyRequestsText: { marginTop: 6, fontSize: 15, lineHeight: 20, color: "#66776F" },
   emptyDriversCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
   emptyDriversTitle: { fontSize: 16, fontWeight: "800", color: "#24342E" },
-  emptyDriversText: { marginTop: 6, fontSize: 13, lineHeight: 19, color: "#66776F" },
+  emptyDriversText: { marginTop: 6, fontSize: 15, lineHeight: 20, color: "#66776F" },
   actionButtonDisabled: { opacity: 0.65 },
   modalOverlay: {
     flex: 1,
@@ -1490,7 +1569,7 @@ const styles = StyleSheet.create({
   givenBackBannerTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
   givenBackBannerText: { marginTop: 4, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   // The same message on the ride's card in the list: a small orange box with dark words.
-  givenBackTag: { alignSelf: "flex-start", marginTop: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, backgroundColor: DESIGN_COLORS.sakayOrange },
+  givenBackTag: { alignSelf: "flex-start", maxWidth: "100%", marginTop: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, backgroundColor: DESIGN_COLORS.sakayOrange },
   givenBackTagText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
   // And in Selected Request: a peach box (important info).
   givenBackBox: { marginTop: 14, padding: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
