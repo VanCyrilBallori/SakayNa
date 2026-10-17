@@ -95,7 +95,7 @@ Enhance perceived performance, accessibility, and user feedback without altering
 
 ## 🧭 Phase 3: Group Lead's Change List (big-update)
 
-**Status (October 15, 2026): Tasks 3.1 to 3.13 and 3.13b are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Tasks 3.14 onward are not started. Nothing is merged into `master`, so the defense set (demo-ready-17) is unchanged. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
+**Status (October 17, 2026): Tasks 3.1 to 3.14 and 3.13b are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Tasks 3.15 onward are not started. Nothing is merged into `master`, so the defense set (demo-ready-17) is unchanged. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
 
 ### Ground rules for Phase 3
 
@@ -156,7 +156,7 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 7. **3.24 Dark mode last** (or drop it). It touches every screen and goes against DESIGN.md.
 8. **Stage D** is its own plan after the defense.
 
-### Progress on big-update (October 15, 2026)
+### Progress on big-update (October 17, 2026)
 
 All of these are tested by the owner and committed on `big-update`. Phone changes reach testers only with a new APK (ground rule 5); the website changes go live only after a merge into `master` → `main`.
 
@@ -176,6 +176,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.12 Driver history under a fixed duty card | `6d3b908` | ✅ |
 | 3.13 Dispatcher home without page scrolling | `2ffc79e`, `0c9cd6b`, `ec954cd`, `c65da10` | ✅ |
 | 3.13b Alert sound | `5545656` | ✅ |
+| 3.14 Admin Emergency Calls and Operations buttons | `66c04f5` | ✅ |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
@@ -193,6 +194,10 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - **Selected Request** runs along the bottom, full width, in 4 columns, and **never scrolls**: values are one line with "…" and the full text on hover (Notes 2 lines). If the window is too short for everything, the page uses the stacked layout instead, so nothing is cut off.
   - Header: the shield icon with "SakayNa" written next to it and the barangay name under it; Log out moved into an account menu on the initials circle (closes on outside click or Escape). In the stacked layout the header and the strip stay pinned at the top.
 - **3.13b (new):** a soft "ding-dong" every 2 seconds while an alert rings (`public/sounds/emergency-alert.wav`, made with a small script, no new package). It stops when the alert is answered, declined or ends. **Mute lasts until the page is reloaded** (not remembered), with an orange "Sound off" button and a "Sound off" line in the strip. If the browser blocks sound until the page is clicked, the strip shows "Sound blocked: click to turn sound on".
+- **3.14:**
+  - **Emergency Calls:** each call is one row: status pill and time side by side, "Name · Barangay", then what happened on one line. Long text wraps instead of being cut off. Row text is 15, the title 22.
+  - Only this section got wider (900 → 1200). Under 760 px wide the rows still stack. The red "No answer" box and the order of calls are unchanged.
+  - **Operations:** only the main-page buttons fit their words (Manage profile, Create Dispatcher, Add maintenance record, Save operational settings). The buttons in the pop-ups stay full width, and the Reports download button was not changed.
 
 ---
 
@@ -263,7 +268,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 - **What changes:** `app/dispatcher-home.jsx` uses the full browser height: requests (left), a smaller map (middle), drivers (right). Each column scrolls inside itself; the page itself does not scroll. Today's fixed 560px heights become "fill the window".
 - **Could break:** the incoming emergency alert and the active emergency card must stay visible at the top. Narrow screens (a phone using the website) still need a stacked layout that scrolls.
 
-#### Task 3.14: Admin Emergency Calls and Operations buttons
+#### Task 3.14: Admin Emergency Calls and Operations buttons ✅ Done (66c04f5)
 - **What changes:** `AdminCallSessionsSection.jsx`: shorter rows, one line per call where possible. `AdminOperationsPanel.jsx`: buttons as wide as their words instead of full width.
 - **Could break:** only looks. Check the "No answer" overdue list still sorts the same.
 
