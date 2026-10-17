@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { getWhenText } from "../../resident/utils/requestMapper";
@@ -229,10 +230,7 @@ export default function AdminRequestsSection({
       </View>
 
       {isLoadingRequests ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator color={DESIGN_COLORS.hallGreen} />
-          <Text style={styles.body}>Loading request history...</Text>
-        </View>
+        <ListSkeleton label="Loading request history" />
       ) : filteredRequests.length ? (
         <View style={[styles.grid, twoColumns && styles.gridTwo]}>
           {filteredRequests.map((request) => (

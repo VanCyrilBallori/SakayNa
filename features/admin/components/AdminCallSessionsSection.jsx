@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDateTime, getDurationLabel } from "../../../lib/dates";
 
@@ -122,10 +123,7 @@ export default function AdminCallSessionsSection({ callSessions, isLoadingCallSe
       {callSessionsError ? <Text style={styles.errorText}>{callSessionsError}</Text> : null}
 
       {isLoadingCallSessions ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator color={DESIGN_COLORS.emergencyRed} />
-          <Text style={styles.body}>Loading emergency call history...</Text>
-        </View>
+        <ListSkeleton label="Loading emergency call history" />
       ) : callSessions.length ? (
         <>
           <View style={styles.chips}>

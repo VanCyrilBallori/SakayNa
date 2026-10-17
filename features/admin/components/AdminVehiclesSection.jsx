@@ -1,5 +1,6 @@
-import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
+import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { formatDate } from "../../../lib/dates";
 
 export default function AdminVehiclesSection({
@@ -30,10 +31,7 @@ export default function AdminVehiclesSection({
       ) : null}
 
       {isLoadingVehicles ? (
-        <View style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <ActivityIndicator color="#06774B" />
-          <Text style={[styles.emptyText, { color: theme.mutedText }]}>Loading vehicle records...</Text>
-        </View>
+        <ListSkeleton label="Loading vehicle records" />
       ) : filteredVehicles.length ? (
         <View style={styles.vehicleRow}>
           {filteredVehicles.map((vehicle) => (
