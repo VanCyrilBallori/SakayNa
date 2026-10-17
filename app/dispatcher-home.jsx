@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import AppBrandHeader from "../components/AppBrandHeader";
+import ListSkeleton from "../components/ui/ListSkeleton";
 import EmergencyAlertStrip from "../features/dispatcher/components/EmergencyAlertStrip";
 import EmergencyRequestForm from "../features/dispatcher/components/EmergencyRequestForm";
 import useAlertSound from "../features/dispatcher/hooks/useAlertSound";
@@ -410,6 +411,10 @@ export default function DispatcherHome() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [drivers, setDrivers] = useState([]);
+  // "Has the first answer (or an error) arrived yet?" Until then the two columns show grey placeholders (Task 3.16).
+  // Firebase waits for the server while it can reach it, so the first answer is never a false "empty" when online.
+  const [requestsLoaded, setRequestsLoaded] = useState(false);
+  const [driversLoaded, setDriversLoaded] = useState(false);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [requestToAssign, setRequestToAssign] = useState(null);
   const [, setAssignmentMessage] = useState("");
@@ -569,6 +574,7 @@ export default function DispatcherHome() {
     : "";
 
   useEffect(() => {
+    setRequestsLoaded(false);
     const requestsQuery = query(collection(db, "transportRequests"), where("status", "==", "Pending"));
     const unsubscribe = onSnapshot(
       requestsQuery,
@@ -605,6 +611,7 @@ export default function DispatcherHome() {
         });
 
         setRequests(nextRequests);
+        setRequestsLoaded(true);
         setSelectedRequest((current) => {
           if (current && nextRequests.some((request) => request.id === current.id)) {
             return current;
@@ -613,13 +620,17 @@ export default function DispatcherHome() {
           return nextRequests[0] ?? null;
         });
       },
-      (error) => console.log("Transport requests listener warning:", error)
+      (error) => {
+        console.log("Transport requests listener warning:", error);
+        setRequestsLoaded(true);
+      }
     );
 
     return unsubscribe;
   }, []);
 
   useEffect(() => {
+    setDriversLoaded(false);
     const driversQuery = query(collection(db, "users"), where("role", "==", "Driver"));
     const unsubscribe = onSnapshot(
       driversQuery,
@@ -651,6 +662,7 @@ export default function DispatcherHome() {
         });
 
         setDrivers(nextDrivers);
+        setDriversLoaded(true);
         setSelectedDriver((current) => {
           if (!current) {
             return nextDrivers[0] ?? null;
@@ -659,7 +671,10 @@ export default function DispatcherHome() {
           return nextDrivers.find((driver) => driver.id === current.id) ?? nextDrivers[0] ?? null;
         });
       },
-      (error) => console.log("Drivers listener warning:", error)
+      (error) => {
+        console.log("Drivers listener warning:", error);
+        setDriversLoaded(true);
+      }
     );
 
     return unsubscribe;
@@ -1126,7 +1141,9 @@ export default function DispatcherHome() {
             <View role="region" aria-label="Pending requests" style={[styles.leftPanel, compact && styles.sidePanelCompact, fillWindow ? styles.sidePanelFill : { height: mapSquareSize }]}>
               <Text style={styles.panelLabel}>Latest queue</Text>
               <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
-                {visibleRequests.length ? (
+                {!requestsLoaded ? (
+                  <ListSkeleton label="Loading requests" />
+                ) : visibleRequests.length ? (
                   visibleRequests.map((request) => (
                       <TouchableOpacity
                       key={request.id}
@@ -1180,7 +1197,9 @@ export default function DispatcherHome() {
             <View role="region" aria-label="Drivers" style={[styles.rightPanel, compact && styles.sidePanelCompact, fillWindow ? styles.sidePanelFill : { height: mapSquareSize }]}>
               <Text style={styles.panelLabel}>Driver availability</Text>
               <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
-                {dispatcherAvailabilityRows.length ? (
+                {!driversLoaded ? (
+                  <ListSkeleton label="Loading drivers" />
+                ) : dispatcherAvailabilityRows.length ? (
                   dispatcherAvailabilityRows.map((driver) => (
                     <DriverDutyRow key={driver.id} driver={driver} now={now} selected={selectedDriver?.id === driver.id} onPress={() => openAssignModal(driver)} onShowOnMap={() => setMapDriverId(driver.id)} />
                   ))
