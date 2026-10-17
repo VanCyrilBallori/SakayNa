@@ -95,7 +95,7 @@ Enhance perceived performance, accessibility, and user feedback without altering
 
 ## 🧭 Phase 3: Group Lead's Change List (big-update)
 
-**Status (October 17, 2026): Tasks 3.1 to 3.14 and 3.13b are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Tasks 3.15 onward are not started. Nothing is merged into `master`, so the defense set (demo-ready-17) is unchanged. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
+**Status (October 17, 2026): Tasks 3.1 to 3.14, 3.13b and 3.16 are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Task 3.15 and Tasks 3.17 onward are not started. Nothing is merged into `master`, so the defense set (demo-ready-17) is unchanged. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
 
 ### Ground rules for Phase 3
 
@@ -178,6 +178,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.13 Dispatcher home without page scrolling | `2ffc79e`, `0c9cd6b`, `ec954cd`, `c65da10` | ✅ |
 | 3.13b Alert sound | `5545656` | ✅ |
 | 3.14 Admin Emergency Calls and Operations buttons | `66c04f5` | ✅ |
+| 3.16 Website skeleton loaders | `c0147ff` (Admin, part 1), `10be62d` (Dispatcher, part 2) | ✅ |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
@@ -201,6 +202,11 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - **Emergency Calls:** each call is one row: status pill and time side by side, "Name · Barangay", then what happened on one line. Long text wraps instead of being cut off. Row text is 15, the title 22.
   - Only this section got wider (900 → 1200). Under 760 px wide the rows still stack. The red "No answer" box and the order of calls are unchanged.
   - **Operations:** only the main-page buttons fit their words (Manage profile, Create Dispatcher, Add maintenance record, Save operational settings). The buttons in the pop-ups stay full width, and the Reports download button was not changed.
+- **3.16:**
+  - One shared piece, `components/ui/ListSkeleton.jsx`: 3 grey cards that fade softly (still with "reduce motion"), with a "Loading …" label for screen readers.
+  - **Admin (part 1):** Users, Requests, Vehicles and Emergency Calls show it instead of the spinner. Their existing loading flags already end on success or error, so it can't get stuck.
+  - **Dispatcher (part 2):** "Latest queue" and "Driver availability" show it until their first answer or an error arrives. Before, they said "Inbox empty" / "No registered drivers" while still loading. Firebase waits for the server while it can reach it, so no false "empty" flash when online; when offline, "Inbox empty" shows after about 10 seconds, as before. The emergency strip and sound load separately and never wait for it.
+  - **Spinners kept on purpose:** Resident Verification, Driver Applications, Duty Records, and the start-up screens ("Checking admin access…" and the login gate, which phones share through `ScreenState.jsx`).
 
 ---
 
@@ -284,7 +290,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 - **Rules:** the user may already save new fields on their own profile, so maybe no rules change. Check carefully before building. If the Admin must approve deletions instead, the `deletionRequests` rules need a change.
 - **Could break:** deleting the wrong account is permanent. Google sign-in accounts have no password to re-enter, so they need a different confirm step. The Privacy Policy should say what is kept after deletion.
 
-#### Task 3.16: Website skeleton loaders
+#### Task 3.16: Website skeleton loaders ✅ Done (c0147ff, 10be62d)
 - **What changes:** on the website only, loading spinners become grey placeholder shapes that look like the cards being loaded (Admin sections, Dispatcher lists, start-up screens). One small shared placeholder component; phones keep the plain spinner (3.8).
 - **Note:** this **replaces Phase 2's Task 2.1** (skeletons on phones). The lead now wants spinners on phones and skeletons on the website.
 - **Could break:** nothing in the data. A placeholder must never stay forever if loading fails; the error message must still appear.
