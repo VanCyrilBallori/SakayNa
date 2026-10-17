@@ -144,6 +144,7 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 | **Stage D: future feature (own plan, after the defense)** |||||||
 | 3.25 | City Admin role (Barangay Admin vs City Admin) | XL | **High** (all Admin rules) | **Yes** (big) | Yes | Yes |
 | 3.26 | Really assigning a second vehicle/driver to one big group | L | High (ride flow) | Maybe | Yes | Yes |
+| 3.27 | Resident drops a destination pin on the map (real lat/lng) | M | Med | No | Yes | Yes |
 
 ### Suggested order (safest and most important first)
 
@@ -182,6 +183,8 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
 - **3.4:** inside Available, drivers with the app closed come after those with it open; then On a run, On break, Off duty, not approved. Same group = A to Z by name.
 - **3.5:** an exact pin is zoom 16; an address lookup is zoom **15** with its "(approximate geocoded match)" label open. The last thing clicked wins, including the orange "Needs a new driver" banner.
+  - **Changed October 17 (destination pin, below):** when the destination is found too, the map fits **both** pins instead of zooming to the pickup only.
+- **Dispatcher destination pin (extra, October 17, `LeafletMap.jsx` only):** the selected request's destination shows as the orange flag pin with an always-visible **"Destination"** tag. The map fits pickup and destination with space at the edges (never closer than zoom 16). The destination is only typed text, so its pin is an address lookup ("approximate geocoded match"); vague text like "Lola's house" finds nothing and shows only the pickup, as before. "Show on map" for a driver still wins. Dispatcher map only (`focusPickup`); Resident and Driver maps are unchanged. Real destination pins are future Task 3.27.
 - **3.6:** shows "Barangay Daanglungsod" (", Toledo City" left out), or "Barangay not set".
 - **3.8:** the website's loading screens lost the card too; loading words are dark and 17 so they read well on the grey page.
 - **3.9:** "Community / Personal Trip" was renamed **"Community Activity"**. Old rides keep the name they were saved with (History, Request Details, driver card, dispatcher), but the Admin counters and the "Ride for" filters count both names as one (`getPurpose` in `requestOptions.js`). The "Does anyone need help?" checkboxes also became plain.
@@ -223,6 +226,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 #### Task 3.5: Dispatcher, map follows the clicked request ✅ Done (56ed795)
 - **What changes:** when a request is selected, the map centers on its pickup pin at zoom **16** (the map's max zoom 19 minus 3). If there is no exact pin, it uses the address lookup as today.
 - **Could break:** "Show on map" for a driver also moves the map; decide which wins when both are chosen (recommend: the last thing clicked).
+- **Later change (October 17):** if the destination is also found, the map fits pickup and destination together (see "Dispatcher destination pin" above).
 
 #### Task 3.6: Admin barangay under the logo ✅ Done (620b147)
 - **What changes:** `app/admin-home.jsx` shows "Barangay {Admin's barangay}" under the logo (from the Admin's profile).
@@ -343,6 +347,11 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 
 #### Task 3.26: Multiple vehicles for one big group
 - Real assignment of a second driver and vehicle to one request (HANDOFF F8). It changes how rides, the Resident's progress screen and the Driver's steps work. Only if the lead wants more than the warning in 3.10.
+
+#### Task 3.27: Resident drops a destination pin (future, not now)
+- **What changes:** on Request a Ride, the Resident can drop a pin for the destination too (like the pickup pin), so the ride saves the destination's real lat/lng instead of only the typed words. The Dispatcher map then shows the destination exactly, not as an address-lookup guess.
+- **Needs:** a phone change, so a **new APK**. No rules change expected (check before building).
+- **Could break:** the Request a Ride form gets longer; old rides and old APKs still have text only, so the address lookup must stay as the fallback.
 
 ### Owner's decisions (October 14, 2026)
 
