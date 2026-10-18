@@ -4,7 +4,7 @@
 **Target Defense Date:** October 23, 2026 (10 days remaining)  
 **Rule:** One change at a time. Plan first -> Review & get user OK -> Implement smallest possible change -> Test on phone/web -> Commit -> Move to next.
 
-**Status (October 14, 2026):** Phase 1 is done except Task 1.4, which moved to future work (after the defense). Phase 2 is deferred until after the defense. The app is frozen: the defense uses APK **demo-ready-17** (`258258e`), website `258258e`, rules `d464a70`. Test results are in `architecture-review.md`. **Phase 3** (the group lead's change list) is being built on branch `big-update`; the owner decides on October 20 what to merge.
+**Status (October 18, 2026):** Phase 1 is done except Task 1.4, which moved to future work (after the defense). Phase 2 is deferred until after the defense. **Phase 3** work so far (below) was merged from `big-update` into `master` at `a18955c`. The app is frozen: the defense uses APK **demo-ready-18** (`a18955c`; local build, debug-signed, testers must uninstall the old SakayNa first), website `a18955c`, rules `d464a70`. Test results are in `architecture-review.md`; APK details are in HANDOFF.md.
 
 ---
 
@@ -95,12 +95,12 @@ Enhance perceived performance, accessibility, and user feedback without altering
 
 ## 🧭 Phase 3: Group Lead's Change List (big-update)
 
-**Status (October 17, 2026): Tasks 3.1 to 3.14, 3.13b and 3.16 are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Task 3.15 and Tasks 3.17 onward are not started. Nothing is merged into `master`, so the defense set (demo-ready-17) is unchanged. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
+**Status (October 17, 2026): Tasks 3.1 to 3.14, 3.13b and 3.16 are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Task 3.15 and Tasks 3.17 onward are not started. **Update October 18, 2026:** these tasks, the destination pin and the C3 fix (`9ab2187`) were merged into `master` at `a18955c`, which is now the live website and the phone-tested **demo-ready-18** APK. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
 
 ### Ground rules for Phase 3
 
-1. **The defense version stays frozen.** demo-ready-17 + website `258258e` + rules `d464a70` are the safe defense set. All Phase 3 work stays on `big-update`. The owner decides on October 20 whether to merge finished parts into `master`. Remember: the website is built from `master` → `main`, and **everything on master goes live**.
-2. **Firebase rules are shared by everyone.** The database (and its rules) is the same for demo-ready-17, the live website and `big-update`. A rules deploy changes the defense version too. So: **no rules deploy before the defense** without the owner saying yes, and every rules task waits until after October 23.
+1. **The defense version stays frozen.** demo-ready-18 + website `a18955c` + rules `d464a70` are the safe defense set (changed October 18, 2026; before that it was demo-ready-17 + website `258258e`). Remember: the website is built from `master` → `main`, and **everything on master goes live**.
+2. **Firebase rules are shared by everyone.** The database (and its rules) is the same for demo-ready-18, the live website and `big-update`. A rules deploy changes the defense version too. So: **no rules deploy before the defense** without the owner saying yes, and every rules task waits until after October 23.
 3. **Testing while building:** phone changes are tested with the development build. Website changes can be tested on Vercel's preview link for `big-update` (Vercel usually makes one for every pushed branch; check the dashboard). Both still read and write the **real** database, so use test accounts.
 4. **One new native package at most** (the date/time picker in Task 3.11). Adding it means a **new development build** before it can be tested on the phone. Everything else is plain screen code.
 5. **Every phone change needs a new APK** to reach testers (no over-the-air updates). Plan to build **one** APK at the end of a batch, not one per task.

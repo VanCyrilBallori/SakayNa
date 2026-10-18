@@ -6,6 +6,7 @@ Task 1.1 deployment and owner-reported test results were added October 13, 2026.
 Task 1.3 deployment and owner-reported test results were added October 14, 2026.
 Task 1.2 deployment and owner-reported test results were added October 14, 2026.
 The demo-ready-17 APK release was added October 14, 2026.
+The demo-ready-18 APK release (local build) and the new defense set were added October 18, 2026.
 
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
@@ -140,7 +141,38 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
 
 ### Android APK (the installation file)
 
-#### Latest release: demo-ready-17 (October 14, 2026)
+#### Latest release: demo-ready-18 (October 18, 2026) — defense APK
+
+- **Phone tested:** the owner reports the APK passed their phone test.
+- **Tag/source:** annotated tag **demo-ready-18** points exactly to
+  **a18955c** (Merge big-update into master), the code used for the APK. The
+  tag is pushed to GitHub. The live website is also at `a18955c`.
+- **Local build, not EAS:** EAS free builds are used up until November 1, so
+  this APK was built on the owner's Windows computer (Microsoft OpenJDK 17,
+  Android SDK, Expo SDK 54). There is no EAS build ID, no download link and no
+  fingerprint compare. Master was clean at `a18955c`; `npx expo install --check`
+  reported "Dependencies are up to date"; then
+  `npx expo prebuild --platform android --clean` and, in `android/`,
+  `.\gradlew.bat assembleRelease` (BUILD SUCCESSFUL). The `.env` values match
+  the EAS "preview" environment (all 10 `EXPO_PUBLIC_*` names compared).
+  `android/` is in `.gitignore`. Prebuild changes the `android`/`ios` scripts in
+  `package.json`; that change was undone with `git restore package.json`.
+- **File:** `C:\Users\bOdzfest\Desktop\SakayNa-APKs\SakayNa-demo-ready-18.apk`,
+  116,491,720 bytes, SHA-256
+  `a5793779f4d7f1d22d6aaea1c07a9288da46e720847ef13c69f61ef50f2f4a8d`.
+  versionCode 1, version 1.0.0. Share the file directly (Drive/Messenger).
+- **Debug-signed:** signed with the Expo template's debug key
+  (SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`), not
+  the EAS key. **Testers must uninstall the old SakayNa first**, or Android says
+  "App not installed". Fine for testers and the defense, not for the Play Store.
+  Google sign-in only works if this SHA-1 is added to the Android app in
+  Firebase Console → Project settings; whether it was added is not recorded.
+- **Included since demo-ready-17:** Phase 3 tasks 3.1–3.14, 3.13b and 3.16,
+  the dispatcher destination pin, and C3's 10-minute alert delay (`9ab2187`).
+  Details are in ROADMAP.md "Progress on big-update". Rules are unchanged since
+  `d464a70`.
+
+#### Previous release: demo-ready-17 (October 14, 2026)
 
 - **Phone tested:** the owner reports passes for the start screen (normal and
   large text), a full ride, an emergency with the form, dispatcher1 Active →
@@ -169,7 +201,7 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
   over-the-air updates: later phone code needs another APK.
 - `tester-message.md` contains the link, changes, and test instructions.
 
-#### Previous release: demo-ready-16 (October 11, 2026)
+#### Older release: demo-ready-16 (October 11, 2026)
 
 - **Phone tested:** The owner confirms the new APK was tested on their phone.
 - **Tag/source:** Annotated tag **demo-ready-16** points exactly to **39e45831631c6bb417bc4f8dd941633f38df30ea** (`39e4583`), the code used for the APK. Later tester-message/release-note commits do not change the APK or the tag's source.
@@ -209,6 +241,8 @@ Before this handoff, local main/master and cached origin/main/origin/master all 
 The owner reports the later Admin changes are live. Git proves they reached remote main; it does not prove Vercel built them successfully. The public web reader could not open the site during this review. Vercel Ready status and signed-in pages were not independently checked.
 
 At Task 1.1's release, local main was **b62c724**, and local master included rules commit **c92f5a1**. The latest owner-reported release is now Task 1.2: website route gate **258258e** (main and origin/main at `258258e`), and separately deployed rules **d464a70**, with owner-confirmed before and after comparisons. Git alone does not verify live Firebase rules. A rules deployment does not require releasing main again.
+
+**Update October 18, 2026:** big-update (Phase 3) was merged into master at **a18955c**, and main and origin/main are at `a18955c`, so the live website is built from `a18955c`. Rules are still `d464a70` (no `firestore.rules` change since).
 
 Changes after APK 15, already on both remote branches when checked:
 
@@ -250,11 +284,13 @@ C3 is confirmed. Result C was not expected: the alert stayed hidden even after t
 
 The review proposes increasing the website delay from two to ten minutes. This also keeps crashed-phone alerts visible longer. It is proposed, not tested, and needs the owner's OK. For now keep SakayNa visible until Answer and have one Dispatcher answer promptly.
 
+**Update October 18, 2026:** the ten-minute delay is committed (`9ab2187`) and is in master, the live website and demo-ready-18 (`a18955c`). A repeat of the C3 test with it is not recorded here.
+
 Related #8/#34: old alerts still marked ringing can reappear after Dispatcher reload and block a fresh alert for two minutes. Keep test data tidy and office/Dispatcher numbers set before rehearsal. Real-data cleanup needs separate approval.
 
 ### Next: defense readiness / APK choice
 
-- Decided: the defense uses **demo-ready-17** (phone tested, tagged October 14). Its link expires October 28, after the defense.
+- Decided (October 18, 2026): the defense set is the **demo-ready-18** APK (local build, debug-signed; testers must uninstall the old SakayNa first), the live website at **a18955c**, and rules **d464a70**. It replaces demo-ready-17. Going back to demo-ready-17 (EAS link expires October 28) would also need an uninstall first, because the signing keys differ.
 - Rehearse normal ride, cancellation, emergency form, duty/break, and Admin approval using the chosen APK and current website.
 
 ### Safety/security backlog: before real use; outside the freeze unless separately approved
