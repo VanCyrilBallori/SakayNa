@@ -166,7 +166,8 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
   the EAS key. **Testers must uninstall the old SakayNa first**, or Android says
   "App not installed". Fine for testers and the defense, not for the Play Store.
   Google sign-in only works if this SHA-1 is added to the Android app in
-  Firebase Console → Project settings; whether it was added is not recorded.
+  Firebase Console → Project settings. The owner reports the debug SHA-1 is
+  added (October 18, 2026). Google sign-in on demo-ready-18: **not tested yet**.
 - **Included since demo-ready-17:** Phase 3 tasks 3.1–3.14, 3.13b and 3.16,
   the dispatcher destination pin, and C3's 10-minute alert delay (`9ab2187`).
   Details are in ROADMAP.md "Progress on big-update". Rules are unchanged since
@@ -269,7 +270,7 @@ If all current code must reach phones, build a new APK. The history does not sho
 
 This list is not approval to implement. The October 5 architecture review is a backlog, not a request to do every improvement during the freeze.
 
-### First: C3 is confirmed (phone test October 18, 2026); fix not chosen yet
+### First: C3 is confirmed (phone test October 18, 2026); 10-minute fix released, live retest not done
 
 **C3 / resident issue #33:** a real waiting emergency alert may be hidden after two minutes in the background. Current dispatcher-home.jsx still uses `STUCK_ALERT_MS = 120_000`. The Resident's 20-second 'I'm still here' timer may pause when Call the office opens the Phone app. The Dispatcher then treats the real alert as stuck. It is hidden on Dispatcher screens, not deleted; Admin may still see it.
 
@@ -284,7 +285,7 @@ C3 is confirmed. Result C was not expected: the alert stayed hidden even after t
 
 The review proposes increasing the website delay from two to ten minutes. This also keeps crashed-phone alerts visible longer. It is proposed, not tested, and needs the owner's OK. For now keep SakayNa visible until Answer and have one Dispatcher answer promptly.
 
-**Update October 18, 2026:** the ten-minute delay is committed (`9ab2187`) and is in master, the live website and demo-ready-18 (`a18955c`). A repeat of the C3 test with it is not recorded here.
+**Update October 18, 2026:** the ten-minute delay is committed (`9ab2187`) and is in master, the live website and demo-ready-18 (`a18955c`). The owner reports it passed a local test on October 18, 2026 (the alert was still showing at 4 minutes). Live retest with demo-ready-18 and the live website: **not done yet**.
 
 Related #8/#34: old alerts still marked ringing can reappear after Dispatcher reload and block a fresh alert for two minutes. Keep test data tidy and office/Dispatcher numbers set before rehearsal. Real-data cleanup needs separate approval.
 

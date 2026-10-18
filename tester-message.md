@@ -1,37 +1,55 @@
-SakayNa preview APK: new start screen and staff account checks
+SakayNa APK demo-ready-18: the group lead's changes
 
-Hi everyone! A new SakayNa preview app is ready for testing.
-Please update before your next test.
+Hi everyone! A new SakayNa app is ready for testing. This is the version
+we will use for the defense. Please update before your next test.
 
-EVERYONE
-- Uninstall the old SakayNa app, then install the new APK: https://expo.dev/artifacts/eas/4eXRn5WsIvf0c_fhgym1zO5GN4-7EpuD6CHzQBPSQEU.apk
-- The download link works until October 28, 2026.
-- The start screen has a new road picture, and the logo sits a little
-  higher. Check that the logo, picture and buttons fit on your phone,
-  with normal and with large text.
-- Everything from the last APK is still included: hold-to-show password
-  eye, National ID proof of residency, and the Complete mission changes.
+EVERYONE: HOW TO INSTALL (please do these in order)
+1. Uninstall the old SakayNa app first. This is required: the new app is
+   signed differently, so Android will say "App not installed" if the old
+   one is still on your phone.
+2. Install the new APK file: SakayNa-demo-ready-18.apk (I will send the
+   file directly; there is no download link this time).
+3. Open SakayNa and log in again. Uninstalling signs you out. Your account
+   and your rides are safe; they are saved online, not on the phone.
 
-RESIDENTS AND DRIVERS
-- Nothing new for you to learn. Please do one normal ride from request
-  to Completed, so we know nothing broke.
+- If "Sign in with Google" does not work on the new app, log in with your
+  email and password instead, and message me.
 
-DISPATCHERS AND ADMINS (if you log in on the phone)
-- Your account must be Active to get in. If it is Pending, Rejected,
-  Suspended, Disabled or blank, you will see "Account not active" with
-  "Please contact your Admin." and a Log Out button.
-- A Deactivated account still shows "Account disabled".
-- If an Admin changes your status while you are logged in, your screen
-  changes within a few seconds.
+RESIDENTS
+- Request a Ride is shorter and simpler. "Community / Personal Trip" is now
+  called "Community Activity".
+- The passenger's phone number is required.
+- People riding: type the number (1 to 50). Big groups see a note that they
+  may need another vehicle.
+- Scheduling a ride uses a real calendar and a scroll-wheel time. Choose a
+  time at least 1 hour from now and within 1 year.
+- Map pins have a new teardrop shape.
+- Tap your profile picture in the side menu to open your Profile.
 
-ADMINS
-- Edit Account no longer lets you change a person's barangay.
-- Accounts from another barangay, and Admin accounts, are view only.
-- Add Dispatcher uses your own barangay.
-- If a change is refused, you see a friendly message instead of an error.
-- Operations -> Logs shows the newest 50 lines first.
+DRIVERS
+- Only the open tab in the bottom bar turns green.
+- Your ride history is always shown under the duty card.
+- Start break and Punch out sit side by side.
 
-This APK was tested on the owner's phone on October 14, 2026 and is
-tagged demo-ready-17.
+DISPATCHERS (website)
+- The home page fits the window with no page scrolling.
+- A red emergency strip under the header replaces the big pop-up, with a
+  "ding-dong" sound while an alert rings. Use "Sound off" to mute (it comes
+  back after you reload the page).
+- A waiting emergency alert now stays visible for 10 minutes instead of 2.
+- Available drivers are listed first.
+- Clicking a request moves the map to it. If its destination is found, an
+  orange "Destination" pin shows too.
+
+ADMINS (website)
+- Your barangay shows under the logo.
+- Emergency Calls is more compact, and the Operations buttons fit their text.
+- Lists show grey placeholder shapes while loading.
+
+Please do one normal ride from request to Completed, and tell me if
+anything looks wrong or does not fit on your screen.
+
+This APK was tested on the owner's phone on October 18, 2026 and is
+tagged demo-ready-18.
 
 Questions or problems? Message me.
