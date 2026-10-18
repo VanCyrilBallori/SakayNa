@@ -167,7 +167,7 @@ Resident/Driver application reviews belong to their barangay's Admin. Task 1.1 n
   "App not installed". Fine for testers and the defense, not for the Play Store.
   Google sign-in only works if this SHA-1 is added to the Android app in
   Firebase Console → Project settings. The owner reports the debug SHA-1 is
-  added (October 18, 2026). Google sign-in on demo-ready-18: **not tested yet**.
+  added (October 18, 2026). Google sign-in on demo-ready-18: **works** (owner's test, October 18, 2026).
 - **Included since demo-ready-17:** Phase 3 tasks 3.1–3.14, 3.13b and 3.16,
   the dispatcher destination pin, and C3's 10-minute alert delay (`9ab2187`).
   Details are in ROADMAP.md "Progress on big-update". Rules are unchanged since

@@ -12,9 +12,6 @@ EVERYONE: HOW TO INSTALL (please do these in order)
 3. Open SakayNa and log in again. Uninstalling signs you out. Your account
    and your rides are safe; they are saved online, not on the phone.
 
-- If "Sign in with Google" does not work on the new app, log in with your
-  email and password instead, and message me.
-
 RESIDENTS
 - Request a Ride is shorter and simpler. "Community / Personal Trip" is now
   called "Community Activity".
