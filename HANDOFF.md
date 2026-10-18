@@ -235,17 +235,20 @@ If all current code must reach phones, build a new APK. The history does not sho
 
 This list is not approval to implement. The October 5 architecture review is a backlog, not a request to do every improvement during the freeze.
 
-### First: test C3, without changing code
+### First: C3 is confirmed (phone test October 18, 2026); fix not chosen yet
 
 **C3 / resident issue #33:** a real waiting emergency alert may be hidden after two minutes in the background. Current dispatcher-home.jsx still uses `STUCK_ALERT_MS = 120_000`. The Resident's 20-second 'I'm still here' timer may pause when Call the office opens the Phone app. The Dispatcher then treats the real alert as stuck. It is hidden on Dispatcher screens, not deleted; Admin may still see it.
 
-No phone test result is recorded. Smallest next step:
+**Owner's test result (October 18, 2026):** demo-ready-17 APK, live website, dispatcher0, Answer not pressed. The Resident tapped **Call the office** and stayed in the Phone app.
 
-1. Resident on APK 15 sends an alert. Dispatcher watches without answering.
-2. After the fallback appears, tap **Call the office** and stay in the Phone app/on the call for three minutes.
-3. Watch whether the alert disappears. Record the result before choosing a fix.
+- A. The alert showed on the Dispatcher screen: **yes**.
+- B. It disappeared while the Resident stayed in the Phone app: **yes**, about 3 minutes after sending.
+- C. It came back after the Resident returned to SakayNa: **no**.
+- D. Admin Emergency Calls still listed it: **yes**.
 
-If confirmed, the review proposes increasing the website delay from two to ten minutes. This also keeps crashed-phone alerts visible longer. It is proposed, not tested. For now keep SakayNa visible until Answer and have one Dispatcher answer promptly.
+C3 is confirmed. Result C was not expected: the alert stayed hidden even after the Resident came back. Its cause is not recorded yet.
+
+The review proposes increasing the website delay from two to ten minutes. This also keeps crashed-phone alerts visible longer. It is proposed, not tested, and needs the owner's OK. For now keep SakayNa visible until Answer and have one Dispatcher answer promptly.
 
 Related #8/#34: old alerts still marked ringing can reappear after Dispatcher reload and block a fresh alert for two minutes. Keep test data tidy and office/Dispatcher numbers set before rehearsal. Real-data cleanup needs separate approval.
 

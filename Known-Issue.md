@@ -361,11 +361,17 @@ Skills/resident.md section 6.
   redesigned Admin Emergency Calls page calls overdue alerts **No answer**;
   it fetches the newest 100, then puts overdue alerts first (oldest waiting
   first). Older alerts outside those 100 may not appear.
-- **C3 remains open/unconfirmed:** a real waiting alert may also disappear
-  if Call the office puts the Resident app in the background and pauses
-  its heartbeat. Reloading Dispatcher can briefly bring old alerts back.
-  The separate three-minute phone-call test has no recorded result yet;
-  the general APK 16 phone test does not establish that C3 is fixed.
+- **C3 confirmed (owner's phone test, October 18, 2026):** a real waiting
+  alert disappears from the Dispatcher screen when Call the office puts the
+  Resident app in the background. Test: demo-ready-17 APK, live website,
+  dispatcher0, Answer not pressed. The alert showed (yes); it disappeared
+  while the Resident stayed in the Phone app (yes, about 3 minutes after
+  sending); it did **not** come back after the Resident returned to
+  SakayNa; Admin Emergency Calls still listed it (yes). The cause of "did
+  not come back" is not recorded yet. Reloading Dispatcher can briefly
+  bring old alerts back.
+- **Status of C3:** open. The proposed fix (2 → 10 minutes on the website)
+  is not tested or approved yet.
 
 ---
 
