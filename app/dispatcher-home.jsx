@@ -23,7 +23,7 @@ import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from ".
 // A ringing alert whose "I'm still here" signal (lastActiveAt) hasn't changed for this long is
 // treated as stuck (the resident's app crashed or closed) and hidden. It is only hidden, not
 // changed in Firestore, so it comes back by itself if the signal starts again.
-const STUCK_ALERT_MS = 120_000;
+const STUCK_ALERT_MS = 600_000;
 const STUCK_CHECK_INTERVAL_MS = 10_000;
 
 // Why a driver can't be given a ride right now, or "" if they can (driver-duty-plan.md Step 5).
