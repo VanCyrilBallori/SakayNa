@@ -84,7 +84,15 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
           >
             <ScrollView contentContainerStyle={[styles.panelContent, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]} showsVerticalScrollIndicator={false}>
               <View style={styles.profileRow}>
-                <ProfileAvatar name={name} size={56} backgroundColor={theme.avatarBg} color={theme.avatarText} />
+                {/* Tapping the picture opens Profile, the same as the Profile row below (Task 3.7). */}
+                <Pressable
+                  style={({ pressed }) => pressed && styles.avatarPressed}
+                  onPress={() => go(onOpenProfile)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open profile"
+                >
+                  <ProfileAvatar name={name} size={56} backgroundColor={theme.avatarBg} color={theme.avatarText} />
+                </Pressable>
                 <View style={styles.profileCopy}>
                   <Text style={[styles.profileName, { color: theme.text }]} numberOfLines={2}>
                     {name}
@@ -201,6 +209,7 @@ const styles = StyleSheet.create({
   },
   panelContent: { flexGrow: 1 },
   profileRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingLeft: 20, paddingRight: 8, paddingVertical: 12 },
+  avatarPressed: { opacity: 0.7 },
   profileCopy: { flex: 1 },
   profileName: { fontSize: 20, fontWeight: "800", lineHeight: 26 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },

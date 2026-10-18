@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDateTime, getDurationLabel } from "../../../lib/dates";
 
@@ -60,23 +61,23 @@ function UnansweredCallBox({ call }) {
   );
 }
 
-// The "What happened" column of a row.
+// The "What happened" column of a row. Its parts sit side by side and wrap only when the window is narrow.
 function CallOutcome({ call }) {
   if (call.status === "ringing") {
     return (
-      <Text style={styles.mutedBody}>
+      <Text style={styles.rowMuted}>
         Ringing for <Text style={styles.bold}>{getDurationLabel(call.waitingMs)}</Text>. Waiting for a dispatcher.
       </Text>
     );
   }
 
   if (call.status === "cancelled") {
-    return <Text style={styles.mutedBody}>The resident cancelled before anyone answered.</Text>;
+    return <Text style={styles.rowMuted}>The resident cancelled before anyone answered.</Text>;
   }
 
   return (
     <View style={styles.outcome}>
-      <Text style={styles.body}>
+      <Text style={styles.rowText}>
         {call.emergencyType ? <Text style={styles.bold}>{call.emergencyType} · </Text> : null}
         {call.dispatcherName ? `Answered by ${call.dispatcherName}` : "No dispatcher name saved"}
       </Text>
@@ -122,10 +123,7 @@ export default function AdminCallSessionsSection({ callSessions, isLoadingCallSe
       {callSessionsError ? <Text style={styles.errorText}>{callSessionsError}</Text> : null}
 
       {isLoadingCallSessions ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator color={DESIGN_COLORS.emergencyRed} />
-          <Text style={styles.body}>Loading emergency call history...</Text>
-        </View>
+        <ListSkeleton label="Loading emergency call history" />
       ) : callSessions.length ? (
         <>
           <View style={styles.chips}>
@@ -167,8 +165,10 @@ export default function AdminCallSessionsSection({ callSessions, isLoadingCallSe
                       <Text style={styles.small}>{formatDateTime(call.createdAt)}</Text>
                     </View>
                     <View style={wide && styles.columnWho}>
-                      <Text style={styles.name}>{call.residentName || "Resident"}</Text>
-                      <Text style={styles.small}>{call.pickupLocation || "Barangay not available"}</Text>
+                      <Text style={styles.name}>
+                        {call.residentName || "Resident"}
+                        <Text style={styles.place}> · {call.pickupLocation || "Barangay not available"}</Text>
+                      </Text>
                     </View>
                     <View style={wide && styles.columnWhat}>
                       <CallOutcome call={call} />
@@ -189,13 +189,13 @@ export default function AdminCallSessionsSection({ callSessions, isLoadingCallSe
 }
 
 const styles = StyleSheet.create({
-  // Not wider than about 900px, so the page doesn't stretch across a big screen.
-  page: { width: "100%", maxWidth: 900, gap: 16, padding: 10 },
+  // Not wider than about 1200px, so each call fits on one line on a desktop monitor but doesn't stretch across a huge screen.
+  page: { width: "100%", maxWidth: 1200, gap: 16, padding: 10 },
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.emergencyRed },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink },
-  subtitle: { marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  subtitle: { marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   body: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   mutedBody: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   bold: { fontWeight: "700", color: DESIGN_COLORS.ink },
@@ -220,21 +220,26 @@ const styles = StyleSheet.create({
   alarmMessage: { paddingTop: 8, paddingBottom: 16, paddingHorizontal: 16, fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.emergencyRed },
 
   list: { borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
-  listHeader: { paddingVertical: 10, backgroundColor: DESIGN_COLORS.boardTint },
+  listHeader: { paddingVertical: 6, backgroundColor: DESIGN_COLORS.boardTint },
   listHeaderText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.inkMuted },
-  row: { flexDirection: "row", alignItems: "flex-start", gap: 16, paddingVertical: 14, paddingHorizontal: 16 },
-  rowStacked: { flexDirection: "column", gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 8, paddingHorizontal: 16 },
+  rowStacked: { flexDirection: "column", alignItems: "flex-start", gap: 6 },
   rowDivider: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
-  columnWhen: { width: 170 },
+  columnWhen: { width: 260 },
   columnWho: { flex: 1, minWidth: 0 },
-  columnWhat: { flex: 1.25, minWidth: 0 },
-  whenCell: { gap: 6, alignItems: "flex-start" },
-  statusPill: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999 },
+  columnWhat: { flex: 1.5, minWidth: 0 },
+  // The status pill and the time side by side (a long pill pushes the time to a second line).
+  whenCell: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
+  statusPill: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999 },
   statusPillText: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
-  name: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  outcome: { gap: 2, alignItems: "flex-start" },
+  name: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  place: { fontWeight: "400", color: DESIGN_COLORS.inkMuted },
+  // Row text is 15 (smaller than the red box's 17) so a call fits on one line.
+  rowText: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.ink },
+  rowMuted: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  outcome: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   // The ride reference: a small peach tag with dark words.
-  rideTag: { marginTop: 2, paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.peachTint },
+  rideTag: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.peachTint },
   rideTagText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },

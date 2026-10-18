@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { getWhenText } from "../../resident/utils/requestMapper";
+import { getPurpose } from "../../resident/utils/requestOptions";
 
 // The colored band at the top of each card (DESIGN.md "Status band colors": orange has dark words, never red).
 const STATUS_BANDS = {
@@ -19,7 +21,7 @@ const getStatusBand = (status) =>
 
 const PURPOSE_ICONS = {
   "Medical / Health": "medical-bag",
-  "Community / Personal Trip": "account-group-outline",
+  "Community Activity": "account-group-outline",
   Other: "dots-horizontal",
 };
 
@@ -92,7 +94,7 @@ function RequestCard({ request, onViewDetails, half, narrow }) {
               </View>
             ) : (
               <View style={styles.tag}>
-                <MaterialCommunityIcons name={PURPOSE_ICONS[request.purpose] || "dots-horizontal"} size={17} color={DESIGN_COLORS.ink} />
+                <MaterialCommunityIcons name={PURPOSE_ICONS[getPurpose(request)] || "dots-horizontal"} size={17} color={DESIGN_COLORS.ink} />
                 <Text style={styles.tagText}>{request.purpose || request.requestTypeLabel}</Text>
               </View>
             )}
@@ -179,7 +181,7 @@ export default function AdminRequestsSection({
   const narrow = width < 520;
 
   // The status counts follow the "Ride for" choice, so the numbers match what you will see.
-  const requestsForPurpose = requests.filter((request) => requestTypeFilter === "All" || request.purpose === requestTypeFilter);
+  const requestsForPurpose = requests.filter((request) => requestTypeFilter === "All" || getPurpose(request) === requestTypeFilter);
   const countFor = (status) =>
     status === "All" ? requestsForPurpose.length : requestsForPurpose.filter((request) => (request.status || "Pending") === status).length;
 
@@ -228,10 +230,7 @@ export default function AdminRequestsSection({
       </View>
 
       {isLoadingRequests ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator color={DESIGN_COLORS.hallGreen} />
-          <Text style={styles.body}>Loading request history...</Text>
-        </View>
+        <ListSkeleton label="Loading request history" />
       ) : filteredRequests.length ? (
         <View style={[styles.grid, twoColumns && styles.gridTwo]}>
           {filteredRequests.map((request) => (

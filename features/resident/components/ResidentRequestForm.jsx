@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomSheetPicker from "../../../components/BottomSheetPicker";
@@ -12,14 +13,17 @@ import { createResidentRequest } from "../services/residentRequestService";
 import { formatClockTime, formatShortDay } from "../../../lib/dates";
 import {
   ASSISTANCE_OPTIONS,
+  BIG_GROUP_NOTE,
   MAX_PASSENGERS,
   PURPOSE_OPTIONS,
   SCHEDULE_MAX_DAYS_AHEAD,
+  SCHEDULE_MIN_MINUTES_AHEAD,
   buildScheduledDate,
-  getScheduleDayOptions,
-  getScheduleTimeOptions,
+  isAllowedScheduleTime,
+  isBigGroup,
+  toDayValue,
 } from "../utils/requestOptions";
-import { sanitizeRequestForm, validateResidentRequest } from "../utils/requestValidation";
+import { SCHEDULE_TIME_MESSAGE, sanitizeRequestForm, validateResidentRequest } from "../utils/requestValidation";
 import MapLocationModal from "./MapLocationModal";
 
 // Resident transport request: one scrolling page → Review → Sent. It fills the whole screen.
@@ -37,7 +41,7 @@ const newForm = (barangay) => ({
   ridingFor: "self", // "self" or "other"
   passengerName: "",
   passengerPhone: "",
-  passengerCount: 1,
+  passengerCount: "1", // text while typing (Task 3.10); sent as a number
   barangay: barangay || "",
   pickup: { latitude: null, longitude: null, address: "", source: "manual" },
   pickupDetails: "",
@@ -82,6 +86,13 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
     setErrors((current) => ({ ...current, [key]: "" }));
   };
 
+  // "Me" hides the passenger boxes, so their old red messages are cleared too
+  // (otherwise "Please fix the item marked in red" would stay with nothing red on screen).
+  const setRidingFor = (value) => {
+    setValue("ridingFor", value);
+    if (value === "self") setErrors((current) => ({ ...current, passengerName: "", passengerPhone: "" }));
+  };
+
   const toggleAssistance = (option) => {
     const next = form.assistance.includes(option) ? form.assistance.filter((item) => item !== option) : [...form.assistance, option];
     setValue("assistance", next);
@@ -89,19 +100,27 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
   };
 
   // Changing the day clears the time if that time can't be booked on the new day.
+  // Right after picking (Task 3.11): if the day and time are both chosen but may not be booked
+  // (less than 1 hour from now, or more than 1 year ahead), the red message shows at once. Otherwise it goes away.
+  const checkSchedule = (dayValue, minutes) => {
+    const notAllowed = Boolean(dayValue) && minutes !== null && !isAllowedScheduleTime(buildScheduledDate(dayValue, minutes));
+    setErrors((current) => ({ ...current, schedule: notAllowed ? SCHEDULE_TIME_MESSAGE : "" }));
+  };
+
+  // A new day keeps the chosen time; checkSchedule says if the two together are not allowed.
   const setScheduleDay = (dayValue) => {
-    const stillAllowed = getScheduleTimeOptions(dayValue).some((option) => option.value === form.scheduleMinutes);
-    setForm((current) => ({ ...current, scheduleDay: dayValue, scheduleMinutes: stillAllowed ? current.scheduleMinutes : null }));
-    setErrors((current) => ({ ...current, schedule: "" }));
+    setForm((current) => ({ ...current, scheduleDay: dayValue }));
+    checkSchedule(dayValue, form.scheduleMinutes);
   };
 
   const setScheduleMinutes = (minutes) => {
     setForm((current) => ({ ...current, scheduleMinutes: minutes }));
-    setErrors((current) => ({ ...current, schedule: "" }));
+    checkSchedule(form.scheduleDay, minutes);
   };
 
+  // - and + work from whatever is in the box: empty or 0 counts as 0, so + makes it 1; 75 with - becomes 50.
   const changeCount = (step) => {
-    setValue("passengerCount", Math.min(MAX_PASSENGERS, Math.max(1, form.passengerCount + step)));
+    setValue("passengerCount", String(Math.min(MAX_PASSENGERS, Math.max(1, Number(form.passengerCount) + step))));
   };
 
   const addCurrentLocation = async () => {
@@ -142,7 +161,8 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
     setSaving(true);
     setSendError("");
     try {
-      const created = await createResidentRequest({ uid, residentName, residentPhone, form });
+      // The box holds text ("12"); Firestore gets the number (12), as before.
+      const created = await createResidentRequest({ uid, residentName, residentPhone, form: { ...form, passengerCount: Number(form.passengerCount) } });
       setReference(created.reference);
       setPage("sent");
       scrollToTop();
@@ -206,6 +226,7 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
                     residentName={residentName}
                     residentPhone={residentPhone}
                     setValue={setValue}
+                    setRidingFor={setRidingFor}
                     setScheduleDay={setScheduleDay}
                     setScheduleMinutes={setScheduleMinutes}
                     toggleAssistance={toggleAssistance}
@@ -273,13 +294,14 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
   );
 }
 
-function FillPage({ form, errors, residentName, residentPhone, setValue, setScheduleDay, setScheduleMinutes, toggleAssistance, changeCount, locating, locationMessage, onUseGps, onOpenMap }) {
+function FillPage({ form, errors, residentName, residentPhone, setValue, setRidingFor, setScheduleDay, setScheduleMinutes, toggleAssistance, changeCount, locating, locationMessage, onUseGps, onOpenMap }) {
   const hasExactSpot = form.pickup.latitude !== null;
+  const peopleCount = Number(form.passengerCount);
 
   return (
     <>
       <View style={styles.emergencyNote}>
-        <MaterialCommunityIcons name="alert-outline" size={26} color={COLORS.emergency} />
+        <MaterialCommunityIcons name="alert-outline" size={22} color={COLORS.emergency} />
         <Text style={styles.emergencyNoteText}>Emergency? Close this and tap the red Emergency button.</Text>
       </View>
 
@@ -295,7 +317,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
               style={[styles.input, styles.inputBelow, errors.purposeOther && styles.inputError]}
               value={form.purposeOther}
               onChangeText={(value) => setValue("purposeOther", value)}
-              placeholder="Tell us briefly, e.g. buying medicine"
+              placeholder="Tell us briefly"
               placeholderTextColor={colors.muted}
               maxLength={100}
               accessibilityLabel="What the ride is for"
@@ -315,8 +337,8 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
 
       <Field icon="account-outline" label="Who is riding?" error={errors.ridingFor}>
         <View style={styles.choiceList} accessibilityRole="radiogroup">
-          <ChoiceRow type="radio" label="Me" detail={[residentName, residentPhone].filter(Boolean).join(" · ")} selected={form.ridingFor === "self"} onPress={() => setValue("ridingFor", "self")} />
-          <ChoiceRow type="radio" label="Someone else" selected={form.ridingFor === "other"} onPress={() => setValue("ridingFor", "other")} />
+          <ChoiceRow type="radio" label="Me" detail={[residentName, residentPhone].filter(Boolean).join(" · ")} selected={form.ridingFor === "self"} onPress={() => setRidingFor("self")} />
+          <ChoiceRow type="radio" label="Someone else" selected={form.ridingFor === "other"} onPress={() => setRidingFor("other")} />
         </View>
       </Field>
 
@@ -334,7 +356,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
               accessibilityLabel="Passenger's name"
             />
           </Field>
-          <Field icon="phone-outline" label="Passenger's phone (optional)" error={errors.passengerPhone}>
+          <Field icon="phone-outline" label="Passenger's phone" error={errors.passengerPhone}>
             <TextInput
               style={[styles.input, errors.passengerPhone && styles.inputError]}
               value={form.passengerPhone}
@@ -343,22 +365,32 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
               placeholderTextColor={colors.muted}
               keyboardType="phone-pad"
               maxLength={16}
-              accessibilityLabel="Passenger's phone, optional"
+              accessibilityLabel="Passenger's phone"
             />
-            <Hint icon="information-outline" text="If they have no phone, the driver will call you." />
           </Field>
         </>
       ) : null}
 
       <Field icon="account-multiple-outline" label="How many people are riding?" error={errors.passengerCount}>
         <View style={styles.stepper}>
-          <StepperButton icon="minus" label="Fewer people" disabled={form.passengerCount <= 1} onPress={() => changeCount(-1)} />
-          <Text style={styles.stepperValue} accessibilityLiveRegion="polite" accessibilityLabel={peopleText(form.passengerCount)}>
-            {form.passengerCount}
-          </Text>
-          <StepperButton icon="plus" label="More people" disabled={form.passengerCount >= MAX_PASSENGERS} onPress={() => changeCount(1)} />
+          <StepperButton icon="minus" label="Fewer people" disabled={peopleCount <= 1} onPress={() => changeCount(-1)} />
+          {/* A box the resident can type in (Task 3.10), like the dispatcher's "Number of patients". */}
+          <TextInput
+            style={[styles.input, styles.countInput, errors.passengerCount && styles.inputError]}
+            value={form.passengerCount}
+            // Digits only: if the new text has a letter or any other sign, it is not added.
+            onChangeText={(text) => {
+              if (/^[0-9]*$/.test(text)) setValue("passengerCount", text);
+            }}
+            keyboardType="number-pad"
+            // 3 digits, so "100" can be typed and gets the red message (with 2 it would quietly become "10").
+            maxLength={3}
+            accessibilityLabel={`Number of people riding, 1 to ${MAX_PASSENGERS}`}
+          />
+          <StepperButton icon="plus" label="More people" disabled={peopleCount >= MAX_PASSENGERS} onPress={() => changeCount(1)} />
         </View>
         <Hint text={`Count everyone, including the passenger. Up to ${MAX_PASSENGERS}.`} />
+        {isBigGroup(peopleCount) ? <Hint icon="alert-outline" iconColor={COLORS.warning} text={BIG_GROUP_NOTE} strong /> : null}
       </Field>
 
       <Field icon="home-outline" label="Pickup barangay" error={errors.barangay}>
@@ -376,7 +408,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setSche
       </Field>
 
       <Field icon="crosshairs-gps" label="Exact pickup spot (optional)">
-        <View style={styles.choiceList}>
+        <View style={styles.buttonList}>
           <ActionButton icon="crosshairs-gps" label={locating ? "Finding your location..." : "Use Current Location"} disabled={locating} onPress={onUseGps} />
           <ActionButton icon="map-marker-plus-outline" label="Place Map Pin" disabled={locating} onPress={onOpenMap} />
         </View>
@@ -462,7 +494,7 @@ function ReviewPage({ form, residentName, residentPhone }) {
     ["clock-outline", "When", form.timing === "scheduled" ? scheduleText(form) : "As soon as possible"],
     ["account-outline", "Who is riding", riderIsMe ? `Me (${residentName})` : form.passengerName],
     ["phone-outline", "Contact number", riderIsMe || !form.passengerPhone ? `${residentPhone}${riderIsMe ? "" : " (yours)"}` : form.passengerPhone],
-    ["account-multiple-outline", "People riding", peopleText(form.passengerCount)],
+    ["account-multiple-outline", "People riding", peopleText(Number(form.passengerCount))],
     ["home-outline", "Pickup barangay", form.barangay],
     ["crosshairs-gps", "Exact pickup spot", form.pickup.latitude !== null ? form.pickup.address : "Not added"],
     ["map-marker-outline", "Landmark / pickup details", form.pickupDetails],
@@ -495,40 +527,133 @@ const scheduleText = (form) => {
   return `${formatShortDay(date)}, ${formatClockTime(date)}`;
 };
 
-// The Day and Time pickers under "Schedule for later". Only times that can be booked are listed.
+// The Day and Time pickers under "Schedule for later" (Task 3.11).
+// Phone: two buttons. Day opens Android's own calendar (days before today and after 1 year are greyed out),
+//   Time opens Android's own scroll-wheel clock (hour | minute | AM/PM).
+// Website: the browser's own date and time boxes (DateTimePickerAndroid only works on Android).
 function SchedulePicker({ form, hasError, setScheduleDay, setScheduleMinutes }) {
-  const dayOptions = getScheduleDayOptions();
-  const timeOptions = form.scheduleDay ? getScheduleTimeOptions(form.scheduleDay) : [];
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + SCHEDULE_MAX_DAYS_AHEAD);
+  const chosenDay = form.scheduleDay ? buildScheduledDate(form.scheduleDay, 0) : null;
+  const chosenTime = form.scheduleDay && form.scheduleMinutes !== null ? buildScheduledDate(form.scheduleDay, form.scheduleMinutes) : null;
+
+  const openCalendar = () =>
+    DateTimePickerAndroid.open({
+      mode: "date",
+      value: chosenDay || firstDay,
+      minimumDate: firstDay,
+      maximumDate: lastDay,
+      // "set" = the resident pressed OK. Cancel ("dismissed") changes nothing.
+      onChange: (event, date) => {
+        if (event.type === "set" && date) setScheduleDay(toDayValue(date));
+      },
+    });
+
+  const openClock = () =>
+    DateTimePickerAndroid.open({
+      mode: "time",
+      display: "spinner",
+      is24Hour: false,
+      // Starts at the chosen time, or 1 hour from now.
+      value: chosenTime || new Date(now.getTime() + SCHEDULE_MIN_MINUTES_AHEAD * 60_000),
+      onChange: (event, date) => {
+        if (event.type === "set" && date) setScheduleMinutes(date.getHours() * 60 + date.getMinutes());
+      },
+    });
 
   return (
     <View style={styles.schedulePicker}>
       <Text style={styles.subLabel}>Day</Text>
-      <BottomSheetPicker
-        style={[styles.input, hasError && !form.scheduleDay && styles.inputError]}
-        title="Day of the ride"
-        options={dayOptions}
-        placeholder="Choose the day"
-        value={form.scheduleDay}
-        onChange={(value) => setScheduleDay(value)}
-        accessibilityLabel="Day of the ride"
-      />
+      {Platform.OS === "web" ? (
+        <input
+          type="date"
+          aria-label="Day of the ride"
+          value={form.scheduleDay}
+          min={toDayValue(firstDay)}
+          max={toDayValue(lastDay)}
+          onChange={(event) => setScheduleDay(event.target.value)}
+          style={{ ...webBoxStyle, ...(hasError && !form.scheduleDay ? webBoxErrorStyle : null) }}
+        />
+      ) : (
+        <PickerButton
+          icon="calendar-month-outline"
+          text={chosenDay ? `${formatShortDay(chosenDay)}, ${chosenDay.getFullYear()}` : "Choose the day"}
+          chosen={Boolean(chosenDay)}
+          hasError={hasError && !form.scheduleDay}
+          onPress={openCalendar}
+          accessibilityLabel="Day of the ride"
+        />
+      )}
 
       <Text style={[styles.subLabel, styles.subLabelSpaced]}>Time</Text>
-      <BottomSheetPicker
-        style={[styles.input, hasError && styles.inputError, !form.scheduleDay && styles.inputDisabled]}
-        title="Time of the ride"
-        options={timeOptions}
-        placeholder={form.scheduleDay ? "Choose the time" : "Choose the day first"}
-        value={form.scheduleMinutes}
-        onChange={(value) => setScheduleMinutes(value)}
-        disabled={!form.scheduleDay}
-        accessibilityLabel="Time of the ride"
-      />
+      {Platform.OS === "web" ? (
+        <input
+          type="time"
+          aria-label="Time of the ride"
+          value={toTimeValue(form.scheduleMinutes)}
+          onChange={(event) => setScheduleMinutes(fromTimeValue(event.target.value))}
+          disabled={!form.scheduleDay}
+          style={{ ...webBoxStyle, ...(hasError ? webBoxErrorStyle : null), ...(!form.scheduleDay ? webBoxDisabledStyle : null) }}
+        />
+      ) : (
+        <PickerButton
+          icon="clock-outline"
+          text={chosenTime ? formatClockTime(chosenTime) : form.scheduleDay ? "Choose the time" : "Choose the day first"}
+          chosen={Boolean(chosenTime)}
+          hasError={hasError}
+          disabled={!form.scheduleDay}
+          onPress={openClock}
+          accessibilityLabel="Time of the ride"
+        />
+      )}
 
-      <Hint icon="information-outline" text={`Book at least 1 hour ahead, up to ${SCHEDULE_MAX_DAYS_AHEAD} days.`} />
+      <Hint icon="information-outline" text="Book at least 1 hour ahead, up to 1 year." />
     </View>
   );
 }
+
+// The phone's Day / Time button: looks like the other boxes on the form, opens Android's calendar or clock.
+function PickerButton({ icon, text, chosen, hasError, disabled, onPress, accessibilityLabel }) {
+  return (
+    <Pressable
+      style={[styles.input, styles.pickerButton, hasError && styles.inputError, disabled && styles.inputDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      android_ripple={{ color: colors.ripple }}
+      accessibilityRole="button"
+      accessibilityLabel={`${accessibilityLabel}: ${text}`}
+      accessibilityState={{ disabled: Boolean(disabled) }}
+    >
+      <MaterialCommunityIcons name={icon} size={24} color={disabled ? COLORS.disabled : COLORS.primary} />
+      <Text style={[styles.pickerButtonText, !chosen && styles.pickerButtonPlaceholder]}>{text}</Text>
+    </Pressable>
+  );
+}
+
+// The website's time box uses "09:30"; the form keeps minutes after midnight (570).
+const toTimeValue = (minutes) => (minutes === null ? "" : `${`${Math.floor(minutes / 60)}`.padStart(2, "0")}:${`${minutes % 60}`.padStart(2, "0")}`);
+const fromTimeValue = (text) => {
+  if (!text) return null;
+  const [hours, minutes] = text.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+// The website's date and time boxes, styled like the form's other boxes (56 tall, 17 text, 12 corners).
+const webBoxStyle = {
+  width: "100%",
+  minHeight: 56,
+  boxSizing: "border-box",
+  padding: "0 14px",
+  borderRadius: 12,
+  border: `1.5px solid ${colors.outline}`,
+  backgroundColor: "#FFFFFF",
+  color: colors.heading,
+  fontSize: 17,
+  fontFamily: "inherit",
+};
+const webBoxErrorStyle = { border: `2px solid ${COLORS.emergency}` };
+const webBoxDisabledStyle = { backgroundColor: colors.card };
 
 function SentPage({ reference, onDone }) {
   return (
@@ -586,12 +711,13 @@ function Hint({ icon, iconColor, text, strong }) {
   );
 }
 
-// A big row you tap to choose: a round radio (pick one) or a square checkbox (pick any).
+// A plain row you tap to choose: a round radio (pick one) or a square checkbox (pick any), then the words.
+// No box around it (Task 3.9). The chosen one has a filled green mark and bold words, so it is not shown by color only.
 function ChoiceRow({ type, label, detail, selected, onPress }) {
   const icon = type === "radio" ? (selected ? "radiobox-marked" : "radiobox-blank") : selected ? "checkbox-marked" : "checkbox-blank-outline";
   return (
     <Pressable
-      style={[styles.choice, selected ? styles.choiceSelected : null]}
+      style={styles.choice}
       onPress={onPress}
       android_ripple={{ color: colors.ripple }}
       accessibilityRole={type}
@@ -599,7 +725,7 @@ function ChoiceRow({ type, label, detail, selected, onPress }) {
     >
       <MaterialCommunityIcons name={icon} size={26} color={selected ? COLORS.primary : colors.outline} />
       <View style={styles.choiceCopy}>
-        <Text style={styles.choiceText}>{label}</Text>
+        <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
         {detail ? <Text style={styles.choiceDetail}>{detail}</Text> : null}
       </View>
     </Pressable>
@@ -646,7 +772,7 @@ const styles = StyleSheet.create({
   closeButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   emergencyNote: {
     marginTop: 16,
-    padding: 14,
+    padding: 10,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -654,7 +780,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.emergencySurface,
   },
   emergencyNoteText: { flex: 1, fontSize: 16, lineHeight: 23, fontWeight: "700", color: colors.heading },
-  field: { marginTop: 24 },
+  // Task 3.9: sections 16 apart (was 24) so the form is shorter.
+  field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   label: { flexShrink: 1, fontSize: 16, fontWeight: "700", color: colors.heading },
   input: {
@@ -671,27 +798,28 @@ const styles = StyleSheet.create({
   inputError: { borderColor: COLORS.emergency, borderWidth: 2 },
   inputDisabled: { backgroundColor: colors.card },
   schedulePicker: { marginTop: 14 },
+  pickerButton: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, overflow: "hidden" },
+  pickerButtonText: { flex: 1, fontSize: 17, lineHeight: 23, color: colors.heading },
+  pickerButtonPlaceholder: { color: colors.muted },
   subLabel: { marginBottom: 8, fontSize: 16, fontWeight: "600", color: colors.heading },
   subLabelSpaced: { marginTop: 14 },
   multiline: { minHeight: 96, paddingTop: 14, paddingBottom: 14 },
-  choiceList: { gap: 10 },
+  choiceList: { gap: 4 },
+  // The two boxed buttons under "Exact pickup spot" keep their old gap.
+  buttonList: { gap: 10 },
   choiceListBelow: { marginTop: 10 },
+  // At least 48 tall so it is easy to tap (DESIGN.md). It grows when the words wrap with large text.
   choice: {
-    minHeight: 56,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1.5,
-    borderColor: colors.outline,
-    borderRadius: 12,
+    minHeight: 48,
+    paddingVertical: 8,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFFFFF",
   },
-  choiceSelected: { borderWidth: 2, borderColor: COLORS.primary, backgroundColor: colors.card },
   choiceCopy: { flex: 1 },
   choiceText: { fontSize: 17, lineHeight: 23, color: colors.heading },
+  choiceTextSelected: { fontWeight: "700" },
   choiceDetail: { marginTop: 2, fontSize: 15, lineHeight: 21, color: colors.muted },
   stepper: { flexDirection: "row", alignItems: "center", gap: 16 },
   stepperButton: {
@@ -705,7 +833,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   stepperButtonDisabled: { borderColor: COLORS.disabled },
-  stepperValue: { minWidth: 56, fontSize: 34, lineHeight: 42, fontWeight: "800", textAlign: "center", color: colors.heading, fontVariant: ["tabular-nums"] },
+  countInput: { width: 88, paddingHorizontal: 6, textAlign: "center", fontSize: 22, fontWeight: "800", fontVariant: ["tabular-nums"] },
   actionButton: {
     minHeight: 56,
     paddingHorizontal: 14,

@@ -142,7 +142,7 @@ export default function AdminOverviewSection({
   const purposeMax = Math.max(numbers.medical, numbers.community, numbers.other, 1);
   const purposes = [
     { label: "Medical / Health", value: numbers.medical },
-    { label: "Community / Personal Trip", value: numbers.community },
+    { label: "Community Activity", value: numbers.community },
     { label: "Other", value: numbers.other },
   ];
   // Both waiting bars use the same scale, so the longer wait has the longer bar.

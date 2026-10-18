@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 
+import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDate } from "../../../lib/dates";
 import { getApprovalStatus, getProfilePhoto, getUserAddress, getUserName, getUserPhone } from "../utils/userFormatters";
@@ -209,10 +210,7 @@ export default function AdminUsersSection({
       {usersError ? <Text style={styles.errorText}>{usersError}</Text> : null}
 
       {isLoadingUsers ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator color={DESIGN_COLORS.hallGreen} />
-          <Text style={styles.body}>Loading registered users...</Text>
-        </View>
+        <ListSkeleton label="Loading registered users" />
       ) : visibleUsers.length ? (
         <View style={styles.list}>
           {wide ? (

@@ -37,7 +37,7 @@ import useAdminDashboardData from "../features/admin/hooks/useAdminDashboardData
 import { logAdminActivity } from "../features/admin/services/adminOperationsService";
 import { getApprovalStatus, getUserName } from "../features/admin/utils/userFormatters";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
-import { PURPOSE_OPTIONS } from "../features/resident/utils/requestOptions";
+import { COMMUNITY_PURPOSE, getPurpose, PURPOSE_OPTIONS } from "../features/resident/utils/requestOptions";
 import {
   formatDateTime,
   getAverageDuration,
@@ -297,6 +297,8 @@ export default function AdminHome() {
   // Resident Verification and Driver Applications: only this Admin's own barangay.
   // The barangay is set on the Admin's profile in the Firebase Console.
   const adminBarangay = profile?.barangay || "";
+  // Under the logo (Task 3.6), like the resident's place strip: "Daanglungsod, Toledo City" shows as "Barangay Daanglungsod".
+  const adminBarangayName = adminBarangay.replace(/,\s*Toledo City$/i, "").trim();
 
   const {
     users,
@@ -416,7 +418,7 @@ export default function AdminHome() {
     return requestsWithDerivedFields.filter((request) => {
       const requestStatus = request.status || "Pending";
       const matchesStatus = requestStatusFilter === "All" || requestStatus === requestStatusFilter;
-      const matchesType = requestTypeFilter === "All" || request.purpose === requestTypeFilter;
+      const matchesType = requestTypeFilter === "All" || getPurpose(request) === requestTypeFilter;
 
       return matchesStatus && matchesType;
     });
@@ -441,7 +443,8 @@ export default function AdminHome() {
   const filteredVehicles = vehiclesWithDerivedStatus;
 
   // How many loaded requests have this "ride for" choice (used until the server counts load).
-  const countRequestsByPurpose = (purpose) => requestsWithDerivedFields.filter((request) => request.purpose === purpose).length;
+  // getPurpose counts the old name "Community / Personal Trip" as "Community Activity".
+  const countRequestsByPurpose = (purpose) => requestsWithDerivedFields.filter((request) => getPurpose(request) === purpose).length;
 
   const activeRequestsCount = useMemo(
     () =>
@@ -488,7 +491,7 @@ export default function AdminHome() {
   // Totals prefer the server-side count; the client tally is the fallback until it loads.
   const overviewNumbers = {
     medical: counts.medicalRequests ?? countRequestsByPurpose("Medical / Health"),
-    community: counts.communityRequests ?? countRequestsByPurpose("Community / Personal Trip"),
+    community: counts.communityRequests ?? countRequestsByPurpose(COMMUNITY_PURPOSE),
     other: counts.otherRequests ?? countRequestsByPurpose("Other"),
     active: counts.activeRequests ?? activeRequestsCount,
     completed: counts.completedRequests ?? completedRequestsCount,
@@ -851,7 +854,12 @@ export default function AdminHome() {
     <>
       <ScrollView style={[styles.page, { backgroundColor: theme.page }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
-          <BrandLogo variant="main" height={compact ? 30 : 36} />
+          <View style={styles.headerBrand}>
+            <BrandLogo variant="main" height={compact ? 30 : 36} />
+            <Text style={[styles.headerBarangay, { color: theme.mutedText }]}>
+              {adminBarangayName ? `Barangay ${adminBarangayName}` : "Barangay not set"}
+            </Text>
+          </View>
 
           <View style={[styles.headerRight, narrow && styles.headerRightCompact]}>
             <TouchableOpacity style={[styles.profileTrigger, { backgroundColor: theme.headerBg }]} onPress={() => setProfileMenuOpen(true)}>
@@ -1240,6 +1248,9 @@ const styles = StyleSheet.create({
     gap: 16,
     flexWrap: "wrap",
   },
+  // The logo with the Admin's barangay under it (Task 3.6). Body size (DESIGN.md: 17/24, 500).
+  headerBrand: { gap: 4, flexShrink: 1 },
+  headerBarangay: { fontSize: 17, lineHeight: 24, fontWeight: "500" },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",

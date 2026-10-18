@@ -2,6 +2,9 @@ import { MAX_PASSENGERS, SCHEDULE_MIN_MINUTES_AHEAD, buildScheduledDate, isAllow
 
 const compactWhitespace = (value = "") => value.trim().replace(/\s+/g, " ");
 
+// Shown right after picking a day and time that may not be booked, and again on Review (Task 3.11).
+export const SCHEDULE_TIME_MESSAGE = `Choose a time at least ${SCHEDULE_MIN_MINUTES_AHEAD / 60} hour from now and within 1 year.`;
+
 export const normalizePhilippinePhone = (value = "") => {
   const digits = value.replace(/\D/g, "");
   if (/^09\d{9}$/.test(digits)) return `+63${digits.slice(1)}`;
@@ -40,8 +43,8 @@ export const validateResidentRequest = (form, residentPhone, now = new Date()) =
     if (!form.scheduleDay || form.scheduleMinutes === null) {
       errors.schedule = "Choose the day and time for the ride.";
     } else if (!isAllowedScheduleTime(buildScheduledDate(form.scheduleDay, form.scheduleMinutes), now)) {
-      // Happens when the form stays open until the chosen time is less than 1 hour away.
-      errors.schedule = `This time is now too soon. Choose a time at least ${SCHEDULE_MIN_MINUTES_AHEAD / 60} hour from now.`;
+      // Too soon, too far, or the form stayed open until the chosen time is less than 1 hour away.
+      errors.schedule = SCHEDULE_TIME_MESSAGE;
     }
   }
 
@@ -50,11 +53,14 @@ export const validateResidentRequest = (form, residentPhone, now = new Date()) =
   }
   if (form.ridingFor === "other") {
     if (!hasText(form.passengerName, 80) || form.passengerName.length < 2) errors.passengerName = "Enter the passenger's name.";
-    // The passenger's phone is optional, but if something was typed it must be a real mobile number.
-    if (form.passengerPhone && !normalizePhilippinePhone(form.passengerPhone)) errors.passengerPhone = "Enter a mobile number like 0917 123 4567, or leave it empty.";
+    // The passenger's phone is required (Task 3.2) and must be a real mobile number.
+    if (!form.passengerPhone) errors.passengerPhone = "Enter the passenger's mobile number.";
+    else if (!normalizePhilippinePhone(form.passengerPhone)) errors.passengerPhone = "Enter a mobile number like 0917 123 4567.";
   }
 
-  if (!(form.passengerCount >= 1 && form.passengerCount <= MAX_PASSENGERS)) errors.passengerCount = `Choose 1 to ${MAX_PASSENGERS} people.`;
+  // The box holds what the resident typed, like "12": digits only, 1 to 50 (Task 3.10). Empty or "0" is not allowed.
+  const count = `${form.passengerCount}`;
+  if (!/^[0-9]+$/.test(count) || Number(count) < 1 || Number(count) > MAX_PASSENGERS) errors.passengerCount = `Enter a number from 1 to ${MAX_PASSENGERS}.`;
   if (!form.barangay) errors.barangay = "Choose the pickup barangay.";
   if (!hasText(form.pickupDetails, 300)) errors.pickupDetails = "Tell the driver how to find you, like a landmark or gate color.";
   if (!hasText(form.destination, 180)) errors.destination = "Enter where you are going.";
