@@ -73,11 +73,12 @@ const sections = [
     heading: "7. How long we keep your information",
     lines: [
       "We keep your account information while your account is active.",
-      "Transport request and emergency alert records are kept for [time period to be decided] for safety and reporting.",
-      "Driver duty records (punch in, breaks, rides, and punch out times) are kept for [time period to be decided].",
+      "Ride request and emergency alert records are kept for 1 year after the ride or alert, for safety and reporting.",
+      "Driver duty records (punch in, breaks, rides, and punch out times) are kept for 1 year.",
       "A driver's location is not kept as a history: only the latest one exists, and it is erased when the driver punches out.",
-      "Proof-of-residency photos and driver document photos are kept after they are reviewed, so an administrator can check them again. They are deleted after [time period to be decided].",
-      "If you ask us to delete your account, we will delete or anonymize your information within [time period to be decided], unless the law requires us to keep it longer.",
+      "Proof-of-residency photos and driver document photos are kept while the account is active, so an administrator can check them again. If an account is rejected or deleted, they are removed within 30 days.",
+      "If your account is deleted, your ride and duty history is kept for 1 year and then removed.",
+      "These records are not deleted automatically: when the time is up, the SakayNa system administrator removes them by hand.",
     ],
   },
   {
@@ -104,7 +105,7 @@ export default function PrivacyPolicy() {
         <PageBackButton />
 
         <Text style={styles.title}>SakayNa Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: October 11, 2026</Text>
+        <Text style={styles.updated}>Last updated: October 19, 2026</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>
