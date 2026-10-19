@@ -1,12 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomSheetPicker from "../../../components/BottomSheetPicker";
-import { COLORS, LIGHT_COLORS } from "../../../constants/design";
+import { COLORS, DESIGN_COLORS, LIGHT_COLORS } from "../../../constants/design";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import useCurrentLocation from "../hooks/useCurrentLocation";
 import { createResidentRequest } from "../services/residentRequestService";
@@ -196,11 +195,13 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
         {/* "padding" on Android too: the app is edge-to-edge, so Android no longer shrinks the screen for the keyboard.
             This adds the space instead, and the page scrolls so the box being typed in stays visible. */}
         <KeyboardAvoidingView behavior="padding" style={styles.page}>
-          {/* Dark clock/battery icons so they stay visible on the white page. */}
-          <StatusBar style="dark" />
+          {/* Green strip behind the clock and battery (Task 3.17), the same green as the home screen's header.
+              The form scrolls under it instead of under the clock. The clock icons stay white here
+              (a "dark icons" setting doesn't reach this pop-up window), so they need the green to be seen. */}
+          <View style={[styles.clockStrip, { height: insets.top }]} />
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}
+            contentContainerStyle={[styles.content, { paddingTop: 12, paddingBottom: insets.bottom + 16 }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -766,6 +767,7 @@ function ActionButton({ icon, label, disabled, onPress }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.page },
+  clockStrip: { backgroundColor: DESIGN_COLORS.hallGreen },
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   title: { flex: 1, fontSize: 28, lineHeight: 36, fontWeight: "800", color: colors.heading },

@@ -78,11 +78,13 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
         <View style={[styles.backdrop, { backgroundColor: theme.modalOverlay }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close menu" />
 
+          {/* The panel starts just below the clock and battery (Task 3.17): the dark backdrop stays behind them,
+              so their white icons can be seen (on the white panel they were invisible). */}
           <Animated.View
-            style={[styles.panel, { width: panelWidth, backgroundColor: theme.surface, shadowColor: theme.shadow, transform: [{ translateX: slideX }] }]}
+            style={[styles.panel, { top: insets.top, width: panelWidth, backgroundColor: theme.surface, shadowColor: theme.shadow, transform: [{ translateX: slideX }] }]}
             accessibilityViewIsModal
           >
-            <ScrollView contentContainerStyle={[styles.panelContent, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={[styles.panelContent, { paddingTop: 12, paddingBottom: insets.bottom + 12 }]} showsVerticalScrollIndicator={false}>
               <View style={styles.profileRow}>
                 {/* Tapping the picture opens Profile, the same as the Profile row below (Task 3.7). */}
                 <Pressable
