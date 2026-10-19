@@ -216,10 +216,11 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - Drivers on APKs before Step A (demo-ready-18 and older) only save at the steps, so their pin is grey "Old location" between steps.
   - **Extra fix (`9f1c6fb`):** the driver card is a plain box with two tap areas and "Show on map" between them, so the website no longer has a button inside a button. Same look.
 - **3.21 (website only, straight line as decided):**
-  - Every live driver pin with an active ride (Assigned … Arrived) gets a dashed line to the pickup: **green**, ending in a dot labelled **"Pickup · Name"**. After Picked Up it goes to the destination: **orange**, **"Drop-off · Name"**. The label is always visible, so color is never the only cue (DESIGN.md).
+  - Every live driver pin with an active ride (Assigned … Arrived) gets a dashed line to the pickup: **green**, ending in a dot labelled **"Pickup · Name"**. After Picked Up it goes to the destination: **orange**, **"Drop-off · Name"**. The label has a word, so color is never the only cue (DESIGN.md).
   - When the pin is grey "Old location", the line and dot are grey and faded too, with the same label.
   - The assignment only has the places as typed words, so the ride's request is read **once** for its map positions (dispatchers may read any request; no rules change). No map position = no line. Most destinations are typed words only, so after Picked Up most rides show no line until Task 3.27.
   - The lines move like the pins (no map rebuild) and don't change how the map zooms to the selected request's pins.
+  - **Labels on hover (changed after testing, October 19):** always-visible labels under the driver pins and next to the end dots covered the map. Now a pin's or dot's label shows only while the mouse is over it, while the keyboard is on it (pins and dots are Tab stops), or after a tap; tapping a driver pin still opens its pop-up. "Old location" pins and lines stay grey **and faded**, so old is not shown by color alone.
 
 ---
 
