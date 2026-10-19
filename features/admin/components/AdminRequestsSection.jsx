@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-na
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import AdminSectionHeader from "./AdminSectionHeader";
-import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, ORANGE, RED } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { getWhenText } from "../../resident/utils/requestMapper";
 import { getPurpose } from "../../resident/utils/requestOptions";
@@ -20,6 +20,29 @@ const STATUS_BANDS = {
 
 const getStatusBand = (status) =>
   STATUS_BANDS[status] || { icon: "help-circle-outline", backgroundColor: DESIGN_COLORS.inkMuted, color: DESIGN_COLORS.paperWhite };
+
+// The status pill on each card (DESIGN.md Style: status badges are tinted pills with the status word).
+const STATUS_PILLS = {
+  Pending: { icon: "timer-sand", backgroundColor: ORANGE[100], color: ORANGE[800] },
+  Assigned: { icon: "account-check-outline", backgroundColor: GREEN[100], color: GREEN[800] },
+  "In Progress": { icon: "van-passenger", backgroundColor: GREEN[100], color: GREEN[800] },
+  Completed: { icon: "check-circle-outline", backgroundColor: NEUTRAL[100], color: NEUTRAL[700] },
+  Cancelled: { icon: "cancel", backgroundColor: NEUTRAL[100], color: NEUTRAL[700] },
+};
+
+const getStatusPill = (status) => STATUS_PILLS[status] || { icon: "help-circle-outline", backgroundColor: NEUTRAL[100], color: NEUTRAL[700] };
+
+// Cards per row: 3 on a very wide window, 2 on a wide one, 1 otherwise.
+const getColumnCount = (width) => (width >= 1700 ? 3 : width >= 1100 ? 2 : 1);
+
+// Splits the list into rows of `size` cards, so every card in a row is the same width and height.
+const toRows = (items, size) => {
+  const rows = [];
+  for (let index = 0; index < items.length; index += size) {
+    rows.push(items.slice(index, index + size));
+  }
+  return rows;
+};
 
 const PURPOSE_ICONS = {
   "Medical / Health": "medical-bag",
@@ -58,107 +81,87 @@ function PillChoice({ label, selected, onPress, count, countColors }) {
   );
 }
 
-function Fact({ icon, label, value, fallback }) {
-  return (
-    <View style={styles.fact}>
-      <View style={styles.factLabelRow}>
-        <MaterialCommunityIcons name={icon} size={17} color={DESIGN_COLORS.hallGreen} />
-        <Text style={styles.small}>{label}</Text>
-      </View>
-      <Text style={[styles.factValue, !value && styles.factValueEmpty]}>{value || fallback}</Text>
-    </View>
-  );
-}
-
-function RequestCard({ request, onViewDetails, half, narrow }) {
+// One short request card (Task 3.19, DESIGN.md "Admin website exception"). The whole card is one button that opens
+// the existing details pop-up; "View details" inside it is only words, so there is never a button inside a button.
+// Emergency rides get a 2 px red edge and a red "Emergency" pill, like the dispatcher's queue.
+function RequestCard({ request, onViewDetails }) {
   const status = request.status || "Pending";
-  const band = getStatusBand(status);
-  // Old requests have no purpose; they show their old type (red only for old Emergency requests).
+  const statusPill = getStatusPill(status);
+  // Old requests have no purpose; old Emergency requests count as emergencies too.
   const isOldEmergency = !request.purpose && request.requestTypeLabel === "Emergency Request";
+  const isEmergency = request.priorityLabel === "Emergency" || isOldEmergency;
   const priorityTag = PRIORITY_TAGS[request.priorityLabel] || { backgroundColor: DESIGN_COLORS.boardTint, color: DESIGN_COLORS.ink };
+  const name = request.residentName || "Resident";
+  const vehicle = request.vehicleLabel === "Not assigned" ? "" : request.vehicleLabel;
 
   return (
-    <View style={[styles.card, half && styles.cardHalf]}>
-      <View style={[styles.band, { backgroundColor: band.backgroundColor }]}>
-        <MaterialCommunityIcons name={band.icon} size={26} color={band.color} />
-        <Text style={[styles.bandText, { color: band.color }]}>{status}</Text>
-        {narrow ? null : <Text style={[styles.bandReference, { color: band.color }]}>{getReference(request)}</Text>}
+    <Pressable
+      onPress={() => onViewDetails(request)}
+      style={({ pressed, hovered }) => [styles.card, isEmergency && styles.cardEmergency, (pressed || hovered) && styles.cardPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${isEmergency ? "Emergency. " : ""}${status} request from ${name}. View details`}
+    >
+      <View style={styles.topRow}>
+        <View style={[styles.tag, { backgroundColor: statusPill.backgroundColor }]}>
+          <MaterialCommunityIcons name={statusPill.icon} size={17} color={statusPill.color} />
+          <Text style={[styles.tagText, { color: statusPill.color }]}>{status}</Text>
+        </View>
+        {isEmergency ? (
+          <View style={[styles.tag, { backgroundColor: DESIGN_COLORS.emergencyRed }]}>
+            <MaterialCommunityIcons name="ambulance" size={17} color={DESIGN_COLORS.paperWhite} />
+            <Text style={[styles.tagText, { color: DESIGN_COLORS.paperWhite }]}>Emergency</Text>
+          </View>
+        ) : (
+          <View style={[styles.tag, { backgroundColor: priorityTag.backgroundColor }]}>
+            <Text style={[styles.tagText, { color: priorityTag.color }]}>{request.priorityLabel}</Text>
+          </View>
+        )}
+        {isOldEmergency ? null : (
+          <View style={styles.tag}>
+            <MaterialCommunityIcons name={PURPOSE_ICONS[getPurpose(request)] || "dots-horizontal"} size={17} color={DESIGN_COLORS.ink} />
+            <Text style={styles.tagText}>{request.purpose || request.requestTypeLabel}</Text>
+          </View>
+        )}
+        <Text style={styles.reference}>{getReference(request)}</Text>
       </View>
 
-      <View style={styles.cardBody}>
-        <View style={styles.who}>
-          <Text style={styles.name}>{request.residentName || "Resident"}</Text>
-          <View style={styles.tags}>
-            {isOldEmergency ? (
-              <View style={[styles.tag, { backgroundColor: DESIGN_COLORS.redTint }]}>
-                <MaterialCommunityIcons name="ambulance" size={17} color={DESIGN_COLORS.emergencyRed} />
-                <Text style={[styles.tagText, { color: DESIGN_COLORS.emergencyRed }]}>Emergency Request</Text>
-              </View>
-            ) : (
-              <View style={styles.tag}>
-                <MaterialCommunityIcons name={PURPOSE_ICONS[getPurpose(request)] || "dots-horizontal"} size={17} color={DESIGN_COLORS.ink} />
-                <Text style={styles.tagText}>{request.purpose || request.requestTypeLabel}</Text>
-              </View>
-            )}
-            <View style={[styles.tag, { backgroundColor: priorityTag.backgroundColor }]}>
-              <Text style={[styles.tagText, { color: priorityTag.color }]}>{request.priorityLabel}</Text>
-            </View>
-          </View>
-          {request.title || request.emergencyType ? <Text style={styles.small}>{request.title || request.emergencyType}</Text> : null}
-          {narrow ? <Text style={styles.small}>{getReference(request)}</Text> : null}
-        </View>
+      <Text style={styles.name} numberOfLines={1}>
+        {name}
+        {request.barangay ? <Text style={styles.nameBarangay}> · {request.barangay}</Text> : null}
+      </Text>
 
-        {/* Route board: "From" has a green ring, "To" has an orange dot, joined by a green line. */}
-        <View>
-          <View style={styles.routeRow}>
-            <View style={styles.routeMarks}>
-              <View style={styles.fromRing} />
-              <View style={styles.routeLine} />
-            </View>
-            <View style={styles.routeStop}>
-              <Text style={styles.small}>From</Text>
-              <Text style={styles.place}>{formatPlace(request.pickupLocation) || request.barangay || "Not available"}</Text>
-            </View>
-          </View>
-          <View style={styles.routeRow}>
-            <View style={styles.routeMarks}>
-              <View style={styles.toDot} />
-            </View>
-            <View style={styles.routeStop}>
-              <Text style={styles.small}>To</Text>
-              <Text style={styles.place}>{request.destination || "Not available"}</Text>
-            </View>
-          </View>
+      {/* A short route board: "From" has a green ring, "To" an orange dot. One line each; the full text is in the details. */}
+      <View style={styles.route}>
+        <View style={styles.routeRow}>
+          <View style={styles.fromRing} />
+          <Text style={styles.place} numberOfLines={1}>
+            {formatPlace(request.pickupLocation) || request.barangay || "Not available"}
+          </Text>
         </View>
-
-        <View style={[styles.facts, narrow && styles.factsStacked]}>
-          <Fact icon="calendar-clock" label="When" value={getWhenText(request)} />
-          <Fact icon="steering" label="Driver" value={request.assignedDriverName} fallback="Not assigned yet" />
-          <Fact
-            icon="van-passenger"
-            label="Vehicle"
-            value={request.vehicleLabel === "Not assigned" ? "" : request.vehicleLabel}
-            fallback="Not assigned yet"
-          />
-        </View>
-
-        <View style={styles.footer}>
-          <View style={styles.footerDates}>
-            <Text style={styles.small}>Sent {formatDateTime(request.createdAt)}</Text>
-            {request.completedAt ? <Text style={styles.small}>Completed {formatDateTime(request.completedAt)}</Text> : null}
-          </View>
-          <Pressable
-            onPress={() => onViewDetails(request)}
-            style={({ pressed }) => [styles.button, narrow && styles.buttonFull, pressed && styles.buttonPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`View details for ${request.residentName || "this request"}`}
-          >
-            <Text style={styles.buttonText}>View details</Text>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={DESIGN_COLORS.paperWhite} />
-          </Pressable>
+        <View style={styles.routeRow}>
+          <View style={styles.toDot} />
+          <Text style={styles.place} numberOfLines={1}>
+            {request.destination || "Not available"}
+          </Text>
         </View>
       </View>
-    </View>
+
+      <Text style={styles.small}>
+        {getWhenText(request)} · Driver: <Text style={styles.smallStrong}>{request.assignedDriverName || "not assigned yet"}</Text>
+        {vehicle ? ` · ${vehicle}` : ""}
+      </Text>
+
+      <View style={styles.footer}>
+        <Text style={[styles.small, styles.footerDate]}>
+          Sent {formatDateTime(request.createdAt)}
+          {request.completedAt ? ` · Completed ${formatDateTime(request.completedAt)}` : ""}
+        </Text>
+        <View style={styles.viewDetails}>
+          <Text style={styles.viewDetailsText}>View details</Text>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={DESIGN_COLORS.hallGreen} />
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -178,9 +181,7 @@ export default function AdminRequestsSection({
   collectionLimit,
 }) {
   const { width } = useWindowDimensions();
-  // Two cards side by side on a big screen, one card per row on a smaller one.
-  const twoColumns = width >= 1100;
-  const narrow = width < 520;
+  const columns = getColumnCount(width);
 
   // The status counts follow the "Ride for" choice, so the numbers match what you will see.
   const requestsForPurpose = requests.filter((request) => requestTypeFilter === "All" || getPurpose(request) === requestTypeFilter);
@@ -192,7 +193,7 @@ export default function AdminRequestsSection({
       <AdminSectionHeader
         icon="clipboard-list-outline"
         title="Requests"
-        subtitle="Every ride request from residents, newest first. Tap View details to see the passenger, help needed and all times."
+        subtitle="Every ride request from residents, newest first. Click a request to see the passenger, help needed and all times."
       />
 
       <View style={styles.filters}>
@@ -228,9 +229,19 @@ export default function AdminRequestsSection({
       {isLoadingRequests ? (
         <ListSkeleton label="Loading request history" />
       ) : filteredRequests.length ? (
-        <View style={[styles.grid, twoColumns && styles.gridTwo]}>
-          {filteredRequests.map((request) => (
-            <RequestCard key={request.id} request={request} onViewDetails={setSelectedRequestRecord} half={twoColumns} narrow={narrow} />
+        <View style={styles.grid}>
+          {toRows(filteredRequests, columns).map((row) => (
+            <View key={row[0].id} style={styles.gridRow}>
+              {row.map((request) => (
+                <View key={request.id} style={styles.gridCell}>
+                  <RequestCard request={request} onViewDetails={setSelectedRequestRecord} />
+                </View>
+              ))}
+              {/* Empty places keep the last row's cards the same width as the others. */}
+              {Array.from({ length: columns - row.length }, (_, index) => (
+                <View key={`empty-${index}`} style={styles.gridCell} />
+              ))}
+            </View>
           ))}
         </View>
       ) : (
@@ -251,77 +262,61 @@ const styles = StyleSheet.create({
   label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   small: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
 
-  // Pill-shaped choices, like the range choices on Overview.
-  filters: { flexDirection: "row", flexWrap: "wrap", columnGap: 32, rowGap: 16 },
-  filterGroup: { gap: 8, flexShrink: 1 },
+  smallStrong: { fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
+
+  // Pill-shaped choices, like the range choices on Overview. 40 tall: filter chips on the Admin website
+  // (DESIGN.md "Admin website exception").
+  filters: { flexDirection: "row", flexWrap: "wrap", columnGap: 32, rowGap: 12 },
+  filterGroup: { gap: 6, flexShrink: 1 },
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pill: {
-    minHeight: 48,
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  pillWithCount: { paddingLeft: 8 },
+  pillWithCount: { paddingLeft: 6 },
   pillSelected: { borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.hallGreen },
   pillText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   pillTextSelected: { color: DESIGN_COLORS.paperWhite },
-  countBubble: { minWidth: 32, height: 32, paddingHorizontal: 8, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
+  countBubble: { minWidth: 28, height: 28, paddingHorizontal: 7, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
   countBubbleSelected: { backgroundColor: DESIGN_COLORS.paperWhite },
   countText: { fontSize: 15, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   countTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
 
-  grid: { gap: 16 },
-  gridTwo: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" },
-  // Cards: 24 corners, a thin line around, no shadow (DESIGN.md "Flat Board Rule").
-  card: { width: "100%", borderRadius: CORNER.card, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
-  cardHalf: { width: "48.5%" },
-  band: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 18 },
-  bandText: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold },
-  bandReference: { marginLeft: "auto", fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
-  cardBody: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 18, gap: 14 },
+  // Rows of equal cards: every card in a row has the same width and height.
+  grid: { gap: 12 },
+  gridRow: { flexDirection: "row", gap: 12, alignItems: "stretch" },
+  gridCell: { flex: 1, minWidth: 0 },
+  // A short card: white, 16 corners, a thin edge (DESIGN.md Style). Emergency: a 2 px red edge, like the dispatcher's queue.
+  card: { flex: 1, gap: 8, padding: 14, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: DESIGN_COLORS.paperWhite },
+  cardEmergency: { borderWidth: 2, borderColor: RED[600] },
+  cardPressed: { backgroundColor: NEUTRAL[50] },
 
-  who: { gap: 8 },
-  name: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  tag: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.boardTint },
+  topRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 },
+  tag: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.boardTint },
   tagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  reference: { marginLeft: "auto", fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted, fontVariant: ["tabular-nums"] },
 
-  routeRow: { flexDirection: "row", gap: 12 },
-  routeMarks: { width: 22, alignItems: "center", paddingTop: 4 },
-  fromRing: { width: 16, height: 16, borderRadius: 999, borderWidth: 4, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.paperWhite },
-  routeLine: { flex: 1, width: 3, minHeight: 16, marginVertical: 3, borderRadius: 2, backgroundColor: DESIGN_COLORS.hallGreen },
-  toDot: { width: 16, height: 16, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
-  routeStop: { flex: 1, minWidth: 0, paddingBottom: 10 },
-  place: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  name: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  nameBarangay: { fontFamily: FONT.regular, color: DESIGN_COLORS.inkMuted },
 
-  // A soft box, not a card inside a card: no border, just Board Tint.
-  facts: { flexDirection: "row", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: CORNER.input, backgroundColor: DESIGN_COLORS.boardTint },
-  factsStacked: { flexDirection: "column" },
-  fact: { flex: 1, minWidth: 0, gap: 2 },
-  factLabelRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  factValue: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  factValueEmpty: { fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
+  route: { gap: 2 },
+  routeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  fromRing: { width: 12, height: 12, borderRadius: 999, borderWidth: 3, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.paperWhite },
+  toDot: { width: 12, height: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
+  place: { flex: 1, minWidth: 0, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
 
-  footer: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  footerDates: { flexShrink: 1 },
-  button: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 20,
-    borderRadius: CORNER.pill,
-    backgroundColor: DESIGN_COLORS.hallGreen,
-  },
-  buttonFull: { width: "100%" },
-  buttonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.paperWhite },
+  // The last line sits at the bottom of the card, so cards of different lengths in one row still line up.
+  footer: { marginTop: "auto", flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12, rowGap: 4 },
+  footerDate: { flexShrink: 1 },
+  viewDetails: { flexDirection: "row", alignItems: "center", gap: 2 },
+  viewDetailsText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: GREEN[700] },
 
   emptyState: { padding: 20, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });
