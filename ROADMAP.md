@@ -99,6 +99,8 @@ Enhance perceived performance, accessibility, and user feedback without altering
 
 **Update October 19, 2026:** on `big-update` (after `a18955c`, not released yet): **3.15** (Delete Account part), **3.17**, **3.18**, **3.20** and **3.21** are done, plus the **UI refresh** (DESIGN.md "Style") for every role and the sign-up screens, skeleton loading on phone and website, the Terms/Privacy menu fix, hover labels for every dispatcher map pin, the Admin Overview one-screen layout and header, and Privacy Policy sections 2 and 7. Every item was tested by the owner and committed; commits are in "Progress on big-update" and "Other work on big-update" below. **Not done:** see "Not done yet" and "Next steps" at the end of this section. The defense set is still demo-ready-18 / `a18955c` / rules `d464a70` until the release.
 
+**Owner's decision, October 19, 2026 (decision 13):** because there is not enough time, **3.23 Chat** and **3.25 City Admin / Super Admin role** will **not** be built for the capstone. **3.19** Admin layout, **3.22** barangay-first emergency ringing and **3.24** dark mode are future work too. **3.27** resident destination pin is optional, only if there is time after the release test. See "Future work / recommendations" below.
+
 ### Ground rules for Phase 3
 
 1. **The defense version stays frozen.** demo-ready-18 + website `a18955c` + rules `d464a70` are the safe defense set (changed October 18, 2026; before that it was demo-ready-17 + website `258258e`). Remember: the website is built from `master` → `main`, and **everything on master goes live**.
@@ -149,6 +151,8 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 | 3.27 | Resident drops a destination pin on the map (real lat/lng) | M | Med | No | Yes | Yes |
 
 ### Suggested order (safest and most important first)
+
+**Changed October 19, 2026 (decision 13):** 3.19, 3.22, 3.23, 3.24 and 3.25 are future work, not part of the capstone; 3.27 is optional. The order below is kept as the original plan.
 
 1. **Stage A (3.1 → 3.8):** quick wins, tiny risk, each easy to test and undo.
 2. **Resident form (3.9 → 3.11):** the lead's first and most detailed request. Do all three, then one development build for the date/time picker.
@@ -288,11 +292,21 @@ Also tested by the owner and committed on `big-update`.
 |---|---|
 | **Admin text under 15 px** | Some Admin text is still 12–14 px (side menu, filter chips, pop-up subtitles and detail lines, small action buttons, count badges, Operations labels and inputs). Left out of the Admin UI refresh because density belongs to 3.19. **Next step** (below). |
 | 3.15, Profile-editing part | Not done (editing still lives in Settings). The Delete Account part is done. |
-| 3.19 Admin website layout (top bar, sidebar, card lists, denser desktop) | Not started. Not part of this release. |
-| 3.22 Emergency alerts ring the barangay's dispatcher first | Not started (needs a full emergency rehearsal plan first). |
-| 3.23 Chat between Resident and Driver | Not started (the only Phase 3 rules change; no rules deploy before the defense). |
-| 3.24 Light/Dark theme switch | Not started (goes against DESIGN.md "light only"; may be dropped). |
-| 3.27 Resident drops a destination pin | Not started (future). |
+| 3.19, 3.22, 3.23, 3.24, 3.25 | **Future work** (owner's decision 13, October 19): not built for the capstone. See "Future work / recommendations" below. |
+| 3.27 Resident drops a destination pin | Not started. **Optional, only if there is time after the release test.** |
+
+#### Future work / recommendations (not built for the capstone)
+
+Owner's decision 13 (October 19, 2026): these are left out because there is not enough time before the defense. They can be presented to the panel as recommendations. Details of each are in its task below.
+
+| Item | What it would add | Why it waits / what it needs |
+|---|---|---|
+| 3.19 Admin website layout | Top bar, left sidebar, card lists, denser desktop look | Moves every Admin section into a new frame; each must be retested. Needs an "Admin website exception" in DESIGN.md. |
+| 3.22 Barangay-first emergency ringing | Alerts ring the barangay's own dispatcher first, then everyone after 30 seconds | Changes who hears an emergency; needs a full emergency rehearsal plan and tests (covered, uncovered, covering dispatcher offline). |
+| 3.23 Chat between Resident and Driver | Short text messages for one ride | A new database collection and a `firestore.rules` change (live deploy); Privacy Policy update. |
+| 3.24 Light/Dark theme switch | A dark look for every screen | Touches almost every file; goes against DESIGN.md "light only"; emergency red contrast must be rechecked. |
+| 3.25 City Admin / Super Admin role | City Admin (city-wide map, statistics, creates Dispatchers) above Barangay Admins | Splits every Admin rule in `firestore.rules`; needs its own plan, Playground tests and the safe deploy steps. |
+| 3.26 Several vehicles for one big group | Already Stage D (future) | Changes the ride flow; see HANDOFF F8. |
 
 #### Next steps (in this order)
 
@@ -401,7 +415,7 @@ Also tested by the owner and committed on `big-update`.
 - **Must keep:** DESIGN.md says the Emergency button is "visible and one tap away in every state". It must stay on every tab.
 - **Could break:** `resident-home.jsx` (1,646 lines) also contains the whole emergency alert and auto-call system. The bar must only wrap the page; the emergency code must not be moved or changed. Full emergency test afterwards.
 
-#### Task 3.19: Admin website layout
+#### Task 3.19: Admin website layout (future work, decision 13)
 - **What changes:** `app/admin-home.jsx` becomes three parts: **top bar** (logo, barangay, search, Admin's picture) that never scrolls away; **left sidebar** with the sections; **content area** that scrolls and shows lists of cards/rows. Click a card → its detail page. Denser text/spacing for desktop, aiming for how it looks at 75% browser zoom on the Dell monitor. Needs a written "Admin website exception" in DESIGN.md (like the emergency form's).
 - **Could break:** every Admin section is moved into the new frame: approvals, Users, Duty Records, Operations, Reports, Emergency Calls. Each must be retested. Logic and rules are not touched.
 
@@ -417,7 +431,7 @@ Also tested by the owner and committed on `big-update`.
 - **Decision needed:** a straight dashed line (simple, no new service) or a line following the roads (needs a free routing server with a fair-use rule, like the map tiles). Recommend straight line first.
 - **Could break:** nothing saved; map only.
 
-#### Task 3.22: Emergency alerts by barangay
+#### Task 3.22: Emergency alerts by barangay (future work, decision 13)
 - **What changes:** each Dispatcher already has a "service areas" list of barangays (Admin → Operations → Dispatcher scope) and each alert already saves the resident's barangay. The Dispatcher screen would:
   1. **Ring** an alert right away only for dispatchers whose service areas include that barangay.
   2. Show it quietly to the others ("Other barangays").
@@ -426,13 +440,13 @@ Also tested by the owner and committed on `big-update`.
 - **Limits:** "nearest" means "same barangay", not GPS distance. There are no push notifications, so a dispatcher only hears alerts while the website is open (same as today). Old APKs still work (the alert format does not change).
 - **Could break:** **an emergency could be answered late** if service areas are set wrong. The 30-second safety net is required, not optional. Needs a full test: resident in a covered barangay, in an uncovered barangay, and with the covering dispatcher offline. Also Known-Issue C3 (alerts hidden after 2 minutes) interacts with this timer.
 
-#### Task 3.23: Chat between Resident and Driver
+#### Task 3.23: Chat between Resident and Driver (not built for the capstone, decision 13)
 - **What changes:** a new database collection for messages of one ride. Only that ride's Resident and its assigned Driver can read and write; dispatchers and Admins cannot. Messages are short text only (no photos), cannot be edited or deleted, and chat is open from Assigned until Completed/Cancelled. Resident: Chat tab (3.18). Driver: a Chat button on the Ride page.
 - **Rules:** **yes**, a new section in `firestore.rules`. It adds a new collection and does not change existing ones, but it is still a live deploy (use the safe deploy steps, after the defense).
 - **Limits:** no push notifications, so a new message shows only when the app is open (a dot on the tab).
 - **Could break:** the driver's Ride page layout. Privacy Policy must mention saved messages.
 
-#### Task 3.24: Light/Dark theme switch
+#### Task 3.24: Light/Dark theme switch (future work, decision 13)
 - **What changes:** a switch in Settings. Every phone screen needs dark colors defined and used. Many screens still have hard-coded colors (`#06774B`, `#FFFFFF`, …), so this touches almost every file.
 - **Conflicts with DESIGN.md:** "Theme: light only" (dark mode was removed on purpose on Oct 3, 2026). The group must agree to change DESIGN.md.
 - **Recommendation:** do it last, or leave it as future work. It is the most work for the least safety/function value.
@@ -440,7 +454,7 @@ Also tested by the owner and committed on `big-update`.
 
 ### Stage D (future feature: own plan after the defense)
 
-#### Task 3.25: City Admin role
+#### Task 3.25: City Admin / Super Admin role (not built for the capstone, decision 13)
 - **What changes:** a new role. **City Admin:** live map of all barangays, city-wide statistics, and the **only** one who creates Dispatcher accounts. **Barangay Admin:** today's Admin, minus the tools that move to the City Admin.
 - **Rules:** large. Every `isAdmin()` check must be split into "Barangay Admin" and "City Admin". Add Dispatcher rules move to the City Admin.
 - **Also changes:** `lib/roles.js`, `AuthRouteGate.jsx`, a new City Admin website screen, and Admin accounts in the Console. The barangay-scoping questions from Task 1.4 come back here.
@@ -449,7 +463,7 @@ Also tested by the owner and committed on `big-update`.
 #### Task 3.26: Multiple vehicles for one big group
 - Real assignment of a second driver and vehicle to one request (HANDOFF F8). It changes how rides, the Resident's progress screen and the Driver's steps work. Only if the lead wants more than the warning in 3.10.
 
-#### Task 3.27: Resident drops a destination pin (future, not now)
+#### Task 3.27: Resident drops a destination pin (optional, only if there is time after the release test)
 - **What changes:** on Request a Ride, the Resident can drop a pin for the destination too (like the pickup pin), so the ride saves the destination's real lat/lng instead of only the typed words. The Dispatcher map then shows the destination exactly, not as an address-lookup guess.
 - **Needs:** a phone change, so a **new APK**. No rules change expected (check before building).
 - **Could break:** the Request a Ride form gets longer; old rides and old APKs still have text only, so the address lookup must stay as the fallback.
@@ -468,8 +482,9 @@ Also tested by the owner and committed on `big-update`.
 8. Live location (3.20): only while the driver app is open.
 9. Route line (3.21): straight line first.
 10. Navigation bar (3.17): the owner sends screenshots later.
-11. Dark mode (3.24): keep it, but do it last.
-12. Chat (3.23): "rider" means the **Driver**. Chat is Resident ↔ Driver only.
+11. Dark mode (3.24): keep it, but do it last. **Changed October 19: future work (decision 13).**
+12. Chat (3.23): "rider" means the **Driver**. Chat is Resident ↔ Driver only. **Changed October 19: not built for the capstone (decision 13).**
+13. **(October 19, 2026)** Because of time, Chat (3.23) and the City Admin / Super Admin role (3.25) will **not** be built for the capstone. 3.19 Admin layout, 3.22 barangay-first emergency ringing and 3.24 dark mode are future work too. 3.27 destination pin is optional, only if there is time after the release test. All are listed in "Future work / recommendations".
 
 ---
 

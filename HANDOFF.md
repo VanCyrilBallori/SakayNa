@@ -8,6 +8,7 @@ Task 1.2 deployment and owner-reported test results were added October 14, 2026.
 The demo-ready-17 APK release was added October 14, 2026.
 The demo-ready-18 APK release (local build) and the new defense set were added October 18, 2026.
 The October 19 big-update work (UI refresh, 3.15, 3.17, 3.18, 3.20, 3.21, skeletons and fixes), what is not done, and the next steps were added October 19, 2026 (section 3, "big-update work, October 19").
+The owner's decision that Chat (3.23), the City Admin / Super Admin role (3.25), 3.19, 3.22 and 3.24 are future work, and that 3.27 is optional, was added October 19, 2026 (section 3, "Future work / recommendations").
 
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
@@ -315,7 +316,9 @@ Details and the full commit table are in ROADMAP.md, Phase 3 ("Progress on big-u
 | Admin Overview one-screen dashboard (1280 px+, equal rows) + Admin header like the dispatcher's | `6fc80a0` |
 | Release plan docs | `af9d97f`, `3ec93b8` |
 
-**Not done:** Admin text under 15 px (some Admin text is still 12–14 px; left for its own fix), the Profile-editing part of 3.15, **3.19** Admin layout, **3.22** barangay alerting, **3.23** chat, **3.24** dark theme, **3.27** destination pin.
+**Not done:** Admin text under 15 px (some Admin text is still 12–14 px; left for its own fix), the Profile-editing part of 3.15. **3.27** destination pin is **optional, only if there is time after the release test**.
+
+**Future work (owner's decision, October 19, 2026; not built for the capstone because of time):** **3.23** chat, **3.25** City Admin / Super Admin role, **3.19** Admin layout, **3.22** barangay-first emergency ringing, **3.24** dark mode. They are listed under "Future work / recommendations" below and in ROADMAP.md (decision 13).
 
 **Next steps, in order:** (1) Admin text 15 px fix (website); (2) full pre-release test of big-update on phone and website; (3) release: merge big-update into master once, master → main (Vercel "Ready", check live pages), local build of **demo-ready-19** from that merge (EAS free builds are used up until November 1), phone test, tag; (4) October 22: data cleanup, demo accounts for every role, rehearsal. **Do not start the release before steps 1–2 are done and the owner says so.**
 
@@ -360,7 +363,7 @@ The owner calls this **#11**, but no matching numbered vehicle-picture requireme
 | A17-A18 | Large screens and old-APK compatibility code. Do not remove working compatibility during the freeze; old availability still has current uses. |
 | A19-A21 | Recheck hard-coded colors/status words and unused assignment messages. Recent Admin redesigns may cover some styling, not the entire backlog. |
 
-### Future work for thesis/pilot, not implementation now
+### Future work / recommendations (thesis/pilot), not implementation now
 
 | IDs | Ideas only |
 |---|---|
@@ -368,6 +371,13 @@ The owner calls this **#11**, but no matching numbered vehicle-picture requireme
 | F6-F7 | Trusted server for alert/shift cleanup, account management, private photos, abuse limits, real push notifications. |
 | F8-F10 | Multiple vehicles per incident, live driver tracking, map-provider plan. |
 | F11-F12 | Automated rules/helper tests; health-data privacy, access, retention, removal decisions. |
+| 3.23 | Chat between Resident and Driver (needs a new collection and a rules deploy). Owner's decision October 19: not built for the capstone. |
+| 3.25 | City Admin / Super Admin role above Barangay Admins (splits every Admin rule). Owner's decision October 19: not built for the capstone. |
+| 3.19 | Admin website layout: top bar, sidebar, card lists, denser desktop. |
+| 3.22 | Emergency alerts ring the barangay's own dispatcher first, everyone after 30 seconds (needs a full emergency rehearsal plan). |
+| 3.24 | Light/Dark theme switch (DESIGN.md is light only). |
+
+Details of 3.19–3.25 are in ROADMAP.md Phase 3 ("Future work / recommendations", decision 13). 3.27 (resident destination pin) is not future work: it is optional, only if there is time after the release test.
 
 Other optional plans stay deferred: Driver My DTR, automatic shift closing/corrections, DTR exports, Dispatcher Take back/Free driver tools, Android Back switching driver pages. None is newly approved.
 
