@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -17,7 +17,8 @@ import { useTheme } from "../../../lib/theme";
 // officePhone = the city office number the admin saved (publicOfficePhone). It can be empty.
 // The driver home uses this menu too. It gives no onOpenHistory (no "Request History" row; Ride history is on
 // the Availability page) and its own onLogOut, which saves "Offline" before signing out.
-export default function ResidentSideMenu({ visible, onClose, name, profile, officePhone, onOpenHistory, onOpenProfile, onOpenSettings, onLogOut }) {
+// onReopen = opens this menu again (the screen's setMenuOpen(true)): used when coming back from Terms or Privacy.
+export default function ResidentSideMenu({ visible, onClose, onReopen, name, profile, officePhone, onOpenHistory, onOpenProfile, onOpenSettings, onLogOut }) {
   const router = useRouter();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -43,13 +44,24 @@ export default function ResidentSideMenu({ visible, onClose, name, profile, offi
   };
 
   // Website legal pages open separately; the phone app keeps its normal page navigation.
+  // On the phone, closing Terms or Privacy brings back this menu (where they were opened), not the bare home page.
+  const reopenOnReturnRef = useRef(false);
   const openLegalPage = (path) => {
     if (Platform.OS === "web") {
       window.open(path, "_blank", "noopener,noreferrer");
       return;
     }
+    reopenOnReturnRef.current = Boolean(onReopen);
     router.push(path);
   };
+  // Runs each time the home screen is shown again (also the first time, when nothing was opened yet).
+  useFocusEffect(
+    useCallback(() => {
+      if (!reopenOnReturnRef.current) return;
+      reopenOnReturnRef.current = false;
+      onReopen?.();
+    }, [onReopen])
+  );
 
   const logOut = async () => {
     if (onLogOut) {

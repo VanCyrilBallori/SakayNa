@@ -7,7 +7,7 @@ import { ActivityIndicator, AppState, KeyboardAvoidingView, Linking, Modal, Plat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
@@ -34,6 +34,11 @@ const ALERT_HEARTBEAT_MS = 20_000;
 const KEEP_AWAKE_TAG = "emergency-alert";
 // After a dispatcher answers, the phone calls them after this many seconds, unless the resident taps Cancel call.
 const AUTO_CALL_SECONDS = 3;
+// The bottom bar's pages (ROADMAP Task 3.18). "Chat" is added only when Task 3.23 is built.
+const PAGES = [
+  { key: "ride", label: "Your ride", icon: "van-passenger" },
+  { key: "history", label: "History", icon: "history" },
+];
 
 export default function ResidentHome() {
   const { width } = useWindowDimensions();
@@ -50,7 +55,8 @@ export default function ResidentHome() {
   const [verificationReason, setVerificationReason] = useState(null);
   const [latestDetailsOpen, setLatestDetailsOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  // The open page of the bottom bar: "ride" (Emergency, Request a Ride, Your ride) or "history" (Task 3.18).
+  const [activePage, setActivePage] = useState("ride");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
@@ -612,7 +618,7 @@ export default function ResidentHome() {
 
   return (
     <>
-      <View style={[styles.home, { backgroundColor: DESIGN_COLORS.paperWhite }]}>
+      <View style={[styles.home, { backgroundColor: NEUTRAL[50] }]}>
         {/* The place strip at the top is green, so the phone's clock and battery icons are drawn white. */}
         <StatusBar style="light" />
 
@@ -645,7 +651,8 @@ export default function ResidentHome() {
 
         {/* Everything under the place strip scrolls, so with very large text nothing is cut off. */}
         {/* persistentScrollbar: on Android the scroll bar stays visible, so it shows there is more below. */}
-        <ScrollView style={styles.homeScroll} contentContainerStyle={[styles.homeContent, { paddingBottom: insets.bottom + 16 }]} bounces={false} persistentScrollbar>
+        {activePage === "ride" ? (
+        <ScrollView style={styles.homeScroll} contentContainerStyle={styles.homeContent} bounces={false} persistentScrollbar>
           {notActive ? (
             // A flat sign: peach and orange while waiting, red when the account can't send emergency alerts.
             <View style={[styles.statusBanner, isPending ? styles.statusBannerPending : styles.statusBannerRejected]}>
@@ -693,19 +700,7 @@ export default function ResidentHome() {
           ) : null}
 
           {/* Emergency is always the first button under the place strip (and the banner), so it is always one tap away. */}
-          <Pressable
-            style={({ pressed }) => [styles.emergencyButton, pressed && styles.emergencyButtonPressed]}
-            onPress={() => handleQuickAction("emergency-call")}
-            android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
-            accessibilityRole="button"
-            accessibilityLabel="Emergency. Send an alert to the dispatchers."
-          >
-            <MaterialCommunityIcons name="alarm-light-outline" size={36} color="#FFFFFF" />
-            <View style={styles.emergencyCopy}>
-              <Text style={styles.emergencyTitle}>Emergency</Text>
-              <Text style={styles.emergencySubtitle}>Send an alert to the dispatchers</Text>
-            </View>
-          </Pressable>
+          <EmergencyButton onPress={() => handleQuickAction("emergency-call")} />
 
           <Pressable
             style={({ pressed }) => [styles.rideButton, pressed && styles.rideButtonPressed]}
@@ -718,9 +713,8 @@ export default function ResidentHome() {
             <Text style={styles.rideButtonText}>Request a Ride</Text>
           </Pressable>
 
-          <Text style={styles.yourRideHeading} accessibilityRole="header">
-            Your ride
-          </Text>
+          {/* No "Your ride" heading: the open tab says it, and the card's status band is its title. This keeps the
+              page on one screen at normal text size; it still scrolls when it doesn't fit (small phone, big text). */}
           <LatestRequestCard
             request={homeRide}
             loading={requestHistoryLoading}
@@ -728,6 +722,41 @@ export default function ResidentHome() {
             onPress={() => setLatestDetailsOpen(true)}
           />
         </ScrollView>
+        ) : (
+          // History page (Task 3.18, moved here from the ☰ menu). Emergency stays at the top, outside the list,
+          // so it is one tap away on this page too (DESIGN.md: Emergency visible in every state).
+          <View style={styles.historyPage}>
+            <View style={styles.historyEmergency}>
+              <EmergencyButton onPress={() => handleQuickAction("emergency-call")} />
+            </View>
+            <ResidentRequestHistory requests={requestHistory} loading={requestHistoryLoading} error={requestHistoryError} />
+          </View>
+        )}
+
+        {/* Bottom bar (Task 3.18): icon + word for each page. The open page has a green pill behind its icon and a
+            bold green word (shape and weight, not color alone). paddingBottom keeps it above the phone's own buttons. */}
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom }]}>
+          <View style={styles.bottomBarRow} accessibilityRole="tablist">
+            {PAGES.map((page) => {
+              const isOpen = activePage === page.key;
+              return (
+                <Pressable
+                  key={page.key}
+                  style={styles.tabButton}
+                  onPress={() => setActivePage(page.key)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isOpen }}
+                  accessibilityLabel={page.label}
+                >
+                  <View style={[styles.tabIcon, isOpen && styles.tabIconOpen]}>
+                    <MaterialCommunityIcons name={page.icon} size={28} color={isOpen ? GREEN[700] : NEUTRAL[700]} />
+                  </View>
+                  <Text style={[styles.tabLabel, isOpen && styles.tabLabelOpen]}>{page.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </View>
 
       {/* The details of the ride on the "Your ride" card. It reads the live request, so the status updates while it is open. */}
@@ -988,10 +1017,10 @@ export default function ResidentHome() {
       <ResidentSideMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
+        onReopen={() => setMenuOpen(true)}
         name={displayName}
         profile={activeProfile}
         officePhone={officePhone}
-        onOpenHistory={() => setHistoryOpen(true)}
         onOpenProfile={() => setProfileEditorOpen(true)}
         onOpenSettings={openSettings}
       />
@@ -1032,13 +1061,6 @@ export default function ResidentHome() {
         </View>
       </Modal>
 
-      <ResidentRequestHistory
-        visible={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        requests={requestHistory}
-        loading={requestHistoryLoading}
-        error={requestHistoryError}
-      />
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)} statusBarTranslucent navigationBarTranslucent>
         {/* The keyboard helper adds space for the keyboard; the card gets shorter and scrolls,
             so the box being typed in stays visible. Full-screen (translucent) so the space is measured correctly. */}
@@ -1164,6 +1186,28 @@ export default function ResidentHome() {
 }
 
 // "Reason: …" line in the Rejected / on-hold banner. Shows nothing when there is no reason to show.
+// The Emergency button (the same on the Your ride and History pages). Emergency Red, the biggest words in the
+// app, 24 corners (its own shape: every other button is a pill) and the only Level 2 shadow on the page.
+function EmergencyButton({ onPress }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.emergencyButton, pressed && styles.emergencyButtonPressed]}
+      onPress={onPress}
+      android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+      accessibilityRole="button"
+      accessibilityLabel="Emergency. Send an alert to the dispatchers."
+    >
+      <View style={styles.emergencyIcon}>
+        <MaterialCommunityIcons name="alarm-light-outline" size={30} color="#FFFFFF" />
+      </View>
+      <View style={styles.emergencyCopy}>
+        <Text style={styles.emergencyTitle}>Emergency</Text>
+        <Text style={styles.emergencySubtitle}>Send an alert to the dispatchers</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 function StatusReason({ reason }) {
   if (!reason) return null;
   return (
@@ -1178,7 +1222,10 @@ const styles = StyleSheet.create({
   home: { flex: 1 },
   // Everything under the place strip. One column, as wide as a phone, centered on a wide screen (the website).
   homeScroll: { flex: 1 },
-  homeContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 16, gap: 12 },
+  homeContent: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, gap: 12 },
+  // History page: Emergency on top (does not scroll away), the list under it.
+  historyPage: { flex: 1 },
+  historyEmergency: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 12 },
   // Place strip: Hall Green across the top, white text. The ☰ button sits at its left.
   placeStrip: {
     flexDirection: "row",
@@ -1187,70 +1234,74 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingRight: 16,
     paddingBottom: 4,
-    backgroundColor: DESIGN_COLORS.hallGreen,
+    backgroundColor: GREEN[600],
   },
-  // 48 x 48 so it is easy to tap. 16 corners (DESIGN.md button corner), darker green while pressed.
+  // 48 x 48 so it is easy to tap. Fully round (DESIGN.md Style: buttons are pills), darker green while pressed.
   menuButton: {
     width: 48,
     height: 48,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     alignItems: "center",
     justifyContent: "center",
   },
-  menuButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  menuButtonPressed: { backgroundColor: GREEN[800] },
   placeNames: { flex: 1, flexDirection: "row", flexWrap: "wrap", paddingVertical: 10 },
   placeText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: "#FFFFFF" },
+  // Emergency (DESIGN.md Style): at least 76 tall (here 80), Emergency Red, 24 corners, Level 2 shadow.
   emergencyButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    minHeight: 76,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 16,
+    minHeight: 80,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: CORNER.sheet,
     overflow: "hidden",
-    backgroundColor: DESIGN_COLORS.emergencyRed,
+    backgroundColor: RED[600],
+    ...SHADOW.level2,
   },
-  emergencyButtonPressed: { backgroundColor: "#8F1C13" },
+  emergencyButtonPressed: { backgroundColor: RED[700] },
+  // The alarm in a soft white circle, so the icon reads at a glance.
+  emergencyIcon: { width: 52, height: 52, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255, 255, 255, 0.18)" },
   emergencyCopy: { flex: 1 },
   // "Board" size from DESIGN.md: the biggest text in the app.
   emergencyTitle: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   emergencySubtitle: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: "#FFE9E7" },
+  // Request a Ride: a green pill (DESIGN.md Style), smaller and calmer than Emergency.
   rideButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    minHeight: 60,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    minHeight: 56,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     overflow: "hidden",
-    backgroundColor: DESIGN_COLORS.hallGreen,
+    backgroundColor: GREEN[600],
+    ...SHADOW.level1,
   },
-  rideButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  rideButtonPressed: { backgroundColor: GREEN[800] },
   // "Title" size from DESIGN.md: the home screen's second big action.
-  rideButtonText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  // "Your ride" above the card. The extra space on top separates it from the two big buttons.
-  yourRideHeading: { marginTop: 12, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  rideButtonText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: "#FFFFFF" },
   // Account status banner (residents who are not Active only). Big, dark text for seniors.
-  // Flat sign (DESIGN.md "Flat Board Rule"): tinted background and a 2dp colored edge, no shadow.
+  // Tinted info box (DESIGN.md Style): 16 corners and a thin colored edge.
   statusBanner: {
     alignSelf: "stretch",
     maxWidth: 640,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
-    padding: 14,
-    borderRadius: 24,
-    borderWidth: 2,
+    padding: 16,
+    borderRadius: CORNER.card,
+    borderWidth: 1,
   },
   statusBannerPending: {
-    backgroundColor: DESIGN_COLORS.peachTint,
-    borderColor: DESIGN_COLORS.sakayOrange,
+    backgroundColor: ORANGE[100],
+    borderColor: ORANGE[300],
   },
   statusBannerRejected: {
-    backgroundColor: DESIGN_COLORS.redTint,
-    borderColor: DESIGN_COLORS.emergencyRed,
+    backgroundColor: RED[50],
+    borderColor: RED[600],
   },
   statusBannerCopy: {
     flex: 1,
@@ -1277,14 +1328,23 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 48,
     marginTop: 10,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 18,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    backgroundColor: NEUTRAL[0],
   },
-  bannerCallButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  bannerCallText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  bannerCallButtonPressed: { backgroundColor: NEUTRAL[100] },
+  bannerCallText: { fontSize: 17, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  // Bottom bar (Task 3.18): white, a thin line and a soft shadow on top, two equal tabs at least 56 tall.
+  bottomBar: { borderTopWidth: 1, borderTopColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], boxShadow: "0 -2px 8px rgba(20, 33, 28, 0.06)" },
+  bottomBarRow: { flexDirection: "row", width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 8, paddingVertical: 6 },
+  tabButton: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 4, borderRadius: CORNER.card },
+  // The open tab: a green-100 pill behind the icon (a shape, so it is not color alone) and a bold green word.
+  tabIcon: { paddingHorizontal: 20, paddingVertical: 4, borderRadius: CORNER.pill },
+  tabIconOpen: { backgroundColor: GREEN[100] },
+  tabLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700], textAlign: "center" },
+  tabLabelOpen: { fontFamily: FONT.bold, color: GREEN[700] },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.28)",

@@ -1033,6 +1033,7 @@ export default function DriverHome() {
         <ResidentSideMenu
           visible={menuOpen}
           onClose={() => setMenuOpen(false)}
+          onReopen={() => setMenuOpen(true)}
           name={displayName}
           profile={profile}
           officePhone={officePhone}

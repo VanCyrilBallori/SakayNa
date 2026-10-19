@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, RED, SHADOW } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getDestinationLabel, getPickupLabel, getRideProgress, getWhenText, RIDE_STEPS } from "../utils/requestMapper";
 
@@ -26,10 +26,23 @@ export default function LatestRequestCard({ request, loading, error, onPress }) 
     );
   }
 
-  if (loading || !request) {
+  if (loading) {
     return (
       <View style={styles.messageBox}>
-        <Text style={styles.messageText}>{loading ? "Loading your ride…" : "No rides yet. When you request a ride, it will show here."}</Text>
+        <Text style={styles.messageText}>Loading your ride…</Text>
+      </View>
+    );
+  }
+
+  // Empty state (DESIGN.md Style): an icon in a tinted circle, a title and one sentence.
+  if (!request) {
+    return (
+      <View style={[styles.card, styles.emptyCard]}>
+        <View style={styles.emptyIcon}>
+          <MaterialCommunityIcons name="van-passenger" size={48} color={GREEN[700]} />
+        </View>
+        <Text style={styles.emptyTitle}>No rides yet</Text>
+        <Text style={styles.emptyText}>When you request a ride, it will show here.</Text>
       </View>
     );
   }
@@ -48,6 +61,7 @@ export default function LatestRequestCard({ request, loading, error, onPress }) 
   // Call driver only until the passenger is picked up (steps 2 to 5), and only if the phone was saved.
   // Rides assigned before the phone was saved (Step 1) have no number, so the button stays hidden.
   const canCallDriver = Boolean(driverName && driverPhone && step >= 2 && step <= 5);
+  const vehicleText = [request.assignedVehicleName, request.vehiclePlateNumber ? `Plate ${request.vehiclePlateNumber}` : ""].filter(Boolean).join(" · ");
 
   return (
     <View style={styles.card}>
@@ -72,32 +86,35 @@ export default function LatestRequestCard({ request, loading, error, onPress }) 
         {driverName ? (
           <View style={styles.driverBlock}>
             <Text style={styles.driverName}>{driverName}</Text>
-            {request.assignedVehicleName ? <Text style={styles.driverLine}>{request.assignedVehicleName}</Text> : null}
-            {request.vehiclePlateNumber ? <Text style={styles.driverLine}>Plate {request.vehiclePlateNumber}</Text> : null}
-            {canCallDriver ? (
-              <Pressable
-                style={({ pressed }) => [styles.callButton, pressed && styles.callButtonPressed]}
-                onPress={() => startPhoneCall(driverPhone)}
-                android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
-                accessibilityRole="button"
-                accessibilityLabel={`Call driver ${driverName}`}
-              >
-                <MaterialCommunityIcons name="phone-outline" size={24} color="#FFFFFF" />
-                <Text style={styles.callButtonText}>Call driver</Text>
-              </Pressable>
-            ) : null}
+            {/* Vehicle and plate on one line, so the card stays short (it wraps with large text). */}
+            {vehicleText ? <Text style={styles.driverLine}>{vehicleText}</Text> : null}
           </View>
         ) : null}
 
-        <Pressable
-          style={({ pressed }) => [styles.detailsLink, pressed && styles.detailsLinkPressed]}
-          onPress={onPress}
-          accessibilityRole="button"
-          accessibilityLabel="See ride details"
-        >
-          <Text style={styles.detailsLinkText}>See details</Text>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={DESIGN_COLORS.hallGreen} />
-        </Pressable>
+        {/* Call driver and See details share one row (they wrap to two rows with large text). */}
+        <View style={styles.actions}>
+          {canCallDriver ? (
+            <Pressable
+              style={({ pressed }) => [styles.callButton, pressed && styles.callButtonPressed]}
+              onPress={() => startPhoneCall(driverPhone)}
+              android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+              accessibilityRole="button"
+              accessibilityLabel={`Call driver ${driverName}`}
+            >
+              <MaterialCommunityIcons name="phone-outline" size={24} color="#FFFFFF" />
+              <Text style={styles.callButtonText}>Call driver</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            style={({ pressed }) => [styles.detailsLink, pressed && styles.detailsLinkPressed]}
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel="See ride details"
+          >
+            <Text style={styles.detailsLinkText}>See details</Text>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={GREEN[700]} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -142,61 +159,68 @@ function RouteLine({ label, place, markerStyle }) {
 const LABEL_WIDTH = 52;
 
 const styles = StyleSheet.create({
+  // A white card (DESIGN.md Style): 16 corners, a thin neutral edge and a Level 1 shadow.
   card: {
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
-    // Keeps the band's corners inside the card's rounded corners.
-    overflow: "hidden",
+    borderRadius: CORNER.card,
+    borderWidth: 1,
+    borderColor: NEUTRAL[200],
+    backgroundColor: NEUTRAL[0],
+    ...SHADOW.level1,
   },
-  // "Title" size (DESIGN.md): the one big thing on the card.
-  band: { minHeight: 56, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12 },
-  bandText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  body: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
-  progress: { marginBottom: 14 },
+  // "Title" size (DESIGN.md): the one big thing on the card. The band follows the card's top corners.
+  band: { minHeight: 48, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 10, borderTopLeftRadius: CORNER.card - 1, borderTopRightRadius: CORNER.card - 1 },
+  bandText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: "#FFFFFF" },
+  body: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  progress: { marginBottom: 12 },
   progressBar: { flexDirection: "row", gap: 4 },
   // Fully round ends (DESIGN.md allows fully round for small status pieces). Not-done pieces are a light grey-green.
-  progressPiece: { flex: 1, height: 10, borderRadius: 5, backgroundColor: DESIGN_COLORS.rule },
-  progressPieceDone: { backgroundColor: DESIGN_COLORS.hallGreen },
-  progressText: { marginTop: 6, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.inkMuted },
+  progressPiece: { flex: 1, height: 8, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[200] },
+  progressPieceDone: { backgroundColor: GREEN[600] },
+  progressText: { marginTop: 6, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[700] },
   // Label, marker and place sit at the top of the row. The label uses the same line height as the place
   // (22) so their words line up, and the 14-tall marker is moved down 4 to sit in the middle of that line.
   routeLine: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  routeLabel: { width: LABEL_WIDTH, fontSize: 15, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.inkMuted },
+  routeLabel: { width: LABEL_WIDTH, fontSize: 15, lineHeight: 22, fontFamily: FONT.medium, color: NEUTRAL[700] },
   marker: { width: 14, height: 14, marginTop: 4, borderRadius: 7 },
   fromMarker: { borderWidth: 3, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.paperWhite },
   toMarker: { backgroundColor: DESIGN_COLORS.sakayOrange },
-  routePlace: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  routePlace: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
   // The short green line between From and To, under the middle of the two markers (label + gap + half a marker).
   routeJoin: { width: 2, height: 14, marginLeft: LABEL_WIDTH + 8 + 6, marginVertical: 2, backgroundColor: DESIGN_COLORS.hallGreen },
-  whenLine: { marginTop: 10, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
+  whenLine: { marginTop: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
   scheduledWhen: { fontFamily: FONT.bold, color: DESIGN_COLORS.orangeDeep },
   // A 1dp line on top separates the driver from the route (DESIGN.md: no card inside a card).
-  driverBlock: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
-  driverName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
-  driverLine: { marginTop: 2, fontSize: 17, lineHeight: 24, fontFamily: FONT.medium, color: DESIGN_COLORS.ink },
-  // Full width, 56 tall (DESIGN.md main action), 16 corners.
+  driverBlock: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: NEUTRAL[200] },
+  driverName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  driverLine: { marginTop: 2, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  // Call driver (left, grows) and See details (right). Wraps to two rows when they don't fit.
+  actions: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 },
+  // 56 tall (DESIGN.md main action), a green pill (DESIGN.md Style).
   callButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
+    flexGrow: 1,
     minHeight: 56,
-    marginTop: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     overflow: "hidden",
-    backgroundColor: DESIGN_COLORS.hallGreen,
+    backgroundColor: GREEN[600],
   },
-  callButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  callButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  callButtonPressed: { backgroundColor: GREEN[800] },
+  callButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: "#FFFFFF" },
   // "See details ›": a green text button, 48 tall so it is easy to tap.
-  detailsLink: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", minHeight: 48, marginTop: 4, paddingRight: 4, borderRadius: 16 },
-  detailsLinkPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  detailsLinkText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
-  messageBox: { padding: 16, borderRadius: 24, backgroundColor: DESIGN_COLORS.boardTint },
-  messageText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  errorBox: { backgroundColor: DESIGN_COLORS.redTint },
-  errorText: { color: DESIGN_COLORS.emergencyRed },
+  detailsLink: { flexDirection: "row", alignItems: "center", minHeight: 48, paddingLeft: 4, paddingRight: 8, borderRadius: CORNER.pill },
+  detailsLinkPressed: { backgroundColor: GREEN[50] },
+  detailsLinkText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: GREEN[700] },
+  messageBox: { padding: 16, borderRadius: CORNER.card, backgroundColor: NEUTRAL[100] },
+  messageText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700] },
+  errorBox: { backgroundColor: RED[50] },
+  errorText: { color: RED[600] },
+  // "No rides yet" (DESIGN.md Style empty state).
+  emptyCard: { alignItems: "center", paddingVertical: 24, paddingHorizontal: 16 },
+  emptyIcon: { width: 96, height: 96, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[50] },
+  emptyTitle: { marginTop: 16, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  emptyText: { marginTop: 4, fontSize: 17, lineHeight: 24, fontFamily: FONT.regular, color: NEUTRAL[700], textAlign: "center" },
 });

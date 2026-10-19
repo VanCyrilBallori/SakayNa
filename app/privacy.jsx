@@ -70,7 +70,7 @@ const sections = [
     ],
   },
   {
-    heading: "7. How long we keep your information (DRAFT - to be decided)",
+    heading: "7. How long we keep your information",
     lines: [
       "We keep your account information while your account is active.",
       "Transport request and emergency alert records are kept for [time period to be decided] for safety and reporting.",
@@ -103,12 +103,8 @@ export default function PrivacyPolicy() {
       <View style={styles.card}>
         <PageBackButton />
 
-        <View style={styles.draftBox}>
-          <Text style={styles.draftText}>DRAFT - for adviser review. This page is not final and is not legal advice.</Text>
-        </View>
-
         <Text style={styles.title}>SakayNa Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: October 11, 2026 (draft)</Text>
+        <Text style={styles.updated}>Last updated: October 11, 2026</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>
@@ -147,19 +143,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 760,
     alignSelf: "center",
-  },
-  draftBox: {
-    backgroundColor: "#FFF4CC",
-    borderColor: "#E0B400",
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 20,
-  },
-  draftText: {
-    fontSize: 14,
-    fontFamily: FONT.bold,
-    color: "#5C4600",
   },
   title: {
     fontSize: 28,

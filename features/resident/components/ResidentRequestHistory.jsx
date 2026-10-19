@@ -1,11 +1,11 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import CloseButton from "../../../components/ui/CloseButton";
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
-import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/design";
+import ListSkeleton from "../../../components/ui/ListSkeleton";
+import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, SHADOW } from "../../../constants/design";
 import { canResidentCancel, formatRequestDate, getPickupLabel, getRequestStatusMeta, getScheduledDate, getWhenText } from "../utils/requestMapper";
 import { getPurpose, PURPOSE_OPTIONS } from "../utils/requestOptions";
 import ResidentRequestDetails from "./ResidentRequestDetails";
@@ -15,13 +15,25 @@ const statusOptions = [{ label: "All statuses", value: "All" }, { label: "Active
 const purposeOptions = [{ label: "All rides", value: "All" }, ...PURPOSE_OPTIONS.map((purpose) => ({ label: purpose, value: purpose }))];
 const isActive = (status) => ["Pending", "Assigned", "In Progress"].includes(status || "Pending");
 
-export default function ResidentRequestHistory({ visible, onClose, requests, loading, error }) {
-  // Android draws this window behind its own bottom bar (◁ ○ □), so leave that much room at the bottom (Task 3.17).
-  const insets = useSafeAreaInsets();
+// Status badge colors (DESIGN.md "Status band colors", as tinted pills with the status word):
+// waiting = orange, a driver is on it = green, finished or cancelled = grey. Never red.
+const getBadgeColors = (status) => {
+  if (status === "Assigned" || status === "In Progress") return { backgroundColor: GREEN[100], color: GREEN[800] };
+  if (status === "Completed" || status === "Cancelled" || status === "Declined" || status === "Rejected") return { backgroundColor: NEUTRAL[100], color: NEUTRAL[700] };
+  return { backgroundColor: ORANGE[100], color: NEUTRAL[900] };
+};
+
+// The History page of the resident's bottom bar (Task 3.18; before, a pop-up from the ☰ menu).
+// The newest 50 requests with filters and a search. Tapping one opens its Request Details.
+export default function ResidentRequestHistory({ requests, loading, error }) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+  // The title always stays at the top while the list scrolls under it. The filters and search stay there too,
+  // unless the screen is short or the text is very big; then they scroll with the list, so the list keeps room.
+  const { height, fontScale } = useWindowDimensions();
+  const fixedFilters = height >= 640 && fontScale <= 1.3;
 
   const filteredRequests = useMemo(() => requests.filter((request) => {
     const matchesStatus = statusFilter === "All" || (statusFilter === "Active" ? isActive(request.status) : request.status === statusFilter);
@@ -30,7 +42,107 @@ export default function ResidentRequestHistory({ visible, onClose, requests, loa
     return matchesStatus && matchesType && (!query || request.reference.toLowerCase().includes(query) || request.id.toLowerCase().includes(query));
   }), [requests, search, statusFilter, typeFilter]);
 
-  return <><Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={[styles.card, { paddingBottom: insets.bottom + SPACING.lg }]}><CloseButton onPress={onClose} label="Close request history" style={styles.close} /><Text style={styles.title}>Request history</Text><Text style={styles.subtitle}>Your 50 most recent requests are shown. Select one to see its full status and details.</Text><View style={styles.filters}><Dropdown fontFamily={FONT.regular} style={styles.filter} data={statusOptions} labelField="label" valueField="value" value={statusFilter} onChange={(item) => setStatusFilter(item.value)} /><Dropdown fontFamily={FONT.regular} style={styles.filter} data={purposeOptions} labelField="label" valueField="value" value={typeFilter} onChange={(item) => setTypeFilter(item.value)} /></View><TextInput style={styles.search} value={search} onChangeText={setSearch} placeholder="Search request reference" placeholderTextColor={COLORS.subtleText} autoCapitalize="characters" />{error ? <FeedbackMessage message={error} tone="error" /> : null}<ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>{loading ? <Text style={styles.muted}>Loading your requests...</Text> : filteredRequests.length ? filteredRequests.map((request) => { const status = getRequestStatusMeta(request.status); return <TouchableOpacity key={request.id} accessibilityRole="button" accessibilityLabel={`View ${request.reference}`} style={styles.item} onPress={() => setSelected(request)}><View style={styles.itemHeader}><Text style={styles.reference}>{request.reference}</Text><View style={[styles.pill, { backgroundColor: status.tone === "danger" ? COLORS.emergencySurface : status.tone === "success" ? "#E7F5ED" : COLORS.warningSurface }]}><Text style={styles.pillText}>{status.label}</Text></View></View><Text style={styles.itemTitle}>{request.title || request.serviceType || "Transport request"}</Text>{getScheduledDate(request) ? <Text style={styles.itemScheduled}>Scheduled: {getWhenText(request)}</Text> : null}<Text style={styles.itemMeta}>{getPickupLabel(request)}</Text><Text style={styles.itemMeta}>{formatRequestDate(request.createdAt)}</Text>{canResidentCancel(request) ? <Text style={styles.cancelHint}>Cancellation is available</Text> : null}</TouchableOpacity>; }) : <View style={styles.empty}><Text style={styles.emptyTitle}>No matching requests</Text><Text style={styles.muted}>Try a different status or ride filter.</Text></View>}</ScrollView></View></View></Modal><ResidentRequestDetails request={selected} visible={Boolean(selected)} onClose={() => setSelected(null)} /></>;
+  const filters = (
+    <>
+      <View style={styles.filters}>
+        <Dropdown fontFamily={FONT.regular} style={styles.filter} selectedTextStyle={styles.filterText} itemTextStyle={styles.filterText} data={statusOptions} labelField="label" valueField="value" value={statusFilter} onChange={(item) => setStatusFilter(item.value)} accessibilityLabel="Filter by status" />
+        <Dropdown fontFamily={FONT.regular} style={styles.filter} selectedTextStyle={styles.filterText} itemTextStyle={styles.filterText} data={purposeOptions} labelField="label" valueField="value" value={typeFilter} onChange={(item) => setTypeFilter(item.value)} accessibilityLabel="Filter by ride" />
+      </View>
+      <TextInput style={styles.search} value={search} onChangeText={setSearch} placeholder="Search request reference" placeholderTextColor={NEUTRAL[600]} autoCapitalize="characters" />
+    </>
+  );
+
+  return (
+    <View style={styles.page}>
+      {/* Fixed header: does not scroll. */}
+      <View style={styles.header}>
+        <Text style={styles.title} accessibilityRole="header">Request history</Text>
+        {fixedFilters ? filters : null}
+      </View>
+
+      <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {fixedFilters ? null : filters}
+        {error ? <FeedbackMessage message={error} tone="error" /> : null}
+
+        <View style={styles.list}>
+          {loading ? (
+            <ListSkeleton label="Loading your requests" />
+          ) : filteredRequests.length ? (
+            filteredRequests.map((request) => <HistoryRow key={request.id} request={request} onPress={() => setSelected(request)} />)
+          ) : (
+            // Empty state (DESIGN.md Style): an icon in a tinted circle, a title and one sentence.
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <MaterialCommunityIcons name={requests.length ? "filter-variant-remove" : "van-passenger"} size={48} color={GREEN[700]} />
+              </View>
+              <Text style={styles.emptyTitle}>{requests.length ? "No matching requests" : "No rides yet"}</Text>
+              <Text style={styles.emptyText}>{requests.length ? "Try a different status or ride filter." : "When you request a ride, it will show here."}</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <ResidentRequestDetails request={selected} visible={Boolean(selected)} onClose={() => setSelected(null)} />
+    </View>
+  );
 }
 
-const styles = StyleSheet.create({ overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(13,31,24,.62)" }, card: { minHeight: "76%", maxHeight: "94%", padding: SPACING.lg, backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg }, close: { alignSelf: "flex-end" },  title: { color: COLORS.text, fontSize: 23, fontFamily: FONT.extraBold }, subtitle: { marginTop: 6, color: COLORS.mutedText, lineHeight: 20 }, filters: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md }, filter: { flex: 1, minHeight: 46, paddingHorizontal: 10, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm }, search: { minHeight: 46, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, color: COLORS.text }, list: { paddingVertical: SPACING.md, gap: SPACING.sm }, item: { padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, backgroundColor: COLORS.surfaceMuted }, itemHeader: { flexDirection: "row", gap: SPACING.sm, alignItems: "center", justifyContent: "space-between" }, reference: { color: COLORS.text, fontSize: 13, fontFamily: FONT.extraBold }, pill: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: RADIUS.pill }, pillText: { color: COLORS.text, fontSize: 11, fontFamily: FONT.bold }, itemTitle: { marginTop: 8, color: COLORS.text, fontSize: 16, fontFamily: FONT.bold }, itemMeta: { fontFamily: FONT.regular, marginTop: 4, color: COLORS.mutedText, fontSize: 13 }, itemScheduled: { marginTop: 4, color: COLORS.text, fontSize: 13, fontFamily: FONT.bold },cancelHint: { marginTop: 8, color: COLORS.warning, fontSize: 12, fontFamily: FONT.bold }, muted: { color: COLORS.mutedText, lineHeight: 20 }, empty: { marginTop: SPACING.xl, alignItems: "center" }, emptyTitle: { color: COLORS.text, fontSize: 17, fontFamily: FONT.extraBold, marginBottom: 5 } });
+// One request: reference and status badge, what it is for, when, where, and when it was sent.
+function HistoryRow({ request, onPress }) {
+  const status = getRequestStatusMeta(request.status);
+  const badge = getBadgeColors(request.status);
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`View ${request.reference}, ${status.label}`}
+    >
+      <View style={styles.rowCopy}>
+        <View style={styles.rowTop}>
+          <Text style={styles.reference}>{request.reference}</Text>
+          <View style={[styles.badge, { backgroundColor: badge.backgroundColor }]}>
+            <Text style={[styles.badgeText, { color: badge.color }]}>{status.label}</Text>
+          </View>
+        </View>
+        <Text style={styles.rowTitle}>{request.title || request.serviceType || "Transport request"}</Text>
+        {getScheduledDate(request) ? <Text style={styles.scheduled}>Scheduled: {getWhenText(request)}</Text> : null}
+        <Text style={styles.meta}>{getPickupLabel(request)}</Text>
+        <Text style={styles.meta}>Sent {formatRequestDate(request.createdAt)}</Text>
+        {canResidentCancel(request) ? <Text style={styles.cancelHint}>You can still cancel this request</Text> : null}
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={24} color={NEUTRAL[700]} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  page: { flex: 1 },
+  // The fixed header: a thin line under it shows where the list scrolls.
+  header: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: NEUTRAL[200] },
+  content: { width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
+  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  // Filters and search (DESIGN.md Style: inputs have 12 corners and a 1.5 neutral-500 edge, at least 48 tall).
+  filters: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  filter: { flexGrow: 1, flexBasis: 150, minHeight: 48, paddingHorizontal: 12, borderWidth: 1.5, borderColor: NEUTRAL[500], borderRadius: CORNER.input, backgroundColor: NEUTRAL[0] },
+  filterText: { fontSize: 17, color: NEUTRAL[900] },
+  search: { minHeight: 48, marginTop: 8, paddingHorizontal: 14, borderWidth: 1.5, borderColor: NEUTRAL[500], borderRadius: CORNER.input, backgroundColor: NEUTRAL[0], fontSize: 17, fontFamily: FONT.regular, color: NEUTRAL[900] },
+  list: { marginTop: 12, gap: 12 },
+  // A white card with 16 corners, a thin edge and a Level 1 shadow (DESIGN.md Style).
+  row: { flexDirection: "row", alignItems: "center", gap: 8, padding: 16, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  rowPressed: { backgroundColor: NEUTRAL[100] },
+  rowCopy: { flex: 1 },
+  rowTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  reference: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[700] },
+  // Status badge: a pill with the status word (DESIGN.md Style).
+  badge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: CORNER.pill },
+  badgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold },
+  rowTitle: { marginTop: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  scheduled: { marginTop: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: ORANGE[700] },
+  meta: { marginTop: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  cancelHint: { marginTop: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: ORANGE[700] },
+  empty: { alignItems: "center", paddingVertical: 24, paddingHorizontal: 16 },
+  emptyIcon: { width: 96, height: 96, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[50] },
+  emptyTitle: { marginTop: 16, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  emptyText: { marginTop: 4, fontSize: 17, lineHeight: 24, fontFamily: FONT.regular, color: NEUTRAL[700], textAlign: "center" },
+});

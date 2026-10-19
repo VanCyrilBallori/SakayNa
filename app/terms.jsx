@@ -74,12 +74,8 @@ export default function TermsOfService() {
       <View style={styles.card}>
         <PageBackButton />
 
-        <View style={styles.draftBox}>
-          <Text style={styles.draftText}>DRAFT - for adviser review. This page is not final and is not legal advice.</Text>
-        </View>
-
         <Text style={styles.title}>SakayNa Terms of Service</Text>
-        <Text style={styles.updated}>Last updated: September 28, 2026 (draft)</Text>
+        <Text style={styles.updated}>Last updated: September 28, 2026</Text>
 
         {sections.map((section) => (
           <View key={section.heading} style={styles.section}>
@@ -118,19 +114,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 760,
     alignSelf: "center",
-  },
-  draftBox: {
-    backgroundColor: "#FFF4CC",
-    borderColor: "#E0B400",
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 20,
-  },
-  draftText: {
-    fontSize: 14,
-    fontFamily: FONT.bold,
-    color: "#5C4600",
   },
   title: {
     fontSize: 28,
