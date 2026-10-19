@@ -8,6 +8,7 @@ import FeedbackMessage from "../../../components/ui/FeedbackMessage";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLE_OPTIONS, ROLES, VEHICLE_MAINTENANCE_STATUSES } from "../../../constants/app";
 import { db } from "../../../firebase";
 import { TOLEDO_BARANGAY_OPTIONS } from "../../../lib/barangays";
+import { formatDay, formatWhen } from "../../../lib/dates";
 import {
   buildCsv,
   changeAccountStatus,
@@ -21,10 +22,12 @@ import {
   updateDispatcherScope,
 } from "../services/trustedAdminOperationsService";
 import AdminReportsSection from "./AdminReportsSection";
+import { FONT } from "../../../constants/design";
 
 const EMPTY_DISPATCHER = { fullName: "", email: "", phoneNumber: "", temporaryPassword: "" };
 const ADMIN_CHANGE_REFUSED = "This change was not allowed. You can only manage non-Admin accounts in your own barangay. Check that this account belongs to your barangay.";
 const DEFAULT_MAINTENANCE ={ maintenanceType: "", description: "", reportedIssues: "", serviceProvider: "", cost: "", odometer: "", status: "Reported", startedAt: "", completedAt: "", nextServiceDate: "" };
+// Only for the CSV download, which keeps its own date format (DESIGN.md "Dates and times").
 const toDateLabel = (value) => {
   const date = getDate(value);
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }) : "Not available";
@@ -125,7 +128,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     <View style={styles.fieldsRow}>
       <View style={styles.field}>
         <Text style={[styles.label, { color: theme.text }]}>Role</Text>
-        <Dropdown
+        <Dropdown fontFamily={FONT.regular}
           style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
           containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
           selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
@@ -141,7 +144,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
 
       <View style={styles.field}>
         <Text style={[styles.label, { color: theme.text }]}>Account status</Text>
-        <Dropdown
+        <Dropdown fontFamily={FONT.regular}
           style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
           containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
           selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
@@ -194,7 +197,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
   const renderVehicles = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Maintenance Oversight</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>Vehicles with unresolved maintenance: {vehicleMaintenance}. A vehicle is not returned to service automatically when maintenance is completed.</Text>
-    {vehicles.map((vehicle) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{vehicle.name || vehicle.id}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{vehicle.plateNumber || "No plate"} | Status: {vehicle.status || "Available"} | Maintenance: {vehicle.maintenanceStatus || "None recorded"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Next service: {toDateLabel(vehicle.nextMaintenanceDate)}</Text><AppButton label="Add maintenance record" variant="secondary" onPress={() => { setMaintenanceVehicle(vehicle); setMaintenance(DEFAULT_MAINTENANCE); }} style={[styles.button, styles.pageButton]} /></>, vehicle.id))}
+    {vehicles.map((vehicle) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{vehicle.name || vehicle.id}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{vehicle.plateNumber || "No plate"} | Status: {vehicle.status || "Available"} | Maintenance: {vehicle.maintenanceStatus || "None recorded"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Next service: {formatDay(vehicle.nextMaintenanceDate)}</Text><AppButton label="Add maintenance record" variant="secondary" onPress={() => { setMaintenanceVehicle(vehicle); setMaintenance(DEFAULT_MAINTENANCE); }} style={[styles.button, styles.pageButton]} /></>, vehicle.id))}
   </>;
 
   const renderReports = () => <AdminReportsSection requests={requests} onDownload={exportRequests} />;
@@ -213,7 +216,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
   const renderLogs = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Activity Log</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>These are client-generated, append-only operational records. They are useful for visibility but are not tamper-proof; trusted audit logging remains Phase 8.</Text>
-    {logs.length ? logs.map((log) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{log.action || "Administrative action"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{log.summary || "No summary"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{toDateLabel(log.createdAt)} | Actor: {log.actorId || "Not available"}</Text></>, log.id)) : card(<Text style={[styles.copy, { color: theme.mutedText }]}>No activity records are available yet.</Text>, "logs-empty")}
+    {logs.length ? logs.map((log) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{log.action || "Administrative action"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{log.summary || "No summary"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{formatWhen(log.createdAt)} | Actor: {log.actorId || "Not available"}</Text></>, log.id)) : card(<Text style={[styles.copy, { color: theme.mutedText }]}>No activity records are available yet.</Text>, "logs-empty")}
   </>;
 
   const viewContent = { Accounts: renderAccounts, "Add Dispatcher": renderStaff, Maintenance: renderVehicles, Reports: renderReports, Settings: renderSettings, Logs: renderLogs }[view];
@@ -270,5 +273,5 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
 }
 
 const styles = StyleSheet.create({
-  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 }, chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 12, borderRadius: 6, borderWidth: 1 }, chipText: { fontSize: 13, fontWeight: "700" }, title: { fontSize: 21, fontWeight: "800", marginTop: 8, marginBottom: 6 }, copy: { fontSize: 13, lineHeight: 19 }, label: { fontSize: 13, fontWeight: "800", marginTop: 12, marginBottom: 4 }, input: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }, dropdown: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: 6 }, dropdownText: { fontSize: 14 }, fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 }, accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontWeight: "800" }, card: { marginTop: 10, borderWidth: 1, borderRadius: 8, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontWeight: "800" }, button: { marginTop: 10 }, pageButton: { alignSelf: "flex-start" }, overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.45)" }, modal: { width: "100%", maxHeight: "92%", borderRadius: 8, padding: 18 }
+  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 }, chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 12, borderRadius: 6, borderWidth: 1 }, chipText: { fontSize: 13, fontFamily: FONT.bold }, title: { fontSize: 21, fontFamily: FONT.extraBold, marginTop: 8, marginBottom: 6 }, copy: { fontFamily: FONT.regular, fontSize: 13, lineHeight: 19 }, label: { fontSize: 13, fontFamily: FONT.extraBold, marginTop: 12, marginBottom: 4 }, input: { fontFamily: FONT.regular, minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }, dropdown: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: 6 }, dropdownText: { fontFamily: FONT.regular, fontSize: 14 }, fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 }, accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontFamily: FONT.extraBold }, card: { marginTop: 10, borderWidth: 1, borderRadius: 8, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontFamily: FONT.extraBold }, button: { marginTop: 10 }, pageButton: { alignSelf: "flex-start" }, overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.45)" }, modal: { width: "100%", maxHeight: "92%", borderRadius: 8, padding: 18 }
 });

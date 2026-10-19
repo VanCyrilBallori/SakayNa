@@ -10,7 +10,7 @@ import BottomSheetPicker from "../components/BottomSheetPicker";
 import BrandLogo from "../components/BrandLogo";
 import ScreenState from "../components/ui/ScreenState";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app";
-import { DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS, FONT } from "../constants/design";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../lib/barangays";
@@ -538,15 +538,16 @@ const styles = StyleSheet.create({
   stepLine: { flex: 1, height: 2 },
   stepCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   stepCircleActive: { backgroundColor: DESIGN_COLORS.hallGreen, borderColor: DESIGN_COLORS.hallGreen },
-  stepNumber: { fontSize: 16, fontWeight: "800" },
-  stepName: { marginTop: 6, fontSize: 14, fontWeight: "600" },
-  stepNameCurrent: { fontWeight: "800" },
-  stepCount: { marginTop: 12, fontSize: 16, fontWeight: "600" },
-  title: { marginTop: 4, marginBottom: 12, fontSize: 28, lineHeight: 36, fontWeight: "800" },
+  stepNumber: { fontSize: 16, fontFamily: FONT.extraBold },
+  stepName: { marginTop: 6, fontSize: 14, fontFamily: FONT.semiBold },
+  stepNameCurrent: { fontFamily: FONT.extraBold },
+  stepCount: { marginTop: 12, fontSize: 16, fontFamily: FONT.semiBold },
+  title: { marginTop: 4, marginBottom: 12, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold },
   field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700" },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold },
   input: {
+    fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
@@ -570,7 +571,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   choiceSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
-  choiceText: { flex: 1, fontSize: 17, lineHeight: 23 },
+  choiceText: { fontFamily: FONT.regular, flex: 1, fontSize: 17, lineHeight: 23 },
   photoBox: {
     minHeight: 128,
     marginTop: 20,
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: DESIGN_COLORS.boardTint,
   },
-  photoBoxText: { fontSize: 17, lineHeight: 23, fontWeight: "700", textAlign: "center", color: DESIGN_COLORS.hallGreen },
+  photoBoxText: { fontSize: 17, lineHeight: 23, fontFamily: FONT.bold, textAlign: "center", color: DESIGN_COLORS.hallGreen },
   photoPreviewBlock: { marginTop: 20, gap: 10 },
   photoPreview: { width: "100%", maxHeight: 240, borderRadius: 16 },
   changePhotoButton: {
@@ -600,20 +601,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  changePhotoText: { fontSize: 16, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  changePhotoText: { fontSize: 16, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
   hintRow: { flexDirection: "row", gap: 10, marginTop: 14 },
-  hintText: { flex: 1, fontSize: 16, lineHeight: 23 },
+  hintText: { fontFamily: FONT.regular, flex: 1, fontSize: 16, lineHeight: 23 },
   summary: { borderRadius: 24, paddingHorizontal: 16, paddingVertical: 6 },
   summaryRow: { flexDirection: "row", gap: 12, paddingVertical: 10 },
   summaryIcon: { marginTop: 2 },
   summaryText: { flex: 1 },
-  summaryLabel: { fontSize: 14, fontWeight: "600" },
-  summaryValue: { marginTop: 2, fontSize: 17, lineHeight: 23 },
+  summaryLabel: { fontSize: 14, fontFamily: FONT.semiBold },
+  summaryValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 23 },
   previewLabel: { marginTop: 20, marginBottom: 8 },
   confirmRow: { minHeight: 56, marginTop: 16, flexDirection: "row", alignItems: "center", gap: 12 },
-  confirmText: { flex: 1, fontSize: 16, lineHeight: 23 },
+  confirmText: { fontFamily: FONT.regular, flex: 1, fontSize: 16, lineHeight: 23 },
   spacer: { flexGrow: 1, minHeight: 24 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: DESIGN_COLORS.emergencyRed },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed },
   buttonRow: { flexDirection: "row", gap: 12 },
   button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center" },
   backButton: { borderWidth: 1.5, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: "#FFFFFF" },
@@ -621,9 +622,9 @@ const styles = StyleSheet.create({
   homeButton: { flex: 0, alignSelf: "stretch" },
   pressed: { opacity: 0.88 },
   filledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontWeight: "800", textAlign: "center" },
+  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, textAlign: "center" },
   submitted: { flexGrow: 1, alignItems: "center", paddingTop: 24 },
   submittedDisc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center" },
-  submittedTitle: { marginTop: 20, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center" },
-  submittedText: { marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center" },
+  submittedTitle: { marginTop: 20, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center" },
+  submittedText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center" },
 });

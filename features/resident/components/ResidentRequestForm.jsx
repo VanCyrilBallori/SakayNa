@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleShee
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomSheetPicker from "../../../components/BottomSheetPicker";
-import { COLORS, DESIGN_COLORS, LIGHT_COLORS } from "../../../constants/design";
+import { COLORS, DESIGN_COLORS, FONT, LIGHT_COLORS } from "../../../constants/design";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import useCurrentLocation from "../hooks/useCurrentLocation";
 import { createResidentRequest } from "../services/residentRequestService";
@@ -651,7 +651,7 @@ const webBoxStyle = {
   backgroundColor: "#FFFFFF",
   color: colors.heading,
   fontSize: 17,
-  fontFamily: "inherit",
+  fontFamily: FONT.regular,
 };
 const webBoxErrorStyle = { border: `2px solid ${COLORS.emergency}` };
 const webBoxDisabledStyle = { backgroundColor: colors.card };
@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
   clockStrip: { backgroundColor: DESIGN_COLORS.hallGreen },
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  title: { flex: 1, fontSize: 28, lineHeight: 36, fontWeight: "800", color: colors.heading },
+  title: { flex: 1, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, color: colors.heading },
   closeButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   emergencyNote: {
     marginTop: 16,
@@ -781,12 +781,13 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: COLORS.emergencySurface,
   },
-  emergencyNoteText: { flex: 1, fontSize: 16, lineHeight: 23, fontWeight: "700", color: colors.heading },
+  emergencyNoteText: { flex: 1, fontSize: 16, lineHeight: 23, fontFamily: FONT.bold, color: colors.heading },
   // Task 3.9: sections 16 apart (was 24) so the form is shorter.
   field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  label: { flexShrink: 1, fontSize: 16, fontWeight: "700", color: colors.heading },
+  label: { flexShrink: 1, fontSize: 16, fontFamily: FONT.bold, color: colors.heading },
   input: {
+    fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
@@ -801,9 +802,9 @@ const styles = StyleSheet.create({
   inputDisabled: { backgroundColor: colors.card },
   schedulePicker: { marginTop: 14 },
   pickerButton: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, overflow: "hidden" },
-  pickerButtonText: { flex: 1, fontSize: 17, lineHeight: 23, color: colors.heading },
+  pickerButtonText: { fontFamily: FONT.regular, flex: 1, fontSize: 17, lineHeight: 23, color: colors.heading },
   pickerButtonPlaceholder: { color: colors.muted },
-  subLabel: { marginBottom: 8, fontSize: 16, fontWeight: "600", color: colors.heading },
+  subLabel: { marginBottom: 8, fontSize: 16, fontFamily: FONT.semiBold, color: colors.heading },
   subLabelSpaced: { marginTop: 14 },
   multiline: { minHeight: 96, paddingTop: 14, paddingBottom: 14 },
   choiceList: { gap: 4 },
@@ -820,9 +821,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   choiceCopy: { flex: 1 },
-  choiceText: { fontSize: 17, lineHeight: 23, color: colors.heading },
-  choiceTextSelected: { fontWeight: "700" },
-  choiceDetail: { marginTop: 2, fontSize: 15, lineHeight: 21, color: colors.muted },
+  choiceText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 23, color: colors.heading },
+  choiceTextSelected: { fontFamily: FONT.bold },
+  choiceDetail: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 21, color: colors.muted },
   stepper: { flexDirection: "row", alignItems: "center", gap: 16 },
   stepperButton: {
     width: 64,
@@ -835,7 +836,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   stepperButtonDisabled: { borderColor: COLORS.disabled },
-  countInput: { width: 88, paddingHorizontal: 6, textAlign: "center", fontSize: 22, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  countInput: { width: 88, paddingHorizontal: 6, textAlign: "center", fontSize: 22, fontFamily: FONT.extraBold, fontVariant: ["tabular-nums"] },
   actionButton: {
     minHeight: 56,
     paddingHorizontal: 14,
@@ -848,19 +849,19 @@ const styles = StyleSheet.create({
     gap: 12,
     backgroundColor: "#FFFFFF",
   },
-  actionButtonText: { flex: 1, fontSize: 17, fontWeight: "700", color: COLORS.primary },
+  actionButtonText: { flex: 1, fontSize: 17, fontFamily: FONT.bold, color: COLORS.primary },
   hintRow: { flexDirection: "row", gap: 10, marginTop: 10 },
-  hintText: { flex: 1, fontSize: 16, lineHeight: 23, color: colors.muted },
-  hintStrong: { fontWeight: "700", color: colors.heading },
-  errorText: { marginTop: 8, fontSize: 16, lineHeight: 23, fontWeight: "600", color: COLORS.emergency },
-  errorSummary: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: COLORS.emergency },
-  reviewIntro: { marginTop: 8, marginBottom: 16, fontSize: 16, lineHeight: 23, color: colors.muted },
+  hintText: { fontFamily: FONT.regular, flex: 1, fontSize: 16, lineHeight: 23, color: colors.muted },
+  hintStrong: { fontFamily: FONT.bold, color: colors.heading },
+  errorText: { marginTop: 8, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: COLORS.emergency },
+  errorSummary: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: COLORS.emergency },
+  reviewIntro: { fontFamily: FONT.regular, marginTop: 8, marginBottom: 16, fontSize: 16, lineHeight: 23, color: colors.muted },
   summary: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: colors.card },
   summaryRow: { flexDirection: "row", gap: 12, paddingVertical: 10 },
   summaryIcon: { marginTop: 2 },
   summaryText: { flex: 1 },
-  summaryLabel: { fontSize: 14, fontWeight: "600", color: colors.muted },
-  summaryValue: { marginTop: 2, fontSize: 17, lineHeight: 23, color: colors.heading },
+  summaryLabel: { fontSize: 14, fontFamily: FONT.semiBold, color: colors.muted },
+  summaryValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 23, color: colors.heading },
   spacer: { flexGrow: 1, minHeight: 32 },
   buttonRow: { flexDirection: "row", gap: 12 },
   button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center" },
@@ -868,9 +869,9 @@ const styles = StyleSheet.create({
   filledButton: { backgroundColor: COLORS.primary },
   doneButton: { flex: 0, alignSelf: "stretch" },
   pressed: { opacity: 0.88 },
-  buttonText: { fontSize: 17, fontWeight: "800", textAlign: "center" },
+  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, textAlign: "center" },
   sent: { flexGrow: 1, alignItems: "center", paddingTop: 48 },
   sentDisc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center", backgroundColor: colors.ripple },
-  sentTitle: { marginTop: 20, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center", color: colors.heading },
-  sentText: { marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center", color: colors.heading },
+  sentTitle: { marginTop: 20, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center", color: colors.heading },
+  sentText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center", color: colors.heading },
 });

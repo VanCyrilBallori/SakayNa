@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import BrandLogo from "./BrandLogo";
+import { FONT } from "../constants/design";
 
 // The green left half of the website Log In and Create Account pages (wide screens only).
 // Same green and soft circles as the website landing page (app/index.jsx). DESIGN.md allows this on the website only.
@@ -25,6 +26,6 @@ const styles = StyleSheet.create({
   glowLeft: { position: "absolute", top: -80, left: -40, width: 240, height: 240, borderRadius: 120, backgroundColor: "rgba(120, 220, 180, 0.18)" },
   glowRight: { position: "absolute", right: -90, bottom: -70, width: 280, height: 280, borderRadius: 140, backgroundColor: "rgba(255, 255, 255, 0.08)" },
   logo: { tintColor: "#FFFFFF" },
-  message: { maxWidth: 440, fontSize: 28, lineHeight: 34, fontWeight: "800", color: "#FFFFFF" },
-  note: { maxWidth: 440, fontSize: 17, lineHeight: 24, color: "#FFFFFF" },
+  message: { maxWidth: 440, fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  note: { fontFamily: FONT.regular, maxWidth: 440, fontSize: 17, lineHeight: 24, color: "#FFFFFF" },
 });

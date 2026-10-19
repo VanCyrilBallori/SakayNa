@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS, FONT } from "../constants/design";
 import { auth } from "../firebase";
 
 // The two account types a person can create by themselves.
@@ -141,15 +141,15 @@ const styles = StyleSheet.create({
   page: { flex: 1 },
   content: { flexGrow: 1, paddingHorizontal: 20 },
   backButton: { width: 48, height: 48, marginLeft: -8, alignItems: "center", justifyContent: "center", borderRadius: 24 },
-  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center" },
-  subtitle: { marginTop: 10, fontSize: 16, lineHeight: 23, textAlign: "center" },
+  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center" },
+  subtitle: { fontFamily: FONT.regular, marginTop: 10, fontSize: 16, lineHeight: 23, textAlign: "center" },
   // Takes the free space in the middle of the screen and centers the two explanations in it.
   explanations: { flex: 1, justifyContent: "center", gap: 28, paddingVertical: 40, width: "100%", maxWidth: 440, alignSelf: "center" },
   explanationRow: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
   iconDisc: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
   explanationText: { flex: 1, paddingTop: 2 },
-  explanationTitle: { fontSize: 18, lineHeight: 24, fontWeight: "800" },
-  explanationCopy: { marginTop: 4, fontSize: 16, lineHeight: 23 },
+  explanationTitle: { fontSize: 18, lineHeight: 24, fontFamily: FONT.extraBold },
+  explanationCopy: { fontFamily: FONT.regular, marginTop: 4, fontSize: 16, lineHeight: 23 },
   buttons: { gap: 12, width: "100%", maxWidth: 480, alignSelf: "center" },
   button: {
     minHeight: 60,
@@ -166,5 +166,5 @@ const styles = StyleSheet.create({
   buttonFilled: { backgroundColor: DESIGN_COLORS.hallGreen, borderColor: DESIGN_COLORS.hallGreen },
   buttonFilledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep, borderColor: DESIGN_COLORS.hallGreenDeep },
   buttonPressed: { opacity: 0.88 },
-  buttonText: { fontSize: 18, fontWeight: "800" },
+  buttonText: { fontSize: 18, fontFamily: FONT.extraBold },
 });

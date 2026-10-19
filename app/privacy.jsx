@@ -2,6 +2,7 @@ import { Link } from "expo-router";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import PageBackButton from "../components/PageBackButton";
+import { FONT } from "../constants/design";
 
 // Public page (no login needed): https://sakay-na-delta.vercel.app/privacy
 // DRAFT: the text below must be reviewed by the adviser before it is final.
@@ -157,15 +158,16 @@ const styles = StyleSheet.create({
   },
   draftText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#5C4600",
   },
   title: {
     fontSize: 28,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#0F6B4F",
   },
   updated: {
+    fontFamily: FONT.regular,
     marginTop: 6,
     fontSize: 13,
     color: "#5F6B78",
@@ -175,10 +177,11 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: 18,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#1E352D",
   },
   paragraph: {
+    fontFamily: FONT.regular,
     marginTop: 8,
     fontSize: 15,
     lineHeight: 23,
@@ -187,7 +190,7 @@ const styles = StyleSheet.create({
   link: {
     marginTop: 32,
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#0F6B4F",
     textDecorationLine: "underline",
   },

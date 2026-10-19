@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
 import WebAuthPanel from "../components/WebAuthPanel";
-import { DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS, FONT } from "../constants/design";
 import { auth } from "../firebase";
 import { getAuthErrorMessage } from "../lib/session";
 
@@ -318,11 +318,12 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   backArrow: { width: 48, height: 48, marginLeft: -8, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   logo: { alignSelf: "center", marginTop: 4, marginBottom: 28 },
-  title: { marginBottom: 8, fontSize: 28, lineHeight: 36, fontWeight: "800", color: DESIGN_COLORS.ink },
+  title: { marginBottom: 8, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   input: {
+    fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
@@ -341,21 +342,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  passwordInput: { flex: 1, minHeight: 56, paddingLeft: 14, paddingRight: 4, fontSize: 17, color: DESIGN_COLORS.ink },
+  passwordInput: { fontFamily: FONT.regular, flex: 1, minHeight: 56, paddingLeft: 14, paddingRight: 4, fontSize: 17, color: DESIGN_COLORS.ink },
   eyeButton: { width: 52, height: 52, alignItems: "center", justifyContent: "center", borderRadius: 26 },
   // Prevent selection and the long-press menu only on the eye, never in the input.
   webEyeButton: { userSelect: "none", WebkitTouchCallout: "none", touchAction: "none" },
   webEyeHint: { position: "absolute", width: 1, height: 1, overflow: "hidden", clipPath: "inset(50%)" },
-  helperText: { marginTop: 8, fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.inkMuted },
+  helperText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.inkMuted },
   spacer: { flexGrow: 1, minHeight: 28 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", color: DESIGN_COLORS.emergencyRed },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed },
   button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   pressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF" },
+  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   loginRow: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", columnGap: 6 },
-  loginText: { fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.ink },
+  loginText: { fontFamily: FONT.regular, fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.ink },
   loginLink: { minHeight: 48, justifyContent: "center" },
-  loginLinkText: { fontWeight: "800", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
+  loginLinkText: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
   // Wide screens (website on a computer): two halves side by side, form in the middle of the right half.
   widePage: { flexDirection: "row" },
   wideRight: { flex: 1 },

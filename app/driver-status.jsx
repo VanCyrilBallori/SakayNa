@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { COLORS, FONT, LIGHT_COLORS } from "../constants/design";
 import { db } from "../firebase";
 import { formatDateTime, getDateFromValue } from "../lib/dates";
 import { getAccountStatusLabel } from "../lib/roles";
@@ -219,9 +219,9 @@ const styles = StyleSheet.create({
   page: { flex: 1 },
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   logo: { alignSelf: "center", marginBottom: 20 },
-  title: { marginTop: 4, marginBottom: 24, fontSize: 28, lineHeight: 36, fontWeight: "800" },
+  title: { marginTop: 4, marginBottom: 24, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold },
   loading: { alignItems: "center", gap: 12, paddingVertical: 32 },
-  loadingText: { fontSize: 16, lineHeight: 23 },
+  loadingText: { fontFamily: FONT.regular, fontSize: 16, lineHeight: 23 },
   timeline: { width: "100%" },
   point: { flexDirection: "row", gap: 16 },
   markerColumn: { width: 40, alignItems: "center" },
@@ -233,8 +233,8 @@ const styles = StyleSheet.create({
   currentDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.primary },
   pointText: { flex: 1, paddingTop: 7 },
   pointTextSpaced: { paddingBottom: 28 },
-  pointTitle: { fontSize: 19, lineHeight: 26, fontWeight: "800" },
-  pointDetail: { marginTop: 4, fontSize: 17, lineHeight: 25 },
+  pointTitle: { fontSize: 19, lineHeight: 26, fontFamily: FONT.extraBold },
+  pointDetail: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 25 },
   rejectedPanel: { padding: 16, paddingTop: 8, borderRadius: 14, backgroundColor: COLORS.emergencySurface },
   contactText: { marginTop: 12 },
   spacer: { flexGrow: 1, minHeight: 32 },
@@ -252,5 +252,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   pressed: { opacity: 0.88 },
-  logoutButtonText: { fontSize: 17, fontWeight: "800", color: COLORS.primary },
+  logoutButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: COLORS.primary },
 });

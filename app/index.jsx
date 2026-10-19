@@ -7,6 +7,7 @@ import MobileLanding from "../components/MobileLanding";
 import ScreenState from "../components/ui/ScreenState";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { useCurrentUserProfile } from "../lib/session";
+import { FONT } from "../constants/design";
 
 export default function Index() {
   // The landing page is for the website only. The phone app shows its own start flow.
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
   },
   topButtonPrimaryText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#47685D",
   },
   topButtonSecondary: {
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
   },
   topButtonSecondaryText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#47685D",
   },
   heroSection: {
@@ -317,7 +318,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.12)",
     color: "#E5FFF2",
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
@@ -325,7 +326,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 54,
     lineHeight: 58,
-    fontWeight: "900",
+    fontFamily: FONT.extraBold,
     color: "#FFFFFF",
   },
   heroTitleCompact: {
@@ -337,6 +338,7 @@ const styles = StyleSheet.create({
     lineHeight: 38,
   },
   heroSubtitle: {
+    fontFamily: FONT.regular,
     marginTop: 18,
     maxWidth: 640,
     fontSize: 18,
@@ -344,6 +346,7 @@ const styles = StyleSheet.create({
     color: "#D8F5E9",
   },
   heroSubtitleCompact: {
+    fontFamily: FONT.regular,
     fontSize: 16,
     lineHeight: 25,
   },
@@ -365,10 +368,11 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     fontSize: 24,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#FFFFFF",
   },
   metricLabel: {
+    fontFamily: FONT.regular,
     marginTop: 4,
     fontSize: 13,
     color: "#D9F3E7",
@@ -411,7 +415,7 @@ const styles = StyleSheet.create({
   },
   sectionEyebrow: {
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     color: "#4E6A5F",
@@ -420,7 +424,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 38,
     lineHeight: 42,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#142A22",
   },
   sectionTitleNarrow: {
@@ -452,10 +456,11 @@ const styles = StyleSheet.create({
   featureTitle: {
     marginTop: 18,
     fontSize: 22,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#16352B",
   },
   featureText: {
+    fontFamily: FONT.regular,
     marginTop: 10,
     fontSize: 15,
     lineHeight: 23,
@@ -489,13 +494,13 @@ const styles = StyleSheet.create({
   },
   stepNumber: {
     fontSize: 28,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#FFFFFF",
   },
   stepLabel: {
     marginTop: 14,
     fontSize: 18,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#1E352D",
     textAlign: "center",
   },
@@ -527,17 +532,18 @@ const styles = StyleSheet.create({
   },
   footerBrand: {
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#FFFFFF",
     textAlign: "center",
   },
   footerHeading: {
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#FFFFFF",
     textAlign: "center",
   },
   footerText: {
+    fontFamily: FONT.regular,
     marginTop: 22,
     fontSize: 14,
     lineHeight: 22,
@@ -545,6 +551,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   footerLink: {
+    fontFamily: FONT.regular,
     marginTop: 10,
     fontSize: 14,
     color: "#B7C0CC",
@@ -559,6 +566,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#5F6B78",
   },
   footerCopy: {
+    fontFamily: FONT.regular,
     marginTop: 18,
     fontSize: 13,
     color: "#C5CCD5",

@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
-import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
+import { formatDay, formatTime, getDateFromValue } from "../../../lib/dates";
 import { formatDutyDuration } from "../../../lib/dutyTime";
 import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
 import { createEmergencyRide } from "../services/dispatcherAssignmentService";
@@ -265,7 +265,7 @@ export default function EmergencyRequestForm({
             />
           </Field>
           <Field label="Barangay" required error={errors.barangay}>
-            <Dropdown
+            <Dropdown fontFamily={FONT.regular}
               style={[styles.input, styles.dropdown, errors.barangay && styles.inputError]}
               containerStyle={styles.dropdownList}
               selectedTextStyle={styles.inputText}
@@ -331,7 +331,7 @@ export default function EmergencyRequestForm({
         <SectionTitle icon="medical-bag" text="Emergency details" tone="red" />
         <View style={[styles.row, !desktop && styles.stackedRow]}>
           <Field label="Emergency type" required error={errors.emergencyType}>
-            <Dropdown
+            <Dropdown fontFamily={FONT.regular}
               style={[styles.input, styles.dropdown, errors.emergencyType && styles.inputError]}
               containerStyle={styles.dropdownList}
               selectedTextStyle={styles.inputText}
@@ -522,8 +522,8 @@ export default function EmergencyRequestForm({
         <View style={[styles.section, desktop && styles.desktopSection, styles.greenSection]}>
         <SectionTitle icon="phone-outline" text="Call information" tone="green" />
         <View style={[styles.row, !desktop && styles.stackedRow]}>
-          <ReadOnly label="Date received" value={receivedAt ? formatShortDay(receivedAt) : "Not known"} />
-          <ReadOnly label="Time received" value={receivedAt ? formatClockTime(receivedAt) : "Not known"} />
+          <ReadOnly label="Date received" value={receivedAt ? formatDay(receivedAt) : "Not known"} />
+          <ReadOnly label="Time received" value={receivedAt ? formatTime(receivedAt) : "Not known"} />
           <ReadOnly label="Dispatcher" value={dispatcherName || "Dispatcher"} />
         </View>
         </View>
@@ -698,14 +698,14 @@ const styles = StyleSheet.create({
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  backText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  backText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.emergencyRed },
   headerCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 280 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink },
-  subtitle: { marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   // A small orange tag with dark words (DESIGN.md: orange has dark words).
   referenceTag: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
-  referenceText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  referenceText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   card: { padding: 24, gap: 16, borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
   desktopCard: { padding: 16, gap: 12 },
   // Each part of the form sits on its own soft color, inside the white card (Board Tint fields, DESIGN.md).
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   peachSection: { backgroundColor: DESIGN_COLORS.peachTint },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionBadge: { width: 36, height: 36, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800" },
+  sectionTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-start" },
   stackedRow: { flexDirection: "column", alignItems: "stretch" },
   field: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0, gap: 4 },
@@ -724,9 +724,10 @@ const styles = StyleSheet.create({
   incidentField: { flexGrow: 2, flexBasis: 0 },
   quickFacts: { flexGrow: 1, flexShrink: 1, flexBasis: "auto", minWidth: 0, gap: 8 },
   desktopQuickFacts: { flexBasis: 300 },
-  label: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   required: { color: DESIGN_COLORS.emergencyRed },
   input: {
+    fontFamily: FONT.regular,
     minHeight: 48,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -738,14 +739,14 @@ const styles = StyleSheet.create({
     color: DESIGN_COLORS.ink,
   },
   inputError: { borderColor: DESIGN_COLORS.emergencyRed, borderWidth: 2 },
-  inputText: { fontSize: 17, color: DESIGN_COLORS.ink },
-  placeholderText: { fontSize: 17, color: DESIGN_COLORS.placeholder },
+  inputText: { fontFamily: FONT.regular, fontSize: 17, color: DESIGN_COLORS.ink },
+  placeholderText: { fontFamily: FONT.regular, fontSize: 17, color: DESIGN_COLORS.placeholder },
   dropdown: { paddingVertical: 0 },
   dropdownList: { borderRadius: 16, borderColor: DESIGN_COLORS.controlOutline },
   dropdownItem: { minHeight: 48 },
   textArea: { minHeight: 144, textAlignVertical: "top" },
-  hint: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  errorText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.emergencyRed },
+  hint: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  errorText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.emergencyRed },
   locationLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
   smallOutlineButton: {
     minHeight: 48,
@@ -758,7 +759,7 @@ const styles = StyleSheet.create({
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  smallOutlineText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  smallOutlineText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
   outlinePressed: { backgroundColor: DESIGN_COLORS.boardTint },
   choiceWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   // Pill-shaped choices.
@@ -776,7 +777,7 @@ const styles = StyleSheet.create({
   },
   choiceSelected: { borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.hallGreen },
   choiceSelectedRed: { borderColor: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.emergencyRed },
-  choiceText: { fontSize: 17, fontWeight: "600", color: DESIGN_COLORS.ink },
+  choiceText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   choiceTextSelected: { color: DESIGN_COLORS.paperWhite },
   optionList: { gap: 8 },
   optionRow: {
@@ -794,14 +795,14 @@ const styles = StyleSheet.create({
   optionSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen },
   optionCopy: { flex: 1, gap: 2 },
   optionTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
-  optionTitle: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  optionMeta: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  optionDistance: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
-  optionWarning: { marginTop: 4, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.orangeDeep },
+  optionTitle: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  optionMeta: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  optionDistance: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  optionWarning: { marginTop: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.orangeDeep },
   // Same green badge as the Drivers column ("Available" = Hall Green with white words).
   availableBadge: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
-  availableBadgeText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
-  emptyBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.paperWhite },
+  availableBadgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
+  emptyBox: { fontFamily: FONT.regular, padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, backgroundColor: DESIGN_COLORS.paperWhite },
   stepper: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   stepperButton: {
     width: 48,
@@ -815,10 +816,11 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   stepperDisabled: { borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
-  stepperText: { fontSize: 17, fontWeight: "700" },
+  stepperText: { fontSize: 17, fontFamily: FONT.bold },
   // The typing box between the buttons: 48 tall like them, wide enough for 3 digits.
-  patientInput: { width: 72, textAlign: "center", fontSize: 22, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  patientInput: { width: 72, textAlign: "center", fontSize: 22, fontFamily: FONT.extraBold, fontVariant: ["tabular-nums"] },
   readOnlyValue: {
+    fontFamily: FONT.regular,
     minHeight: 48,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -828,7 +830,7 @@ const styles = StyleSheet.create({
     color: DESIGN_COLORS.ink,
     overflow: "hidden",
   },
-  errorBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
+  errorBox: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
   // The note on the left, the two buttons on the right. On a narrow screen the buttons wrap under the note.
   footer: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", rowGap: 12, columnGap: 24 },
   footerButtons: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 12 },
@@ -845,7 +847,7 @@ const styles = StyleSheet.create({
   },
   submitPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   submitSaving: { opacity: 0.7 },
-  submitText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
+  submitText: { fontSize: 17, fontFamily: FONT.extraBold, color: DESIGN_COLORS.paperWhite },
   cancelButton: {
     minWidth: 120,
     minHeight: 48,
@@ -857,7 +859,7 @@ const styles = StyleSheet.create({
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  cancelText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  cancelText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   infoLine: { flexGrow: 1, flexShrink: 1, flexBasis: 320, minWidth: 0, flexDirection: "row", alignItems: "flex-start", gap: 8 },
   infoText: { flexShrink: 1 },
 });

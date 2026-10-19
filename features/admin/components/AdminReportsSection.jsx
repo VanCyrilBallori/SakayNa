@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDate, getAverageDuration, getDurationLabel, getTimestampMillis } from "../../../lib/dates";
 
 // Light grey for "Cancelled", the same as the Overview ride bar.
@@ -262,16 +262,16 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink },
-  subtitle: { marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  body: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  label: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  small: { fontSize: 15, lineHeight: 20, fontWeight: "400", color: DESIGN_COLORS.inkMuted },
-  bigNumber: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  small: { fontSize: 15, lineHeight: 20, fontFamily: FONT.regular, color: DESIGN_COLORS.inkMuted },
+  bigNumber: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   period: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.boardTint },
   periodBadge: { width: 28, height: 28, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
-  periodText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  periodText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   // Sections: soft color inside the white panel, 24 corners (DESIGN.md).
   sectionRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "stretch" },
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   smallSection: { flexGrow: 1, flexShrink: 1, flexBasis: 300 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionBadge: { width: 36, height: 36, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  sectionTitle: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
 
   rateBox: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: 10, rowGap: 2, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESIGN_COLORS.paperWhite },
   stackBar: { flexDirection: "row", height: 28, gap: 2, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
 
   barLineTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 },
   barLineLabel: { flexShrink: 1 },
-  barLineValue: { fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  barLineValue: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   barTrack: { height: 14, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   barFill: { height: "100%", borderRadius: 999 },
 
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   downloadCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 320, minWidth: 0, gap: 8 },
   columns: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   columnTag: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.paperWhite },
-  columnTagText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  columnTagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   button: {
     minHeight: 48,
     flexDirection: "row",
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
   buttonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  buttonText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
 
   emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });

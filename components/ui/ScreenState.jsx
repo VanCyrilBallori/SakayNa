@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import AppButton from "./AppButton";
-import { COLORS, RADIUS } from "../../constants/design";
+import { COLORS, FONT, RADIUS } from "../../constants/design";
 
 // Loading screens (loading = true): only the spinner and words, straight on the light gray page (Task 3.8).
 // Error screens (no loading): inside the white card with their buttons, as before.
@@ -23,10 +23,10 @@ const styles = StyleSheet.create({
   page: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20, backgroundColor: COLORS.page },
   card: { width: "100%", maxWidth: 440, alignItems: "center", padding: 24, borderRadius: RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border },
   plain: { width: "100%", maxWidth: 440, alignItems: "center", padding: 24 },
-  title: { marginTop: 14, fontSize: 22, fontWeight: "800", color: COLORS.text, textAlign: "center" },
-  message: { marginTop: 12, fontSize: 16, lineHeight: 24, color: COLORS.mutedText, textAlign: "center" },
+  title: { marginTop: 14, fontSize: 22, fontFamily: FONT.extraBold, color: COLORS.text, textAlign: "center" },
+  message: { fontFamily: FONT.regular, marginTop: 12, fontSize: 16, lineHeight: 24, color: COLORS.mutedText, textAlign: "center" },
   // On the gray page the words are dark and Body size (DESIGN.md 17/24), so they stay easy to read.
-  loadingMessage: { fontSize: 17, color: COLORS.text },
+  loadingMessage: { fontFamily: FONT.regular, fontSize: 17, color: COLORS.text },
   action: { width: "100%", marginTop: 20 },
   secondaryAction: { width: "100%", marginTop: 12 },
 });

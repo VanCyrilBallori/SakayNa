@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../../resident/utils/requestMapper";
 import { getDestinationLabel, getEmergencyRideTitle, getPatientCountText, getPickupLabel, isEmergencyFormRide } from "../utils/driverMissionMapper";
@@ -166,12 +166,12 @@ const styles = StyleSheet.create({
   },
   // "Title" size (DESIGN.md): the one big thing on the card.
   band: { minHeight: 56, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12 },
-  bandText: { fontSize: 22, lineHeight: 28, fontWeight: "800" },
+  bandText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold },
   body: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  title: { fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  title: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   whenRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
-  whenText: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted },
-  scheduledWhen: { fontWeight: "700", color: DESIGN_COLORS.orangeDeep },
+  whenText: { flex: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
+  scheduledWhen: { fontFamily: FONT.bold, color: DESIGN_COLORS.orangeDeep },
 
   route: { marginTop: 16 },
   routeRow: { flexDirection: "row", gap: 12 },
@@ -182,23 +182,23 @@ const styles = StyleSheet.create({
   destinationMarker: { backgroundColor: DESIGN_COLORS.sakayOrange },
   routeJoin: { flex: 1, width: 2, minHeight: 12, marginVertical: 4, backgroundColor: DESIGN_COLORS.hallGreen },
   routeText: { flex: 1, paddingBottom: 12 },
-  routeLabel: { fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted },
-  routePlace: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  landmark: { marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  routeLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
+  routePlace: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  landmark: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
 
   boxes: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   box: { flexGrow: 1, flexBasis: 130, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
-  boxLabel: { fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted },
-  boxValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  boxSmall: { marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  boxLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
+  boxValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  boxSmall: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
 
   helpBox: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
-  helpText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  helpLabel: { fontWeight: "700" },
+  helpText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  helpLabel: { fontFamily: FONT.bold },
   factsBox: { gap: 4 },
 
   passenger: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
-  passengerName: { fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  passengerName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   // A white button with an edge, so it doesn't compete with the green Accept / next-step button.
   callButton: {
     flexDirection: "row",
@@ -214,11 +214,11 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   callButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  callButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
-  noPhone: { marginTop: 4, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  callButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
+  noPhone: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
 
   // "Ride details ›": a green text button, 48 tall so it is easy to tap.
   detailsLink: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", minHeight: 48, marginTop: 4, paddingRight: 4, borderRadius: 16 },
   detailsLinkPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  detailsLinkText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  detailsLinkText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
 });

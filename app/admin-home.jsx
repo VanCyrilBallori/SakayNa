@@ -46,6 +46,7 @@ import {
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import { formatPlace } from "../lib/placeText";
+import { FONT } from "../constants/design";
 
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
@@ -897,17 +898,17 @@ export default function AdminHome() {
                         <Text style={[styles.sideBlockText, { color: active ? "#FFFFFF" : "#214238" }]}>{label}</Text>
                         {label === "Emergency Calls" && staleRingingCount > 0 ? (
                           <View style={{ backgroundColor: "#C53A3A", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{staleRingingCount}</Text>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{staleRingingCount}</Text>
                           </View>
                         ) : null}
                         {label === "Resident Verification" && residentVerifications.length > 0 ? (
                           <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{residentVerifications.length}</Text>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{residentVerifications.length}</Text>
                           </View>
                         ) : null}
                         {label === "Driver Applications" && pendingApplications.length > 0 ? (
                           <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{pendingApplications.length}</Text>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{pendingApplications.length}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -1237,7 +1238,7 @@ export default function AdminHome() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: "#F5F7F6" },
   accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
-  accessText: { fontSize: 15, fontWeight: "800", color: "#335E50", textAlign: "center" },
+  accessText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#335E50", textAlign: "center" },
   content: { paddingBottom: 28 },
   header: {
     paddingHorizontal: 24,
@@ -1251,7 +1252,7 @@ const styles = StyleSheet.create({
   },
   // The logo with the Admin's barangay under it (Task 3.6). Body size (DESIGN.md: 17/24, 500).
   headerBrand: { gap: 4, flexShrink: 1 },
-  headerBarangay: { fontSize: 17, lineHeight: 24, fontWeight: "500" },
+  headerBarangay: { fontSize: 17, lineHeight: 24, fontFamily: FONT.medium },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
@@ -1275,7 +1276,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 15,
-    fontWeight: "900",
+    fontFamily: FONT.extraBold,
   },
   container: { width: "100%", alignSelf: "stretch", paddingHorizontal: 22, paddingTop: 20 },
   containerCompact: { paddingHorizontal: 12, paddingTop: 14 },
@@ -1294,8 +1295,8 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "stretch",
   },
-  sidebarTitle: { fontSize: 20, fontWeight: "900" },
-  sidebarSubtitle: { fontSize: 13, lineHeight: 19, marginBottom: 6 },
+  sidebarTitle: { fontSize: 20, fontFamily: FONT.extraBold },
+  sidebarSubtitle: { fontFamily: FONT.regular, fontSize: 13, lineHeight: 19, marginBottom: 6 },
   panelScrollArea: { flex: 1 },
   panelScrollContent: { gap: 10, paddingBottom: 2 },
   sideBlock: {
@@ -1307,69 +1308,69 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sideBlockActive: { backgroundColor: "#06774B" },
-  sideBlockText: { flex: 1, fontSize: 14, fontWeight: "800", textAlign: "center" },
+  sideBlockText: { flex: 1, fontSize: 14, fontFamily: FONT.extraBold, textAlign: "center" },
   mainArea: { flex: 1, minWidth: 0, gap: 12 },
   contentPanel: { padding: 14, borderRadius: 18, borderWidth: 1 },
   contentPanelFixed: { flex: 1, minHeight: 0 },
   contentPanelScrollContent: { paddingBottom: 2 },
   verificationSection: { marginTop: 14 },
-  subsectionTitle: { fontSize: 18, fontWeight: "900" },
+  subsectionTitle: { fontSize: 18, fontFamily: FONT.extraBold },
   verificationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 14 },
   verificationCard: { flexGrow: 1, flexBasis: 300, padding: 18, borderRadius: 14, borderWidth: 1 },
   verificationTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   verifyIdentity: { flexDirection: "row", gap: 12, flex: 1, minWidth: 0 },
   verifyAvatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   verifyIdentityCopy: { flex: 1 },
-  verifyName: { fontSize: 20, fontWeight: "900" },
-  verifyMeta: { marginTop: 4, fontSize: 13, fontWeight: "700" },
-  verifyDetail: { marginTop: 10, fontSize: 14, lineHeight: 21 },
+  verifyName: { fontSize: 20, fontFamily: FONT.extraBold },
+  verifyMeta: { marginTop: 4, fontSize: 13, fontFamily: FONT.bold },
+  verifyDetail: { fontFamily: FONT.regular, marginTop: 10, fontSize: 14, lineHeight: 21 },
   pendingPill: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 999, backgroundColor: "#F5A623" },
-  pendingPillText: { fontSize: 12, fontWeight: "900", color: "#111111" },
+  pendingPillText: { fontSize: 12, fontFamily: FONT.extraBold, color: "#111111" },
   verifyActions: { flexDirection: "row", gap: 10, marginTop: 16 },
   verifyButton: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   rejectButton: { backgroundColor: "#C62828" },
   approveButton: { backgroundColor: "#06774B" },
-  verifyButtonText: { fontSize: 14, fontWeight: "900", color: "#FFFFFF" },
+  verifyButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   actionButtonDisabled: { opacity: 0.65 },
   documentGallery: { paddingRight: 8, gap: 10 },
   documentPreviewWrap: { marginTop: 14, alignSelf: "flex-start" },
   documentImage: { width: 104, height: 70, borderRadius: 10, backgroundColor: "#EAF2EE" },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 12 },
   filterChip: { paddingVertical: 9, paddingHorizontal: 13, borderRadius: 999, borderWidth: 1 },
-  filterChipText: { fontSize: 13, fontWeight: "800" },
-  limitNotice: { marginTop: 10, fontSize: 12, fontWeight: "700", fontStyle: "italic" },
-  userLine: { marginTop: 9, fontSize: 14, lineHeight: 21 },
+  filterChipText: { fontSize: 13, fontFamily: FONT.extraBold },
+  limitNotice: { marginTop: 10, fontSize: 12, fontFamily: FONT.bold, fontStyle: "italic" },
+  userLine: { fontFamily: FONT.regular, marginTop: 9, fontSize: 14, lineHeight: 21 },
   userActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
   smallActionButton: { minHeight: 38, paddingHorizontal: 12, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   editButton: { backgroundColor: "#06774B" },
   deleteButton: { backgroundColor: "#C62828" },
-  smallActionButtonText: { fontSize: 13, fontWeight: "900", color: "#FFFFFF" },
+  smallActionButtonText: { fontSize: 13, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   vehicleToolbar: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
   primaryActionButton: { minHeight: 46, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#06774B", alignItems: "center", justifyContent: "center" },
-  primaryActionButtonText: { fontSize: 14, fontWeight: "900", color: "#FFFFFF" },
+  primaryActionButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   secondaryActionButton: { minHeight: 46, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#DDEAE4", alignItems: "center", justifyContent: "center" },
-  secondaryActionButtonText: { fontSize: 14, fontWeight: "800", color: "#214238" },
+  secondaryActionButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#214238" },
   vehicleRow: { flexDirection: "row", flexWrap: "wrap", gap: 18, marginTop: 14 },
   vehicleCard: { flexGrow: 1, flexBasis: 320, maxWidth: 420, padding: 18, borderRadius: 16, borderWidth: 1 },
   vehicleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   vehicleHeaderCopy: { flex: 1 },
-  vehicleTitle: { fontSize: 22, fontWeight: "900" },
-  vehicleMeta: { marginTop: 8, fontSize: 14, fontWeight: "800" },
+  vehicleTitle: { fontSize: 22, fontFamily: FONT.extraBold },
+  vehicleMeta: { marginTop: 8, fontSize: 14, fontFamily: FONT.extraBold },
   emptyState: { marginTop: 14, padding: 18, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center", gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: "800", textAlign: "center" },
-  emptyText: { marginTop: 2, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  emptyTitle: { fontSize: 16, fontFamily: FONT.extraBold, textAlign: "center" },
+  emptyText: { fontFamily: FONT.regular, marginTop: 2, fontSize: 13, lineHeight: 19, textAlign: "center" },
   infoPanel: { marginTop: 12, padding: 16, borderRadius: 16, borderWidth: 1, gap: 8 },
-  infoPanelTitle: { fontSize: 16, fontWeight: "900" },
-  infoPanelText: { fontSize: 13, lineHeight: 20, fontWeight: "700" },
+  infoPanelTitle: { fontSize: 16, fontFamily: FONT.extraBold },
+  infoPanelText: { fontSize: 13, lineHeight: 20, fontFamily: FONT.bold },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.32)", alignItems: "center", justifyContent: "center", padding: 12 },
   modalCard: { width: "100%", maxWidth: 560, maxHeight: "92%", borderRadius: 18, borderWidth: 1 },
   modalScrollContent: { padding: 20, gap: 12 },
   modalHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
-  modalTitle: { fontSize: 24, fontWeight: "900" },
-  modalSubtitle: { marginTop: 5, fontSize: 13, lineHeight: 19 },
+  modalTitle: { fontSize: 24, fontFamily: FONT.extraBold },
+  modalSubtitle: { fontFamily: FONT.regular, marginTop: 5, fontSize: 13, lineHeight: 19 },
   modalCloseButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#EAF2EE", alignItems: "center", justifyContent: "center" },
   detailBox: { padding: 16, borderRadius: 14, gap: 8 },
-  detailLine: { fontSize: 14, lineHeight: 21, fontWeight: "700" },
+  detailLine: { fontSize: 14, lineHeight: 21, fontFamily: FONT.bold },
   menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.18)", paddingTop: 86, paddingRight: 18, alignItems: "flex-end" },
   profileMenuCard: {
     width: 320,
@@ -1385,32 +1386,32 @@ const styles = StyleSheet.create({
   },
   profileMenuHeader: { alignItems: "center", paddingBottom: 16, borderBottomWidth: 1 },
   profileMenuAvatar: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center" },
-  profileMenuAvatarText: { fontSize: 22, fontWeight: "900" },
-  profileMenuName: { marginTop: 12, fontSize: 18, fontWeight: "800" },
-  profileMenuEmail: { marginTop: 4, fontSize: 13 },
+  profileMenuAvatarText: { fontSize: 22, fontFamily: FONT.extraBold },
+  profileMenuName: { marginTop: 12, fontSize: 18, fontFamily: FONT.extraBold },
+  profileMenuEmail: { fontFamily: FONT.regular, marginTop: 4, fontSize: 13 },
   profileMenuBody: { paddingTop: 12, gap: 4 },
   menuItem: { minHeight: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  menuItemText: { fontSize: 15, fontWeight: "700" },
+  menuItemText: { fontSize: 15, fontFamily: FONT.bold },
   menuItemDisabled: { opacity: 0.58 },
-  menuItemSoon: { fontSize: 12, fontWeight: "800" },
+  menuItemSoon: { fontSize: 12, fontFamily: FONT.extraBold },
   logoutMenuButton: { marginTop: 14, minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#0B7A4A" },
-  logoutMenuButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
+  logoutMenuButtonText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   profileEditorCard: { width: "100%", maxWidth: 560, backgroundColor: "#FFFFFF", borderRadius: 20, borderWidth: 1, padding: 22 },
   // The X at the top-right of Edit Account, Vehicle editor and Profile.
   closeInCorner: { alignSelf: "flex-end" },
-  profileFieldLabel: { marginTop: 22, fontSize: 15, fontWeight: "700" },
-  profileInput: { marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, backgroundColor: "#FCFCFC", fontSize: 15, color: "#111111" },
+  profileFieldLabel: { marginTop: 22, fontSize: 15, fontFamily: FONT.bold },
+  profileInput: { fontFamily: FONT.regular, marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, backgroundColor: "#FCFCFC", fontSize: 15, color: "#111111" },
   readOnlyInput: { opacity: 0.78 },
   primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
-  primarySaveButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
+  primarySaveButtonText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   confirmCard: { width: "100%", maxWidth: 520, borderRadius: 20, borderWidth: 1, padding: 22 },
   confirmActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 22 },
   confirmButton: { flex: 1, minWidth: 180 },
   imageModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", alignItems: "center", justifyContent: "center", padding: 20 },
   imageModalCloseArea: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
   imageModalPreview: { width: "100%", height: "84%" },
-  imageModalCloseText: { marginTop: 12, fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
-  feedbackText: { marginTop: 16, fontSize: 15, fontWeight: "700", color: "#335E50" },
-  errorText: { marginTop: 16, fontSize: 15, fontWeight: "700", color: "#B42318" },
+  imageModalCloseText: { marginTop: 12, fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  feedbackText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#335E50" },
+  errorText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#B42318" },
 });

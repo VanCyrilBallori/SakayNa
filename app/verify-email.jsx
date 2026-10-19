@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
-import { DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS, FONT } from "../constants/design";
 import { auth } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
@@ -194,14 +194,14 @@ const styles = StyleSheet.create({
   // Takes the free space between the logo and the buttons and centers the message in it.
   middle: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
   disc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
-  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontWeight: "800", textAlign: "center", color: DESIGN_COLORS.ink },
-  bodyText: { marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center", color: DESIGN_COLORS.ink },
-  email: { fontWeight: "800" },
-  helperText: { marginTop: 16, maxWidth: 420, fontSize: 16, lineHeight: 23, textAlign: "center", color: DESIGN_COLORS.inkMuted },
+  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center", color: DESIGN_COLORS.ink },
+  bodyText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center", color: DESIGN_COLORS.ink },
+  email: { fontFamily: FONT.extraBold },
+  helperText: { fontFamily: FONT.regular, marginTop: 16, maxWidth: 420, fontSize: 16, lineHeight: 23, textAlign: "center", color: DESIGN_COLORS.inkMuted },
   noMargin: { marginTop: 0 },
   inkText: { color: DESIGN_COLORS.ink },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center", color: DESIGN_COLORS.emergencyRed },
-  successText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontWeight: "600", textAlign: "center", color: DESIGN_COLORS.hallGreen },
+  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, textAlign: "center", color: DESIGN_COLORS.emergencyRed },
+  successText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, textAlign: "center", color: DESIGN_COLORS.hallGreen },
   buttons: { gap: 12 },
   button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center" },
   filledButton: { backgroundColor: DESIGN_COLORS.hallGreen },
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   // Pressed: darker green (filled) or Board Tint behind the words (outlined), like Log In.
   filledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   outlinedPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  buttonText: { fontSize: 17, fontWeight: "800", textAlign: "center" },
+  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, textAlign: "center" },
   textLink: { minHeight: 48, alignItems: "center", justifyContent: "center" },
-  textLinkText: { fontSize: 16, lineHeight: 23, fontWeight: "800", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
+  textLinkText: { fontSize: 16, lineHeight: 23, fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
 });

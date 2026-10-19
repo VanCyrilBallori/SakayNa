@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { COLORS, RADIUS } from "../../constants/design";
+import { COLORS, FONT, RADIUS } from "../../constants/design";
 
 const tones = {
   error: { backgroundColor: COLORS.emergencySurface, color: COLORS.emergency },
@@ -20,5 +20,5 @@ export default function FeedbackMessage({ message, tone = "info", style }) {
 
 const styles = StyleSheet.create({
   container: { width: "100%", marginTop: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: RADIUS.sm },
-  text: { fontSize: 14, lineHeight: 20, fontWeight: "600" },
+  text: { fontSize: 14, lineHeight: 20, fontFamily: FONT.semiBold },
 });

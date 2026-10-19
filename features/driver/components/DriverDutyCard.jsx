@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
 import { formatDutyDuration, formatManilaTime, formatTimer, summarizeShift } from "../../../lib/dutyTime";
@@ -415,13 +415,13 @@ const styles = StyleSheet.create({
   cardOnBreak: { backgroundColor: DESIGN_COLORS.peachTint, borderWidth: 2, borderColor: DESIGN_COLORS.sakayOrange, paddingHorizontal: 14, paddingVertical: 14 },
   // Same deep green as the "Assigned" / "On the way" bands.
   cardOnRun: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  rideWaitingText: { marginTop: 16, fontSize: 17, lineHeight: 24, fontWeight: "700" },
+  rideWaitingText: { marginTop: 16, fontSize: 17, lineHeight: 24, fontFamily: FONT.bold },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   availableDot: { width: 16, height: 16, borderRadius: 999, backgroundColor: DESIGN_COLORS.paperWhite },
-  statusWord: { flexShrink: 1, fontSize: 28, lineHeight: 34, fontWeight: "800" },
-  timerText: { marginTop: 8, fontSize: 17, lineHeight: 22, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  bodyText: { marginTop: 8, fontSize: 17, lineHeight: 24 },
-  smallText: { marginTop: 4, fontSize: 15, lineHeight: 20, fontWeight: "500" },
+  statusWord: { flexShrink: 1, fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold },
+  timerText: { marginTop: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
+  bodyText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24 },
+  smallText: { marginTop: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium },
   inkText: { color: DESIGN_COLORS.ink },
   inkMutedText: { color: DESIGN_COLORS.inkMuted },
   whiteText: { color: DESIGN_COLORS.paperWhite },
@@ -448,34 +448,34 @@ const styles = StyleSheet.create({
   buttonRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 16 },
   halfButton: { width: undefined, flexGrow: 1, flexBasis: 140, marginTop: 0 },
   punchInPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  punchInText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.paperWhite },
+  punchInText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.paperWhite },
   whiteButton: { backgroundColor: DESIGN_COLORS.paperWhite },
   whiteButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  whiteButtonText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  whiteButtonText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
   buttonDisabled: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1.5, borderColor: DESIGN_COLORS.rule },
   buttonDisabledText: { color: DESIGN_COLORS.inkMuted },
   outlineOnGreen: { borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },
   outlineOnGreenPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  outlineOnGreenText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  outlineOnGreenText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
   buttonBusy: { opacity: 0.75 },
 
   messageBox: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
   messageBoxError: { backgroundColor: DESIGN_COLORS.redTint },
-  messageText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  messageTextError: { color: DESIGN_COLORS.emergencyRed, fontWeight: "600" },
+  messageText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  messageTextError: { color: DESIGN_COLORS.emergencyRed, fontFamily: FONT.semiBold },
 
   // Pop-up (same look as the resident's "Send emergency alert?" pop-up, in green).
   overlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16, backgroundColor: "rgba(0,0,0,0.28)" },
   confirmCard: { width: "100%", maxWidth: 440, alignItems: "center", padding: 24, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
-  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
-  confirmText: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
+  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
+  confirmText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
   summaryList: { alignSelf: "stretch", marginTop: 16 },
   summaryRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 8, paddingVertical: 10 },
   summaryRowLine: { borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.rule },
-  summaryLabel: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  summaryValue: { fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  summaryLabel: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  summaryValue: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   confirmButton: { alignSelf: "stretch", maxWidth: undefined, backgroundColor: DESIGN_COLORS.hallGreen },
-  confirmButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  confirmButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
   cancelButton: {
     alignSelf: "stretch",
     minHeight: 56,
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   cancelPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  cancelText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  cancelText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   // "Take a break" sheet (slides up; top corners 24).
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
@@ -498,12 +498,12 @@ const styles = StyleSheet.create({
   // flexShrink lets the sheet get shorter (instead of going off the top) when the keyboard is open.
   sheet: { flexShrink: 1, width: "100%", maxWidth: 640, alignSelf: "center", backgroundColor: DESIGN_COLORS.paperWhite, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" },
   sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingLeft: 24, paddingRight: 12, paddingTop: 16, paddingBottom: 8 },
-  sheetTitle: { flex: 1, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  sheetTitle: { flex: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   closeButton: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" },
   sheetScroll: { flexGrow: 0 },
   sheetContent: { paddingHorizontal: 24 },
-  sheetIntro: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  fieldLabel: { marginTop: 24, marginBottom: 8, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  sheetIntro: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  fieldLabel: { marginTop: 24, marginBottom: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   breakOption: {
     flexDirection: "row",
     alignItems: "center",
@@ -518,9 +518,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   breakOptionSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
-  breakOptionText: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  breakOptionText: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   breakOptionTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
   noteInput: {
+    fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 16,
     borderRadius: 16,

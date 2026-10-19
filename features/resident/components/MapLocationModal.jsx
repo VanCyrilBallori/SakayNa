@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LeafletMap from "../../../components/LeafletMap";
 import AppButton from "../../../components/ui/AppButton";
 import CloseButton from "../../../components/ui/CloseButton";
-import { COLORS, RADIUS, SPACING } from "../../../constants/design";
+import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/design";
 import { getLocationIfAllowed } from "../hooks/useCurrentLocation";
 
 const toCoordinateAddress = (location) => `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
@@ -87,10 +87,10 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(13, 31, 24, 0.62)" },
   card: { maxHeight: "92%", padding: SPACING.lg, backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg },
   header: { flexDirection: "row", gap: SPACING.md, justifyContent: "space-between", alignItems: "flex-start", marginBottom: SPACING.md },
-  title: { fontSize: 21, fontWeight: "800", color: COLORS.text }, subtitle: { maxWidth: 290, marginTop: 4, color: COLORS.mutedText, lineHeight: 20 },
+  title: { fontSize: 21, fontFamily: FONT.extraBold, color: COLORS.text }, subtitle: { maxWidth: 290, marginTop: 4, color: COLORS.mutedText, lineHeight: 20 },
   headerCopy: { flex: 1 }, 
   map: { height: 320, overflow: "hidden", borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border },
-  mapLoading: { flex: 1, alignItems: "center", justifyContent: "center", gap: SPACING.sm }, mapLoadingText: { color: COLORS.mutedText, fontSize: 15 }, coordinate: { marginTop: SPACING.sm, color: COLORS.mutedText, fontSize: 13 },
+  mapLoading: { flex: 1, alignItems: "center", justifyContent: "center", gap: SPACING.sm }, mapLoadingText: { fontFamily: FONT.regular, color: COLORS.mutedText, fontSize: 15 }, coordinate: { fontFamily: FONT.regular, marginTop: SPACING.sm, color: COLORS.mutedText, fontSize: 13 },
   input: { minHeight: 48, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, color: COLORS.text },
-  hint: { marginTop: SPACING.sm, color: COLORS.mutedText, fontSize: 12, lineHeight: 18 }, actions: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md }, button: { flex: 1 },
+  hint: { fontFamily: FONT.regular, marginTop: SPACING.sm, color: COLORS.mutedText, fontSize: 12, lineHeight: 18 }, actions: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md }, button: { flex: 1 },
 });

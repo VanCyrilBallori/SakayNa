@@ -5,7 +5,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppButton from "../../../components/ui/AppButton";
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
-import { COLORS, DESIGN_COLORS, RADIUS, SPACING } from "../../../constants/design";
+import { COLORS, DESIGN_COLORS, FONT, RADIUS, SPACING } from "../../../constants/design";
 import { MISSION_STATUSES } from "../../../constants/app";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { acceptAssignment, advanceMission, reportUnable } from "../services/driverMissionService";
@@ -231,7 +231,7 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
             <Animated.View style={[styles.modal, styles.completionModal, { transform: [{ translateY: completeY }] }]}>
               <ScrollView style={styles.completionScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={styles.title}>Complete mission</Text>
-                <Dropdown style={styles.dropdown} data={COMPLETION_OUTCOMES.map((value) => ({ label: value, value }))} labelField="label" valueField="value" value={outcome} onChange={(item) => setOutcome(item.value)} placeholder="Choose outcome" />
+                <Dropdown fontFamily={FONT.regular} style={styles.dropdown} data={COMPLETION_OUTCOMES.map((value) => ({ label: value, value }))} labelField="label" valueField="value" value={outcome} onChange={(item) => setOutcome(item.value)} placeholder="Choose outcome" />
                 <TextInput style={styles.input} value={completionIssues} onChangeText={setCompletionIssues} placeholder="Issues encountered (optional)" placeholderTextColor={DESIGN_COLORS.placeholder} multiline maxLength={300} textAlignVertical="top" />
                 {error ? <FeedbackMessage message={error} tone="error" /> : null}
                 <View style={styles.row}>
@@ -253,15 +253,15 @@ const styles = StyleSheet.create({
   actions: {},
   // Accept and the step buttons (Mark en route...): full width, 56 tall, Hall Green.
   mainButton: { width: "100%", minHeight: 56, borderRadius: 16, backgroundColor: DESIGN_COLORS.hallGreen },
-  buttonText: { fontSize: 17, lineHeight: 22, fontWeight: "700" },
+  buttonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold },
   // "I can't do this ride": no fill and no edge, Ink words, 48 tall (easy to tap, but quieter than Accept).
   quietButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48, paddingHorizontal: 16, borderRadius: 16 },
   quietButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  quietButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink, textDecorationLine: "underline" },
+  quietButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, textDecorationLine: "underline" },
   // "Call dispatch": white with an edge, like "Call passenger" on the ride card.
   callButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 56, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
-  callButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
-  noPhoneText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  callButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
+  noPhoneText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
 
   row: { gap: SPACING.sm, marginTop: SPACING.lg },
   action: { width: "100%", minHeight: 56 },
@@ -272,24 +272,24 @@ const styles = StyleSheet.create({
   completionScroll: { flexGrow: 0 },
   overlay: { flex: 1, justifyContent: "center", padding: SPACING.lg, backgroundColor: "rgba(13,31,24,.62)" },
   modal: { width: "100%", maxWidth: 560, maxHeight: "90%", alignSelf: "center", padding: SPACING.lg, borderRadius: RADIUS.md, backgroundColor: COLORS.surface },
-  title: { color: COLORS.text, fontSize: 21, fontWeight: "800" },
+  title: { color: COLORS.text, fontSize: 21, fontFamily: FONT.extraBold },
   input: { minHeight: 76, marginTop: SPACING.md, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, color: COLORS.text },
   dropdown: { minHeight: 50, marginTop: SPACING.md, paddingHorizontal: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm },
 
   // The "I can't do this ride" pop-up (DESIGN.md sizes and colors). flexShrink lets it get shorter when the keyboard opens.
   unableModal: { maxHeight: "100%", flexShrink: 1, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
   unableScroll: { flexGrow: 0 },
-  unableTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
-  unableText: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  unableLabel: { marginTop: 16, marginBottom: 4, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  unableTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  unableText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  unableLabel: { marginTop: 16, marginBottom: 4, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   reasonRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48, marginTop: 4, paddingHorizontal: 12, borderRadius: 16 },
   // The chosen reason: a filled circle AND a Board Tint row (not color alone).
   reasonRowChosen: { backgroundColor: DESIGN_COLORS.boardTint },
   radio: { width: RADIO_SIZE, height: RADIO_SIZE, borderRadius: RADIO_SIZE / 2, borderWidth: 2, borderColor: DESIGN_COLORS.controlOutline, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.paperWhite },
   radioChosen: { borderColor: DESIGN_COLORS.hallGreen },
   radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: DESIGN_COLORS.hallGreen },
-  reasonText: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: "500", color: DESIGN_COLORS.ink },
-  unableInput: { minHeight: 76, marginTop: 12, padding: 12, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, borderRadius: 16, fontSize: 17, lineHeight: 22, color: DESIGN_COLORS.ink },
+  reasonText: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.medium, color: DESIGN_COLORS.ink },
+  unableInput: { fontFamily: FONT.regular, minHeight: 76, marginTop: 12, padding: 12, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, borderRadius: 16, fontSize: 17, lineHeight: 22, color: DESIGN_COLORS.ink },
   sendButton: { marginTop: 16, backgroundColor: DESIGN_COLORS.emergencyRed },
   keepButton: { width: "100%", minHeight: 56, marginTop: 8, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
   keepText: { color: DESIGN_COLORS.ink },

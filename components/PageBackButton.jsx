@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Platform, Pressable, StyleSheet, Text } from "react-native";
+import { FONT } from "../constants/design";
 
 // "← Back" at the top of the Terms and Privacy pages, so nobody feels stuck after opening them from the menu.
 // Website: always go Home, because a new tab may have no previous page.
@@ -44,5 +45,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   pressed: { backgroundColor: "rgba(6, 119, 75, 0.1)" },
-  text: { fontSize: 18, fontWeight: "700" },
+  text: { fontSize: 18, fontFamily: FONT.bold },
 });

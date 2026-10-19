@@ -7,7 +7,7 @@ import { ActivityIndicator, AppState, KeyboardAvoidingView, Linking, Modal, Plat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
-import { DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS, FONT } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
@@ -1199,7 +1199,7 @@ const styles = StyleSheet.create({
   },
   menuButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   placeNames: { flex: 1, flexDirection: "row", flexWrap: "wrap", paddingVertical: 10 },
-  placeText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: "#FFFFFF" },
+  placeText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: "#FFFFFF" },
   emergencyButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1214,8 +1214,8 @@ const styles = StyleSheet.create({
   emergencyButtonPressed: { backgroundColor: "#8F1C13" },
   emergencyCopy: { flex: 1 },
   // "Board" size from DESIGN.md: the biggest text in the app.
-  emergencyTitle: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: "#FFFFFF" },
-  emergencySubtitle: { marginTop: 2, fontSize: 17, lineHeight: 22, fontWeight: "600", color: "#FFE9E7" },
+  emergencyTitle: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  emergencySubtitle: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: "#FFE9E7" },
   rideButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1229,9 +1229,9 @@ const styles = StyleSheet.create({
   },
   rideButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   // "Title" size from DESIGN.md: the home screen's second big action.
-  rideButtonText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
+  rideButtonText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   // "Your ride" above the card. The extra space on top separates it from the two big buttons.
-  yourRideHeading: { marginTop: 12, fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  yourRideHeading: { marginTop: 12, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   // Account status banner (residents who are not Active only). Big, dark text for seniors.
   // Flat sign (DESIGN.md "Flat Board Rule"): tinted background and a 2dp colored edge, no shadow.
   statusBanner: {
@@ -1258,17 +1258,17 @@ const styles = StyleSheet.create({
   statusBannerTitle: {
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: DESIGN_COLORS.ink,
   },
   statusBannerText: {
     marginTop: 4,
     fontSize: 17,
     lineHeight: 24,
-    fontWeight: "600",
+    fontFamily: FONT.semiBold,
     color: DESIGN_COLORS.ink,
   },
-  statusBannerReasonLabel: { fontWeight: "800" },
+  statusBannerReasonLabel: { fontFamily: FONT.extraBold },
   // "Call the office" in the Rejected banner: white outline button, 48 tall.
   bannerCallButton: {
     alignSelf: "flex-start",
@@ -1284,7 +1284,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   bannerCallButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  bannerCallText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  bannerCallText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.28)",
@@ -1313,11 +1313,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 27,
     lineHeight: 34,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     textAlign: "center",
     color: "#111111",
   },
   modalSubtitle: {
+    fontFamily: FONT.regular,
     marginTop: 4,
     fontSize: 14,
     lineHeight: 21,
@@ -1327,7 +1328,7 @@ const styles = StyleSheet.create({
   modalLabel: {
     marginTop: 22,
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#111111",
   },
   dropdown: {
@@ -1346,18 +1347,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   dropdownPlaceholder: {
+    fontFamily: FONT.regular,
     fontSize: 15,
     color: "#8B8B8B",
   },
   dropdownSelectedText: {
+    fontFamily: FONT.regular,
     fontSize: 15,
     color: "#111111",
   },
   dropdownItemText: {
+    fontFamily: FONT.regular,
     fontSize: 14,
     color: "#111111",
   },
   textArea: {
+    fontFamily: FONT.regular,
     marginTop: 10,
     minHeight: 90,
     borderWidth: 1,
@@ -1384,7 +1389,7 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#FFFFFF",
   },
   // "Send emergency alert?" pop-up (DESIGN.md look). Its own styles, so the other pop-ups don't change yet.
@@ -1396,8 +1401,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
-  confirmText: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
+  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
+  confirmText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
   // Same height and red as the Emergency button on home.
   confirmSendButton: {
     alignSelf: "stretch",
@@ -1410,7 +1415,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: DESIGN_COLORS.emergencyRed,
   },
-  confirmSendText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
+  confirmSendText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   confirmCancelButton: {
     alignSelf: "stretch",
     minHeight: 56,
@@ -1424,7 +1429,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   confirmCancelPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  confirmCancelText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  confirmCancelText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   // Alert screen and "not verified" pop-ups (DESIGN.md look, like the "Send emergency alert?" pop-up).
   callCard: {
     width: "100%",
@@ -1438,16 +1443,16 @@ const styles = StyleSheet.create({
   callCardContent: {
     alignItems: "center",
   },
-  callTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
-  callSubtitle: { marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
-  notVerifiedText: { marginTop: 8, fontSize: 17, lineHeight: 24, fontWeight: "500", color: DESIGN_COLORS.ink, textAlign: "center" },
+  callTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
+  callSubtitle: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
+  notVerifiedText: { marginTop: 8, fontSize: 17, lineHeight: 24, fontFamily: FONT.medium, color: DESIGN_COLORS.ink, textAlign: "center" },
   // "Keep this screen open…": the most important line while waiting, on a light strip.
   keepOpenStrip: { alignSelf: "stretch", marginTop: 12, padding: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
-  keepOpenText: { fontSize: 17, lineHeight: 24, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  keepOpenText: { fontSize: 17, lineHeight: 24, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
   // "Calling Maria in 3…": one big thing in Board size on a light strip (DESIGN.md), not red.
   autoCallBox: { alignSelf: "stretch", marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
-  autoCallText: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center", fontVariant: ["tabular-nums"] },
-  alertLocationText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  autoCallText: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center", fontVariant: ["tabular-nums"] },
+  alertLocationText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   alertSpinner: {
     marginTop: 14,
   },
@@ -1462,7 +1467,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  endCallButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF", textAlign: "center" },
+  endCallButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: "#FFFFFF", textAlign: "center" },
   // "Call 911" is as tall as the Emergency button on home.
   call911Button: {
     flexDirection: "row",
@@ -1480,7 +1485,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  callNowButtonText: { fontSize: 17, fontWeight: "800", color: "#FFFFFF", textAlign: "center" },
+  callNowButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: "#FFFFFF", textAlign: "center" },
   // Low-emphasis on purpose: while an alert is live, the solid green "Keep alert" /
   // "Call" actions should win the eye over cancelling.
   cancelAlertButton: {
@@ -1495,7 +1500,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelAlertButtonText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.emergencyRed, textAlign: "center" },
+  cancelAlertButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: DESIGN_COLORS.emergencyRed, textAlign: "center" },
   // "Done" / "Close" (the alert is over), and "Close" in the not-verified pop-up: white with a grey edge.
   alertDoneButton: {
     width: "100%",
@@ -1509,10 +1514,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  alertDoneText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink, textAlign: "center" },
+  alertDoneText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, textAlign: "center" },
   menuItemSoon: {
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#7B8E86",
   },
   // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
@@ -1535,7 +1540,7 @@ const styles = StyleSheet.create({
   },
   profileInfoLabel: {
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#60716B",
     textTransform: "uppercase",
     letterSpacing: 0.4,
@@ -1544,7 +1549,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#1C2D27",
   },
   historyList: {
@@ -1570,15 +1575,17 @@ const styles = StyleSheet.create({
     minWidth: 180,
     fontSize: 16,
     lineHeight: 22,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#1C2D27",
   },
   historyText: {
+    fontFamily: FONT.regular,
     fontSize: 14,
     lineHeight: 20,
     color: "#4F655C",
   },
   profileInput: {
+    fontFamily: FONT.regular,
     marginTop: 10,
     minHeight: 50,
     borderWidth: 1,
@@ -1600,21 +1607,21 @@ const styles = StyleSheet.create({
   },
   secondaryActionButtonText: {
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#1C2D27",
   },
   errorText: {
     marginTop: 16,
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#B42318",
   },
   feedbackText: {
     marginTop: 16,
     fontSize: 13,
     lineHeight: 19,
-    fontWeight: "700",
+    fontFamily: FONT.bold,
     color: "#06774B",
   },
   saveButton: {
@@ -1627,7 +1634,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#FFFFFF",
   },
   disabledSaveButton: {
@@ -1640,7 +1647,7 @@ const styles = StyleSheet.create({
   },
   disabledSaveButtonText: {
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: FONT.extraBold,
     color: "#466157",
   },
 });

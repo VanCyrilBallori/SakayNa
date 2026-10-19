@@ -3,7 +3,7 @@ import { collection, onSnapshot, query, Timestamp, where } from "firebase/firest
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
 import {
@@ -285,13 +285,12 @@ const dateBoxStyle = {
   backgroundColor: DESIGN_COLORS.paperWhite,
   color: DESIGN_COLORS.ink,
   fontSize: 17,
-  fontWeight: 700,
-  fontFamily: "inherit",
+  fontFamily: FONT.bold,
 };
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
-  intro: { marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, maxWidth: 760 },
+  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  intro: { fontFamily: FONT.regular, marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, maxWidth: 760 },
 
   dayPicker: { marginTop: 16, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   dayButton: {
@@ -307,35 +306,35 @@ const styles = StyleSheet.create({
   },
   dayButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   dayButtonDisabled: { borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
-  dayButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  dayButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   dayButtonTextDisabled: { color: DESIGN_COLORS.inkMuted },
-  dayLabel: { paddingHorizontal: 8, fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  dayLabel: { paddingHorizontal: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
 
-  errorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 17, lineHeight: 24, fontWeight: "600", color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
+  errorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 17, lineHeight: 24, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
 
   // A plain list with thin lines between drivers (no cards inside the admin panel).
   list: { marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: DESIGN_COLORS.rule },
   line: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingVertical: 16 },
   lineDivider: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
   nameCell: { flexBasis: 200, flexGrow: 1, maxWidth: 260, gap: 4 },
-  driverName: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  smallMuted: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  driverName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  smallMuted: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   onDutyBadge: { alignSelf: "flex-start", marginTop: 2, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
-  onDutyBadgeText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  onDutyBadgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
   cells: { flexBasis: 480, flexGrow: 3, flexDirection: "row", flexWrap: "wrap", rowGap: 12, columnGap: 16 },
   cell: { flexBasis: 140, flexGrow: 1 },
-  cellLabel: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  cellLabel: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   // The break list sits under the numbers, across the whole row.
   breakList: { flexBasis: "100%", gap: 2 },
-  breakLine: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
-  cellValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  breakLine: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  cellValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   // Inability reports: same plain list as the time cards. Time on the left, then who, why, and which ride.
-  sectionTitle: { marginTop: 32, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
-  reportTime: { flexBasis: 100, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  sectionTitle: { marginTop: 32, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  reportTime: { flexBasis: 100, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   reportCopy: { flexBasis: 240, flexGrow: 1, gap: 2 },
-  reportReason: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  reportReason: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
 
   emptyState: { marginTop: 16, padding: 24, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
-  emptyText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  emptyText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
 });

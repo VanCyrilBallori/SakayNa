@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getDestinationLabel, getPickupLabel, getRideProgress, getWhenText, RIDE_STEPS } from "../utils/requestMapper";
 
@@ -152,30 +152,30 @@ const styles = StyleSheet.create({
   },
   // "Title" size (DESIGN.md): the one big thing on the card.
   band: { minHeight: 56, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12 },
-  bandText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
+  bandText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   body: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
   progress: { marginBottom: 14 },
   progressBar: { flexDirection: "row", gap: 4 },
   // Fully round ends (DESIGN.md allows fully round for small status pieces). Not-done pieces are a light grey-green.
   progressPiece: { flex: 1, height: 10, borderRadius: 5, backgroundColor: DESIGN_COLORS.rule },
   progressPieceDone: { backgroundColor: DESIGN_COLORS.hallGreen },
-  progressText: { marginTop: 6, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.inkMuted },
+  progressText: { marginTop: 6, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.inkMuted },
   // Label, marker and place sit at the top of the row. The label uses the same line height as the place
   // (22) so their words line up, and the 14-tall marker is moved down 4 to sit in the middle of that line.
   routeLine: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  routeLabel: { width: LABEL_WIDTH, fontSize: 15, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.inkMuted },
+  routeLabel: { width: LABEL_WIDTH, fontSize: 15, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.inkMuted },
   marker: { width: 14, height: 14, marginTop: 4, borderRadius: 7 },
   fromMarker: { borderWidth: 3, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.paperWhite },
   toMarker: { backgroundColor: DESIGN_COLORS.sakayOrange },
-  routePlace: { flex: 1, fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  routePlace: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   // The short green line between From and To, under the middle of the two markers (label + gap + half a marker).
   routeJoin: { width: 2, height: 14, marginLeft: LABEL_WIDTH + 8 + 6, marginVertical: 2, backgroundColor: DESIGN_COLORS.hallGreen },
-  whenLine: { marginTop: 10, fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted },
-  scheduledWhen: { fontWeight: "700", color: DESIGN_COLORS.orangeDeep },
+  whenLine: { marginTop: 10, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
+  scheduledWhen: { fontFamily: FONT.bold, color: DESIGN_COLORS.orangeDeep },
   // A 1dp line on top separates the driver from the route (DESIGN.md: no card inside a card).
   driverBlock: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
-  driverName: { fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
-  driverLine: { marginTop: 2, fontSize: 17, lineHeight: 24, fontWeight: "500", color: DESIGN_COLORS.ink },
+  driverName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  driverLine: { marginTop: 2, fontSize: 17, lineHeight: 24, fontFamily: FONT.medium, color: DESIGN_COLORS.ink },
   // Full width, 56 tall (DESIGN.md main action), 16 corners.
   callButton: {
     flexDirection: "row",
@@ -190,13 +190,13 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
   callButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  callButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "800", color: "#FFFFFF" },
+  callButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   // "See details ›": a green text button, 48 tall so it is easy to tap.
   detailsLink: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", minHeight: 48, marginTop: 4, paddingRight: 4, borderRadius: 16 },
   detailsLinkPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  detailsLinkText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  detailsLinkText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
   messageBox: { padding: 16, borderRadius: 24, backgroundColor: DESIGN_COLORS.boardTint },
-  messageText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  messageText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   errorBox: { backgroundColor: DESIGN_COLORS.redTint },
   errorText: { color: DESIGN_COLORS.emergencyRed },
 });

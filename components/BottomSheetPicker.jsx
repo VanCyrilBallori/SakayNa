@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Animated, Easing, FlatList, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, LIGHT_COLORS } from "../constants/design";
+import { COLORS, FONT, LIGHT_COLORS } from "../constants/design";
 
 const colors = LIGHT_COLORS;
 
@@ -170,14 +170,14 @@ export default function BottomSheetPicker({
 const styles = StyleSheet.create({
   box: { flexDirection: "row", alignItems: "center", gap: 10 },
   boxPressed: { backgroundColor: colors.card },
-  boxText: { flex: 1, fontSize: 17 },
+  boxText: { fontFamily: FONT.regular, flex: 1, fontSize: 17 },
   backdrop: { flex: 1, justifyContent: "flex-end" },
   backdropColor: { backgroundColor: colors.backdrop },
   dismissArea: { flex: 1 },
   // flexShrink lets the sheet get shorter (instead of going off the top) when the keyboard is open.
   sheet: { flexShrink: 1, width: "100%", backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingLeft: 24, paddingRight: 12, paddingTop: 16, paddingBottom: 12 },
-  title: { flex: 1, fontSize: 22, lineHeight: 28, fontWeight: "800", color: colors.heading },
+  title: { flex: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: colors.heading },
   closeButton: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   searchBox: {
     flexDirection: "row",
@@ -191,14 +191,14 @@ const styles = StyleSheet.create({
     borderColor: colors.outline,
     borderRadius: 12,
   },
-  searchInput: { flex: 1, minHeight: 54, fontSize: 17, color: colors.heading },
+  searchInput: { fontFamily: FONT.regular, flex: 1, minHeight: 54, fontSize: 17, color: colors.heading },
   clearButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
   list: { flexGrow: 0, borderTopWidth: 1, borderTopColor: colors.line },
   separator: { height: 1, marginHorizontal: 24, backgroundColor: colors.line },
   row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 60, paddingHorizontal: 24, paddingVertical: 10 },
   rowSelected: { backgroundColor: colors.card },
   rowPressed: { backgroundColor: colors.card },
-  rowText: { flex: 1, fontSize: 18, lineHeight: 24, fontWeight: "600", color: colors.heading },
-  rowTextSelected: { fontWeight: "800", color: COLORS.primary },
-  emptyText: { paddingHorizontal: 24, paddingVertical: 20, fontSize: 17, lineHeight: 24, color: colors.muted },
+  rowText: { flex: 1, fontSize: 18, lineHeight: 24, fontFamily: FONT.semiBold, color: colors.heading },
+  rowTextSelected: { fontFamily: FONT.extraBold, color: COLORS.primary },
+  emptyText: { fontFamily: FONT.regular, paddingHorizontal: 24, paddingVertical: 20, fontSize: 17, lineHeight: 24, color: colors.muted },
 });

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ProfileAvatar from "../../../components/profile/ProfileAvatar";
 import { ACCOUNT_STATUSES } from "../../../constants/app";
-import { COLORS } from "../../../constants/design";
+import { COLORS, FONT } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getAccountStatusLabel } from "../../../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../../../lib/session";
@@ -213,20 +213,20 @@ const styles = StyleSheet.create({
   profileRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingLeft: 20, paddingRight: 8, paddingVertical: 12 },
   avatarPressed: { opacity: 0.7 },
   profileCopy: { flex: 1 },
-  profileName: { fontSize: 20, fontWeight: "800", lineHeight: 26 },
+  profileName: { fontSize: 20, fontFamily: FONT.extraBold, lineHeight: 26 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-  statusText: { fontSize: 15, fontWeight: "600" },
+  statusText: { fontSize: 15, fontFamily: FONT.semiBold },
   closeButton: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" },
   divider: { height: 1, marginVertical: 8 },
   row: { flexDirection: "row", alignItems: "center", gap: 18, minHeight: 58, paddingHorizontal: 20 },
-  rowText: { flex: 1, fontSize: 18, fontWeight: "600" },
+  rowText: { flex: 1, fontSize: 18, fontFamily: FONT.semiBold },
   spacer: { flexGrow: 1, minHeight: 16 },
   helpBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
   helpCard: { width: "100%", maxWidth: 420, padding: 24, borderRadius: 20 },
-  helpTitle: { fontSize: 22, fontWeight: "800" },
-  helpText: { marginTop: 10, fontSize: 16, lineHeight: 23 },
-  helpPhone: { marginTop: 16, fontSize: 28, fontWeight: "800", letterSpacing: 0.5 },
+  helpTitle: { fontSize: 22, fontFamily: FONT.extraBold },
+  helpText: { fontFamily: FONT.regular, marginTop: 10, fontSize: 16, lineHeight: 23 },
+  helpPhone: { marginTop: 16, fontSize: 28, fontFamily: FONT.extraBold, letterSpacing: 0.5 },
   callButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -239,9 +239,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   callButtonPressed: { backgroundColor: COLORS.primaryDark },
-  callButtonText: { color: "#FFFFFF", fontSize: 18, fontWeight: "800" },
+  callButtonText: { color: "#FFFFFF", fontSize: 18, fontFamily: FONT.extraBold },
   emergencyNote: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 20, padding: 14, borderRadius: 12, backgroundColor: COLORS.emergencySurface },
-  emergencyNoteText: { flex: 1, color: "#7A1A12", fontSize: 16, lineHeight: 22, fontWeight: "700" },
+  emergencyNoteText: { flex: 1, color: "#7A1A12", fontSize: 16, lineHeight: 22, fontFamily: FONT.bold },
   helpCloseButton: { minHeight: 52, marginTop: 16, borderRadius: 12, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  helpCloseText: { fontSize: 17, fontWeight: "700" },
+  helpCloseText: { fontSize: 17, fontFamily: FONT.bold },
 });

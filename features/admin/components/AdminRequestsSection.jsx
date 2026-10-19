@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { getWhenText } from "../../resident/utils/requestMapper";
 import { getPurpose } from "../../resident/utils/requestOptions";
@@ -255,11 +255,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: "800", color: DESIGN_COLORS.ink },
-  subtitle: { marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  body: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  label: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  small: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  small: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
 
   // Pill-shaped choices, like the range choices on Overview.
   filters: { flexDirection: "row", flexWrap: "wrap", columnGap: 32, rowGap: 16 },
@@ -278,11 +278,11 @@ const styles = StyleSheet.create({
   },
   pillWithCount: { paddingLeft: 8 },
   pillSelected: { borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.hallGreen },
-  pillText: { fontSize: 17, fontWeight: "600", color: DESIGN_COLORS.ink },
+  pillText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   pillTextSelected: { color: DESIGN_COLORS.paperWhite },
   countBubble: { minWidth: 32, height: 32, paddingHorizontal: 8, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
   countBubbleSelected: { backgroundColor: DESIGN_COLORS.paperWhite },
-  countText: { fontSize: 15, fontWeight: "800", color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  countText: { fontSize: 15, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   countTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
 
   grid: { gap: 16 },
@@ -291,15 +291,15 @@ const styles = StyleSheet.create({
   card: { width: "100%", borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   cardHalf: { width: "48.5%" },
   band: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 18 },
-  bandText: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontWeight: "800" },
-  bandReference: { marginLeft: "auto", fontSize: 15, lineHeight: 20, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  bandText: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold },
+  bandReference: { marginLeft: "auto", fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
   cardBody: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 18, gap: 14 },
 
   who: { gap: 8 },
-  name: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink },
+  name: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.boardTint },
-  tagText: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
+  tagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   routeRow: { flexDirection: "row", gap: 12 },
   routeMarks: { width: 22, alignItems: "center", paddingTop: 4 },
@@ -307,15 +307,15 @@ const styles = StyleSheet.create({
   routeLine: { flex: 1, width: 3, minHeight: 16, marginVertical: 3, borderRadius: 2, backgroundColor: DESIGN_COLORS.hallGreen },
   toDot: { width: 16, height: 16, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
   routeStop: { flex: 1, minWidth: 0, paddingBottom: 10 },
-  place: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
+  place: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   // A soft box, not a card inside a card: no border, just Board Tint.
   facts: { flexDirection: "row", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
   factsStacked: { flexDirection: "column" },
   fact: { flex: 1, minWidth: 0, gap: 2 },
   factLabelRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  factValue: { fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
-  factValueEmpty: { fontWeight: "500", color: DESIGN_COLORS.inkMuted },
+  factValue: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  factValueEmpty: { fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
 
   footer: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 },
   footerDates: { flexShrink: 1 },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   },
   buttonFull: { width: "100%" },
   buttonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  buttonText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
 
   emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { COLORS } from "../../constants/design";
+import { COLORS, FONT } from "../../constants/design";
 
 const getInitials = (name = "") =>
   name
@@ -20,5 +20,5 @@ export default function ProfileAvatar({ name, size = 44, backgroundColor = COLOR
 
 const styles = StyleSheet.create({
   avatar: { alignItems: "center", justifyContent: "center" },
-  initials: { fontWeight: "800" },
+  initials: { fontFamily: FONT.extraBold },
 });

@@ -1,5 +1,5 @@
 import { REQUEST_STATUSES, RESIDENT_CANCELLABLE_STATUSES } from "../../../constants/app";
-import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
+import { formatWhen, getDateFromValue } from "../../../lib/dates";
 import { formatPlace } from "../../../lib/placeText";
 import { VULNERABLE_GROUP_OPTIONS } from "./requestOptions";
 
@@ -12,7 +12,7 @@ export const getScheduledDate = (request) => (request?.timing === "scheduled" ? 
 // "Fri, Oct 2, 9:00 AM" for a scheduled ride, or "As soon as possible".
 export const getWhenText = (request) => {
   const scheduled = getScheduledDate(request);
-  return scheduled ? `${formatShortDay(scheduled)}, ${formatClockTime(scheduled)}` : "As soon as possible";
+  return scheduled ? formatWhen(scheduled) : "As soon as possible";
 };
 
 // The person riding: the name typed in the request form, or the account owner's name for older requests.
@@ -55,10 +55,8 @@ export const toDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-export const formatRequestDate = (value) => {
-  const date = toDate(value);
-  return date ? date.toLocaleString() : "Not available";
-};
+// "Tue, Oct 20, 2:00 PM" (one date format everywhere, lib/dates.js).
+export const formatRequestDate = (value) => formatWhen(toDate(value));
 
 // Only map numbers = "Pinned location" (Task 3.17, display only).
 export const getPickupLabel = (request = {}) =>

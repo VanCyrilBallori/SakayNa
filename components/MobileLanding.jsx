@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
 import { FIRESTORE_COLLECTIONS, TERMS_URL } from "../constants/app";
-import { DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS, FONT } from "../constants/design";
 import { auth, db } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.boardTint,
   },
   // DESIGN.md "Title" size.
-  heading: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
+  heading: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
   primaryButton: {
     minHeight: 56,
     marginTop: 20,
@@ -383,14 +383,14 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
   primaryButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  primaryButtonText: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: "#FFFFFF" },
+  primaryButtonText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   textLink: { minHeight: 48, marginTop: 8, alignItems: "center", justifyContent: "center" },
-  textLinkText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  linkStrong: { fontWeight: "800", color: DESIGN_COLORS.hallGreen },
+  textLinkText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  linkStrong: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen },
   termsLink: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
   // 15 = the smallest text size in DESIGN.md (was 12.5).
-  termsText: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  termsStrong: { fontWeight: "700", color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
+  termsText: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  termsStrong: { fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
   sheetDismissArea: { flex: 1 },
   // DESIGN.md sheet: white, 24 corners on top, a thin Hall Green line along the top instead of a shadow.
@@ -409,8 +409,8 @@ const styles = StyleSheet.create({
   sheetContent: { paddingHorizontal: 24 },
   // Dark enough to see (4.2:1). Square ends: DESIGN.md has no pill shapes.
   sheetHandle: { alignSelf: "center", width: 48, height: 5, marginBottom: 16, backgroundColor: DESIGN_COLORS.controlOutline },
-  sheetTitle: { fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
-  sheetSubtitle: { marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  sheetTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
+  sheetSubtitle: { fontFamily: FONT.regular, marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   sheetOptions: { gap: 10 },
   // White buttons with a clear grey edge (4.2:1) and 16 corners.
   option: {
@@ -425,12 +425,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
   },
-  optionText: { flex: 1, fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.ink },
+  optionText: { flex: 1, fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   // Same space as the 26-wide icons, so all labels line up. The G itself is 24 x 24.
   optionImage: { width: 24, height: 24, marginHorizontal: 1 },
   orRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   orLine: { flex: 1, height: 1, backgroundColor: DESIGN_COLORS.rule },
-  orText: { fontSize: 15, fontWeight: "600", color: DESIGN_COLORS.inkMuted },
+  orText: { fontSize: 15, fontFamily: FONT.semiBold, color: DESIGN_COLORS.inkMuted },
   emailLink: { minHeight: 48, marginTop: 4, alignItems: "center", justifyContent: "center" },
-  emailLinkText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  emailLinkText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
 });

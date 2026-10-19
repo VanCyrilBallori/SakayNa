@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from "react-native";
 
-import { COLORS, RADIUS } from "../../constants/design";
+import { COLORS, FONT, RADIUS } from "../../constants/design";
 
 export default function AppButton({ label, onPress, variant = "primary", loading = false, disabled = false, style, textStyle, accessibilityLabel }) {
   const isDisabled = disabled || loading;
@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
   primary: { backgroundColor: COLORS.primary },
   secondary: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary },
   danger: { backgroundColor: COLORS.emergency },
-  text: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
+  text: { color: "#FFFFFF", fontSize: 16, fontFamily: FONT.bold },
   secondaryText: { color: COLORS.primary },
   disabled: { opacity: 0.58 },
 });

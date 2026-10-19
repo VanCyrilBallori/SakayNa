@@ -25,11 +25,11 @@ import {
   isEmergencyFormRide,
 } from "../features/driver/utils/driverMissionMapper";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
-import { formatClockTime, formatShortDay } from "../lib/dates";
+import { formatDay, formatWhen } from "../lib/dates";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import LeafletMap from "../components/LeafletMap";
-import { DESIGN_COLORS } from "../constants/design";
+import { DESIGN_COLORS, FONT } from "../constants/design";
 import { auth, db } from "../firebase";
 import {
   DRIVER_AVAILABILITY_SHIFT,
@@ -1007,7 +1007,7 @@ export default function DriverHome() {
               <View style={styles.scheduleModalHeader}>
                 <View style={styles.scheduleModalHeaderCopy}>
                   <Text style={styles.scheduleModalTitle}>Add Availability</Text>
-                  <Text style={styles.scheduleModalSubtitle}>Date: {new Date().toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}</Text>
+                  <Text style={styles.scheduleModalSubtitle}>Date: {formatDay(new Date())}</Text>
                 </View>
                 <CloseButton onPress={() => setSchedulePromptOpen(false)} label="Close work hours" />
               </View>
@@ -1220,7 +1220,7 @@ export default function DriverHome() {
 function HistoryRow({ assignment, first }) {
   const title = assignment.title || assignment.requestType || assignment.emergencyType || "Transport Request";
   const date = getDateFromValue(assignment.updatedAt || assignment.createdAt);
-  const when = date ? `${formatShortDay(date)}, ${formatClockTime(date)}` : "Date not recorded";
+  const when = date ? formatWhen(date) : "Date not recorded";
   return (
     <View style={[styles.historyRow, !first && styles.historyRowLine]}>
       <View style={styles.historyRowTop}>
@@ -1238,7 +1238,7 @@ const styles = StyleSheet.create({
   // The whole screen: header, page, bottom bar. Board Tint behind the white cards (DESIGN.md).
   page: { flex: 1, backgroundColor: DESIGN_COLORS.boardTint },
   accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
-  accessText: { fontSize: 15, fontWeight: "800", color: "#335E50", textAlign: "center" },
+  accessText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#335E50", textAlign: "center" },
   // Place strip: Hall Green across the top, white text, the ☰ button at its left (same as the resident home).
   placeStrip: {
     flexDirection: "row",
@@ -1259,7 +1259,7 @@ const styles = StyleSheet.create({
   },
   menuButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
   placeNames: { flex: 1, flexDirection: "row", flexWrap: "wrap", paddingVertical: 10 },
-  placeText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: "#FFFFFF" },
+  placeText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: "#FFFFFF" },
   // The open page (driver-pages-plan.md Step 1). flexGrow: 1 = at least as tall as the space, so the map can fill it.
   pageScroll: { flex: 1 },
   pageScrollContent: { flexGrow: 1 },
@@ -1274,15 +1274,15 @@ const styles = StyleSheet.create({
   // The history: a white panel that starts 24 up, behind the card's round bottom edge, and scrolls by itself.
   historyPanel: { flex: 1, marginTop: -24, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
   historyList: { paddingTop: 36, paddingBottom: 16, paddingHorizontal: 16 },
-  historyHeading: { marginBottom: 4, fontSize: 17, lineHeight: 22, fontWeight: "800", color: DESIGN_COLORS.ink },
+  historyHeading: { marginBottom: 4, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   // One short row per ride: title + status on top, place · date under it. A thin line between rows.
   historyRow: { paddingVertical: 12, gap: 4 },
   historyRowLine: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
   historyRowTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  historyTitle: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  historyStatus: { paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.boardTint, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
-  historyMeta: { fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  mapNote: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  historyTitle: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  historyStatus: { paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.boardTint, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  historyMeta: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  mapNote: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   // Bottom bar: white, a thin line on top. paddingBottom (in the code) keeps it above the phone's own buttons.
   bottomBar: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
   bottomBarRow: { flexDirection: "row", width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 8, paddingVertical: 4 },
@@ -1293,30 +1293,30 @@ const styles = StyleSheet.create({
   // The open page is shown by a green icon and a green bold word (bold = more than color). No box behind the icon.
   // The "new ride" dot: Sakay Orange, fully round, with a white ring.
   tabDot: { position: "absolute", top: 0, right: 10, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite, backgroundColor: DESIGN_COLORS.sakayOrange },
-  tabLabel: { fontSize: 15, lineHeight: 20, fontWeight: "500", color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  tabLabelOpen: { fontWeight: "800", color: DESIGN_COLORS.hallGreen },
+  tabLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  tabLabelOpen: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen },
   // Empty inbox card.
   inboxEmpty: { paddingHorizontal: 24, paddingVertical: 32, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite, alignItems: "center" },
-  inboxEmptyTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontWeight: "800", color: DESIGN_COLORS.ink, textAlign: "center" },
-  inboxEmptyText: { marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  inboxEmptyTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
+  inboxEmptyText: { fontFamily: FONT.regular, marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
   cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },
   cancelledNoticeCopy: { flex: 1 },
   // The note after "I can't do this ride": a Peach Tint box with card corners, buttons stacked (main one on top).
   unableNotice: { padding: 16, gap: 8, borderRadius: 24, backgroundColor: DESIGN_COLORS.peachTint },
-  unableNoticeTitle: { fontSize: 17, lineHeight: 24, fontWeight: "800", color: DESIGN_COLORS.ink },
-  unableNoticeText: { fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  unableNoticeTitle: { fontSize: 17, lineHeight: 24, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  unableNoticeText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   unableNoticeMainButton: { minHeight: 48, marginTop: 4, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   unableNoticeMainButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  unableNoticeMainButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  unableNoticeMainButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
   unableNoticeOkButton: { minHeight: 48, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.paperWhite },
-  unableNoticeOkButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
-  cancelledNoticeTitle: { fontSize: 17, lineHeight: 23, fontWeight: "800", color: "#7A1A12" },
-  cancelledNoticeText: { marginTop: 4, fontSize: 15, lineHeight: 21, color: "#7A1A12" },
+  unableNoticeOkButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  cancelledNoticeTitle: { fontSize: 17, lineHeight: 23, fontFamily: FONT.extraBold, color: "#7A1A12" },
+  cancelledNoticeText: { fontFamily: FONT.regular, marginTop: 4, fontSize: 15, lineHeight: 21, color: "#7A1A12" },
   cancelledNoticeButton: { alignSelf: "flex-start", minHeight: 48, marginTop: 10, paddingHorizontal: 24, borderRadius: 12, backgroundColor: "#B42318", alignItems: "center", justifyContent: "center" },
-  cancelledNoticeButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
-  phoneLink: { fontSize: 17, fontWeight: "700", color: "#06774B", textDecorationLine: "underline" },
-  mapBlankTitle: { marginTop: 14, fontSize: 24, fontWeight: "800", color: "#2F3B46", textAlign: "center" },
-  mapBlankText: { marginTop: 10, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
+  cancelledNoticeButtonText: { fontSize: 16, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  phoneLink: { fontSize: 17, fontFamily: FONT.bold, color: "#06774B", textDecorationLine: "underline" },
+  mapBlankTitle: { marginTop: 14, fontSize: 24, fontFamily: FONT.extraBold, color: "#2F3B46", textAlign: "center" },
+  mapBlankText: { fontFamily: FONT.regular, marginTop: 10, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
   driverActionRow: { padding: 14, flexDirection: "row", flexWrap: "wrap", gap: 10, borderTopWidth: 1, borderTopColor: "#E4EBE7", backgroundColor: "#FFFFFF" },
   acceptButton: { backgroundColor: "#06774B" },
   declineButton: { backgroundColor: "#C53A3A" },
@@ -1326,33 +1326,33 @@ const styles = StyleSheet.create({
   scheduleModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   // flex: 1 = take the space left next to the X and wrap long text, so the X stays inside the window.
   scheduleModalHeaderCopy: { flex: 1 },
-  scheduleModalTitle: { fontSize: 26, fontWeight: "800", color: "#111111" },
-  scheduleModalSubtitle: { marginTop: 6, fontSize: 14, lineHeight: 20, color: "#60716B" },
-  scheduleModalHint: { marginTop: 14, fontSize: 14, lineHeight: 21, color: "#4D5D57" },
+  scheduleModalTitle: { fontSize: 26, fontFamily: FONT.extraBold, color: "#111111" },
+  scheduleModalSubtitle: { fontFamily: FONT.regular, marginTop: 6, fontSize: 14, lineHeight: 20, color: "#60716B" },
+  scheduleModalHint: { fontFamily: FONT.regular, marginTop: 14, fontSize: 14, lineHeight: 21, color: "#4D5D57" },
   scheduleSpinnerRow: { marginTop: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12 },
   scheduleSpinnerRowCompact: { flexDirection: "column" },
-  scheduleRangeDash: { fontSize: 34, fontWeight: "800", color: "#60716B" },
+  scheduleRangeDash: { fontSize: 34, fontFamily: FONT.extraBold, color: "#60716B" },
   timeSpinnerCard: { flex: 1, minWidth: 240, padding: 16, borderRadius: 18, backgroundColor: "#F8FBF9", borderWidth: 1, borderColor: "#D8E2DD" },
   timeSpinnerCardCompact: { width: "100%", minWidth: 0 },
-  timeSpinnerTitle: { fontSize: 16, fontWeight: "800", color: "#20332D" },
-  timeSpinnerValue: { marginTop: 8, fontSize: 24, fontWeight: "900", color: "#0B7A4A" },
+  timeSpinnerTitle: { fontSize: 16, fontFamily: FONT.extraBold, color: "#20332D" },
+  timeSpinnerValue: { marginTop: 8, fontSize: 24, fontFamily: FONT.extraBold, color: "#0B7A4A" },
   timeSpinnerSegments: { marginTop: 14, flexDirection: "row", gap: 10 },
   timeSpinnerSegment: { flex: 1, alignItems: "center", paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DEE6E2" },
-  timeSpinnerSegmentLabel: { fontSize: 12, fontWeight: "700", color: "#6A7C75" },
+  timeSpinnerSegmentLabel: { fontSize: 12, fontFamily: FONT.bold, color: "#6A7C75" },
   timeSpinnerButton: { marginTop: 8, width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "#EAF4EF" },
-  timeSpinnerSegmentValue: { marginVertical: 8, fontSize: 18, fontWeight: "900", color: "#20332D" },
-  scheduleErrorText: { marginTop: 12, fontSize: 13, lineHeight: 19, color: "#B42318", fontWeight: "700" },
-  scheduleMessageText: { marginTop: 12, fontSize: 13, lineHeight: 19, color: "#06774B", fontWeight: "700" },
+  timeSpinnerSegmentValue: { marginVertical: 8, fontSize: 18, fontFamily: FONT.extraBold, color: "#20332D" },
+  scheduleErrorText: { marginTop: 12, fontSize: 13, lineHeight: 19, color: "#B42318", fontFamily: FONT.bold },
+  scheduleMessageText: { marginTop: 12, fontSize: 13, lineHeight: 19, color: "#06774B", fontFamily: FONT.bold },
   schedulePrimaryButton: { marginTop: 16, minHeight: 48, borderRadius: 12, backgroundColor: "#06774B", alignItems: "center", justifyContent: "center", paddingHorizontal: 14 },
-  schedulePrimaryButtonText: { fontSize: 14, fontWeight: "800", color: "#FFFFFF" },
+  schedulePrimaryButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   actionButtonDisabled: { opacity: 0.65 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.28)", alignItems: "center", justifyContent: "center", padding: 20 },
   reviewCard: { width: "100%", maxWidth: 520, padding: 22, borderRadius: 20, backgroundColor: "#FFFFFF" },
   reviewCardCompact: { padding: 18 },
-  reviewTitle: { fontSize: 26, fontWeight: "800", color: "#111111" },
-  reviewLine: { marginTop: 12, fontSize: 15, lineHeight: 22, color: "#40504A" },
+  reviewTitle: { fontSize: 26, fontFamily: FONT.extraBold, color: "#111111" },
+  reviewLine: { fontFamily: FONT.regular, marginTop: 12, fontSize: 15, lineHeight: 22, color: "#40504A" },
   reviewCloseButton: { marginTop: 22, minHeight: 54, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
-  reviewCloseButtonText: { fontSize: 16, fontWeight: "800", color: "#FFFFFF" },
+  reviewCloseButtonText: { fontSize: 16, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
   // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
   editorCardFit: { flexShrink: 1 },
@@ -1360,17 +1360,17 @@ const styles = StyleSheet.create({
   profileEditorCard: { width: "100%", maxWidth: 520, borderRadius: 20, borderWidth: 1, padding: 22 },
   // The X at the top-right of Profile, Settings and Change Password.
   closeInCorner: { alignSelf: "flex-end" },
-  profileEditorSubtitle: { marginTop: 8, fontSize: 14, lineHeight: 21 },
+  profileEditorSubtitle: { fontFamily: FONT.regular, marginTop: 8, fontSize: 14, lineHeight: 21 },
   profileInfoCard: { marginTop: 16, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
-  profileInfoLabel: { fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4 },
-  profileInfoValue: { marginTop: 6, fontSize: 15, lineHeight: 22, fontWeight: "700" },
-  profileFieldLabel: { marginTop: 20, fontSize: 15, fontWeight: "700" },
-  profileInput: { marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, fontSize: 15, color: "#111111" },
-  profileFieldHint: { marginTop: 6, fontSize: 14, fontWeight: "600" },
+  profileInfoLabel: { fontSize: 12, fontFamily: FONT.extraBold, textTransform: "uppercase", letterSpacing: 0.4 },
+  profileInfoValue: { marginTop: 6, fontSize: 15, lineHeight: 22, fontFamily: FONT.bold },
+  profileFieldLabel: { marginTop: 20, fontSize: 15, fontFamily: FONT.bold },
+  profileInput: { fontFamily: FONT.regular, marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, fontSize: 15, color: "#111111" },
+  profileFieldHint: { marginTop: 6, fontSize: 14, fontFamily: FONT.semiBold },
   secondaryActionButton: { marginTop: 16, minHeight: 52, borderRadius: 13, borderWidth: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
-  secondaryActionButtonText: { fontSize: 15, fontWeight: "800" },
+  secondaryActionButtonText: { fontSize: 15, fontFamily: FONT.extraBold },
   primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
-  primarySaveButtonText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
-  feedbackText: { marginTop: 16, fontSize: 15, fontWeight: "700", color: "#335E50" },
-  errorText: { marginTop: 16, fontSize: 15, fontWeight: "700", color: "#B42318" },
+  primarySaveButtonText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  feedbackText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#335E50" },
+  errorText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#B42318" },
 });

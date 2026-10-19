@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { getTimestampMillis } from "../../../lib/dates";
 import { formatPlace } from "../../../lib/placeText";
 
@@ -190,8 +190,7 @@ const tickerBoxStyle = {
   color: DESIGN_COLORS.paperWhite,
   fontSize: 17,
   lineHeight: "24px",
-  fontWeight: 500,
-  fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  fontFamily: FONT.medium,
 };
 // The space after each copy, so the end of one copy and the start of the next don't touch.
 const tickerCopyStyle = { paddingRight: 64 };
@@ -210,19 +209,19 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255, 255, 255, 0.25)",
   },
   fixedPart: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
-  fixedText: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.paperWhite, fontVariant: ["tabular-nums"] },
-  emergencyWord: { fontWeight: "800" },
-  tickerNative: { flex: 1, minWidth: 160, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.paperWhite },
+  fixedText: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite, fontVariant: ["tabular-nums"] },
+  emergencyWord: { fontFamily: FONT.extraBold },
+  tickerNative: { fontFamily: FONT.regular, flex: 1, minWidth: 160, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.paperWhite },
   buttons: { flexDirection: "row", gap: 8, marginLeft: "auto" },
   button: { minHeight: 48, minWidth: 104, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   declineButton: { borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },
   declinePressed: { backgroundColor: "rgba(255, 255, 255, 0.16)" },
-  declineText: { fontSize: 17, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  declineText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
   answerButton: { backgroundColor: DESIGN_COLORS.paperWhite },
   answerPressed: { backgroundColor: DESIGN_COLORS.redTint },
-  answerText: { fontSize: 17, fontWeight: "800", color: DESIGN_COLORS.emergencyRed },
+  answerText: { fontSize: 17, fontFamily: FONT.extraBold, color: DESIGN_COLORS.emergencyRed },
   // The last line about the alert sound (Task 3.13b).
   soundRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6 },
   soundButton: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, borderRadius: 16, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },
-  soundText: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontWeight: "700", color: DESIGN_COLORS.paperWhite },
+  soundText: { flexShrink: 1, fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
 });

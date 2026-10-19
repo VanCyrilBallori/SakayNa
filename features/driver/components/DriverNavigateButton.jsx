@@ -4,7 +4,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
 import { MISSION_STATUSES } from "../../../constants/app";
-import { DESIGN_COLORS } from "../../../constants/design";
+import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { getDestinationCoordinates, getDestinationLabel, getPickupCoordinates, getPickupLabel } from "../utils/driverMissionMapper";
 
 // One navigation button that follows the ride step (driver-home-restyle-plan.md Piece 4a):
@@ -58,5 +58,5 @@ const styles = StyleSheet.create({
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   navButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  navButtonText: { fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.hallGreen },
+  navButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
 });

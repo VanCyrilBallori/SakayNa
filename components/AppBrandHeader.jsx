@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, useWindowDimensions, View } from "r
 
 import BrandLogo from "./BrandLogo";
 import ProfileAvatar from "./profile/ProfileAvatar";
-import { COLORS, DESIGN_COLORS } from "../constants/design";
+import { COLORS, DESIGN_COLORS, FONT } from "../constants/design";
 
 // The dispatcher website's header: the SakayNa logo with the barangay under it, and the initials circle.
 // Clicking the circle opens a small account menu (like Gmail's): initials, name, email, role · barangay, Log out.
@@ -117,19 +117,19 @@ const styles = StyleSheet.create({
   brandWrap: { flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 },
   brandText: { flexShrink: 1, alignItems: "flex-start" },
   // Tight line heights: no extra space under the text.
-  wordmark: { fontSize: 26, lineHeight: 30, fontWeight: "800", fontStyle: "italic" },
+  wordmark: { fontSize: 26, lineHeight: 30, fontFamily: FONT.extraBold, fontStyle: "italic" },
   wordmarkCompact: { fontSize: 22, lineHeight: 26 },
   wordmarkSakay: { color: "#3B6255" }, // the logo's own green (DESIGN.md: the logo keeps its own green)
   wordmarkNa: { color: "#111111" },
   // The barangay name: small (15) and quiet (lighter gray-green, still 4.9:1 on white), so "SakayNa" stands out.
-  barangay: { fontSize: 15, lineHeight: 20, fontWeight: "400", color: "#647570" },
+  barangay: { fontSize: 15, lineHeight: 20, fontFamily: FONT.regular, color: "#647570" },
   rightWrap: { flexDirection: "row", alignItems: "center", gap: 12 },
   // Sound on: quiet (no edge, muted words). Sound off: orange edge on peach, dark bold words (Task 3.13b).
   soundButton: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, borderRadius: 16, borderWidth: 2, borderColor: "transparent" },
   soundButtonOff: { borderColor: DESIGN_COLORS.sakayOrange, backgroundColor: DESIGN_COLORS.peachTint },
   soundButtonPressed: { opacity: 0.75 },
-  soundText: { fontSize: 15, lineHeight: 20, fontWeight: "600", color: DESIGN_COLORS.inkMuted },
-  soundTextOff: { fontWeight: "800", color: DESIGN_COLORS.ink },
+  soundText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: DESIGN_COLORS.inkMuted },
+  soundTextOff: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   // 48 x 48 tap area around the 44 circle.
   avatarButton: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   avatarButtonPressed: { opacity: 0.75 },
@@ -152,10 +152,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  menuName: { marginTop: 10, maxWidth: "100%", fontSize: 18, lineHeight: 24, fontWeight: "800", color: "#111111" },
-  menuMuted: { maxWidth: "100%", fontSize: 15, lineHeight: 20, color: "#4F655C" },
+  menuName: { marginTop: 10, maxWidth: "100%", fontSize: 18, lineHeight: 24, fontFamily: FONT.extraBold, color: "#111111" },
+  menuMuted: { fontFamily: FONT.regular, maxWidth: "100%", fontSize: 15, lineHeight: 20, color: "#4F655C" },
   menuRule: { alignSelf: "stretch", height: 1, marginVertical: 12, backgroundColor: "#D7E2DC" },
   logoutButton: { alignSelf: "stretch", minHeight: 48, borderRadius: 16, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   logoutButtonPressed: { backgroundColor: "#E5F4ED" },
-  logoutText: { fontSize: 17, fontWeight: "700", color: COLORS.primary },
+  logoutText: { fontSize: 17, fontFamily: FONT.bold, color: COLORS.primary },
 });
