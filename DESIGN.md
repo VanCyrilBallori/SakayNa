@@ -1,17 +1,18 @@
 <!-- SEED: established with the user before implementation; re-run /impeccable document once there's code to capture the actual tokens and components. -->
 ---
 name: SakayNa
-description: Toledo City transport and emergency dispatch: a barangay-hall notice board with route-board type.
+description: Toledo City transport and emergency dispatch: a friendly, modern local service (see Style).
 ---
 
 # Design System: SakayNa
 
 ## Overview
 
-**Barangay Hall + Route Board.** SakayNa looks like the plain, named, accountable
-signs residents already trust (the barangay hall notice board, the painted door
-of a barangay vehicle) and reads like a jeepney route board: one big word, high
-contrast, readable at arm's length by a 70-year-old.
+**Friendly local service.** SakayNa looks like a modern, well-made app that
+clearly belongs to Toledo City: named, accountable and local (the barangay, the
+vehicle, the person), with one big word per card, high contrast, readable at
+arm's length by a 70-year-old. The look is set in "Style" below (UI refresh,
+October 2026).
 
 - **Scene:** a senior at home in daylight or under a fluorescent tube, phone held
   at arm's length, often worried. This forces a light screen: white ground,
@@ -19,8 +20,8 @@ contrast, readable at arm's length by a 70-year-old.
 - **Mode:** Operate. Clarity beats decoration. Character comes from naming, the
   big type, and two signature parts (below).
 - **Feel:** friendly and lively, not plain: a bright green, an orange
-  highlight, and soft round corners (color update, Oct 2026). Still flat and
-  easy to read; the color never costs contrast.
+  highlight, soft round corners and soft shadows (UI refresh, Oct 2026).
+  Easy to read; the style never costs contrast.
 - **Scope:** every app screen for all four roles, including the mobile landing
   page and Get Started sheet (components/MobileLanding.jsx).
 - **Theme:** light only. The Dark / Light switch is removed when Settings is
@@ -115,14 +116,13 @@ comes with a word ("Waiting", "On the way").
 
 ## Typography
 
-The phone's system font (Roboto on Android). No font packages. Font scaling is
-always on.
+Plus Jakarta Sans (see "Style", Font). Font scaling is always on.
 
 ### Hierarchy (sp; grows with the phone's text-size setting)
 - **Board (28/34, weight 800):** route-board place names, the status band line,
   the Emergency label.
-- **Title (22/28, 800):** screen and sheet titles.
-- **Label (17/22, 700):** field labels, button text, menu rows.
+- **Title (22/28, 700):** screen and sheet titles.
+- **Label (17/22, 600):** field labels, button text, menu rows.
 - **Body (17/24, 400–500):** sentences and explanations.
 - **Small (15/20, 500):** dates and reference numbers. This is the floor: nothing
   smaller, except the map's own credit line.
@@ -146,30 +146,126 @@ capitals only for proper names.
 - Works at text size 1.3× and 1.5×: text wraps, cards grow, sheets scroll.
   Addresses and place names are never cut to one line.
 
-## Elevation & Depth
+## Style (UI refresh, October 2026)
 
-Flat, like printed signage. Depth comes from solid fills and lines, not shadows.
+**Friendly local service.** SakayNa should feel like a modern, well-made app
+that still clearly belongs to Toledo City: it names the barangay, the vehicle
+and the person, and never looks like a ride-hailing or government app. Calm
+white cards on an off-white page, one green, one orange highlight, and red
+only for emergencies. The accessibility rules in this file (type sizes, text
+scaling, touch sizes, contrast, word with every color, colorblind rules)
+always win over this section.
 
-**The Flat Board Rule.** No soft drop shadows on cards, buttons or banners.
-Separate things with a Board Tint field, a 1dp Rule line, or a 2dp Hall Green
-line. One exception: a small Android elevation on controls floating over the
-map, so they stay visible on busy map tiles.
+### Font
+- **Plus Jakarta Sans** everywhere (phone and website), loaded with
+  `@expo-google-fonts/plus-jakarta-sans`. Font scaling stays on.
+- Weights: Board and the Emergency label 800 (ExtraBold); Title 700 (Bold);
+  Label and buttons 600 (SemiBold); Body 400 (Regular); Small 500 (Medium).
+- Each weight is its own font name (Android needs this), so text styles use the
+  font names in `constants/design.js` (`FONT`) instead of `fontWeight`.
 
-Pop-ups: the dark background fades; only sheets slide.
+### Color scales (brand colors unchanged)
+Hall Green = green 600, Hall Green Deep = green 800, Sakay Orange = orange 500,
+Orange Deep = orange 700, Peach Tint = orange 100, Board Tint = neutral 100,
+Ink = neutral 900. Ratios are against white unless stated.
 
-## Shapes
+| Step | Green | Orange | Neutral |
+|---|---|---|---|
+| 50  | #EAF6F0 | #FFF6EA | #F5F8F6 (page) |
+| 100 | #D2ECDF | #FDECD3 | #EEF3F0 |
+| 200 | #A6D8BF | #FFD7A3 | #DDE5E1 |
+| 300 | #72C09B | #FFBE6B | #C5D1CB |
+| 400 | #3FA474 | #FFA43A | #93A39C |
+| 500 | #1A8C5B | #FF8A00 | #6B8079 |
+| 600 | #0B7A4B | #D96F00 | #5E6E68 |
+| 700 | #0A6A41 | #B34D00 | #4A5C55 |
+| 800 | #0B5A37 | #8A3A00 | #2B3A34 |
+| 900 | #083F27 | #5E2700 | #14211C |
 
-Soft, round corners. Two corner sizes, plus fully round for a few small things:
-- **Button corner (16dp):** buttons (including Emergency), inputs, the ☰ button,
-  small boxes.
-- **Card corner (24dp):** cards, banners, info boxes, and the top corners of
-  bottom sheets.
-- **Fully round:** small tags and count badges, status dots, the destination
-  dot, profile pictures, the logo disc on the landing page, and the choices
-  and +/− buttons of the website Emergency request form (see "Website
-  exception"). Main buttons are never pill-shaped.
+- Text colors: neutral 900 (main), 700 (secondary), 600 (placeholder).
+  Green 600-900 as text: 5.4:1 or more. Orange as text: 700 and darker, small words only.
+- Tinted boxes: 50/100 background with 700-900 words (green 600 on green 50
+  4.9:1, orange 700 on orange 50 4.9:1).
+- Orange fills: 100-500 only, always with Ink words. Orange 600-900 are never
+  large fills (they look red to colorblind people).
+- Neutral 200-400 are edges and dividers only, never text.
+- Red: red 50 #FCE9E7 (tint), red 600 #B42318 (Emergency Red), red 700
+  #8E1B12 (pressed). Still only emergency and "can't be undone".
+- Page background: neutral 50. Cards, sheets and inputs: white.
 
-A status band at the top of a card follows the card's 24dp top corners.
+### Elevation (soft shadows)
+- Level 1, cards and list groups: `0 1px 3px rgba(20,33,28,.08), 0 1px 2px rgba(20,33,28,.04)`,
+  plus a 1dp neutral-200 edge (white on off-white is too faint in daylight).
+- Level 2, floating buttons, menus, map controls: `0 4px 12px rgba(20,33,28,.12)`.
+- Level 3, bottom sheets and dialogs: `0 -8px 24px rgba(20,33,28,.16)`, with
+  the dark backdrop behind.
+- No card inside a card. No shadow on text or icons.
+
+### Corners
+- 8: small tags inside tables, checkboxes, map +/- controls.
+- 12: inputs, dropdowns, selected list rows.
+- 16: cards, banners, info boxes, dialogs, map frames.
+- 24: top corners of bottom sheets; the Emergency button.
+- Pill (fully round): all buttons except Emergency, chips, segmented
+  controls, status badges, count badges, avatars.
+- The Emergency button keeps its 24 corners, so its shape differs from every
+  other button.
+
+### Buttons
+- Primary: green 600 fill, white words; pressed green 800. Secondary: white
+  with a 1.5dp neutral-500 edge, green 700 words. Text button: green 700
+  words, no fill. Destructive: red 600 fill, white words. Heights 48
+  (normal) / 56 (main action).
+- Disabled: neutral 200 fill with neutral 700 words (5.5:1), and the reason
+  nearby (not color only).
+
+### Icons
+- Material Community Icons only (`@expo/vector-icons`), outline variants.
+  20 inside text and chips, 24 in rows and buttons, 28 in big tiles and the
+  bottom bar.
+- Icon color follows its text. An icon never stands alone without a word
+  (except the documented "Back to home" house button).
+
+### Motion
+- Press: 100 ms, slightly darker fill (and scale 0.98 for cards and big buttons).
+- Bottom sheets: slide up 250 ms ease-out, backdrop fades in 200 ms, close in 200 ms.
+- Dialogs: fade and grow from 96%, 200 ms. Content updates: 150 ms fade.
+- Nothing loops except loading skeletons and the dispatcher emergency strip.
+- **Reduce motion** (phone setting or browser): no sliding or scaling; things
+  appear at once (at most a 150 ms fade).
+
+### Patterns
+- **Bottom sheets** for choices and short forms (grabber bar, 24 top corners, level 3).
+- **Chips** (pill, 48 tall): filters and quick choices. Selected = green 600
+  fill with white words and a check icon.
+- **Segmented controls** (pill track neutral 100, white selected part with
+  level 1) for 2-3 views of the same thing.
+- **List rows**: at least 56 tall, leading icon in a 40dp green-50 circle,
+  title (Label) and one detail line (Small), chevron if it opens something.
+- **Status badges**: pill, tinted background with the status word. Status
+  band colors still apply to full bands.
+- **Empty states**: a 48 icon in a 96dp tinted circle, a title, one
+  sentence, and the next action if there is one.
+- **Place strip** and **route board** stay (they make it local and clear),
+  restyled with the new font, scales and corners.
+
+### Gradients
+- Only on the landing and welcome screens (mobile landing, website landing,
+  the website Log In / Create Account green panel): green 600 to green 800,
+  or green 50 to white. Never on cards, buttons, or anything with small
+  text on top.
+- Still no glass, blur, or see-through panels.
+
+### Dates and times (one format everywhere, Philippine time)
+- Date and time: "Tue, Oct 20, 2:00 PM". Date only: "Tue, Oct 20". Time
+  only: "2:00 PM".
+- Add the year only when it isn't this year: "Sun, Oct 4, 2025".
+- Never seconds, never number-only dates like "29/9/2026".
+- Durations: "1 hr 5 min". "just now" / "5 min ago" only for live things
+  under an hour (locations, alerts); otherwise the full date.
+- One helper in `lib/dates.js` makes all of these.
+- Exception: Admin CSV/report downloads keep their current date format
+  (spreadsheets need their own format).
 
 ## Do's and Don'ts
 
@@ -186,10 +282,10 @@ A status band at the top of a card follows the card's 24dp top corners.
 - Don't use ride-hailing language or pictures: fares, "Book now", sedan icons,
   promo banners, city skylines. Exception: the mobile landing page heading
   "Request a Ride now" is allowed (owner's choice, Oct 2026). Don't change it.
-- Don't use soft shadows, gradients, glass effects, colored stripes down the side
-  of cards, or decorative circles.
+- Don't use glass effects, blur, or colored stripes down the side of cards.
+  Shadows and gradients only as "Style" allows.
 - Don't put cards inside cards.
-- Don't use any corner size besides 16dp, 24dp and fully round.
+- Don't use corner sizes outside the Style scale (8, 12, 16, 24, pill).
 - Don't put white text on orange, and don't use orange for danger or errors.
 - Don't use tiny spaced-out ALL-CAPS labels, even if a reference picture has them.
 
