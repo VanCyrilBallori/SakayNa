@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import { collection, doc, limit, onSnapshot, orderBy, query } from "firebase/firestore";
 
@@ -35,8 +35,23 @@ const toDateLabel = (value) => {
 };
 const statusOf = (user) => user.accountStatus || user.approvalStatus || ACCOUNT_STATUSES.ACTIVE;
 
+// The six Operations views, shown as one row of tabs.
+const VIEWS = ["Accounts", "Add Dispatcher", "Maintenance", "Reports", "Settings", "Logs"];
+
+// Splits a list into rows of `size` cards, so every card in a row is the same width (like Admin Requests).
+const toRows = (items, size) => {
+  const rows = [];
+  for (let index = 0; index < items.length; index += size) {
+    rows.push(items.slice(index, index + size));
+  }
+  return rows;
+};
+
 export default function AdminOperationsPanel({ users, vehicles, assignments, requests, requestsLoading = false, adminId, adminName, adminBarangay, canManageUser, theme }) {
   const [view, setView] = useState("Accounts");
+  // Two cards per row on a wide window (DESIGN.md "Admin website exception"), one otherwise.
+  const { width } = useWindowDimensions();
+  const columns = width >= 1100 ? 2 : 1;
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -121,12 +136,28 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
 
   const chip = (label, active, onPress) => <TouchableOpacity key={label} style={[styles.chip, { borderColor: active ? GREEN[600] : theme.border, backgroundColor: active ? GREEN[600] : theme.surface }]} onPress={onPress}><Text style={[styles.chipText, { color: active ? NEUTRAL[0] : theme.text }]}>{label}</Text></TouchableOpacity>;
   const card = (children, key) => <View key={key} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>{children}</View>;
+  // Cards in rows of `columns`; empty places keep the last row's cards the same width as the others.
+  const grid = (cards) => <View style={styles.grid}>{toRows(cards, columns).map((row, rowIndex) => (
+    <View key={`row-${rowIndex}`} style={styles.gridRow}>
+      {row.map((item) => <View key={item.key} style={styles.gridCell}>{item}</View>)}
+      {Array.from({ length: columns - row.length }, (_, index) => <View key={`empty-${index}`} style={styles.gridCell} />)}
+    </View>
+  ))}</View>;
+  // One tab in the row at the top: the open view is a green pill with white words (like the side menu).
+  const tab = (label) => {
+    const active = view === label;
+    return <TouchableOpacity key={label} style={[styles.tab, active && styles.tabActive]} onPress={() => setView(label)} accessibilityRole="tab" accessibilityState={{ selected: active }}><Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text></TouchableOpacity>;
+  };
 
   const renderAccounts = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Account Operations</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>The list is limited to the profiles already loaded by the Admin console. Passwords, tokens, and private documents are never displayed here.</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={search} onChangeText={setSearch} placeholder="Name, UID, phone, email, barangay..." placeholderTextColor={theme.subtleText} />
+    {/* Search, Role, Account status and the count on one line when there is room. */}
     <View style={styles.fieldsRow}>
+      <View style={[styles.field, styles.searchField]}>
+        <Text style={[styles.label, { color: theme.text }]}>Search</Text>
+        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={search} onChangeText={setSearch} placeholder="Name, UID, phone, email, barangay..." placeholderTextColor={theme.subtleText} />
+      </View>
       <View style={styles.field}>
         <Text style={[styles.label, { color: theme.text }]}>Role</Text>
         <Dropdown fontFamily={FONT.regular}
@@ -163,7 +194,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
         <Text style={[styles.accountsCountText, { color: theme.text }]}>Accounts: {filteredUsers.length}</Text>
       </View>
     </View>
-    {filteredUsers.slice(0, 100).map((user) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{getProfileName(user)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{user.role || "No role"} | {statusOf(user)} | {user.barangay || user.office || "No operational area"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {user.operationalPhone || user.phoneNumber || user.phone || "Not provided"}</Text>{!canManageUser(user) ? <Text style={[styles.copy, { color: theme.mutedText }]}>Other barangay: view only</Text> : null}<AppButton label="Manage profile" variant="secondary" disabled={!canManageUser(user)} onPress={() => openUser(user)} style={[styles.button, styles.pageButton]} /></>, user.id))}
+    {grid(filteredUsers.slice(0, 100).map((user) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{getProfileName(user)}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{user.role || "No role"} · {statusOf(user)} · {user.barangay || user.office || "No operational area"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Phone: {user.operationalPhone || user.phoneNumber || user.phone || "Not provided"}</Text>{!canManageUser(user) ? <Text style={[styles.copy, { color: theme.mutedText }]}>Other barangay: view only</Text> : null}<AppButton label="Manage profile" variant="secondary" disabled={!canManageUser(user)} onPress={() => openUser(user)} style={[styles.button, styles.pageButton, styles.listButton]} /></>, user.id)))}
   </>;
 
   const setDispatcherField = (key, value) => setNewDispatcher((current) => ({ ...current, [key]: value }));
@@ -173,7 +204,8 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     setNewDispatcher(EMPTY_DISPATCHER);
   }, `Dispatcher account created for ${newDispatcher.fullName.trim()}. Give them the temporary password privately, and tell them to tap Forgot password? on the login screen to set their own.`);
 
-  const renderStaff = () => <>
+  // Forms are not wider than 560, so the boxes do not stretch across a wide screen.
+  const renderStaff = () => <View style={styles.form}>
     <Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>Creates the login and profile for a new Dispatcher. You stay logged in. They log in with this email and the temporary password.</Text>
     <Text style={[styles.label, { color: theme.text }]}>Full name</Text>
@@ -193,17 +225,17 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     <Text style={[styles.label, { color: theme.text }]}>Temporary password (at least 8 characters)</Text>
     <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={newDispatcher.temporaryPassword} onChangeText={(value) => setDispatcherField("temporaryPassword", value)} autoCapitalize="none" autoCorrect={false} />
     <AppButton label="Create Dispatcher" loading={busy} disabled={!adminBarangay} onPress={createDispatcher} style={[styles.button, styles.pageButton]} />
-  </>;
+  </View>;
 
   const renderVehicles = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Maintenance Oversight</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>Vehicles with unresolved maintenance: {vehicleMaintenance}. A vehicle is not returned to service automatically when maintenance is completed.</Text>
-    {vehicles.map((vehicle) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{vehicle.name || vehicle.id}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{vehicle.plateNumber || "No plate"} | Status: {vehicle.status || "Available"} | Maintenance: {vehicle.maintenanceStatus || "None recorded"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Next service: {formatDay(vehicle.nextMaintenanceDate)}</Text><AppButton label="Add maintenance record" variant="secondary" onPress={() => { setMaintenanceVehicle(vehicle); setMaintenance(DEFAULT_MAINTENANCE); }} style={[styles.button, styles.pageButton]} /></>, vehicle.id))}
+    {grid(vehicles.map((vehicle) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{vehicle.name || vehicle.id}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{vehicle.plateNumber || "No plate"} · Status: {vehicle.status || "Available"} · Maintenance: {vehicle.maintenanceStatus || "None recorded"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Next service: {formatDay(vehicle.nextMaintenanceDate)}</Text><AppButton label="Add maintenance record" variant="secondary" onPress={() => { setMaintenanceVehicle(vehicle); setMaintenance(DEFAULT_MAINTENANCE); }} style={[styles.button, styles.pageButton, styles.listButton]} /></>, vehicle.id)))}
   </>;
 
   const renderReports = () => <AdminReportsSection requests={requests} loading={requestsLoading} onDownload={exportRequests} />;
 
-  const renderSettings = () => <>
+  const renderSettings = () => <View style={styles.form}>
     <Text style={[styles.title, { color: theme.text }]}>Operational Settings</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>Only non-security display and form options are stored here. Firebase credentials, security rules, and environment variables are never editable in this screen.</Text>
     <Text style={[styles.label, { color: theme.text }]}>Public office phone</Text>
@@ -212,12 +244,13 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={String(settings.maintenanceReminderDays || "")} onChangeText={(value) => setSettings((current) => ({ ...current, maintenanceReminderDays: value }))} keyboardType="number-pad" />
     <Text style={[styles.copy, { color: theme.mutedText }]}>Supported barangays currently saved: {(settings.supportedBarangays || []).length}. Barangay selection remains limited to the approved Toledo options in the Admin workflow.</Text>
     <AppButton label="Save operational settings" loading={busy} onPress={() => run(() => saveSystemSettings({ adminId, settings }), "Operational settings saved.")} style={[styles.button, styles.pageButton]} />
-  </>;
+  </View>;
 
   const renderLogs = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Activity Log</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>These are client-generated, append-only operational records. They are useful for visibility but are not tamper-proof; trusted audit logging remains Phase 8.</Text>
-    {logs.length ? logs.map((log) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{log.action || "Administrative action"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{log.summary || "No summary"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{formatWhen(log.createdAt)} | Actor: {log.actorId || "Not available"}</Text></>, log.id)) : card(<Text style={[styles.copy, { color: theme.mutedText }]}>No activity records are available yet.</Text>, "logs-empty")}
+    {/* One white list with thin lines between entries, like Users (the summaries are long, so one column). */}
+    {logs.length ? <View style={[styles.list, { backgroundColor: theme.surface, borderColor: theme.border }]}>{logs.map((log, index) => <View key={log.id} style={[styles.listRow, index > 0 && { borderTopWidth: 1, borderTopColor: theme.border }]}><Text style={[styles.cardTitle, { color: theme.text }]}>{log.action || "Administrative action"}</Text><Text style={[styles.copy, { color: theme.text }]}>{log.summary || "No summary"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{formatWhen(log.createdAt)} · Actor: {log.actorId || "Not available"}</Text></View>)}</View> : <View style={styles.grid}>{card(<Text style={[styles.copy, { color: theme.mutedText }]}>No activity records are available yet.</Text>, "logs-empty")}</View>}
   </>;
 
   const viewContent = { Accounts: renderAccounts, "Add Dispatcher": renderStaff, Maintenance: renderVehicles, Reports: renderReports, Settings: renderSettings, Logs: renderLogs }[view];
@@ -226,7 +259,8 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
       <View style={styles.sectionHeader}>
         <AdminSectionHeader icon="cog-outline" title="Operations" subtitle="Account status, Dispatchers, vehicle maintenance, reports, settings and the activity log." />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nav}>{["Accounts", "Add Dispatcher", "Maintenance", "Reports", "Settings", "Logs"].map((item) => chip(item, view === item, () => setView(item)))}</ScrollView>
+      {/* One row of tabs in a light grey track; it wraps onto a second line on a narrow window. */}
+      <View style={styles.tabs} accessibilityRole="tablist">{VIEWS.map(tab)}</View>
       <FeedbackMessage message={error} tone="error" />
       <FeedbackMessage message={message} tone="success" />
       {viewContent()}
@@ -276,19 +310,31 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     </Modal>  </>;
 }
 
-// UI refresh (DESIGN.md "Style"): pill chips, 12-corner inputs, 16-corner cards and pop-up. Text at least 15 (DESIGN.md); spacing unchanged.
+// UI refresh (DESIGN.md "Style"): pill chips, 12-corner inputs, 16-corner cards and pop-up. Text at least 15.
+// Layout and spacing: DESIGN.md "Admin website exception" (Task 3.19): tabs, cards in 2 columns, 40-tall list buttons and chips.
 const styles = StyleSheet.create({
   sectionHeader: { marginBottom: 12 },
-  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 },
-  chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 1 }, chipText: { fontSize: 15, fontFamily: FONT.semiBold },
-  title: { fontSize: 21, fontFamily: FONT.bold, marginTop: 8, marginBottom: 6 }, copy: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 22 },
+  // The tabs: a light grey pill track; the open tab is a green pill with white words.
+  tabs: { alignSelf: "flex-start", flexDirection: "row", flexWrap: "wrap", gap: 4, padding: 4, marginBottom: 12, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[100] },
+  tab: { minHeight: 40, justifyContent: "center", paddingHorizontal: 16, borderRadius: CORNER.pill },
+  tabActive: { backgroundColor: GREEN[600] },
+  tabText: { fontSize: 15, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  tabTextActive: { color: NEUTRAL[0] },
+  row: { gap: 8, paddingVertical: 6 },
+  chip: { minHeight: 40, justifyContent: "center", paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 1 }, chipText: { fontSize: 15, fontFamily: FONT.semiBold },
+  title: { fontSize: 21, lineHeight: 28, fontFamily: FONT.bold, marginBottom: 4 }, copy: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 22 },
   label: { fontSize: 15, fontFamily: FONT.semiBold, marginTop: 12, marginBottom: 4 },
   input: { fontFamily: FONT.regular, minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12, paddingVertical: 9, fontSize: 15 },
   dropdown: { minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: CORNER.input, overflow: "hidden" }, dropdownText: { fontFamily: FONT.regular, fontSize: 15 },
-  fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 },
+  fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 }, searchField: { flexGrow: 2, flexBasis: 260 },
   accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: CORNER.input, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 15, fontFamily: FONT.bold },
-  card: { marginTop: 10, borderWidth: 1, borderRadius: CORNER.card, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontFamily: FONT.bold },
-  button: { marginTop: 10 }, pageButton: { alignSelf: "flex-start" },
+  // Cards in rows of equal width (2 per row on a wide window); every card in a row is as tall as the tallest.
+  grid: { marginTop: 12, gap: 12 }, gridRow: { flexDirection: "row", gap: 12, alignItems: "stretch" }, gridCell: { flex: 1, minWidth: 0 },
+  card: { flexGrow: 1, borderWidth: 1, borderRadius: CORNER.card, padding: 12, gap: 6 }, cardTitle: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold },
+  // The activity log: one white list box with thin lines between entries.
+  list: { marginTop: 12, borderWidth: 1, borderRadius: CORNER.card, overflow: "hidden" }, listRow: { paddingVertical: 10, paddingHorizontal: 14, gap: 2 },
+  form: { maxWidth: 560 },
+  button: { marginTop: 10 }, pageButton: { alignSelf: "flex-start" }, listButton: { minHeight: 40, paddingHorizontal: 16, marginTop: "auto" },
   overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(20, 33, 28, 0.55)" },
   modal: { width: "100%", maxHeight: "92%", borderRadius: CORNER.card, padding: 18, backgroundColor: NEUTRAL[0], ...SHADOW.level3 },
 });
