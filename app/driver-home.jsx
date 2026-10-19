@@ -1,7 +1,7 @@
 import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
+import { updateEmail } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -28,8 +28,9 @@ import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText
 import { formatDay, formatWhen } from "../lib/dates";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
+import DeleteAccountSheet from "../components/DeleteAccountSheet";
 import LeafletMap from "../components/LeafletMap";
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, NEUTRAL, RED } from "../constants/design";
 import { auth, db } from "../firebase";
 import {
   DRIVER_AVAILABILITY_SHIFT,
@@ -165,14 +166,11 @@ export default function DriverHome() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileEditorOpen, setProfileEditorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ fullName: "", phoneNumber: "", barangay: "", address: "", email: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     if (!authUser?.uid) {
@@ -634,18 +632,6 @@ export default function DriverHome() {
     });
   }, [authUser?.email, displayName, profile?.address, profile?.barangay, profile?.email, profile?.fullName, profile?.phone, profile?.phoneNumber, settingsOpen]);
 
-  useEffect(() => {
-    if (!changePasswordOpen) {
-      return;
-    }
-
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setProfileError("");
-    setProfileMessage("");
-  }, [changePasswordOpen]);
-
   const saveDriverSettings = async () => {
     if (!authUser?.uid) {
       setProfileError("Login is required before updating your profile.");
@@ -716,52 +702,13 @@ export default function DriverHome() {
     }
   };
 
-  const saveDriverPassword = async () => {
-    if (!authUser?.email) {
-      setProfileError("This account has no email address available for password update.");
-      return;
-    }
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setProfileError("Enter your current password, new password, and confirm password.");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setProfileError("New password must be at least 6 characters long.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setProfileError("New password and confirm password do not match.");
-      return;
-    }
-
-    setSavingProfile(true);
-    setProfileError("");
-    setProfileMessage("");
-
-    try {
-      const currentAuthUser = auth.currentUser ?? authUser;
-      const credential = EmailAuthProvider.credential(authUser.email, currentPassword);
-      await reauthenticateWithCredential(currentAuthUser, credential);
-      await updatePassword(currentAuthUser, newPassword);
-      setProfileMessage("Password updated successfully.");
-      setChangePasswordOpen(false);
-    } catch (error) {
-      console.log("Driver password update failed:", error);
-
-      if (error?.code === "auth/wrong-password" || error?.code === "auth/invalid-credential") {
-        setProfileError("Current password is incorrect.");
-      } else if (error?.code === "auth/requires-recent-login") {
-        setProfileError("Please log in again before changing your password.");
-      } else {
-        setProfileError("Password could not be updated. Please check your password details.");
-      }
-    } finally {
-      setSavingProfile(false);
-    }
-  };
+  // Delete Account can't run while the driver is on duty or still has a ride (owner's decision: block, don't cancel).
+  const deleteBlockedReason =
+    duty.dutyStatus !== "Off duty"
+      ? "You are still on duty. Punch out first (Availability page), then try again."
+      : assignedTransfer
+        ? "You still have a ride. Finish it, or tell dispatch \"I can't do this ride\", then try again."
+        : "";
 
   if (accessStatus !== "approved") {
     return (
@@ -1087,7 +1034,7 @@ export default function DriverHome() {
                 <CloseButton onPress={() => setSettingsOpen(false)} label="Close settings" style={styles.closeInCorner} />
 
                 <Text style={[styles.reviewTitle, { color: theme.text }]}>Settings</Text>
-                <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your driver account details, email, and theme mode.</Text>
+                <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your name, phone number, email or address.</Text>
 
                 <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
                 <TextInput
@@ -1137,13 +1084,6 @@ export default function DriverHome() {
                   placeholderTextColor={theme.subtleText}
                 />
 
-                <TouchableOpacity
-                  style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
-                  onPress={() => setChangePasswordOpen(true)}
-                >
-                  <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
-                </TouchableOpacity>
-
                 {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
                 {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
 
@@ -1154,64 +1094,25 @@ export default function DriverHome() {
                 >
                   <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Save Settings"}</Text>
                 </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
 
-        <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)} statusBarTranslucent navigationBarTranslucent>
-          <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-            <View style={[styles.profileEditorCard, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-              <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <CloseButton onPress={() => setChangePasswordOpen(false)} label="Close change password" style={styles.closeInCorner} />
-
-                <Text style={[styles.reviewTitle, { color: theme.text }]}>Change Password</Text>
-                <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
-
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Current Password</Text>
-                <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="Enter current password"
-                  placeholderTextColor={theme.subtleText}
-                  secureTextEntry
-                />
-
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>New Password</Text>
-                <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="Enter new password"
-                  placeholderTextColor={theme.subtleText}
-                  secureTextEntry
-                />
-
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Confirm New Password</Text>
-                <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirm new password"
-                  placeholderTextColor={theme.subtleText}
-                  secureTextEntry
-                />
-
-                {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
-                {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
-
+                {/* Delete account (Task 3.15): last, apart from the rest, red words on white. */}
+                <View style={styles.dangerDivider} />
                 <TouchableOpacity
-                  style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
-                  onPress={saveDriverPassword}
-                  disabled={savingProfile}
+                  style={styles.deleteAccountButton}
+                  onPress={() => {
+                    setSettingsOpen(false);
+                    setDeleteAccountOpen(true);
+                  }}
+                  accessibilityRole="button"
                 >
-                  <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Update Password"}</Text>
+                  <Text style={styles.deleteAccountButtonText}>Delete account</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </Modal>
+
+        <DeleteAccountSheet visible={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} blockedReason={deleteBlockedReason} />
       </View>
     </>
   );
@@ -1236,6 +1137,10 @@ function HistoryRow({ assignment, first }) {
 }
 
 const styles = StyleSheet.create({
+  // "Delete account" in Settings: a pill with a red edge and red words, after a thin line (Task 3.15).
+  dangerDivider: { height: 1, marginTop: 24, backgroundColor: NEUTRAL[200] },
+  deleteAccountButton: { marginTop: 16, minHeight: 48, paddingHorizontal: 20, borderRadius: CORNER.pill, borderWidth: 1.5, borderColor: RED[600], backgroundColor: NEUTRAL[0], alignItems: "center", justifyContent: "center" },
+  deleteAccountButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: RED[600] },
   // The whole screen: header, page, bottom bar. Board Tint behind the white cards (DESIGN.md).
   page: { flex: 1, backgroundColor: DESIGN_COLORS.boardTint },
   accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
@@ -1368,8 +1273,6 @@ const styles = StyleSheet.create({
   profileFieldLabel: { marginTop: 20, fontSize: 15, fontFamily: FONT.bold },
   profileInput: { fontFamily: FONT.regular, marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, fontSize: 15, color: "#111111" },
   profileFieldHint: { marginTop: 6, fontSize: 14, fontFamily: FONT.semiBold },
-  secondaryActionButton: { marginTop: 16, minHeight: 52, borderRadius: 13, borderWidth: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
-  secondaryActionButtonText: { fontSize: 15, fontFamily: FONT.extraBold },
   primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
   primarySaveButtonText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   feedbackText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#335E50" },

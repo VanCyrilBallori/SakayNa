@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
+import { updateEmail } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,6 +12,7 @@ import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
 import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
+import DeleteAccountSheet from "../components/DeleteAccountSheet";
 import CloseButton from "../components/ui/CloseButton";
 import LatestRequestCard from "../features/resident/components/LatestRequestCard";
 import ResidentRequestDetails from "../features/resident/components/ResidentRequestDetails";
@@ -56,7 +57,7 @@ export default function ResidentHome() {
   // The open page of the bottom bar: "ride" (Emergency, Request a Ride, Your ride) or "history" (Task 3.18).
   const [activePage, setActivePage] = useState("ride");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
   const [callConfirmOpen, setCallConfirmOpen] = useState(false);
   // "" = closed. "emergency" or "transport" = the "your account is not verified yet" pop-up for that button.
@@ -92,9 +93,6 @@ export default function ResidentHome() {
     phoneNumber: "",
     email: "",
   });
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState("");
   const [settingsMessage, setSettingsMessage] = useState("");
@@ -270,9 +268,6 @@ export default function ResidentHome() {
   const openSettings = () => {
     setSettingsError("");
     setSettingsMessage("");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
     setSettingsForm({
       fullName: activeProfile?.fullName || displayName,
       phoneNumber: activeProfile?.phoneNumber || activeProfile?.phone || "",
@@ -281,17 +276,13 @@ export default function ResidentHome() {
     setSettingsOpen(true);
   };
 
-  useEffect(() => {
-    if (!changePasswordOpen) {
-      return;
-    }
-
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setSettingsError("");
-    setSettingsMessage("");
-  }, [changePasswordOpen]);
+  // Delete Account can't run while something is still open (owner's decision: block, don't cancel it by itself).
+  const openRequest = requestHistory.find((item) => ["Pending", "Assigned", "In Progress"].includes(item.status || "Pending"));
+  const deleteBlockedReason = callOpen
+    ? "You have an emergency alert open. Close it first, then try again."
+    : openRequest
+      ? `You have a ride request that is still open (${openRequest.reference || "your latest request"}). Cancel it in History, or wait until the ride is finished, then try again.`
+      : "";
 
   const handleQuickAction = (type) => {
     if (type === "emergency-call") {
@@ -545,53 +536,6 @@ export default function ResidentHome() {
         setSettingsError("Settings could not be updated. Please check Firestore permissions and your email details.");
       }
       return;
-    } finally {
-      setSavingSettings(false);
-    }
-  };
-
-  const saveResidentPassword = async () => {
-    if (!authUser?.email) {
-      setSettingsError("This account has no email address available for password update.");
-      return;
-    }
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setSettingsError("Enter your current password, new password, and confirm password.");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setSettingsError("New password must be at least 6 characters long.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setSettingsError("New password and confirm password do not match.");
-      return;
-    }
-
-    setSavingSettings(true);
-    setSettingsError("");
-    setSettingsMessage("");
-
-    try {
-      const currentAuthUser = auth.currentUser ?? authUser;
-      const credential = EmailAuthProvider.credential(authUser.email, currentPassword);
-      await reauthenticateWithCredential(currentAuthUser, credential);
-      await updatePassword(currentAuthUser, newPassword);
-      setSettingsMessage("Password updated successfully.");
-      setChangePasswordOpen(false);
-    } catch (error) {
-      console.log("Resident password update failed:", error);
-
-      if (error?.code === "auth/wrong-password" || error?.code === "auth/invalid-credential") {
-        setSettingsError("Current password is incorrect.");
-      } else if (error?.code === "auth/requires-recent-login") {
-        setSettingsError("Please log in again before changing your password.");
-      } else {
-        setSettingsError("Password could not be updated. Please check your password details.");
-      }
     } finally {
       setSavingSettings(false);
     }
@@ -1068,7 +1012,7 @@ export default function ResidentHome() {
               <CloseButton onPress={() => setSettingsOpen(false)} label="Close settings" style={styles.closeInCorner} />
 
               <Text style={styles.modalTitle}>Settings</Text>
-              <Text style={styles.modalSubtitle}>Update your name, phone number, email or password.</Text>
+              <Text style={styles.modalSubtitle}>Update your name, phone number or email.</Text>
 
               <Text style={styles.modalLabel}>Username</Text>
               <TextInput
@@ -1100,13 +1044,6 @@ export default function ResidentHome() {
                 autoCapitalize="none"
               />
 
-              <TouchableOpacity
-                style={styles.secondaryActionButton}
-                onPress={() => setChangePasswordOpen(true)}
-              >
-                <Text style={styles.secondaryActionButtonText}>Change Password</Text>
-              </TouchableOpacity>
-
               {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
               {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
 
@@ -1119,66 +1056,26 @@ export default function ResidentHome() {
                   {savingSettings ? "Saving..." : "Save Settings"}
                 </Text>
               </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
-      <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)} statusBarTranslucent navigationBarTranslucent>
-        <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
-          <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact]}>
-            <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <CloseButton onPress={() => setChangePasswordOpen(false)} label="Close change password" style={styles.closeInCorner} />
-
-              <Text style={styles.modalTitle}>Change Password</Text>
-              <Text style={styles.modalSubtitle}>Enter your current password, then set a new one.</Text>
-
-              <Text style={styles.modalLabel}>Current Password</Text>
-              <TextInput
-                style={styles.profileInput}
-                placeholder="Enter current password"
-                placeholderTextColor={NEUTRAL[600]}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry
-              />
-
-              <Text style={styles.modalLabel}>New Password</Text>
-              <TextInput
-                style={styles.profileInput}
-                placeholder="Enter new password"
-                placeholderTextColor={NEUTRAL[600]}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-              />
-
-              <Text style={styles.modalLabel}>Confirm New Password</Text>
-              <TextInput
-                style={styles.profileInput}
-                placeholder="Confirm new password"
-                placeholderTextColor={NEUTRAL[600]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-              />
-
-              {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
-              {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
-
+              {/* Delete account (Task 3.15): last, apart from the rest, red words on white. The red fill is only
+                  on the final button inside the pop-up. */}
+              <View style={styles.dangerDivider} />
               <TouchableOpacity
-                style={[styles.saveButton, savingSettings && styles.saveButtonDisabled]}
-                onPress={saveResidentPassword}
-                disabled={savingSettings}
+                style={styles.deleteAccountButton}
+                onPress={() => {
+                  setSettingsOpen(false);
+                  setDeleteAccountOpen(true);
+                }}
+                accessibilityRole="button"
               >
-                <Text style={[styles.saveButtonText, savingSettings && styles.saveButtonTextDisabled]}>
-                  {savingSettings ? "Saving..." : "Update Password"}
-                </Text>
+                <Text style={styles.deleteAccountButtonText}>Delete account</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <DeleteAccountSheet visible={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} blockedReason={deleteBlockedReason} />
     </>
   );
 }
@@ -1355,7 +1252,7 @@ const styles = StyleSheet.create({
   modalCardCompact: {
     padding: 20,
   },
-  // The X at the top-right of Profile, Settings and Change Password.
+  // The X at the top-right of Profile and Settings.
   closeInCorner: { alignSelf: "flex-end" },
   modalTitle: {
     marginTop: 4,
@@ -1506,7 +1403,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   alertDoneText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900], textAlign: "center" },
-  // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
+  // Settings card: flexShrink lets the card get shorter when the keyboard is open, and the
   // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
   editorCardFit: { flexShrink: 1 },
   editorScroll: { flexGrow: 0 },
@@ -1552,23 +1449,24 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: NEUTRAL[900],
   },
-  // "Change Password": a secondary pill (white, grey edge, green words).
-  secondaryActionButton: {
-    marginTop: 20,
+  // "Delete account" in Settings: a pill with a red edge and red words, after a thin line.
+  dangerDivider: { height: 1, marginTop: 24, backgroundColor: NEUTRAL[200] },
+  deleteAccountButton: {
+    marginTop: 16,
     minHeight: 48,
     borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: NEUTRAL[500],
+    borderColor: RED[600],
     backgroundColor: NEUTRAL[0],
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
   },
-  secondaryActionButtonText: {
+  deleteAccountButtonText: {
     fontSize: 17,
     lineHeight: 22,
     fontFamily: FONT.semiBold,
-    color: GREEN[700],
+    color: RED[600],
   },
   errorText: {
     marginTop: 16,

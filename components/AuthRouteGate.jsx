@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import { useRouter, useSegments } from "expo-router";
 
+import DeleteAccountSheet from "./DeleteAccountSheet";
 import ScreenState from "./ui/ScreenState";
 import { ROLES } from "../constants/app";
 import { askResidentPermissionsOnce } from "../lib/permissions";
@@ -84,6 +85,12 @@ export default function AuthRouteGate({ children }) {
     return <ScreenState title="Account disabled" message="This account is currently disabled. Please contact SakayNa support." actionLabel="Log Out" onAction={() => handleLogout(router)} />;
   }
 
+  // Delete Account stopped halfway (Task 3.15): the "deleted" mark is saved but the login was not removed
+  // (for example the internet dropped). Never open the home screen: finish deleting, or log out.
+  if (profile?.deletedAt) {
+    return <DeletedAccountScreen router={router} />;
+  }
+
   // A Dispatcher or Admin whose account is not "Active" (lib/roles.js): no dashboard, no endless spinner.
   if (!destination) {
     return <ScreenState title="Account not active" message="Please contact your Admin." actionLabel="Log Out" onAction={() => handleLogout(router)} />;
@@ -94,6 +101,23 @@ export default function AuthRouteGate({ children }) {
   }
 
   return children;
+}
+
+function DeletedAccountScreen({ router }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  return (
+    <>
+      <ScreenState
+        title="This account was deleted"
+        message="Its login was not removed yet. Finish deleting it, or log out."
+        actionLabel="Finish deleting"
+        onAction={() => setSheetOpen(true)}
+        secondaryActionLabel="Log out"
+        onSecondaryAction={() => handleLogout(router)}
+      />
+      <DeleteAccountSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} finishOnly />
+    </>
+  );
 }
 
 async function handleLogout(router) {

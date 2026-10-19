@@ -228,6 +228,13 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - **Step 3, small fixes:** the Complete mission "Issues encountered (optional)" hint has a color and shows; the driver header drops ", Toledo City" like the resident header; the map's "© OpenStreetMap contributors" credit has a margin so a rounded corner never cuts it (license requirement, all maps).
   - **"Pinned location" (display only, `lib/placeText.js`):** a pickup/"From" text that is only map numbers ("10.390482, 123.649995") shows as "Pinned location" on the resident home card, Request history and details, the driver's ride card, ride history, review pop-up and map, the dispatcher's Selected Request, caller details, alert strip and map, and the Admin request details, request list and Emergency Calls. Saved data is unchanged; the driver's Navigate button still sends the real text to Google Maps; the pin picker and the request form still show the numbers while the resident places the pin.
   - **Left out on purpose:** the different date formats (for the UI refresh) and old "Transport Transport" titles (data cleanup will remove them).
+- **3.15, Delete Account part (phone and website, Residents and Drivers; the Profile-editing part of 3.15 is not done):**
+  - Settings has a red-edged **Delete account** button at the bottom. **Change Password was removed** from Settings in the same commit (owner's decision, October 19); a forgotten password is reset with Forgot password on Log in.
+  - It is **blocked** (never cancels anything by itself) while a resident has a request that is Pending, Assigned or In Progress or an emergency alert open, or while a driver is on duty or has a ride.
+  - Confirm: the person types their password (or, on the phone, chooses their Google account again; Google accounts can't be deleted on the website) and ticks "I understand this can't be undone".
+  - Then the profile gets `deletedAt` and loses phone, phone number, address and picture fields (name and barangay stay), and the login is deleted. Rides, alerts and duty records stay (Privacy Policy section 7). No `firestore.rules` change.
+  - If deleting the login fails after the mark is saved, logging in shows "This account was deleted" with **Finish deleting** / **Log out**.
+  - Admin: Users shows a grey **Deleted** pill and "Deleted on …"; deleted accounts are left out of Resident Verification and Driver Applications (and their counts). Dispatcher: deleted drivers are not in Driver availability.
 
 ---
 

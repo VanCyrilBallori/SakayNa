@@ -4,7 +4,7 @@ import { Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimen
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { DESIGN_COLORS, FONT } from "../../../constants/design";
-import { formatDate } from "../../../lib/dates";
+import { formatDate, formatDay } from "../../../lib/dates";
 import { getApprovalStatus, getProfilePhoto, getUserAddress, getUserName, getUserPhone } from "../utils/userFormatters";
 
 // Account status pill colors (DESIGN.md: orange has dark words; red is only for emergencies, so no red here).
@@ -88,10 +88,13 @@ function UserRow({ user, wide, narrow, isFirst, openUserEditor, setSelectedSecti
       </View>
 
       <View style={[wide ? styles.columnStatus : styles.statusStacked]}>
-        <View style={[styles.statusPill, { backgroundColor: pill.backgroundColor }]}>
-          <Text style={[styles.statusPillText, { color: pill.color }]}>{status}</Text>
+        {/* A deleted account (Task 3.15): a grey "Deleted" pill and the day, so the system administrator knows
+            when the 30-day (photos) and 1-year (history) clean-up is due (Privacy Policy section 7). */}
+        <View style={[styles.statusPill, { backgroundColor: user.deletedAt ? OTHER_STATUS_PILL.backgroundColor : pill.backgroundColor }]}>
+          <Text style={[styles.statusPillText, { color: user.deletedAt ? OTHER_STATUS_PILL.color : pill.color }]}>{user.deletedAt ? "Deleted" : status}</Text>
         </View>
         <Text style={styles.small}>Joined {formatDate(user.createdAt)}</Text>
+        {user.deletedAt ? <Text style={styles.small}>Deleted on {formatDay(user.deletedAt)}</Text> : null}
       </View>
 
       <View style={[styles.actions, wide && styles.columnActions]}>

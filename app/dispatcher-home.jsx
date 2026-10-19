@@ -682,7 +682,8 @@ export default function DispatcherHome() {
     const unsubscribe = onSnapshot(
       driversQuery,
       (snapshot) => {
-        const nextDrivers = snapshot.docs.map((driverDoc) => {
+        // Deleted accounts (Task 3.15) are not listed: they can't take rides any more.
+        const nextDrivers = snapshot.docs.filter((driverDoc) => !driverDoc.data().deletedAt).map((driverDoc) => {
           const data = driverDoc.data();
 
           return {

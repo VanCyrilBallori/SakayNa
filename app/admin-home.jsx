@@ -390,9 +390,16 @@ export default function AdminHome() {
     [users]
   );
 
+  // Accounts the person deleted (Task 3.15). They never show up for approval (their application or
+  // proof of residency may still say "Pending"). Both lists use the account's id as their own id.
+  const deletedUserIds = useMemo(() => new Set(users.filter((user) => user.deletedAt).map((user) => user.id)), [users]);
   const pendingApplications = useMemo(
-    () => driverApplications.filter((application) => application.status === "Pending"),
-    [driverApplications]
+    () => driverApplications.filter((application) => application.status === "Pending" && !deletedUserIds.has(application.id)),
+    [deletedUserIds, driverApplications]
+  );
+  const pendingVerifications = useMemo(
+    () => residentVerifications.filter((verification) => !deletedUserIds.has(verification.id)),
+    [deletedUserIds, residentVerifications]
   );
 
   const dispatcherAccounts = useMemo(
@@ -739,7 +746,7 @@ export default function AdminHome() {
           theme={theme}
           adminId={authUser?.uid || ""}
           adminBarangay={adminBarangay}
-          verifications={residentVerifications}
+          verifications={pendingVerifications}
           isLoading={isLoadingVerifications}
           loadError={verificationsError}
         />
@@ -901,9 +908,9 @@ export default function AdminHome() {
                             <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{staleRingingCount}</Text>
                           </View>
                         ) : null}
-                        {label === "Resident Verification" && residentVerifications.length > 0 ? (
+                        {label === "Resident Verification" && pendingVerifications.length > 0 ? (
                           <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{residentVerifications.length}</Text>
+                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{pendingVerifications.length}</Text>
                           </View>
                         ) : null}
                         {label === "Driver Applications" && pendingApplications.length > 0 ? (
