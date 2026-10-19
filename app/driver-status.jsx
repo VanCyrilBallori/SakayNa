@@ -3,10 +3,11 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
+import ListSkeleton from "../components/ui/ListSkeleton";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
 import { COLORS, FONT, LIGHT_COLORS } from "../constants/design";
 import { db } from "../firebase";
@@ -29,6 +30,10 @@ export default function DriverStatus() {
   const [driverProfile, setDriverProfile] = useState(null);
   const [application, setApplication] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  // The application (sent date, rejection reason) answers a moment after the status. Until both have answered,
+  // grey placeholder rows show, never a false "No reason was given." or "Submitted" without its date.
+  // It turns on at the first answer OR at an error, so the placeholder can never stay forever.
+  const [applicationLoaded, setApplicationLoaded] = useState(false);
 
   useEffect(() => {
     if (!authUser?.uid) {
@@ -70,10 +75,14 @@ export default function DriverStatus() {
 
     return onSnapshot(
       doc(db, FIRESTORE_COLLECTIONS.DRIVER_APPLICATIONS, authUser.uid),
-      (snapshot) => setApplication(snapshot.data() ?? null),
+      (snapshot) => {
+        setApplication(snapshot.data() ?? null);
+        setApplicationLoaded(true);
+      },
       (error) => {
         console.log("Driver application listener warning:", error);
         setApplication(null);
+        setApplicationLoaded(true);
       }
     );
   }, [authUser?.uid]);
@@ -124,11 +133,9 @@ export default function DriverStatus() {
           Application Status
         </Text>
 
-        {isLoading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={[styles.loadingText, { color: colors.muted }]}>Checking application status...</Text>
-          </View>
+        {/* Still loading: three grey rows where the three timeline points will be (Task 3.16 placeholder). */}
+        {isLoading || !applicationLoaded ? (
+          <ListSkeleton rows={3} label="Checking application status" />
         ) : (
           <View style={styles.timeline}>
             {points.map((point, index) => (
@@ -220,8 +227,6 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   logo: { alignSelf: "center", marginBottom: 20 },
   title: { marginTop: 4, marginBottom: 24, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold },
-  loading: { alignItems: "center", gap: 12, paddingVertical: 32 },
-  loadingText: { fontFamily: FONT.regular, fontSize: 16, lineHeight: 23 },
   timeline: { width: "100%" },
   point: { flexDirection: "row", gap: 16 },
   markerColumn: { width: 40, alignItems: "center" },
