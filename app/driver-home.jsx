@@ -15,6 +15,7 @@ import DriverRideCard from "../features/driver/components/DriverRideCard";
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import { startLiveLocation } from "../features/driver/services/driverLocationService";
+import { formatPlace } from "../lib/placeText";
 import {
   getDestinationCoordinates,
   getEmergencyRideTitle,
@@ -133,6 +134,9 @@ export default function DriverHome() {
   const compact = width < 980;
   const narrow = width < 560;
   const { authUser, displayName, profile } = useCurrentUserProfile();
+  // For the place strip. The profile saves "Cabitoonan, Toledo City"; the strip already says Toledo City,
+  // so drop that part (same as the resident header, Task 3.17).
+  const barangayName = (profile?.barangay || "").replace(/,\s*Toledo City$/i, "").trim();
   const { theme } = useTheme();
 
   const [accessStatus, setAccessStatus] = useState("checking");
@@ -489,10 +493,10 @@ export default function DriverHome() {
 
     return {
       title: request.emergencyType ?? request.title ?? "Assigned Request Map",
-      markerLabel: request.pickupLocation || "Assigned request",
+      markerLabel: formatPlace(request.pickupLocation) || "Assigned request",
       pickupLabel: request.pickupDetails
-        ? `${request.pickupLocation || "Pickup"} - ${request.pickupDetails}`
-        : request.pickupLocation || "Pickup location",
+        ? `${formatPlace(request.pickupLocation) || "Pickup"} - ${request.pickupDetails}`
+        : formatPlace(request.pickupLocation) || "Pickup location",
       destinationLabel: request.destination || "",
       pickupCoordinates,
       destinationCoordinates,
@@ -788,14 +792,14 @@ export default function DriverHome() {
           </Pressable>
 
           {/* Two pieces in a wrapping row: one line when both fit, otherwise "Barangay …" moves down as a whole. */}
-          <View style={styles.placeNames} accessible accessibilityRole="header" accessibilityLabel={profile?.barangay ? `Toledo City, Barangay ${profile.barangay}` : "Toledo City"}>
+          <View style={styles.placeNames} accessible accessibilityRole="header" accessibilityLabel={barangayName ? `Toledo City, Barangay ${barangayName}` : "Toledo City"}>
             {/* maxFontSizeMultiplier: the strip grows with the phone's text size only up to 1.3x, so it stays 1-2 lines. */}
             <Text style={styles.placeText} maxFontSizeMultiplier={1.3}>
-              {profile?.barangay ? "Toledo City · " : "Toledo City"}
+              {barangayName ? "Toledo City · " : "Toledo City"}
             </Text>
-            {profile?.barangay ? (
+            {barangayName ? (
               <Text style={styles.placeText} maxFontSizeMultiplier={1.3}>
-                Barangay {profile.barangay}
+                Barangay {barangayName}
               </Text>
             ) : null}
           </View>
@@ -984,7 +988,7 @@ export default function DriverHome() {
               {request?.summary ? <Text style={styles.reviewLine}>Summary: {request.summary}</Text> : null}
               {request?.level ? <Text style={styles.reviewLine}>Priority: {request.level}</Text> : null}
               <Text style={styles.reviewLine}>When: {getWhenText(request)}</Text>
-              <Text style={styles.reviewLine}>Pickup: {request?.pickupLocation ?? "Pickup location pending"}</Text>
+              <Text style={styles.reviewLine}>Pickup: {formatPlace(request?.pickupLocation) ?? "Pickup location pending"}</Text>
               {request?.pickupDetails ? <Text style={styles.reviewLine}>Landmark: {request.pickupDetails}</Text> : null}
               <Text style={styles.reviewLine}>Destination: {request?.destination ?? "Nearest available response center"}</Text>
               <Text style={styles.reviewLine}>Vehicle: {getVehicleName(request, assignedTransfer)}</Text>
@@ -1224,7 +1228,7 @@ function HistoryRow({ assignment, first }) {
         <Text style={styles.historyStatus}>{getMissionStatus(assignment)}</Text>
       </View>
       <Text style={styles.historyMeta}>
-        {assignment.pickupLocation || "Pickup not recorded"} · {when}
+        {formatPlace(assignment.pickupLocation) || "Pickup not recorded"} · {when}
       </Text>
     </View>
   );

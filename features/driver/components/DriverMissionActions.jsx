@@ -232,7 +232,7 @@ export default function DriverMissionActions({ assignment, driverId, officePhone
               <ScrollView style={styles.completionScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <Text style={styles.title}>Complete mission</Text>
                 <Dropdown style={styles.dropdown} data={COMPLETION_OUTCOMES.map((value) => ({ label: value, value }))} labelField="label" valueField="value" value={outcome} onChange={(item) => setOutcome(item.value)} placeholder="Choose outcome" />
-                <TextInput style={styles.input} value={completionIssues} onChangeText={setCompletionIssues} placeholder="Issues encountered (optional)" multiline maxLength={300} textAlignVertical="top" />
+                <TextInput style={styles.input} value={completionIssues} onChangeText={setCompletionIssues} placeholder="Issues encountered (optional)" placeholderTextColor={DESIGN_COLORS.placeholder} multiline maxLength={300} textAlignVertical="top" />
                 {error ? <FeedbackMessage message={error} tone="error" /> : null}
                 <View style={styles.row}>
                   <AppButton label="Confirm completion" loading={saving} onPress={complete} style={styles.action} />

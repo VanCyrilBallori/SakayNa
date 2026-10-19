@@ -1,5 +1,6 @@
 import { REQUEST_STATUSES, RESIDENT_CANCELLABLE_STATUSES } from "../../../constants/app";
 import { formatClockTime, formatShortDay, getDateFromValue } from "../../../lib/dates";
+import { formatPlace } from "../../../lib/placeText";
 import { VULNERABLE_GROUP_OPTIONS } from "./requestOptions";
 
 // ---- Labels shared by the resident, dispatcher, driver and admin screens ----
@@ -59,8 +60,9 @@ export const formatRequestDate = (value) => {
   return date ? date.toLocaleString() : "Not available";
 };
 
+// Only map numbers = "Pinned location" (Task 3.17, display only).
 export const getPickupLabel = (request = {}) =>
-  request.pickup?.address || request.pickupLocation || request.barangay || "Pickup location not provided";
+  formatPlace(request.pickup?.address || request.pickupLocation || request.barangay || "Pickup location not provided");
 
 export const getDestinationLabel = (request = {}) =>
   request.destinationLocation?.address || request.destination || "Destination not provided";

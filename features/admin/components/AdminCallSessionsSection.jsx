@@ -4,6 +4,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDateTime, getDurationLabel } from "../../../lib/dates";
+import { formatPlace } from "../../../lib/placeText";
 
 // The colored pill for each call status (DESIGN.md: red only for "No answer", orange has dark words).
 const STATUS_PILLS = {
@@ -46,7 +47,7 @@ function UnansweredCallBox({ call }) {
         <View style={styles.alarmWho}>
           <Text style={styles.alarmName}>{call.residentName || "Resident"}</Text>
           <Text style={styles.body}>
-            {call.pickupLocation || "Barangay not available"} · started {formatDateTime(call.createdAt)}
+            {formatPlace(call.pickupLocation) || "Barangay not available"} · started {formatDateTime(call.createdAt)}
           </Text>
         </View>
         <View style={styles.phoneBox}>
@@ -167,7 +168,7 @@ export default function AdminCallSessionsSection({ callSessions, isLoadingCallSe
                     <View style={wide && styles.columnWho}>
                       <Text style={styles.name}>
                         {call.residentName || "Resident"}
-                        <Text style={styles.place}> · {call.pickupLocation || "Barangay not available"}</Text>
+                        <Text style={styles.place}> · {formatPlace(call.pickupLocation) || "Barangay not available"}</Text>
                       </Text>
                     </View>
                     <View style={wide && styles.columnWhat}>

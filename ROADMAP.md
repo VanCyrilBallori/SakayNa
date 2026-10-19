@@ -181,6 +181,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.16 Website skeleton loaders | `c0147ff` (Admin, part 1), `10be62d` (Dispatcher, part 2) | ✅ |
 | 3.20 Live driver location | `ba91b9d` (phone, Step A), `b290e19` (dispatcher map, Step B) | ✅ |
 | 3.21 Live route line | `66e11f2`, `e9bf92a` (labels on hover) | ✅ |
+| 3.17 Not touching the navigation bar | `4f46ef6` (Step 1), `4e727f5` (Step 2), Step 3 = the "3.17 Step 3" commit | ✅ |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
@@ -221,6 +222,12 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - The assignment only has the places as typed words, so the ride's request is read **once** for its map positions (dispatchers may read any request; no rules change). No map position = no line. Most destinations are typed words only, so after Picked Up most rides show no line until Task 3.27.
   - The lines move like the pins (no map rebuild) and don't change how the map zooms to the selected request's pins.
   - **Labels on hover (changed after testing, October 19):** always-visible labels under the driver pins and next to the end dots covered the map. Now a pin's or dot's label shows only while the mouse is over it, while the keyboard is on it (pins and dots are Tab stops), or after a tap; tapping a driver pin still opens its pop-up. "Old location" pins and lines stay grey **and faded**, so old is not shown by color alone.
+- **3.17 (phone, needs demo-ready-19; the owner's 13 screenshots, October 19):**
+  - **Step 1, navigation bar:** Pin Pickup Location (Cancel / Confirm pin), Request history (last card) and Request details (Cancel request) now leave room for Android's bottom bar (safe-area inset), like the request form and menu already did. Tested with the 3-button bar and swipe gestures.
+  - **Step 2, clock area:** the Request a Ride form has a green strip (home header green) behind the clock, so the form no longer scrolls under it and the white icons are readable (the old "dark icons" line did not reach this pop-up window and was removed). The resident ☰ menu panel starts below the clock area.
+  - **Step 3, small fixes:** the Complete mission "Issues encountered (optional)" hint has a color and shows; the driver header drops ", Toledo City" like the resident header; the map's "© OpenStreetMap contributors" credit has a margin so a rounded corner never cuts it (license requirement, all maps).
+  - **"Pinned location" (display only, `lib/placeText.js`):** a pickup/"From" text that is only map numbers ("10.390482, 123.649995") shows as "Pinned location" on the resident home card, Request history and details, the driver's ride card, ride history, review pop-up and map, the dispatcher's Selected Request, caller details, alert strip and map, and the Admin request details, request list and Emergency Calls. Saved data is unchanged; the driver's Navigate button still sends the real text to Google Maps; the pin picker and the request form still show the numbers while the resident places the pin.
+  - **Left out on purpose:** the different date formats (for the UI refresh) and old "Transport Transport" titles (data cleanup will remove them).
 
 ---
 
@@ -309,7 +316,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 - **Note:** this **replaces Phase 2's Task 2.1** (skeletons on phones). The lead now wants spinners on phones and skeletons on the website.
 - **Could break:** nothing in the data. A placeholder must never stay forever if loading fails; the error message must still appear.
 
-#### Task 3.17: "Should not touch the navbar"
+#### Task 3.17: "Should not touch the navbar" ✅ Done (see Progress)
 - **What it means (to confirm):** on some phones, content sits under Android's own bottom navigation bar (the ◁ ○ □ or swipe bar).
 - **Decision needed:** which screens? Send screenshots. Each fix is usually one line (add the safe-area space at the bottom).
 

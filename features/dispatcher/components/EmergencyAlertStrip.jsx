@@ -4,6 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { DESIGN_COLORS } from "../../../constants/design";
 import { getTimestampMillis } from "../../../lib/dates";
+import { formatPlace } from "../../../lib/placeText";
 
 // The red emergency strip at the very top of the dispatcher page (Task 3.13). It replaces the full-screen
 // "Incoming Emergency Call" pop-up and stays until each alert is answered, declined or ends.
@@ -41,7 +42,7 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
     if (!(call.id in firstPlaceRef.current)) {
       firstPlaceRef.current[call.id] = call.location ? call.location.barangay || call.pickupLocation : call.pickupLocation;
     }
-    return (firstPlaceRef.current[call.id] || "Barangay not given").replace(/,\s*Toledo City$/i, "");
+    return formatPlace(firstPlaceRef.current[call.id] || "Barangay not given").replace(/,\s*Toledo City$/i, "");
   };
 
   if (!calls.length) return null;

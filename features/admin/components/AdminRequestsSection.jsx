@@ -6,6 +6,7 @@ import { DESIGN_COLORS } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { getWhenText } from "../../resident/utils/requestMapper";
 import { getPurpose } from "../../resident/utils/requestOptions";
+import { formatPlace } from "../../../lib/placeText";
 
 // The colored band at the top of each card (DESIGN.md "Status band colors": orange has dark words, never red).
 const STATUS_BANDS = {
@@ -115,7 +116,7 @@ function RequestCard({ request, onViewDetails, half, narrow }) {
             </View>
             <View style={styles.routeStop}>
               <Text style={styles.small}>From</Text>
-              <Text style={styles.place}>{request.pickupLocation || request.barangay || "Not available"}</Text>
+              <Text style={styles.place}>{formatPlace(request.pickupLocation) || request.barangay || "Not available"}</Text>
             </View>
           </View>
           <View style={styles.routeRow}>

@@ -45,6 +45,7 @@ import {
 } from "../lib/dates";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
+import { formatPlace } from "../lib/placeText";
 
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
@@ -949,7 +950,7 @@ export default function AdminHome() {
               <Text style={[styles.detailLine, { color: theme.text }]}>Passenger: {getPassengerName(selectedRequestRecord)}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Contact Number: {selectedRequestRecord?.contactNumber || "Not provided"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>People Riding: {getPassengerCountText(selectedRequestRecord)}</Text>
-              <Text style={[styles.detailLine, { color: theme.text }]}>Pickup: {selectedRequestRecord?.pickupLocation || selectedRequestRecord?.barangay || "Not available"}</Text>
+              <Text style={[styles.detailLine, { color: theme.text }]}>Pickup: {formatPlace(selectedRequestRecord?.pickupLocation) || selectedRequestRecord?.barangay || "Not available"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Landmark: {selectedRequestRecord?.pickupDetails || "Not provided"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Destination: {selectedRequestRecord?.destination || "Not available"}</Text>
               <Text style={[styles.detailLine, { color: theme.text }]}>Help Needed: {getAssistanceText(selectedRequestRecord)}</Text>

@@ -11,6 +11,7 @@ import EmergencyRequestForm from "../features/dispatcher/components/EmergencyReq
 import useAlertSound from "../features/dispatcher/hooks/useAlertSound";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
 import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
+import { formatPlace } from "../lib/placeText";
 import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
 import { BIG_GROUP_NOTE, isBigGroup } from "../features/resident/utils/requestOptions";
 import { startPhoneCall } from "../lib/phoneCall";
@@ -129,7 +130,7 @@ function EmergencyCallerDetails({ call }) {
   const location = call?.location;
   const hasLocation = typeof location?.latitude === "number" && typeof location?.longitude === "number";
   // pickupLocation starts as the resident's barangay and becomes the GPS address once the location arrives.
-  const place = call?.pickupLocation || "Not provided";
+  const place = formatPlace(call?.pickupLocation) || "Not provided";
 
   return (
     <View style={styles.callerDetails}>
@@ -329,7 +330,7 @@ function SelectedRequestDetails({ request, now, oneRow = false }) {
   const phone = request.contactNumber || request.residentPhone || "";
   const bookedForSomeoneElse = request.ridingFor === "other";
 
-  const pickup = [request.pickupLocation, request.barangay].filter(Boolean).filter((value, index, list) => list.indexOf(value) === index).join(", ");
+  const pickup = [formatPlace(request.pickupLocation), request.barangay].filter(Boolean).filter((value, index, list) => list.indexOf(value) === index).join(", ");
   // Columns 2-4 (column 1 is the passenger). Each value is one line (Notes: up to 2), then "…" and the full text on mouse hover.
   const columns = [
     [
@@ -1176,7 +1177,7 @@ export default function DispatcherHome() {
         ]}
       >
         <View style={[styles.mapPlaceholder, fillWindow && styles.mapPlaceholderFill]}>
-          <LeafletMap key={mapRebuildCount} title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} liveDrivers={liveMapDrivers} focusLiveDriver={mapFocus} focusPickup minHeight={fillWindow ? 0 : 280} />
+          <LeafletMap key={mapRebuildCount} title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={formatPlace(selectedRequest?.pickupLocation) || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${formatPlace(selectedRequest.pickupLocation)} - ${selectedRequest.pickupDetails}` : formatPlace(selectedRequest?.pickupLocation) || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} liveDrivers={liveMapDrivers} focusLiveDriver={mapFocus} focusPickup minHeight={fillWindow ? 0 : 280} />
         </View>
       </View>
     );

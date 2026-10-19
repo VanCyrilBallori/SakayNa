@@ -5,6 +5,7 @@ import { DESIGN_COLORS } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../../resident/utils/requestMapper";
 import { getDestinationLabel, getEmergencyRideTitle, getPatientCountText, getPickupLabel, isEmergencyFormRide } from "../utils/driverMissionMapper";
+import { formatPlace } from "../../../lib/placeText";
 
 // The words and color of the status band for each ride step (DESIGN.md "Status band colors").
 // A driver is on it = deep green with white words. "At the pickup" = orange with dark words. Cancelled = grey. Never red.
@@ -59,7 +60,7 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
             </View>
             <View style={styles.routeText}>
               <Text style={styles.routeLabel}>Pickup</Text>
-              <Text style={styles.routePlace}>{getPickupLabel(request)}</Text>
+              <Text style={styles.routePlace}>{formatPlace(getPickupLabel(request))}</Text>
               {request.pickupDetails ? <Text style={styles.landmark}>Landmark: {request.pickupDetails}</Text> : null}
             </View>
           </View>
