@@ -331,3 +331,34 @@ house icon without a word, because there is a screen-reader label
 
 Everything else on those pages, and every phone screen, follows the rules
 above.
+
+## Admin website exception (Task 3.19, October 2026)
+
+The Admin website is a computer task with a mouse, often with long lists.
+It may be **denser** than the phone screens: less empty space, not smaller
+text. This applies only to the Admin website (`app/admin-home.jsx` and
+`features/admin/components`). Phone screens and the dispatcher website keep
+their own rules.
+
+- **Text:** the normal type scale. Nothing under 15 (Small). The section
+  title is 28, card titles 17-22, rows and details 15-17.
+- **Frame:** the header (icon, "SakayNa", barangay, the Admin's initials)
+  stays at the top. On wide windows (1080 px and up) the side menu is on the
+  left and the section panel on the right; only the panel scrolls. Narrower
+  windows put the side menu above the panel as a row of pills, and the page
+  scrolls.
+- **Side menu:** one row per section: an icon (24) and its word, left
+  aligned, at least 48 tall. The open section is a green 600 pill with white
+  words. Count badges sit at the right end (red only for Emergency Calls).
+- **Section title line:** every section starts the same way: a 40 round
+  badge with a white icon (Emergency Calls red, all others Hall Green), the
+  title, and one short explanation beside it (or under it when there is no
+  room).
+- **Spacing:** gaps 8 or 12; card and row padding 12-16. Lists are short
+  rows or cards, in 2-3 columns on wide windows and one column on narrow
+  ones. A row's details open in the existing pop-ups.
+- **Controls:** small buttons and chips inside lists and filters may be 40
+  tall (a mouse is precise), with at least 8 between them. Main actions in
+  pop-ups (Save, Approve, Reject) stay at least 48.
+- Colors, corners, shadows, the word-with-every-color rule and the one red
+  rule are unchanged.
