@@ -4,17 +4,18 @@ import { Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimen
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import AdminSectionHeader from "./AdminSectionHeader";
-import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, ORANGE } from "../../../constants/design";
 import { formatDate, formatDay } from "../../../lib/dates";
 import { getApprovalStatus, getProfilePhoto, getUserAddress, getUserName, getUserPhone } from "../utils/userFormatters";
 
 // Account status pill colors (DESIGN.md: orange has dark words; red is only for emergencies, so no red here).
+// Tinted pills with dark words (DESIGN.md Style status badges), like the Requests cards.
 const STATUS_PILLS = {
-  Active: { backgroundColor: DESIGN_COLORS.hallGreenDeep, color: DESIGN_COLORS.paperWhite },
-  Approved: { backgroundColor: DESIGN_COLORS.hallGreenDeep, color: DESIGN_COLORS.paperWhite },
-  Pending: { backgroundColor: DESIGN_COLORS.sakayOrange, color: DESIGN_COLORS.ink },
+  Active: { backgroundColor: GREEN[100], color: GREEN[800] },
+  Approved: { backgroundColor: GREEN[100], color: GREEN[800] },
+  Pending: { backgroundColor: ORANGE[100], color: ORANGE[800] },
 };
-const OTHER_STATUS_PILL = { backgroundColor: DESIGN_COLORS.inkMuted, color: DESIGN_COLORS.paperWhite };
+const OTHER_STATUS_PILL = { backgroundColor: NEUTRAL[100], color: NEUTRAL[700] };
 
 const ROLE_ICONS = {
   Resident: "home-outline",
@@ -168,41 +169,43 @@ export default function AdminUsersSection({
         subtitle="Everyone with a SakayNa account. Edit fixes contact details. Change status opens Operations."
       />
 
-      {Platform.OS === "web" ? (
-        <View style={styles.filterGroup}>
-          <Text style={styles.label}>Search users</Text>
-          <View style={styles.searchBox}>
-            <MaterialCommunityIcons name="magnify" size={24} color={DESIGN_COLORS.inkMuted} />
-            <TextInput
-              style={styles.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Name, email, phone or barangay"
-              placeholderTextColor={DESIGN_COLORS.placeholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-              accessibilityLabel="Search users by name, email, phone or barangay"
-            />
-            {search ? (
-              <Pressable
-                onPress={() => setSearch("")}
-                style={({ pressed }) => [styles.clearSearch, pressed && styles.outlineButtonPressed]}
-                accessibilityRole="button"
-                accessibilityLabel="Clear user search"
-              >
-                <MaterialCommunityIcons name="close" size={24} color={DESIGN_COLORS.inkMuted} />
-              </Pressable>
-            ) : null}
+      <View style={styles.filtersRow}>
+        {Platform.OS === "web" ? (
+          <View style={[styles.filterGroup, styles.searchGroup]}>
+            <Text style={styles.label}>Search users</Text>
+            <View style={styles.searchBox}>
+              <MaterialCommunityIcons name="magnify" size={24} color={DESIGN_COLORS.inkMuted} />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Name, email, phone or barangay"
+                placeholderTextColor={DESIGN_COLORS.placeholder}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Search users by name, email, phone or barangay"
+              />
+              {search ? (
+                <Pressable
+                  onPress={() => setSearch("")}
+                  style={({ pressed }) => [styles.clearSearch, pressed && styles.outlineButtonPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear user search"
+                >
+                  <MaterialCommunityIcons name="close" size={24} color={DESIGN_COLORS.inkMuted} />
+                </Pressable>
+              ) : null}
+            </View>
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      <View style={styles.filterGroup}>
-        <Text style={styles.label}>Role</Text>
-        <View style={styles.pills}>
-          {userRoleViews.map((role) => (
-            <RolePill key={role} label={role} count={countFor(role)} selected={userRoleView === role} onPress={() => setUserRoleView(role)} />
-          ))}
+        <View style={styles.filterGroup}>
+          <Text style={styles.label}>Role</Text>
+          <View style={styles.pills}>
+            {userRoleViews.map((role) => (
+              <RolePill key={role} label={role} count={countFor(role)} selected={userRoleView === role} onPress={() => setUserRoleView(role)} />
+            ))}
+          </View>
         </View>
       </View>
 
@@ -257,7 +260,7 @@ const styles = StyleSheet.create({
   errorText: { padding: 12, borderRadius: 16, overflow: "hidden", fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
 
   searchBox: {
-    minHeight: 56,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -268,19 +271,22 @@ const styles = StyleSheet.create({
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  searchInput: { fontFamily: FONT.regular, flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 17, color: DESIGN_COLORS.ink },
-  clearSearch: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: CORNER.pill },
+  searchInput: { fontFamily: FONT.regular, flex: 1, minWidth: 0, paddingVertical: 8, fontSize: 17, color: DESIGN_COLORS.ink },
+  clearSearch: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: CORNER.pill },
 
-  // Pill-shaped choices, like the Requests filters.
-  filterGroup: { gap: 8 },
+  // Search and Role side by side when there is room.
+  filtersRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-end", columnGap: 24, rowGap: 12 },
+  searchGroup: { flexGrow: 1, flexBasis: 320, maxWidth: 520 },
+  // Pill-shaped choices, like the Requests filters (40 tall, DESIGN.md "Admin website exception").
+  filterGroup: { gap: 6 },
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   pill: {
-    minHeight: 48,
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingLeft: 8,
-    paddingRight: 18,
+    paddingLeft: 6,
+    paddingRight: 16,
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
@@ -289,16 +295,16 @@ const styles = StyleSheet.create({
   pillSelected: { borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.hallGreen },
   pillText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   pillTextSelected: { color: DESIGN_COLORS.paperWhite },
-  countBubble: { minWidth: 32, height: 32, paddingHorizontal: 8, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
+  countBubble: { minWidth: 28, height: 28, paddingHorizontal: 7, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
   countBubbleSelected: { backgroundColor: DESIGN_COLORS.paperWhite },
   countText: { fontSize: 15, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   countTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
 
   // The list: one white box with 24 corners, thin lines between users (like Emergency calls).
   list: { borderRadius: CORNER.card, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
-  listHeader: { paddingVertical: 10, backgroundColor: DESIGN_COLORS.boardTint },
+  listHeader: { paddingVertical: 8, backgroundColor: DESIGN_COLORS.boardTint },
   listHeaderText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.inkMuted },
-  row: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 14, paddingHorizontal: 16 },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 14 },
   rowStacked: { flexDirection: "column", alignItems: "stretch", gap: 10 },
   rowDivider: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
   columnPerson: { flex: 1.2, minWidth: 0 },
@@ -309,8 +315,8 @@ const styles = StyleSheet.create({
   statusStacked: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 10 },
 
   person: { flexDirection: "row", alignItems: "center", gap: 12 },
-  avatar: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: DESIGN_COLORS.boardTint },
-  avatarImage: { width: 48, height: 48, borderRadius: 999 },
+  avatar: { width: 40, height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: DESIGN_COLORS.boardTint },
+  avatarImage: { width: 40, height: 40, borderRadius: 999 },
   initials: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreenDeep },
   cell: { flex: 1, minWidth: 0, gap: 2 },
   name: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
@@ -321,7 +327,7 @@ const styles = StyleSheet.create({
 
   actions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 },
   outlineButton: {
-    minHeight: 48,
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
