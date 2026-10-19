@@ -1,4 +1,4 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
@@ -92,13 +92,18 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
       ) : loadError ? (
         <Text style={[styles.errorText, { color: dangerText }]}>{loadError}</Text>
       ) : verifications.length ? (
-        <View style={styles.list}>
-          {verifications.map((verification) => (
-            <View key={verification.id} style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        // One white list with thin lines between residents, like Users (DESIGN.md "Admin website exception").
+        <View style={[styles.list, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          {verifications.map((verification, index) => (
+            <View key={verification.id} style={[styles.listRow, index > 0 && styles.listRowDivider]}>
+              <View style={styles.listIcon}>
+                <MaterialCommunityIcons name="file-document-outline" size={24} color={GREEN[700]} />
+              </View>
               <View style={styles.rowCopy}>
                 <Text style={[styles.rowName, { color: theme.text }]}>{verification.fullName || "Unnamed resident"}</Text>
-                <Text style={[styles.rowLine, { color: theme.text }]}>{verification.documentType || "Document type not given"}</Text>
-                <Text style={[styles.rowLine, { color: theme.mutedText }]}>Submitted {formatDateTime(verification.submittedAt)}</Text>
+                <Text style={[styles.listDetail, { color: theme.mutedText }]}>
+                  {verification.documentType || "Document type not given"} · Submitted {formatDateTime(verification.submittedAt)}
+                </Text>
               </View>
               <TouchableOpacity style={styles.reviewButton} onPress={() => openReview(verification)} accessibilityRole="button" accessibilityLabel={`Review ${verification.fullName || "resident"}`}>
                 <Text style={styles.reviewButtonText}>Review</Text>
@@ -229,7 +234,7 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
   );
 }
 
-// UI refresh (DESIGN.md "Style"): 16-corner cards, pill buttons, Style weights. Sizes unchanged (Task 3.19 decides density).
+// UI refresh (DESIGN.md "Style"): 16-corner cards, pill buttons, Style weights. List rows: DESIGN.md "Admin website exception" (Task 3.19).
 const styles = StyleSheet.create({
   doneText: { marginTop: 12, fontSize: 15, fontFamily: FONT.semiBold, color: GREEN[700] },
   errorText: { marginTop: 12, fontSize: 15, lineHeight: 22, fontFamily: FONT.semiBold, color: RED[600] },
@@ -237,14 +242,18 @@ const styles = StyleSheet.create({
   noticeCopy: { flex: 1 },
   noticeTitle: { fontSize: 17, fontFamily: FONT.bold, color: NEUTRAL[900] },
   noticeText: { marginTop: 4, fontSize: 15, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
-  emptyState: { marginTop: 14, padding: 22, borderRadius: CORNER.card, borderWidth: 1, alignItems: "center", gap: 10 },
+  emptyState: { marginTop: 12, padding: 18, borderRadius: CORNER.card, borderWidth: 1, alignItems: "center", gap: 10 },
   emptyTitle: { fontSize: 16, fontFamily: FONT.bold, textAlign: "center" },
-  list: { marginTop: 14, gap: 12 },
-  row: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: CORNER.card, borderWidth: 1, flexWrap: "wrap" },
+  // One white list box with thin lines between people (like Users).
+  list: { marginTop: 12, borderRadius: CORNER.card, borderWidth: 1, overflow: "hidden" },
+  listRow: { minHeight: 56, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12, paddingVertical: 10, paddingHorizontal: 14 },
+  listRowDivider: { borderTopWidth: 1, borderTopColor: NEUTRAL[200] },
+  listIcon: { width: 40, height: 40, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[50] },
+  listDetail: { marginTop: 2, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium },
   rowCopy: { flex: 1, minWidth: 180 },
-  rowName: { fontSize: 18, fontFamily: FONT.bold },
+  rowName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold },
   rowLine: { marginTop: 4, fontSize: 15, lineHeight: 21, fontFamily: FONT.semiBold },
-  reviewButton: { minHeight: 48, paddingHorizontal: 22, borderRadius: CORNER.pill, backgroundColor: GREEN[600], alignItems: "center", justifyContent: "center" },
+  reviewButton: { minHeight: 40, paddingHorizontal: 18, borderRadius: CORNER.pill, backgroundColor: GREEN[600], alignItems: "center", justifyContent: "center" },
   reviewButtonText: { fontSize: 16, fontFamily: FONT.semiBold, color: "#FFFFFF" },
   overlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 12 },
   card: { width: "100%", maxWidth: 620, maxHeight: "94%", borderRadius: CORNER.card, borderWidth: 1, ...SHADOW.level3 },
