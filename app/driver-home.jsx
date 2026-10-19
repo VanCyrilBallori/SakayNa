@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword } from "firebase/auth";
 import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -14,6 +14,7 @@ import DriverNavigateButton from "../features/driver/components/DriverNavigateBu
 import DriverRideCard from "../features/driver/components/DriverRideCard";
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
+import { startLiveLocation } from "../features/driver/services/driverLocationService";
 import {
   getDestinationCoordinates,
   getEmergencyRideTitle,
@@ -444,6 +445,35 @@ export default function DriverHome() {
 
   const request = currentMissionRequest ?? assignedTransfer?.request;
   const missionStatus = getMissionStatus(assignedTransfer || {});
+
+  // Live location (ROADMAP Task 3.20 Step A): the step name saved with each live update.
+  // The ride's step while it is Accepted ... Picked Up, otherwise "Punch in" (the names firestore.rules allows).
+  // A ref, so a new step is used at the next update without restarting the timer.
+  const liveStepRef = useRef("Punch in");
+  liveStepRef.current = ["Accepted", "En Route", "Arrived", "Picked Up"].includes(missionStatus) ? missionStatus : "Punch in";
+
+  // Live updates run only while SakayNa is on screen and the driver is on duty and not on break.
+  // They stop when the app goes to the background (for example Navigate opens Google Maps), on break, and at punch out.
+  const liveLocationOn = Boolean(authUser?.uid) && duty.dutyStatus !== "Off duty" && duty.dutyStatus !== "On break";
+  useEffect(() => {
+    if (!liveLocationOn || Platform.OS === "web") return undefined;
+    const start = () => startLiveLocation({ driverId: authUser.uid, getStep: () => liveStepRef.current });
+    let stop = AppState.currentState === "active" ? start() : null;
+
+    const appStateSubscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        if (!stop) stop = start();
+      } else if (stop) {
+        stop();
+        stop = null;
+      }
+    });
+
+    return () => {
+      appStateSubscription.remove();
+      if (stop) stop();
+    };
+  }, [liveLocationOn, authUser?.uid]);
 
   const requestMapProps = useMemo(() => {
     if (!request) {
