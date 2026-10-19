@@ -1,4 +1,4 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,17 +6,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppButton from "../../../components/ui/AppButton";
 import CloseButton from "../../../components/ui/CloseButton";
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
-import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/design";
+import { CORNER, FONT, NEUTRAL, SHADOW } from "../../../constants/design";
 import { cancelResidentRequest } from "../services/residentRequestService";
-import { canResidentCancel, formatRequestDate, getAssistanceText, getDestinationCoordinates, getDestinationLabel, getPassengerCountText, getPassengerName, getPickupCoordinates, getPickupLabel, getRequestStatusMeta, getWhenText } from "../utils/requestMapper";
+import { canResidentCancel, formatRequestDate, getAssistanceText, getDestinationCoordinates, getDestinationLabel, getPassengerCountText, getPassengerName, getPickupCoordinates, getPickupLabel, getRequestStatusMeta, getStatusBadgeColors, getWhenText } from "../utils/requestMapper";
 import { validateCancellationReason } from "../utils/requestValidation";
 import RequestStatusTimeline from "./RequestStatusTimeline";
 import LeafletMap from "../../../components/LeafletMap";
 
-const DetailLine = ({ label, value }) => <View style={styles.detailLine}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value || "Not provided"}</Text></View>;
+// One line of details: a small grey label (sentence case, DESIGN.md No-Whisper Rule) and the value under it.
+const DetailLine = ({ label, value }) => (
+  <View style={styles.detailLine}>
+    <Text style={styles.label}>{label}</Text>
+    <Text style={styles.value}>{value || "Not provided"}</Text>
+  </View>
+);
 
 // One request's details. The "Cancel request" pop-up lives here too, so this window works the same
-// wherever it is opened from (Request History, or the latest request card on the home screen).
+// wherever it is opened from (the History page, or the "Your ride" card on the home screen).
 export default function ResidentRequestDetails({ request, visible, onClose }) {
   // Android draws this window behind its own bottom bar (◁ ○ □), so leave that much room at the bottom (Task 3.17).
   const insets = useSafeAreaInsets();
@@ -27,6 +33,7 @@ export default function ResidentRequestDetails({ request, visible, onClose }) {
 
   if (!request) return null;
   const status = getRequestStatusMeta(request.status);
+  const badge = getStatusBadgeColors(request.status);
   const driverName = request.assignedDriverName || request.driverName;
   const vehicle = request.assignedVehicleName || request.vehicle;
   const dispatcherName = request.dispatcherName || request.assignedDispatcherName;
@@ -46,14 +53,118 @@ export default function ResidentRequestDetails({ request, visible, onClose }) {
     finally { setCancelling(false); }
   };
 
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.card}><ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}><CloseButton onPress={onClose} label="Close request details" style={styles.close} /><Text style={styles.title}>Request details</Text><Text style={styles.reference}>{request.reference}</Text><View style={[styles.status, { backgroundColor: status.tone === "danger" ? COLORS.emergencySurface : status.tone === "success" ? "#E7F5ED" : COLORS.warningSurface }]}><FontAwesome name={status.icon} size={14} color={status.tone === "danger" ? COLORS.emergency : status.tone === "success" ? COLORS.success : COLORS.warning} /><Text style={styles.statusText}>{status.label}</Text></View>
-  <DetailLine label="Ride for" value={request.title || request.serviceType} /><DetailLine label="When" value={getWhenText(request)} /><DetailLine label="Pickup" value={getPickupLabel(request)} /><DetailLine label="Landmark" value={request.pickupDetails} /><DetailLine label="Going to" value={getDestinationLabel(request)} /><DetailLine label="Passenger" value={getPassengerName(request)} /><DetailLine label="Contact number" value={request.contactNumber} /><DetailLine label="People riding" value={getPassengerCountText(request)} /><DetailLine label="Help needed" value={getAssistanceText(request)} />{request.additionalNotes ? <DetailLine label="Notes" value={request.additionalNotes} /> : null}<DetailLine label="Submitted" value={formatRequestDate(request.createdAt)} /><DetailLine label="Latest update" value={formatRequestDate(request.latestUpdatedAt)} />
-  <View style={styles.section}><Text style={styles.sectionTitle}>Assigned responder</Text>{driverName ? <><DetailLine label="Driver" value={driverName} /><DetailLine label="Vehicle" value={[vehicle, request.vehiclePlateNumber ? `Plate ${request.vehiclePlateNumber}` : ""].filter(Boolean).join(" | ")} /><DetailLine label="Contact" value={request.assignedDriverPhone || request.driverContactNumber || "Contact is not available yet"} /></> : <Text style={styles.muted}>Not yet assigned. Dispatcher contact is shown only when linked to this request.</Text>}{dispatcherName ? <><DetailLine label="Dispatcher" value={dispatcherName} /><DetailLine label="Dispatcher contact" value={request.dispatcherOfficePhone || "Contact is not available yet"} /></> : null}</View>
-  {pickupCoordinates || destinationCoordinates ? <View style={styles.map}><LeafletMap title={`Route for ${request.reference}`} pickupLabel={getPickupLabel(request)} destinationLabel={getDestinationLabel(request)} pickupCoordinates={pickupCoordinates} destinationCoordinates={destinationCoordinates} /></View> : null}
-  <View style={styles.section}><Text style={styles.sectionTitle}>Status timeline</Text><RequestStatusTimeline request={request} /></View>
-  {canResidentCancel(request) ? <AppButton label="Cancel request" variant="danger" onPress={openCancel} style={styles.cancel} /> : null}</ScrollView></View></View>
-  {/* Inside the Details window, so it shows on top of it on every phone. */}
-  <Modal visible={cancelOpen} transparent animationType="fade" onRequestClose={() => !cancelling && setCancelOpen(false)}><View style={styles.dialogOverlay}><View style={styles.dialog}><Text style={styles.dialogTitle}>Cancel request?</Text><Text style={styles.muted}>This keeps the request record but removes it from the active queue when it is still eligible.</Text><TextInput style={styles.reason} value={reason} onChangeText={setReason} placeholder="Reason for cancellation" placeholderTextColor={COLORS.subtleText} multiline maxLength={240} textAlignVertical="top" />{cancelError ? <FeedbackMessage message={cancelError} tone="error" /> : null}<View style={styles.actions}><AppButton label="Keep request" variant="secondary" disabled={cancelling} onPress={() => setCancelOpen(false)} style={styles.button} /><AppButton label="Confirm cancellation" variant="danger" loading={cancelling} onPress={requestCancellation} style={styles.button} /></View></View></View></Modal></Modal>;
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        {/* A bottom sheet (DESIGN.md Style): 24 top corners, a grabber bar, Level 3 shadow. */}
+        <View style={styles.sheet}>
+          <View style={styles.grabber} />
+          <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
+            <View style={styles.titleRow}>
+              <View style={styles.titleCopy}>
+                <Text style={styles.title} accessibilityRole="header">Request details</Text>
+                <Text style={styles.reference}>{request.reference}</Text>
+              </View>
+              <CloseButton onPress={onClose} label="Close request details" />
+            </View>
+            <View style={[styles.badge, { backgroundColor: badge.backgroundColor }]}>
+              <Text style={[styles.badgeText, { color: badge.color }]}>{status.label}</Text>
+            </View>
+
+            <View style={styles.group}>
+              <DetailLine label="Ride for" value={request.title || request.serviceType} />
+              <DetailLine label="When" value={getWhenText(request)} />
+              <DetailLine label="Pickup" value={getPickupLabel(request)} />
+              <DetailLine label="Landmark" value={request.pickupDetails} />
+              <DetailLine label="Going to" value={getDestinationLabel(request)} />
+              <DetailLine label="Passenger" value={getPassengerName(request)} />
+              <DetailLine label="Contact number" value={request.contactNumber} />
+              <DetailLine label="People riding" value={getPassengerCountText(request)} />
+              <DetailLine label="Help needed" value={getAssistanceText(request)} />
+              {request.additionalNotes ? <DetailLine label="Notes" value={request.additionalNotes} /> : null}
+              <DetailLine label="Sent" value={formatRequestDate(request.createdAt)} />
+              <DetailLine label="Latest update" value={formatRequestDate(request.latestUpdatedAt)} />
+            </View>
+
+            <Text style={styles.sectionTitle} accessibilityRole="header">Assigned responder</Text>
+            <View style={styles.group}>
+              {driverName ? (
+                <>
+                  <DetailLine label="Driver" value={driverName} />
+                  <DetailLine label="Vehicle" value={[vehicle, request.vehiclePlateNumber ? `Plate ${request.vehiclePlateNumber}` : ""].filter(Boolean).join(" · ")} />
+                  <DetailLine label="Contact" value={request.assignedDriverPhone || request.driverContactNumber || "Contact is not available yet"} />
+                </>
+              ) : (
+                <Text style={styles.muted}>Not yet assigned. Dispatcher contact is shown only when linked to this request.</Text>
+              )}
+              {dispatcherName ? (
+                <>
+                  <DetailLine label="Dispatcher" value={dispatcherName} />
+                  <DetailLine label="Dispatcher contact" value={request.dispatcherOfficePhone || "Contact is not available yet"} />
+                </>
+              ) : null}
+            </View>
+
+            {pickupCoordinates || destinationCoordinates ? (
+              <View style={styles.map}>
+                <LeafletMap title={`Route for ${request.reference}`} pickupLabel={getPickupLabel(request)} destinationLabel={getDestinationLabel(request)} pickupCoordinates={pickupCoordinates} destinationCoordinates={destinationCoordinates} />
+              </View>
+            ) : null}
+
+            <Text style={styles.sectionTitle} accessibilityRole="header">Status timeline</Text>
+            <View style={styles.group}>
+              <RequestStatusTimeline request={request} />
+            </View>
+
+            {canResidentCancel(request) ? <AppButton label="Cancel request" variant="danger" onPress={openCancel} style={styles.cancel} /> : null}
+          </ScrollView>
+        </View>
+      </View>
+
+      {/* Inside the Details window, so it shows on top of it on every phone. */}
+      <Modal visible={cancelOpen} transparent animationType="fade" onRequestClose={() => !cancelling && setCancelOpen(false)}>
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialog}>
+            <MaterialCommunityIcons name="close-circle-outline" size={44} color={NEUTRAL[700]} />
+            <Text style={styles.dialogTitle} accessibilityRole="header">Cancel request?</Text>
+            <Text style={styles.muted}>The request stays in your history, but dispatch will not send a vehicle.</Text>
+            <TextInput style={styles.reason} value={reason} onChangeText={setReason} placeholder="Reason for cancelling" placeholderTextColor={NEUTRAL[600]} multiline maxLength={240} textAlignVertical="top" />
+            {cancelError ? <FeedbackMessage message={cancelError} tone="error" /> : null}
+            {/* The main action on top at full width, Keep underneath (DESIGN.md Layout). */}
+            <AppButton label="Cancel request" variant="danger" loading={cancelling} onPress={requestCancellation} style={styles.dialogButton} />
+            <AppButton label="Keep request" variant="secondary" disabled={cancelling} onPress={() => setCancelOpen(false)} style={styles.dialogButtonSecond} />
+          </View>
+        </View>
+      </Modal>
+    </Modal>
+  );
 }
 
-const styles = StyleSheet.create({ overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(13,31,24,.62)" }, card: { maxHeight: "94%", backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg }, content: { padding: SPACING.lg, paddingBottom: 32 }, close: { alignSelf: "flex-end" },  title: { fontSize: 22, fontFamily: FONT.extraBold, color: COLORS.text }, reference: { marginTop: 4, color: COLORS.mutedText, fontSize: 13, fontFamily: FONT.bold }, status: { alignSelf: "flex-start", flexDirection: "row", gap: 7, marginTop: SPACING.md, paddingHorizontal: 10, paddingVertical: 7, borderRadius: RADIUS.pill }, statusText: { color: COLORS.text, fontSize: 13, fontFamily: FONT.bold }, detailLine: { marginTop: SPACING.md }, label: { color: COLORS.subtleText, fontSize: 12, fontFamily: FONT.bold, textTransform: "uppercase" }, value: { fontFamily: FONT.regular, marginTop: 3, color: COLORS.text, fontSize: 15, lineHeight: 21 }, section: { marginTop: SPACING.xl, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border }, sectionTitle: { color: COLORS.text, fontSize: 17, fontFamily: FONT.extraBold }, muted: { marginTop: SPACING.sm, color: COLORS.mutedText, lineHeight: 20 }, map: { height: 260, marginTop: SPACING.xl, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm }, cancel: { marginTop: SPACING.xl }, dialogOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: SPACING.lg, backgroundColor: "rgba(13,31,24,.62)" }, dialog: { width: "100%", maxWidth: 480, padding: SPACING.lg, backgroundColor: COLORS.surface, borderRadius: RADIUS.md }, dialogTitle: { color: COLORS.text, fontSize: 20, fontFamily: FONT.extraBold }, reason: { minHeight: 92, marginTop: SPACING.md, padding: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, color: COLORS.text }, actions: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.lg }, button: { flex: 1 } });
+const styles = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(20, 33, 28, 0.55)" },
+  sheet: { maxHeight: "94%", backgroundColor: NEUTRAL[50], borderTopLeftRadius: CORNER.sheet, borderTopRightRadius: CORNER.sheet, ...SHADOW.level3 },
+  grabber: { alignSelf: "center", width: 40, height: 5, marginTop: 10, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[300] },
+  content: { paddingHorizontal: 16, paddingTop: 8 },
+  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  titleCopy: { flex: 1, paddingTop: 8 },
+  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  reference: { marginTop: 2, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  // Status badge: a pill with the status word (the same colors as the History page).
+  badge: { alignSelf: "flex-start", marginTop: 12, paddingHorizontal: 14, paddingVertical: 6, borderRadius: CORNER.pill },
+  badgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold },
+  // A white card for each group of details (16 corners, thin edge, Level 1 shadow).
+  group: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 4, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  detailLine: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: NEUTRAL[100] },
+  label: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  value: { marginTop: 2, fontSize: 17, lineHeight: 24, fontFamily: FONT.regular, color: NEUTRAL[900] },
+  sectionTitle: { marginTop: 24, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  muted: { paddingVertical: 12, fontSize: 17, lineHeight: 24, fontFamily: FONT.regular, color: NEUTRAL[700] },
+  map: { height: 260, marginTop: 24, overflow: "hidden", borderWidth: 1, borderColor: NEUTRAL[200], borderRadius: CORNER.card },
+  cancel: { marginTop: 24 },
+  dialogOverlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16, backgroundColor: "rgba(20, 33, 28, 0.55)" },
+  dialog: { width: "100%", maxWidth: 440, alignItems: "center", padding: 24, borderRadius: CORNER.card, backgroundColor: NEUTRAL[0], ...SHADOW.level3 },
+  dialogTitle: { marginTop: 8, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  reason: { alignSelf: "stretch", minHeight: 96, marginTop: 8, padding: 14, borderWidth: 1.5, borderColor: NEUTRAL[500], borderRadius: CORNER.input, backgroundColor: NEUTRAL[0], fontSize: 17, fontFamily: FONT.regular, color: NEUTRAL[900] },
+  dialogButton: { alignSelf: "stretch", minHeight: 56, marginTop: 16 },
+  dialogButtonSecond: { alignSelf: "stretch", minHeight: 56, marginTop: 12 },
+});

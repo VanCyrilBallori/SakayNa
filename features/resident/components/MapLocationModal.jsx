@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LeafletMap from "../../../components/LeafletMap";
 import AppButton from "../../../components/ui/AppButton";
 import CloseButton from "../../../components/ui/CloseButton";
-import { COLORS, FONT, RADIUS, SPACING } from "../../../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, SHADOW, SPACING } from "../../../constants/design";
 import { getLocationIfAllowed } from "../hooks/useCurrentLocation";
 
 const toCoordinateAddress = (location) => `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
@@ -61,20 +61,22 @@ export default function MapLocationModal({ visible, initialLocation, onClose, on
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
+        {/* A bottom sheet (DESIGN.md Style): 24 top corners, a grabber bar, Level 3 shadow. */}
         <View style={[styles.card, { paddingBottom: insets.bottom + SPACING.lg }]}>
+          <View style={styles.grabber} />
           <View style={styles.header}>
             <View style={styles.headerCopy}><Text style={styles.title}>Pin Pickup Location</Text><Text style={styles.subtitle}>Tap the map to place the pickup marker, then confirm it.</Text></View>
             <CloseButton onPress={onClose} label="Close map picker" />
           </View>
           <View style={styles.map}>
             {startCenter === undefined ? (
-              <View style={styles.mapLoading}><ActivityIndicator color={COLORS.primary} /><Text style={styles.mapLoadingText}>Opening the map…</Text></View>
+              <View style={styles.mapLoading}><ActivityIndicator color={GREEN[600]} /><Text style={styles.mapLoadingText}>Opening the map…</Text></View>
             ) : (
               <LeafletMap title="Select pickup location" markerLabel="Pickup location" pickupCoordinates={selected ? [selected.latitude, selected.longitude] : null} centerCoordinates={startCenter} selectable onLocationSelect={selectLocation} />
             )}
           </View>
           <Text style={styles.coordinate}>{selected ? `Selected: ${toCoordinateAddress(selected)}` : "Tap the map to select a location."}</Text>
-          <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Address or landmark (map fallback)" placeholderTextColor={COLORS.subtleText} maxLength={180} />
+          <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Address or landmark (map fallback)" placeholderTextColor={NEUTRAL[600]} maxLength={180} />
           <Text style={styles.hint}>If the map does not load, close this window and enter the barangay and landmark manually.</Text>
           <View style={styles.actions}><AppButton label="Cancel" variant="secondary" onPress={onClose} style={styles.button} /><AppButton label="Confirm pin" disabled={!selected} onPress={confirm} style={styles.button} /></View>
         </View>
@@ -84,13 +86,19 @@ export default function MapLocationModal({ visible, initialLocation, onClose, on
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(13, 31, 24, 0.62)" },
-  card: { maxHeight: "92%", padding: SPACING.lg, backgroundColor: COLORS.surface, borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg },
+  overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(20, 33, 28, 0.55)" },
+  card: { maxHeight: "92%", paddingHorizontal: SPACING.lg, backgroundColor: NEUTRAL[0], borderTopLeftRadius: CORNER.sheet, borderTopRightRadius: CORNER.sheet, ...SHADOW.level3 },
+  grabber: { alignSelf: "center", width: 40, height: 5, marginTop: 10, marginBottom: 6, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[300] },
   header: { flexDirection: "row", gap: SPACING.md, justifyContent: "space-between", alignItems: "flex-start", marginBottom: SPACING.md },
-  title: { fontSize: 21, fontFamily: FONT.extraBold, color: COLORS.text }, subtitle: { maxWidth: 290, marginTop: 4, color: COLORS.mutedText, lineHeight: 20 },
-  headerCopy: { flex: 1 }, 
-  map: { height: 320, overflow: "hidden", borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.border },
-  mapLoading: { flex: 1, alignItems: "center", justifyContent: "center", gap: SPACING.sm }, mapLoadingText: { fontFamily: FONT.regular, color: COLORS.mutedText, fontSize: 15 }, coordinate: { fontFamily: FONT.regular, marginTop: SPACING.sm, color: COLORS.mutedText, fontSize: 13 },
-  input: { minHeight: 48, marginTop: SPACING.sm, paddingHorizontal: SPACING.md, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, color: COLORS.text },
-  hint: { fontFamily: FONT.regular, marginTop: SPACING.sm, color: COLORS.mutedText, fontSize: 12, lineHeight: 18 }, actions: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md }, button: { flex: 1 },
+  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  subtitle: { marginTop: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.regular, color: NEUTRAL[700] },
+  headerCopy: { flex: 1, paddingTop: 6 },
+  map: { height: 320, overflow: "hidden", borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200] },
+  mapLoading: { flex: 1, alignItems: "center", justifyContent: "center", gap: SPACING.sm },
+  mapLoadingText: { fontSize: 15, fontFamily: FONT.regular, color: NEUTRAL[700] },
+  coordinate: { marginTop: SPACING.sm, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  input: { minHeight: 48, marginTop: SPACING.sm, paddingHorizontal: 14, borderWidth: 1.5, borderColor: NEUTRAL[500], borderRadius: CORNER.input, backgroundColor: NEUTRAL[0], fontSize: 17, fontFamily: FONT.regular, color: NEUTRAL[900] },
+  hint: { marginTop: SPACING.sm, fontSize: 15, lineHeight: 20, fontFamily: FONT.regular, color: NEUTRAL[700] },
+  actions: { flexDirection: "row", gap: SPACING.sm, marginTop: SPACING.md },
+  button: { flex: 1, minHeight: 56 },
 });

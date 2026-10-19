@@ -1,6 +1,7 @@
 import { REQUEST_STATUSES, RESIDENT_CANCELLABLE_STATUSES } from "../../../constants/app";
 import { formatWhen, getDateFromValue } from "../../../lib/dates";
 import { formatPlace } from "../../../lib/placeText";
+import { GREEN, NEUTRAL, ORANGE } from "../../../constants/design";
 import { VULNERABLE_GROUP_OPTIONS } from "./requestOptions";
 
 // ---- Labels shared by the resident, dispatcher, driver and admin screens ----
@@ -64,6 +65,14 @@ export const getPickupLabel = (request = {}) =>
 
 export const getDestinationLabel = (request = {}) =>
   request.destinationLocation?.address || request.destination || "Destination not provided";
+
+// Status badge colors (DESIGN.md "Status band colors", as tinted pills with the status word), for the
+// History page and Request details: waiting = orange, a driver is on it = green, finished or cancelled = grey. Never red.
+export const getStatusBadgeColors = (status) => {
+  if (status === "Assigned" || status === "In Progress") return { backgroundColor: GREEN[100], color: GREEN[800] };
+  if (["Completed", "Cancelled", "Declined", "Rejected"].includes(status)) return { backgroundColor: NEUTRAL[100], color: NEUTRAL[700] };
+  return { backgroundColor: ORANGE[100], color: NEUTRAL[900] };
+};
 
 export const getRequestStatusMeta = (status) => statusMeta[status] || { label: status || "Pending review", tone: "neutral", icon: "info-circle" };
 

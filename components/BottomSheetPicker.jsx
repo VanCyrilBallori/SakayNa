@@ -3,9 +3,18 @@ import { useState } from "react";
 import { Animated, Easing, FlatList, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { COLORS, FONT, LIGHT_COLORS } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, SHADOW } from "../constants/design";
 
-const colors = LIGHT_COLORS;
+// DESIGN.md Style colors for this sheet (names kept from the old palette so the code below reads the same).
+const colors = {
+  heading: NEUTRAL[900],
+  muted: NEUTRAL[700],
+  card: NEUTRAL[100],
+  backdrop: "rgba(20, 33, 28, 0.55)",
+  outline: NEUTRAL[500],
+  line: NEUTRAL[200],
+  ripple: "rgba(11, 122, 75, 0.12)",
+};
 
 // A box in a form that opens a list sliding up from the bottom of the screen (like the Get Started sheet).
 // Used instead of a dropdown, because a dropdown opens downward and can go under Android's navigation bar.
@@ -155,7 +164,7 @@ export default function BottomSheetPicker({
                     accessibilityState={{ selected: isSelected }}
                   >
                     <Text style={[styles.rowText, isSelected && styles.rowTextSelected]}>{item.label}</Text>
-                    {isSelected ? <MaterialCommunityIcons name="check" size={26} color={COLORS.primary} /> : null}
+                    {isSelected ? <MaterialCommunityIcons name="check" size={26} color={GREEN[700]} /> : null}
                   </Pressable>
                 );
               }}
@@ -175,10 +184,10 @@ const styles = StyleSheet.create({
   backdropColor: { backgroundColor: colors.backdrop },
   dismissArea: { flex: 1 },
   // flexShrink lets the sheet get shorter (instead of going off the top) when the keyboard is open.
-  sheet: { flexShrink: 1, width: "100%", backgroundColor: "#FFFFFF", borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: "hidden" },
+  sheet: { flexShrink: 1, width: "100%", backgroundColor: NEUTRAL[0], borderTopLeftRadius: CORNER.sheet, borderTopRightRadius: CORNER.sheet, overflow: "hidden", ...SHADOW.level3 },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingLeft: 24, paddingRight: 12, paddingTop: 16, paddingBottom: 12 },
-  title: { flex: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: colors.heading },
-  closeButton: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  title: { flex: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: colors.heading },
+  closeButton: { width: 48, height: 48, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center" },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -189,7 +198,7 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     borderWidth: 1.5,
     borderColor: colors.outline,
-    borderRadius: 12,
+    borderRadius: CORNER.input,
   },
   searchInput: { fontFamily: FONT.regular, flex: 1, minHeight: 54, fontSize: 17, color: colors.heading },
   clearButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center" },
@@ -198,7 +207,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 60, paddingHorizontal: 24, paddingVertical: 10 },
   rowSelected: { backgroundColor: colors.card },
   rowPressed: { backgroundColor: colors.card },
-  rowText: { flex: 1, fontSize: 18, lineHeight: 24, fontFamily: FONT.semiBold, color: colors.heading },
-  rowTextSelected: { fontFamily: FONT.extraBold, color: COLORS.primary },
+  rowText: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.medium, color: colors.heading },
+  rowTextSelected: { fontFamily: FONT.bold, color: GREEN[700] },
   emptyText: { fontFamily: FONT.regular, paddingHorizontal: 24, paddingVertical: 20, fontSize: 17, lineHeight: 24, color: colors.muted },
 });

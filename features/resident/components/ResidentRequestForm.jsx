@@ -5,7 +5,8 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleShee
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BottomSheetPicker from "../../../components/BottomSheetPicker";
-import { COLORS, DESIGN_COLORS, FONT, LIGHT_COLORS } from "../../../constants/design";
+import CloseButton from "../../../components/ui/CloseButton";
+import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED } from "../../../constants/design";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import useCurrentLocation from "../hooks/useCurrentLocation";
 import { createResidentRequest } from "../services/residentRequestService";
@@ -29,7 +30,8 @@ import MapLocationModal from "./MapLocationModal";
 // Pending and Rejected residents never get here: the resident home stops them before it opens this.
 // Always light, like the resident registration form.
 
-const colors = LIGHT_COLORS;
+// The light green of a pressed row or button (Android ripple).
+const RIPPLE = "rgba(11, 122, 75, 0.12)";
 
 const newForm = (barangay) => ({
   purpose: "",
@@ -213,9 +215,7 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
                   <Text style={styles.title} accessibilityRole="header">
                     {page === "review" ? "Review your request" : "Request a Ride"}
                   </Text>
-                  <Pressable style={styles.closeButton} onPress={close} android_ripple={{ color: colors.ripple, borderless: true }} accessibilityRole="button" accessibilityLabel="Close request form">
-                    <MaterialCommunityIcons name="close" size={28} color={colors.heading} />
-                  </Pressable>
+                  <CloseButton onPress={close} label="Close request form" />
                 </View>
 
                 {page === "review" ? (
@@ -258,10 +258,10 @@ export default function ResidentRequestForm({ visible, onClose, uid, residentNam
                     style={({ pressed }) => [styles.button, styles.outlineButton, pressed && styles.pressed]}
                     onPress={page === "review" ? () => setPage("fill") : close}
                     disabled={saving}
-                    android_ripple={{ color: colors.ripple }}
+                    android_ripple={{ color: RIPPLE }}
                     accessibilityRole="button"
                   >
-                    <Text style={[styles.buttonText, { color: COLORS.primary }]}>{page === "review" ? "Back" : "Cancel"}</Text>
+                    <Text style={[styles.buttonText, styles.outlineButtonText]}>{page === "review" ? "Back" : "Cancel"}</Text>
                   </Pressable>
                   <Pressable
                     style={({ pressed }) => [styles.button, styles.filledButton, pressed && styles.pressed]}
@@ -302,7 +302,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
   return (
     <>
       <View style={styles.emergencyNote}>
-        <MaterialCommunityIcons name="alert-outline" size={22} color={COLORS.emergency} />
+        <MaterialCommunityIcons name="alert-outline" size={22} color={RED[600]} />
         <Text style={styles.emergencyNoteText}>Emergency? Close this and tap the red Emergency button.</Text>
       </View>
 
@@ -319,7 +319,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
               value={form.purposeOther}
               onChangeText={(value) => setValue("purposeOther", value)}
               placeholder="Tell us briefly"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={NEUTRAL[600]}
               maxLength={100}
               accessibilityLabel="What the ride is for"
             />
@@ -351,7 +351,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
               value={form.passengerName}
               onChangeText={(value) => setValue("passengerName", value)}
               placeholder="Juan Dela Cruz"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={NEUTRAL[600]}
               autoCapitalize="words"
               maxLength={80}
               accessibilityLabel="Passenger's name"
@@ -363,7 +363,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
               value={form.passengerPhone}
               onChangeText={(value) => setValue("passengerPhone", value)}
               placeholder="09XX XXX XXXX"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={NEUTRAL[600]}
               keyboardType="phone-pad"
               maxLength={16}
               accessibilityLabel="Passenger's phone"
@@ -391,7 +391,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
           <StepperButton icon="plus" label="More people" disabled={peopleCount >= MAX_PASSENGERS} onPress={() => changeCount(1)} />
         </View>
         <Hint text={`Count everyone, including the passenger. Up to ${MAX_PASSENGERS}.`} />
-        {isBigGroup(peopleCount) ? <Hint icon="alert-outline" iconColor={COLORS.warning} text={BIG_GROUP_NOTE} strong /> : null}
+        {isBigGroup(peopleCount) ? <Hint icon="alert-outline" iconColor={ORANGE[700]} text={BIG_GROUP_NOTE} strong /> : null}
       </Field>
 
       <Field icon="home-outline" label="Pickup barangay" error={errors.barangay}>
@@ -414,11 +414,11 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
           <ActionButton icon="map-marker-plus-outline" label="Place Map Pin" disabled={locating} onPress={onOpenMap} />
         </View>
         {hasExactSpot ? (
-          <Hint icon="check-circle" iconColor={COLORS.primary} text={`Location added: ${form.pickup.address}`} strong />
+          <Hint icon="check-circle" iconColor={GREEN[600]} text={`Location added: ${form.pickup.address}`} strong />
         ) : (
           <Hint icon="information-outline" text="Helps the driver find the exact spot." />
         )}
-        {locationMessage ? <Hint icon="alert-circle-outline" iconColor={COLORS.warning} text={locationMessage} /> : null}
+        {locationMessage ? <Hint icon="alert-circle-outline" iconColor={ORANGE[700]} text={locationMessage} /> : null}
       </Field>
 
       <Field icon="map-marker-outline" label="Landmark / pickup details" error={errors.pickupDetails}>
@@ -427,7 +427,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
           value={form.pickupDetails}
           onChangeText={(value) => setValue("pickupDetails", value)}
           placeholder="e.g. blue gate beside the chapel"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={NEUTRAL[600]}
           multiline
           textAlignVertical="top"
           maxLength={300}
@@ -441,7 +441,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
           value={form.destination}
           onChangeText={(value) => setValue("destination", value)}
           placeholder="e.g. Toledo City Hospital"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={NEUTRAL[600]}
           maxLength={180}
           accessibilityLabel="Where are you going"
         />
@@ -461,7 +461,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
               value={form.assistanceOther}
               onChangeText={(value) => setValue("assistanceOther", value)}
               placeholder="What help is needed?"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={NEUTRAL[600]}
               maxLength={100}
               accessibilityLabel="Other help needed"
             />
@@ -476,7 +476,7 @@ function FillPage({ form, errors, residentName, residentPhone, setValue, setRidi
           value={form.additionalNotes}
           onChangeText={(value) => setValue("additionalNotes", value)}
           placeholder="Anything else the driver should know"
-          placeholderTextColor={colors.muted}
+          placeholderTextColor={NEUTRAL[600]}
           multiline
           textAlignVertical="top"
           maxLength={500}
@@ -510,7 +510,7 @@ function ReviewPage({ form, residentName, residentPhone }) {
       <View style={styles.summary}>
         {rows.map(([icon, label, value]) => (
           <View key={label} style={styles.summaryRow} accessible accessibilityLabel={`${label}: ${value}`}>
-            <MaterialCommunityIcons name={icon} size={22} color={COLORS.primary} style={styles.summaryIcon} />
+            <MaterialCommunityIcons name={icon} size={22} color={GREEN[600]} style={styles.summaryIcon} />
             <View style={styles.summaryText}>
               <Text style={styles.summaryLabel}>{label}</Text>
               <Text style={styles.summaryValue}>{value}</Text>
@@ -621,12 +621,12 @@ function PickerButton({ icon, text, chosen, hasError, disabled, onPress, accessi
       style={[styles.input, styles.pickerButton, hasError && styles.inputError, disabled && styles.inputDisabled]}
       onPress={onPress}
       disabled={disabled}
-      android_ripple={{ color: colors.ripple }}
+      android_ripple={{ color: RIPPLE }}
       accessibilityRole="button"
       accessibilityLabel={`${accessibilityLabel}: ${text}`}
       accessibilityState={{ disabled: Boolean(disabled) }}
     >
-      <MaterialCommunityIcons name={icon} size={24} color={disabled ? COLORS.disabled : COLORS.primary} />
+      <MaterialCommunityIcons name={icon} size={24} color={disabled ? NEUTRAL[400] : GREEN[600]} />
       <Text style={[styles.pickerButtonText, !chosen && styles.pickerButtonPlaceholder]}>{text}</Text>
     </Pressable>
   );
@@ -646,28 +646,28 @@ const webBoxStyle = {
   minHeight: 56,
   boxSizing: "border-box",
   padding: "0 14px",
-  borderRadius: 12,
-  border: `1.5px solid ${colors.outline}`,
-  backgroundColor: "#FFFFFF",
-  color: colors.heading,
+  borderRadius: CORNER.input,
+  border: `1.5px solid ${NEUTRAL[500]}`,
+  backgroundColor: NEUTRAL[0],
+  color: NEUTRAL[900],
   fontSize: 17,
   fontFamily: FONT.regular,
 };
-const webBoxErrorStyle = { border: `2px solid ${COLORS.emergency}` };
-const webBoxDisabledStyle = { backgroundColor: colors.card };
+const webBoxErrorStyle = { border: `2px solid ${RED[600]}` };
+const webBoxDisabledStyle = { backgroundColor: NEUTRAL[100] };
 
 function SentPage({ reference, onDone }) {
   return (
     <View style={styles.sent}>
       <View style={styles.sentDisc}>
-        <MaterialCommunityIcons name="check" size={56} color={COLORS.primary} />
+        <MaterialCommunityIcons name="check" size={56} color={GREEN[600]} />
       </View>
       <Text style={styles.sentTitle} accessibilityRole="header">
         Request sent
       </Text>
       <Text style={styles.sentText}>Your reference is {reference}</Text>
-      <Text style={[styles.sentText, { color: colors.muted }]}>
-        A dispatcher will look at your request and send a vehicle. You can follow it in Request History.
+      <Text style={[styles.sentText, styles.sentTextMuted]}>
+        A dispatcher will look at your request and send a vehicle. You can follow it on your home screen and in History.
       </Text>
 
       <View style={styles.spacer} />
@@ -689,7 +689,7 @@ function Field({ icon, label, error, children }) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
-        <MaterialCommunityIcons name={icon} size={22} color={COLORS.primary} />
+        <MaterialCommunityIcons name={icon} size={22} color={GREEN[600]} />
         <Text style={styles.label}>{label}</Text>
       </View>
       {children}
@@ -706,7 +706,7 @@ function ErrorText({ message }) {
 function Hint({ icon, iconColor, text, strong }) {
   return (
     <View style={styles.hintRow}>
-      {icon ? <MaterialCommunityIcons name={icon} size={22} color={iconColor || colors.muted} /> : null}
+      {icon ? <MaterialCommunityIcons name={icon} size={22} color={iconColor || NEUTRAL[700]} /> : null}
       <Text style={[styles.hintText, strong && styles.hintStrong]}>{text}</Text>
     </View>
   );
@@ -720,11 +720,11 @@ function ChoiceRow({ type, label, detail, selected, onPress }) {
     <Pressable
       style={styles.choice}
       onPress={onPress}
-      android_ripple={{ color: colors.ripple }}
+      android_ripple={{ color: RIPPLE }}
       accessibilityRole={type}
       accessibilityState={{ checked: selected }}
     >
-      <MaterialCommunityIcons name={icon} size={26} color={selected ? COLORS.primary : colors.outline} />
+      <MaterialCommunityIcons name={icon} size={26} color={selected ? GREEN[600] : NEUTRAL[500]} />
       <View style={styles.choiceCopy}>
         <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
         {detail ? <Text style={styles.choiceDetail}>{detail}</Text> : null}
@@ -739,12 +739,12 @@ function StepperButton({ icon, label, disabled, onPress }) {
       style={({ pressed }) => [styles.stepperButton, disabled && styles.stepperButtonDisabled, pressed && styles.pressed]}
       onPress={onPress}
       disabled={disabled}
-      android_ripple={{ color: colors.ripple, borderless: true }}
+      android_ripple={{ color: RIPPLE, borderless: true }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
     >
-      <MaterialCommunityIcons name={icon} size={30} color={disabled ? COLORS.disabled : COLORS.primary} />
+      <MaterialCommunityIcons name={icon} size={30} color={disabled ? NEUTRAL[400] : GREEN[600]} />
     </Pressable>
   );
 }
@@ -755,57 +755,59 @@ function ActionButton({ icon, label, disabled, onPress }) {
       style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
       onPress={onPress}
       disabled={disabled}
-      android_ripple={{ color: colors.ripple }}
+      android_ripple={{ color: RIPPLE }}
       accessibilityRole="button"
       accessibilityState={{ disabled, busy: disabled }}
     >
-      <MaterialCommunityIcons name={icon} size={24} color={COLORS.primary} />
+      <MaterialCommunityIcons name={icon} size={24} color={GREEN[600]} />
       <Text style={styles.actionButtonText}>{label}</Text>
     </Pressable>
   );
 }
 
+// DESIGN.md Style: off-white page, white inputs with 12 corners and a neutral-500 edge, labels 17 SemiBold,
+// pill buttons, nothing smaller than 15.
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.page },
-  clockStrip: { backgroundColor: DESIGN_COLORS.hallGreen },
-  content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
+  page: { flex: 1, backgroundColor: NEUTRAL[50] },
+  clockStrip: { backgroundColor: GREEN[600] },
+  content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 16 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  title: { flex: 1, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, color: colors.heading },
-  closeButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 24 },
+  title: { flex: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900] },
   emergencyNote: {
-    marginTop: 16,
-    padding: 10,
-    borderRadius: 12,
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: CORNER.input,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: COLORS.emergencySurface,
+    backgroundColor: RED[50],
   },
-  emergencyNoteText: { flex: 1, fontSize: 16, lineHeight: 23, fontFamily: FONT.bold, color: colors.heading },
+  emergencyNoteText: { flex: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
   // Task 3.9: sections 16 apart (was 24) so the form is shorter.
   field: { marginTop: 16 },
-  labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
-  label: { flexShrink: 1, fontSize: 16, fontFamily: FONT.bold, color: colors.heading },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
   input: {
     fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: colors.outline,
-    borderRadius: 12,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.input,
     fontSize: 17,
-    color: colors.heading,
-    backgroundColor: "#FFFFFF",
+    color: NEUTRAL[900],
+    backgroundColor: NEUTRAL[0],
   },
   inputBelow: { marginTop: 10 },
-  inputError: { borderColor: COLORS.emergency, borderWidth: 2 },
-  inputDisabled: { backgroundColor: colors.card },
-  schedulePicker: { marginTop: 14 },
+  inputError: { borderColor: RED[600], borderWidth: 2 },
+  inputDisabled: { backgroundColor: NEUTRAL[100] },
+  schedulePicker: { marginTop: 12 },
   pickerButton: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, overflow: "hidden" },
-  pickerButtonText: { fontFamily: FONT.regular, flex: 1, fontSize: 17, lineHeight: 23, color: colors.heading },
-  pickerButtonPlaceholder: { color: colors.muted },
-  subLabel: { marginBottom: 8, fontSize: 16, fontFamily: FONT.semiBold, color: colors.heading },
-  subLabelSpaced: { marginTop: 14 },
+  pickerButtonText: { fontFamily: FONT.regular, flex: 1, fontSize: 17, lineHeight: 22, color: NEUTRAL[900] },
+  pickerButtonPlaceholder: { color: NEUTRAL[600] },
+  subLabel: { marginBottom: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  subLabelSpaced: { marginTop: 12 },
   multiline: { minHeight: 96, paddingTop: 14, paddingBottom: 14 },
   choiceList: { gap: 4 },
   // The two boxed buttons under "Exact pickup spot" keep their old gap.
@@ -819,59 +821,75 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    borderRadius: CORNER.input,
   },
   choiceCopy: { flex: 1 },
-  choiceText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 23, color: colors.heading },
-  choiceTextSelected: { fontFamily: FONT.bold },
-  choiceDetail: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 21, color: colors.muted },
+  choiceText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 22, color: NEUTRAL[900] },
+  choiceTextSelected: { fontFamily: FONT.semiBold },
+  choiceDetail: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
   stepper: { flexDirection: "row", alignItems: "center", gap: 16 },
+  // + and − are round (DESIGN.md Style: pills), 64 across.
   stepperButton: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: CORNER.pill,
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: GREEN[600],
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: NEUTRAL[0],
   },
-  stepperButtonDisabled: { borderColor: COLORS.disabled },
-  countInput: { width: 88, paddingHorizontal: 6, textAlign: "center", fontSize: 22, fontFamily: FONT.extraBold, fontVariant: ["tabular-nums"] },
+  stepperButtonDisabled: { borderColor: NEUTRAL[300] },
+  countInput: { width: 88, paddingHorizontal: 6, textAlign: "center", fontSize: 22, fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
+  // "Use Current Location" / "Place Map Pin": secondary pills (white, grey edge, green words).
   actionButton: {
     minHeight: 56,
-    paddingHorizontal: 14,
+    paddingHorizontal: 20,
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: 12,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.pill,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: NEUTRAL[0],
   },
-  actionButtonText: { flex: 1, fontSize: 17, fontFamily: FONT.bold, color: COLORS.primary },
+  actionButtonText: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: GREEN[700] },
   hintRow: { flexDirection: "row", gap: 10, marginTop: 10 },
-  hintText: { fontFamily: FONT.regular, flex: 1, fontSize: 16, lineHeight: 23, color: colors.muted },
-  hintStrong: { fontFamily: FONT.bold, color: colors.heading },
-  errorText: { marginTop: 8, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: COLORS.emergency },
-  errorSummary: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: COLORS.emergency },
-  reviewIntro: { fontFamily: FONT.regular, marginTop: 8, marginBottom: 16, fontSize: 16, lineHeight: 23, color: colors.muted },
-  summary: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: colors.card },
-  summaryRow: { flexDirection: "row", gap: 12, paddingVertical: 10 },
+  hintText: { fontFamily: FONT.regular, flex: 1, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
+  hintStrong: { fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  errorText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: RED[600] },
+  errorSummary: { marginBottom: 12, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: RED[600] },
+  reviewIntro: { fontFamily: FONT.regular, marginTop: 8, marginBottom: 16, fontSize: 17, lineHeight: 24, color: NEUTRAL[700] },
+  // The review list: one white card (16 corners, thin edge, Level 1 shadow), a thin line between rows.
+  summary: {
+    borderRadius: CORNER.card,
+    borderWidth: 1,
+    borderColor: NEUTRAL[200],
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    backgroundColor: NEUTRAL[0],
+    boxShadow: "0 1px 3px rgba(20, 33, 28, 0.08), 0 1px 2px rgba(20, 33, 28, 0.04)",
+  },
+  summaryRow: { flexDirection: "row", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: NEUTRAL[100] },
   summaryIcon: { marginTop: 2 },
   summaryText: { flex: 1 },
-  summaryLabel: { fontSize: 14, fontFamily: FONT.semiBold, color: colors.muted },
-  summaryValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 23, color: colors.heading },
+  summaryLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  summaryValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 22, color: NEUTRAL[900] },
   spacer: { flexGrow: 1, minHeight: 32 },
   buttonRow: { flexDirection: "row", gap: 12 },
-  button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 14, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  outlineButton: { borderWidth: 1.5, borderColor: COLORS.primary, backgroundColor: "#FFFFFF" },
-  filledButton: { backgroundColor: COLORS.primary },
+  // Pills, 56 tall (DESIGN.md main action).
+  button: { flex: 1, minHeight: 56, paddingHorizontal: 16, borderRadius: CORNER.pill, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  outlineButton: { borderWidth: 1.5, borderColor: NEUTRAL[500], backgroundColor: NEUTRAL[0] },
+  outlineButtonText: { color: GREEN[700] },
+  filledButton: { backgroundColor: GREEN[600] },
   doneButton: { flex: 0, alignSelf: "stretch" },
   pressed: { opacity: 0.88 },
-  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, textAlign: "center" },
+  buttonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, textAlign: "center" },
   sent: { flexGrow: 1, alignItems: "center", paddingTop: 48 },
-  sentDisc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center", backgroundColor: colors.ripple },
-  sentTitle: { marginTop: 20, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center", color: colors.heading },
-  sentText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center", color: colors.heading },
+  // "Request sent": a check in a light green circle (DESIGN.md Style empty-state look).
+  sentDisc: { width: 96, height: 96, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[50] },
+  sentTitle: { marginTop: 20, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, textAlign: "center", color: NEUTRAL[900] },
+  sentText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 24, textAlign: "center", color: NEUTRAL[900] },
+  sentTextMuted: { color: NEUTRAL[700] },
 });

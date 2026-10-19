@@ -1,12 +1,13 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { COLORS, FONT, RADIUS } from "../../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED } from "../../constants/design";
 
+// A short message in a tinted box (DESIGN.md Style). Text 15, never smaller.
 const tones = {
-  error: { backgroundColor: COLORS.emergencySurface, color: COLORS.emergency },
-  success: { backgroundColor: "#E7F5ED", color: COLORS.success },
-  warning: { backgroundColor: COLORS.warningSurface, color: COLORS.warning },
-  info: { backgroundColor: COLORS.surfaceMuted, color: COLORS.mutedText },
+  error: { backgroundColor: RED[50], color: RED[600] },
+  success: { backgroundColor: GREEN[50], color: GREEN[800] },
+  warning: { backgroundColor: ORANGE[100], color: NEUTRAL[900] },
+  info: { backgroundColor: NEUTRAL[100], color: NEUTRAL[700] },
 };
 
 export default function FeedbackMessage({ message, tone = "info", style }) {
@@ -19,6 +20,6 @@ export default function FeedbackMessage({ message, tone = "info", style }) {
 }
 
 const styles = StyleSheet.create({
-  container: { width: "100%", marginTop: 12, paddingHorizontal: 12, paddingVertical: 10, borderRadius: RADIUS.sm },
-  text: { fontSize: 14, lineHeight: 20, fontFamily: FONT.semiBold },
+  container: { width: "100%", marginTop: 12, paddingHorizontal: 14, paddingVertical: 12, borderRadius: CORNER.input },
+  text: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold },
 });

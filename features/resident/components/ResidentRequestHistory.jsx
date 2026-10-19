@@ -6,7 +6,7 @@ import { Dropdown } from "react-native-element-dropdown";
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, SHADOW } from "../../../constants/design";
-import { canResidentCancel, formatRequestDate, getPickupLabel, getRequestStatusMeta, getScheduledDate, getWhenText } from "../utils/requestMapper";
+import { canResidentCancel, formatRequestDate, getPickupLabel, getRequestStatusMeta, getScheduledDate, getStatusBadgeColors, getWhenText } from "../utils/requestMapper";
 import { getPurpose, PURPOSE_OPTIONS } from "../utils/requestOptions";
 import ResidentRequestDetails from "./ResidentRequestDetails";
 
@@ -14,14 +14,6 @@ const statusOptions = [{ label: "All statuses", value: "All" }, { label: "Active
 // Filter by what the ride is for. Old requests (before the new form) have no purpose, so they show under "All" only.
 const purposeOptions = [{ label: "All rides", value: "All" }, ...PURPOSE_OPTIONS.map((purpose) => ({ label: purpose, value: purpose }))];
 const isActive = (status) => ["Pending", "Assigned", "In Progress"].includes(status || "Pending");
-
-// Status badge colors (DESIGN.md "Status band colors", as tinted pills with the status word):
-// waiting = orange, a driver is on it = green, finished or cancelled = grey. Never red.
-const getBadgeColors = (status) => {
-  if (status === "Assigned" || status === "In Progress") return { backgroundColor: GREEN[100], color: GREEN[800] };
-  if (status === "Completed" || status === "Cancelled" || status === "Declined" || status === "Rejected") return { backgroundColor: NEUTRAL[100], color: NEUTRAL[700] };
-  return { backgroundColor: ORANGE[100], color: NEUTRAL[900] };
-};
 
 // The History page of the resident's bottom bar (Task 3.18; before, a pop-up from the ☰ menu).
 // The newest 50 requests with filters and a search. Tapping one opens its Request Details.
@@ -90,7 +82,7 @@ export default function ResidentRequestHistory({ requests, loading, error }) {
 // One request: reference and status badge, what it is for, when, where, and when it was sent.
 function HistoryRow({ request, onPress }) {
   const status = getRequestStatusMeta(request.status);
-  const badge = getBadgeColors(request.status);
+  const badge = getStatusBadgeColors(request.status);
   return (
     <Pressable
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}

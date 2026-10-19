@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "./BrandLogo";
 import { FIRESTORE_COLLECTIONS, TERMS_URL } from "../constants/app";
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, SHADOW } from "../constants/design";
 import { auth, db } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../lib/session";
@@ -231,7 +231,7 @@ export default function MobileLanding() {
           />
         </View>
 
-        {/* Flat card (no shadow, DESIGN.md "Flat Board Rule") with the approved words and the buttons in thumb reach. */}
+        {/* White card with a soft shadow (DESIGN.md Style) with the approved words and the buttons in thumb reach. */}
         <View style={styles.card} onLayout={(event) => setCardHeight(event.nativeEvent.layout.height)}>
           <Text style={styles.heading}>Request a Ride now</Text>
 
@@ -343,94 +343,96 @@ function SheetOption({ icon, image, label, onPress }) {
       {image ? (
         <Image source={image} style={styles.optionImage} accessibilityIgnoresInvertColors />
       ) : (
-        <MaterialCommunityIcons name={icon} size={26} color={DESIGN_COLORS.ink} />
+        <MaterialCommunityIcons name={icon} size={26} color={NEUTRAL[900]} />
       )}
       <Text style={styles.optionText}>{label}</Text>
-      <MaterialCommunityIcons name="chevron-right" size={24} color={DESIGN_COLORS.inkMuted} />
+      <MaterialCommunityIcons name="chevron-right" size={24} color={NEUTRAL[700]} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite },
+  // Landing gradient (DESIGN.md Style: only on landing and welcome screens): green 50 at the top to white.
+  // Dark words and the dark clock icons stay readable. Phones without gradient support just show white.
+  page: { flex: 1, backgroundColor: NEUTRAL[0], experimental_backgroundImage: `linear-gradient(180deg, ${GREEN[50]} 0%, ${NEUTRAL[0]} 65%)` },
   content: { flexGrow: 1, alignItems: "center", paddingHorizontal: 16 },
   // Round Hall Green disc with the white SakayNa mark.
-  logoDisc: { alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
+  logoDisc: { alignItems: "center", justifyContent: "center", backgroundColor: GREEN[600], ...SHADOW.level2 },
   logoMark: { tintColor: "#FFFFFF" },
   // Trimmed visible picture, followed by its 2dp gap above the card.
   artArea: { flexShrink: 0, width: "100%", alignItems: "center", paddingBottom: PICTURE_CARD_GAP },
-  // Flat Board Tint card, 24 corners (DESIGN.md card corner), no shadow.
+  // White card, 16 corners, a thin edge and a Level 1 shadow (DESIGN.md Style).
   card: {
     width: "100%",
     maxWidth: 480,
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 12,
-    borderRadius: 24,
-    backgroundColor: DESIGN_COLORS.boardTint,
+    borderRadius: CORNER.card,
+    borderWidth: 1,
+    borderColor: NEUTRAL[200],
+    backgroundColor: NEUTRAL[0],
+    ...SHADOW.level1,
   },
   // DESIGN.md "Title" size.
-  heading: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
+  heading: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
   primaryButton: {
     minHeight: 56,
     marginTop: 20,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: DESIGN_COLORS.hallGreen,
+    backgroundColor: GREEN[600],
   },
-  primaryButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  primaryButtonText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  primaryButtonPressed: { backgroundColor: GREEN[800] },
+  primaryButtonText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: "#FFFFFF" },
   textLink: { minHeight: 48, marginTop: 8, alignItems: "center", justifyContent: "center" },
-  textLinkText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  linkStrong: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen },
+  textLinkText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700], textAlign: "center" },
+  linkStrong: { fontFamily: FONT.bold, color: GREEN[700] },
   termsLink: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 8 },
   // 15 = the smallest text size in DESIGN.md (was 12.5).
-  termsText: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  termsStrong: { fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
+  termsText: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: NEUTRAL[700], textAlign: "center" },
+  termsStrong: { fontFamily: FONT.semiBold, color: GREEN[700], textDecorationLine: "underline" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
   sheetDismissArea: { flex: 1 },
-  // DESIGN.md sheet: white, 24 corners on top, a thin Hall Green line along the top instead of a shadow.
+  // DESIGN.md Style bottom sheet: white, 24 corners on top, a round grabber, Level 3 shadow.
   sheet: {
     width: "100%",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderRightWidth: 2,
-    borderColor: DESIGN_COLORS.hallGreen,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderTopLeftRadius: CORNER.sheet,
+    borderTopRightRadius: CORNER.sheet,
+    backgroundColor: NEUTRAL[0],
     overflow: "hidden",
+    ...SHADOW.level3,
   },
   sheetGrabArea: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 },
   sheetContent: { paddingHorizontal: 24 },
-  // Dark enough to see (4.2:1). Square ends: DESIGN.md has no pill shapes.
-  sheetHandle: { alignSelf: "center", width: 48, height: 5, marginBottom: 16, backgroundColor: DESIGN_COLORS.controlOutline },
-  sheetTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
-  sheetSubtitle: { fontFamily: FONT.regular, marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  // The grabber: round ends (DESIGN.md Style), dark enough to see.
+  sheetHandle: { alignSelf: "center", width: 48, height: 5, marginBottom: 16, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[400] },
+  sheetTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  sheetSubtitle: { fontFamily: FONT.regular, marginTop: 6, fontSize: 17, lineHeight: 24, color: NEUTRAL[700], textAlign: "center" },
   sheetOptions: { gap: 10 },
-  // White buttons with a clear grey edge (4.2:1) and 16 corners.
+  // White pill buttons with a clear grey edge (4.2:1).
   option: {
     minHeight: 56,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderWidth: 1.5,
-    borderRadius: 16,
-    borderColor: DESIGN_COLORS.controlOutline,
+    borderRadius: CORNER.pill,
+    borderColor: NEUTRAL[500],
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
   },
-  optionText: { flex: 1, fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  optionText: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
   // Same space as the 26-wide icons, so all labels line up. The G itself is 24 x 24.
   optionImage: { width: 24, height: 24, marginHorizontal: 1 },
   orRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  orLine: { flex: 1, height: 1, backgroundColor: DESIGN_COLORS.rule },
-  orText: { fontSize: 15, fontFamily: FONT.semiBold, color: DESIGN_COLORS.inkMuted },
+  orLine: { flex: 1, height: 1, backgroundColor: NEUTRAL[200] },
+  orText: { fontSize: 15, fontFamily: FONT.medium, color: NEUTRAL[700] },
   emailLink: { minHeight: 48, marginTop: 4, alignItems: "center", justifyContent: "center" },
-  emailLinkText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  emailLinkText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700], textAlign: "center" },
 });

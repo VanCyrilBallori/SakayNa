@@ -7,12 +7,11 @@ import { ActivityIndicator, AppState, KeyboardAvoidingView, Linking, Modal, Plat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
-import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
 import { auth, db } from "../firebase";
 import { startPhoneCall } from "../lib/phoneCall";
 import { getAccountStatusLabel } from "../lib/roles";
 import { saveLocalUserProfile, useCurrentUserProfile } from "../lib/session";
-import { useTheme } from "../lib/theme";
 import CloseButton from "../components/ui/CloseButton";
 import LatestRequestCard from "../features/resident/components/LatestRequestCard";
 import ResidentRequestDetails from "../features/resident/components/ResidentRequestDetails";
@@ -45,7 +44,6 @@ export default function ResidentHome() {
   const insets = useSafeAreaInsets();
   const compact = width < 920;
   const { authUser, displayName: fallbackDisplayName, profile } = useCurrentUserProfile();
-  const { theme } = useTheme();
   const { requests: requestHistory, loading: requestHistoryLoading, error: requestHistoryError } = useResidentRequests(authUser?.uid);
   const latestRequest = requestHistory[0] ?? null;
   // The ride on the "Your ride" card: a ride a driver is on right now first, otherwise the newest one.
@@ -659,7 +657,7 @@ export default function ResidentHome() {
               <MaterialCommunityIcons
                 name={isPending ? "clock-outline" : isRejected ? "close-circle-outline" : "pause-circle-outline"}
                 size={28}
-                color={isPending ? DESIGN_COLORS.orangeDeep : DESIGN_COLORS.emergencyRed}
+                color={isPending ? ORANGE[700] : RED[600]}
               />
               <View style={styles.statusBannerCopy}>
                 <Text style={styles.statusBannerTitle}>{getAccountStatusLabel(activeProfile) || "On hold"}</Text>
@@ -679,7 +677,7 @@ export default function ResidentHome() {
                         accessibilityRole="button"
                         accessibilityLabel="Call the office"
                       >
-                        <MaterialCommunityIcons name="phone-outline" size={22} color={DESIGN_COLORS.ink} />
+                        <MaterialCommunityIcons name="phone-outline" size={22} color={NEUTRAL[900]} />
                         <Text style={styles.bannerCallText}>Call the office</Text>
                       </Pressable>
                     ) : (
@@ -770,12 +768,12 @@ export default function ResidentHome() {
         profile={activeProfile}
       />
       <Modal visible={Boolean(notVerifiedPopup)} transparent animationType="fade" onRequestClose={() => setNotVerifiedPopup("")}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <View style={styles.modalOverlay}>
           {/* DESIGN.md look, like the "Send emergency alert?" pop-up. Same words and buttons as before. */}
           <View style={[styles.callCard, styles.callCardContent]}>
             {notVerifiedPopup === "emergency" ? (
               <>
-                <MaterialCommunityIcons name="alert-circle-outline" size={52} color={DESIGN_COLORS.emergencyRed} />
+                <MaterialCommunityIcons name="alert-circle-outline" size={52} color={RED[600]} />
                 <Text style={styles.callTitle}>Emergency</Text>
                 <Text style={styles.notVerifiedText}>
                   {isOnHold ? "Your account is on hold." : isRejected ? "Your account was not verified." : "Your account is still being verified."} For emergencies, call 911.
@@ -802,7 +800,7 @@ export default function ResidentHome() {
             ) : (
               <>
                 {/* The same van as the Request a Ride button. */}
-                <MaterialCommunityIcons name="van-passenger" size={52} color={DESIGN_COLORS.inkMuted} />
+                <MaterialCommunityIcons name="van-passenger" size={52} color={NEUTRAL[700]} />
                 <Text style={styles.callTitle}>Request a Ride</Text>
                 <Text style={styles.notVerifiedText}>
                   {isOnHold
@@ -821,11 +819,11 @@ export default function ResidentHome() {
       </Modal>
 
       <Modal visible={callConfirmOpen} transparent animationType="fade" onRequestClose={() => setCallConfirmOpen(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <View style={styles.modalOverlay}>
           {/* DESIGN.md look: same siren icon as the Emergency button, big dark text, */}
           {/* the main action on top at full width and Cancel underneath, so they are hard to mix up. */}
           <View style={styles.confirmCard}>
-            <MaterialCommunityIcons name="alarm-light-outline" size={52} color={DESIGN_COLORS.emergencyRed} />
+            <MaterialCommunityIcons name="alarm-light-outline" size={52} color={RED[600]} />
             <Text style={styles.confirmTitle}>Send emergency alert?</Text>
             <Text style={styles.confirmText}>Dispatchers will see your name and phone number. We will try to send your location.</Text>
 
@@ -853,7 +851,7 @@ export default function ResidentHome() {
       </Modal>
 
       <Modal visible={callOpen} transparent animationType="fade" onRequestClose={handleAlertBack}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <View style={styles.modalOverlay}>
           {/* DESIGN.md look, like the "Send emergency alert?" pop-up. Same states, words and buttons as before. */}
           <ScrollView
             style={styles.callCard}
@@ -862,7 +860,7 @@ export default function ResidentHome() {
           >
             {cancelAlertConfirmOpen ? (
               <>
-                <MaterialCommunityIcons name="alert-circle-outline" size={52} color={DESIGN_COLORS.emergencyRed} />
+                <MaterialCommunityIcons name="alert-circle-outline" size={52} color={RED[600]} />
                 <Text style={styles.callTitle} accessibilityLiveRegion="polite">
                   Cancel your emergency alert?
                 </Text>
@@ -892,7 +890,7 @@ export default function ResidentHome() {
               const stillLive = sending || sendFailed || waitingForAnswer || unanswered;
 
               const icon = accepted ? "check-circle-outline" : sending || waitingForAnswer ? "bell-ring-outline" : "alert-circle-outline";
-              const iconColor = accepted ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.emergencyRed;
+              const iconColor = accepted ? GREEN[600] : RED[600];
               const title = sending
                 ? "Sending alert…"
                 : sendFailed
@@ -964,7 +962,7 @@ export default function ResidentHome() {
                       <Text style={styles.keepOpenText}>Keep this screen open until a dispatcher accepts.</Text>
                     </View>
                   ) : null}
-                  {sending || waitingForAnswer ? <ActivityIndicator color={DESIGN_COLORS.emergencyRed} style={styles.alertSpinner} /> : null}
+                  {sending || waitingForAnswer ? <ActivityIndicator color={RED[600]} style={styles.alertSpinner} /> : null}
                   {locationLine && (sending || waitingForAnswer || unanswered || accepted) ? <Text style={styles.alertLocationText}>{locationLine}</Text> : null}
 
                   {sendFailed ? (
@@ -1026,36 +1024,36 @@ export default function ResidentHome() {
       />
 
       <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
-        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[styles.profileEditorCard, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.profileEditorCard, compact && styles.modalCardCompact]}>
             <CloseButton onPress={() => setProfileEditorOpen(false)} label="Close profile" style={styles.closeInCorner} />
 
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Profile</Text>
-            <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Resident account details currently saved in your profile.</Text>
+            <Text style={styles.modalTitle}>Profile</Text>
+            <Text style={styles.modalSubtitle}>Resident account details currently saved in your profile.</Text>
 
-            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Full Name</Text>
-              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{displayName || "Not set"}</Text>
+            <View style={styles.profileInfoCard}>
+              <Text style={styles.profileInfoLabel}>Full name</Text>
+              <Text style={styles.profileInfoValue}>{displayName || "Not set"}</Text>
             </View>
 
-            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Email Address</Text>
-              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.email || authUser?.email || "Not set"}</Text>
+            <View style={styles.profileInfoCard}>
+              <Text style={styles.profileInfoLabel}>Email address</Text>
+              <Text style={styles.profileInfoValue}>{activeProfile?.email || authUser?.email || "Not set"}</Text>
             </View>
 
-            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Phone Number</Text>
-              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.phoneNumber || activeProfile?.phone || "Not set"}</Text>
+            <View style={styles.profileInfoCard}>
+              <Text style={styles.profileInfoLabel}>Phone number</Text>
+              <Text style={styles.profileInfoValue}>{activeProfile?.phoneNumber || activeProfile?.phone || "Not set"}</Text>
             </View>
 
-            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Barangay</Text>
-              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.barangay || "Not set"}</Text>
+            <View style={styles.profileInfoCard}>
+              <Text style={styles.profileInfoLabel}>Barangay</Text>
+              <Text style={styles.profileInfoValue}>{activeProfile?.barangay || "Not set"}</Text>
             </View>
 
-            <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-              <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Address</Text>
-              <Text style={[styles.profileInfoValue, { color: theme.text }]}>{activeProfile?.address || "Not set"}</Text>
+            <View style={styles.profileInfoCard}>
+              <Text style={styles.profileInfoLabel}>Address</Text>
+              <Text style={styles.profileInfoValue}>{activeProfile?.address || "Not set"}</Text>
             </View>
           </View>
         </View>
@@ -1064,38 +1062,38 @@ export default function ResidentHome() {
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)} statusBarTranslucent navigationBarTranslucent>
         {/* The keyboard helper adds space for the keyboard; the card gets shorter and scrolls,
             so the box being typed in stays visible. Full-screen (translucent) so the space is measured correctly. */}
-        <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
-          <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+        <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+          <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact]}>
             <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <CloseButton onPress={() => setSettingsOpen(false)} label="Close settings" style={styles.closeInCorner} />
 
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Settings</Text>
-              <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Update your resident account details, password, and theme mode.</Text>
+              <Text style={styles.modalTitle}>Settings</Text>
+              <Text style={styles.modalSubtitle}>Update your name, phone number, email or password.</Text>
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Username</Text>
+              <Text style={styles.modalLabel}>Username</Text>
               <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                style={styles.profileInput}
                 placeholder="Full name"
-                placeholderTextColor={theme.subtleText}
+                placeholderTextColor={NEUTRAL[600]}
                 value={settingsForm.fullName}
                 onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
               />
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Phone Number</Text>
+              <Text style={styles.modalLabel}>Phone Number</Text>
               <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                style={styles.profileInput}
                 placeholder="Phone number"
-                placeholderTextColor={theme.subtleText}
+                placeholderTextColor={NEUTRAL[600]}
                 value={settingsForm.phoneNumber}
                 onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
                 keyboardType="phone-pad"
               />
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Email Address</Text>
+              <Text style={styles.modalLabel}>Email Address</Text>
               <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                style={styles.profileInput}
                 placeholder="Email address"
-                placeholderTextColor={theme.subtleText}
+                placeholderTextColor={NEUTRAL[600]}
                 value={settingsForm.email}
                 onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
                 keyboardType="email-address"
@@ -1103,21 +1101,21 @@ export default function ResidentHome() {
               />
 
               <TouchableOpacity
-                style={[styles.secondaryActionButton, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}
+                style={styles.secondaryActionButton}
                 onPress={() => setChangePasswordOpen(true)}
               >
-                <Text style={[styles.secondaryActionButtonText, { color: theme.text }]}>Change Password</Text>
+                <Text style={styles.secondaryActionButtonText}>Change Password</Text>
               </TouchableOpacity>
 
               {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
               {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
+                style={[styles.saveButton, savingSettings && styles.saveButtonDisabled]}
                 onPress={saveResidentSettings}
                 disabled={savingSettings}
               >
-                <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
+                <Text style={[styles.saveButtonText, savingSettings && styles.saveButtonTextDisabled]}>
                   {savingSettings ? "Saving..." : "Save Settings"}
                 </Text>
               </TouchableOpacity>
@@ -1127,39 +1125,39 @@ export default function ResidentHome() {
       </Modal>
 
       <Modal visible={changePasswordOpen} transparent animationType="fade" onRequestClose={() => setChangePasswordOpen(false)} statusBarTranslucent navigationBarTranslucent>
-        <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
-          <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact, { backgroundColor: theme.surface }]}>
+        <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+          <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.modalCardCompact]}>
             <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <CloseButton onPress={() => setChangePasswordOpen(false)} label="Close change password" style={styles.closeInCorner} />
 
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
-              <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>Enter your current password, then set a new one.</Text>
+              <Text style={styles.modalTitle}>Change Password</Text>
+              <Text style={styles.modalSubtitle}>Enter your current password, then set a new one.</Text>
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Current Password</Text>
+              <Text style={styles.modalLabel}>Current Password</Text>
               <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                style={styles.profileInput}
                 placeholder="Enter current password"
-                placeholderTextColor={theme.subtleText}
+                placeholderTextColor={NEUTRAL[600]}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry
               />
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>New Password</Text>
+              <Text style={styles.modalLabel}>New Password</Text>
               <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                style={styles.profileInput}
                 placeholder="Enter new password"
-                placeholderTextColor={theme.subtleText}
+                placeholderTextColor={NEUTRAL[600]}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
               />
 
-              <Text style={[styles.modalLabel, { color: theme.text }]}>Confirm New Password</Text>
+              <Text style={styles.modalLabel}>Confirm New Password</Text>
               <TextInput
-                style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                style={styles.profileInput}
                 placeholder="Confirm new password"
-                placeholderTextColor={theme.subtleText}
+                placeholderTextColor={NEUTRAL[600]}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -1169,11 +1167,11 @@ export default function ResidentHome() {
               {settingsMessage ? <Text style={styles.feedbackText}>{settingsMessage}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: savingSettings ? theme.disabledButtonBg : "#06774B" }]}
+                style={[styles.saveButton, savingSettings && styles.saveButtonDisabled]}
                 onPress={saveResidentPassword}
                 disabled={savingSettings}
               >
-                <Text style={[styles.saveButtonText, { color: savingSettings ? theme.disabledButtonText : "#FFFFFF" }]}>
+                <Text style={[styles.saveButtonText, savingSettings && styles.saveButtonTextDisabled]}>
                   {savingSettings ? "Saving..." : "Update Password"}
                 </Text>
               </TouchableOpacity>
@@ -1310,14 +1308,14 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
     fontFamily: FONT.extraBold,
-    color: DESIGN_COLORS.ink,
+    color: NEUTRAL[900],
   },
   statusBannerText: {
     marginTop: 4,
     fontSize: 17,
     lineHeight: 24,
     fontFamily: FONT.semiBold,
-    color: DESIGN_COLORS.ink,
+    color: NEUTRAL[900],
   },
   statusBannerReasonLabel: { fontFamily: FONT.extraBold },
   // "Call the office" in the Rejected banner: white outline button, 48 tall.
@@ -1345,135 +1343,66 @@ const styles = StyleSheet.create({
   tabIconOpen: { backgroundColor: GREEN[100] },
   tabLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700], textAlign: "center" },
   tabLabelOpen: { fontFamily: FONT.bold, color: GREEN[700] },
+  // ---- Pop-ups (DESIGN.md Style): a dark see-through backdrop, white dialogs with 16 corners and a
+  // Level 3 shadow, pill buttons. Emergency-sized red buttons keep the 24 corners of the Emergency button. ----
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.28)",
+    backgroundColor: "rgba(20, 33, 28, 0.55)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
-  },
-  modalCard: {
-    width: "100%",
-    maxWidth: 700,
-    maxHeight: "92%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 22,
+    padding: 16,
   },
   modalCardCompact: {
-    borderRadius: 18,
-    padding: 18,
-  },
-  modalScrollContent: {
-    paddingBottom: 4,
+    padding: 20,
   },
   // The X at the top-right of Profile, Settings and Change Password.
   closeInCorner: { alignSelf: "flex-end" },
   modalTitle: {
-    marginTop: 8,
-    fontSize: 27,
-    lineHeight: 34,
-    fontFamily: FONT.extraBold,
+    marginTop: 4,
+    fontSize: 22,
+    lineHeight: 28,
+    fontFamily: FONT.bold,
     textAlign: "center",
-    color: "#111111",
+    color: NEUTRAL[900],
   },
   modalSubtitle: {
     fontFamily: FONT.regular,
     marginTop: 4,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 15,
+    lineHeight: 20,
     textAlign: "center",
-    color: "#333333",
+    color: NEUTRAL[700],
   },
   modalLabel: {
-    marginTop: 22,
-    fontSize: 15,
-    fontFamily: FONT.bold,
-    color: "#111111",
+    marginTop: 16,
+    fontSize: 17,
+    lineHeight: 22,
+    fontFamily: FONT.semiBold,
+    color: NEUTRAL[900],
   },
-  dropdown: {
-    marginTop: 10,
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: "#D7D7D7",
-    borderRadius: 13,
-    backgroundColor: "#FCFCFC",
-    paddingHorizontal: 14,
-  },
-  dropdownContainer: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#D7D7D7",
-    backgroundColor: "#FFFFFF",
-  },
-  dropdownPlaceholder: {
-    fontFamily: FONT.regular,
-    fontSize: 15,
-    color: "#8B8B8B",
-  },
-  dropdownSelectedText: {
-    fontFamily: FONT.regular,
-    fontSize: 15,
-    color: "#111111",
-  },
-  dropdownItemText: {
-    fontFamily: FONT.regular,
-    fontSize: 14,
-    color: "#111111",
-  },
-  textArea: {
-    fontFamily: FONT.regular,
-    marginTop: 10,
-    minHeight: 90,
-    borderWidth: 1,
-    borderColor: "#D7D7D7",
-    borderRadius: 13,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    backgroundColor: "#FCFCFC",
-    fontSize: 15,
-    lineHeight: 21,
-    color: "#111111",
-  },
-  notesArea: {
-    minHeight: 78,
-  },
-  modalActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 16,
-    marginTop: 28,
-  },
-  sendButton: {
-    backgroundColor: "#06774B",
-  },
-  sendButtonText: {
-    fontSize: 15,
-    fontFamily: FONT.extraBold,
-    color: "#FFFFFF",
-  },
-  // "Send emergency alert?" pop-up (DESIGN.md look). Its own styles, so the other pop-ups don't change yet.
+  // "Send emergency alert?" pop-up.
   confirmCard: {
     width: "100%",
     maxWidth: 440,
     alignItems: "center",
     padding: 24,
-    borderRadius: 24,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderRadius: CORNER.card,
+    backgroundColor: NEUTRAL[0],
+    ...SHADOW.level3,
   },
-  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
-  confirmText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
-  // Same height and red as the Emergency button on home.
+  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  confirmText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: NEUTRAL[900], textAlign: "center" },
+  // Same height, red and 24 corners as the Emergency button on home.
   confirmSendButton: {
     alignSelf: "stretch",
     minHeight: 76,
     marginTop: 20,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: CORNER.sheet,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: DESIGN_COLORS.emergencyRed,
+    backgroundColor: RED[600],
   },
   confirmSendText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   confirmCancelButton: {
@@ -1481,38 +1410,39 @@ const styles = StyleSheet.create({
     minHeight: 56,
     marginTop: 12,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
+    borderColor: NEUTRAL[500],
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    backgroundColor: NEUTRAL[0],
   },
-  confirmCancelPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  confirmCancelText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  // Alert screen and "not verified" pop-ups (DESIGN.md look, like the "Send emergency alert?" pop-up).
+  confirmCancelPressed: { backgroundColor: NEUTRAL[100] },
+  confirmCancelText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  // Alert screen and "not verified" pop-ups.
   callCard: {
     width: "100%",
     maxWidth: 440,
     maxHeight: "90%",
-    backgroundColor: DESIGN_COLORS.paperWhite,
-    borderRadius: 24,
+    backgroundColor: NEUTRAL[0],
+    borderRadius: CORNER.card,
     padding: 24,
+    ...SHADOW.level3,
   },
   // Centering lives here, not in callCard: a ScrollView only accepts it through contentContainerStyle.
   callCardContent: {
     alignItems: "center",
   },
-  callTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
-  callSubtitle: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
-  notVerifiedText: { marginTop: 8, fontSize: 17, lineHeight: 24, fontFamily: FONT.medium, color: DESIGN_COLORS.ink, textAlign: "center" },
-  // "Keep this screen open…": the most important line while waiting, on a light strip.
-  keepOpenStrip: { alignSelf: "stretch", marginTop: 12, padding: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
-  keepOpenText: { fontSize: 17, lineHeight: 24, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
+  callTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  callSubtitle: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: NEUTRAL[900], textAlign: "center" },
+  notVerifiedText: { marginTop: 8, fontSize: 17, lineHeight: 24, fontFamily: FONT.regular, color: NEUTRAL[900], textAlign: "center" },
+  // "Keep this screen open…": the most important line while waiting, on an orange tint (a highlight, not danger).
+  keepOpenStrip: { alignSelf: "stretch", marginTop: 12, padding: 12, borderRadius: CORNER.input, backgroundColor: ORANGE[100] },
+  keepOpenText: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
   // "Calling Maria in 3…": one big thing in Board size on a light strip (DESIGN.md), not red.
-  autoCallBox: { alignSelf: "stretch", marginTop: 16, padding: 16, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
-  autoCallText: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center", fontVariant: ["tabular-nums"] },
-  alertLocationText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
+  autoCallBox: { alignSelf: "stretch", marginTop: 16, padding: 16, borderRadius: CORNER.card, backgroundColor: NEUTRAL[100] },
+  autoCallText: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: NEUTRAL[900], textAlign: "center", fontVariant: ["tabular-nums"] },
+  alertLocationText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700], textAlign: "center" },
   alertSpinner: {
     marginTop: 14,
   },
@@ -1522,17 +1452,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: DESIGN_COLORS.emergencyRed,
+    borderRadius: CORNER.pill,
+    backgroundColor: RED[600],
     alignItems: "center",
     justifyContent: "center",
   },
-  endCallButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: "#FFFFFF", textAlign: "center" },
-  // "Call 911" is as tall as the Emergency button on home.
+  endCallButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: "#FFFFFF", textAlign: "center" },
+  // "Call 911" is as tall as the Emergency button on home, with its 24 corners.
   call911Button: {
     flexDirection: "row",
     gap: 10,
     minHeight: 76,
+    borderRadius: CORNER.sheet,
   },
   // Hall Green: Try again, Call {dispatcher}, Call the office, Keep alert, OK.
   callNowButton: {
@@ -1540,12 +1471,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: DESIGN_COLORS.hallGreen,
+    borderRadius: CORNER.pill,
+    backgroundColor: GREEN[600],
     alignItems: "center",
     justifyContent: "center",
   },
-  callNowButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: "#FFFFFF", textAlign: "center" },
+  callNowButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: "#FFFFFF", textAlign: "center" },
   // Low-emphasis on purpose: while an alert is live, the solid green "Keep alert" /
   // "Call" actions should win the eye over cancelling.
   cancelAlertButton: {
@@ -1553,161 +1484,121 @@ const styles = StyleSheet.create({
     marginTop: 12,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     borderWidth: 2,
-    borderColor: DESIGN_COLORS.emergencyRed,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: RED[600],
+    backgroundColor: NEUTRAL[0],
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelAlertButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: DESIGN_COLORS.emergencyRed, textAlign: "center" },
+  cancelAlertButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: RED[600], textAlign: "center" },
   // "Done" / "Close" (the alert is over), and "Close" in the not-verified pop-up: white with a grey edge.
   alertDoneButton: {
     width: "100%",
     marginTop: 12,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    backgroundColor: NEUTRAL[0],
     alignItems: "center",
     justifyContent: "center",
   },
-  alertDoneText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, textAlign: "center" },
-  menuItemSoon: {
-    fontSize: 12,
-    fontFamily: FONT.extraBold,
-    color: "#7B8E86",
-  },
+  alertDoneText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900], textAlign: "center" },
   // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
   // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
   editorCardFit: { flexShrink: 1 },
   editorScroll: { flexGrow: 0 },
+  // Profile, Settings and Change Password dialogs.
   profileEditorCard: {
     width: "100%",
     maxWidth: 560,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 22,
+    backgroundColor: NEUTRAL[0],
+    borderRadius: CORNER.card,
+    padding: 24,
+    ...SHADOW.level3,
   },
+  // One profile detail: a tinted box with a small grey label (sentence case) and the value.
   profileInfoCard: {
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: 12,
+    borderRadius: CORNER.input,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#F4F7F5",
+    paddingVertical: 12,
+    backgroundColor: NEUTRAL[100],
   },
   profileInfoLabel: {
-    fontSize: 12,
-    fontFamily: FONT.extraBold,
-    color: "#60716B",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: FONT.medium,
+    color: NEUTRAL[700],
   },
   profileInfoValue: {
-    marginTop: 6,
-    fontSize: 15,
+    marginTop: 2,
+    fontSize: 17,
     lineHeight: 22,
-    fontFamily: FONT.bold,
-    color: "#1C2D27",
-  },
-  historyList: {
-    paddingTop: 18,
-    paddingBottom: 6,
-    gap: 14,
-  },
-  historyCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    gap: 6,
-  },
-  historyHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  historyTitle: {
-    flex: 1,
-    minWidth: 180,
-    fontSize: 16,
-    lineHeight: 22,
-    fontFamily: FONT.extraBold,
-    color: "#1C2D27",
-  },
-  historyText: {
-    fontFamily: FONT.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#4F655C",
+    fontFamily: FONT.semiBold,
+    color: NEUTRAL[900],
   },
   profileInput: {
     fontFamily: FONT.regular,
-    marginTop: 10,
-    minHeight: 50,
-    borderWidth: 1,
-    borderColor: "#D7D7D7",
-    borderRadius: 13,
-    paddingHorizontal: 14,
-    backgroundColor: "#FCFCFC",
-    fontSize: 15,
-    color: "#111111",
-  },
-  secondaryActionButton: {
-    marginTop: 16,
+    marginTop: 8,
     minHeight: 52,
-    borderRadius: 13,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.input,
+    paddingHorizontal: 14,
+    backgroundColor: NEUTRAL[0],
+    fontSize: 17,
+    color: NEUTRAL[900],
+  },
+  // "Change Password": a secondary pill (white, grey edge, green words).
+  secondaryActionButton: {
+    marginTop: 20,
+    minHeight: 48,
+    borderRadius: CORNER.pill,
+    borderWidth: 1.5,
+    borderColor: NEUTRAL[500],
+    backgroundColor: NEUTRAL[0],
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   secondaryActionButtonText: {
-    fontSize: 15,
-    fontFamily: FONT.extraBold,
-    color: "#1C2D27",
+    fontSize: 17,
+    lineHeight: 22,
+    fontFamily: FONT.semiBold,
+    color: GREEN[700],
   },
   errorText: {
     marginTop: 16,
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: FONT.bold,
-    color: "#B42318",
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: FONT.semiBold,
+    color: RED[600],
   },
   feedbackText: {
     marginTop: 16,
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: FONT.bold,
-    color: "#06774B",
+    fontSize: 15,
+    lineHeight: 20,
+    fontFamily: FONT.semiBold,
+    color: GREEN[700],
   },
+  // Save: a green pill, 56 tall. While saving: neutral 200 with neutral 700 words (DESIGN.md disabled look).
   saveButton: {
     marginTop: 24,
-    minHeight: 52,
-    borderRadius: 13,
+    minHeight: 56,
+    borderRadius: CORNER.pill,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#06774B",
+    backgroundColor: GREEN[600],
   },
+  saveButtonDisabled: { backgroundColor: NEUTRAL[200] },
   saveButtonText: {
-    fontSize: 15,
-    fontFamily: FONT.extraBold,
+    fontSize: 17,
+    lineHeight: 22,
+    fontFamily: FONT.semiBold,
     color: "#FFFFFF",
   },
-  disabledSaveButton: {
-    marginTop: 28,
-    minHeight: 52,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#CFD8D3",
-  },
-  disabledSaveButtonText: {
-    fontSize: 15,
-    fontFamily: FONT.extraBold,
-    color: "#466157",
-  },
+  saveButtonTextDisabled: { color: NEUTRAL[700] },
 });
