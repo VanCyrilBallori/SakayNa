@@ -272,16 +272,16 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     </Modal>  </>;
 }
 
-// UI refresh (DESIGN.md "Style"): pill chips, 12-corner inputs, 16-corner cards and pop-up. Sizes unchanged (Task 3.19 decides Admin density).
+// UI refresh (DESIGN.md "Style"): pill chips, 12-corner inputs, 16-corner cards and pop-up. Text at least 15 (DESIGN.md); spacing unchanged.
 const styles = StyleSheet.create({
   nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 },
-  chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 1 }, chipText: { fontSize: 13, fontFamily: FONT.semiBold },
-  title: { fontSize: 21, fontFamily: FONT.bold, marginTop: 8, marginBottom: 6 }, copy: { fontFamily: FONT.regular, fontSize: 13, lineHeight: 19 },
-  label: { fontSize: 13, fontFamily: FONT.semiBold, marginTop: 12, marginBottom: 4 },
-  input: { fontFamily: FONT.regular, minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 },
-  dropdown: { minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: CORNER.input, overflow: "hidden" }, dropdownText: { fontFamily: FONT.regular, fontSize: 14 },
+  chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 1 }, chipText: { fontSize: 15, fontFamily: FONT.semiBold },
+  title: { fontSize: 21, fontFamily: FONT.bold, marginTop: 8, marginBottom: 6 }, copy: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 22 },
+  label: { fontSize: 15, fontFamily: FONT.semiBold, marginTop: 12, marginBottom: 4 },
+  input: { fontFamily: FONT.regular, minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12, paddingVertical: 9, fontSize: 15 },
+  dropdown: { minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: CORNER.input, overflow: "hidden" }, dropdownText: { fontFamily: FONT.regular, fontSize: 15 },
   fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 },
-  accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: CORNER.input, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontFamily: FONT.bold },
+  accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: CORNER.input, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 15, fontFamily: FONT.bold },
   card: { marginTop: 10, borderWidth: 1, borderRadius: CORNER.card, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontFamily: FONT.bold },
   button: { marginTop: 10 }, pageButton: { alignSelf: "flex-start" },
   overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(20, 33, 28, 0.55)" },
