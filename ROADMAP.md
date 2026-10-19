@@ -157,7 +157,7 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 7. **3.24 Dark mode last** (or drop it). It touches every screen and goes against DESIGN.md.
 8. **Stage D** is its own plan after the defense.
 
-### Progress on big-update (October 17, 2026)
+### Progress on big-update (October 19, 2026)
 
 All of these are tested by the owner and committed on `big-update`. Phone changes reach testers only with a new APK (ground rule 5); the website changes go live only after a merge into `master` → `main`.
 
@@ -179,13 +179,14 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.13b Alert sound | `5545656` | ✅ |
 | 3.14 Admin Emergency Calls and Operations buttons | `66c04f5` | ✅ |
 | 3.16 Website skeleton loaders | `c0147ff` (Admin, part 1), `10be62d` (Dispatcher, part 2) | ✅ |
+| 3.20 Live driver location | `ba91b9d` (phone, Step A), `b290e19` (dispatcher map, Step B) | ✅ |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
 - **3.4:** inside Available, drivers with the app closed come after those with it open; then On a run, On break, Off duty, not approved. Same group = A to Z by name.
 - **3.5:** an exact pin is zoom 16; an address lookup is zoom **15** with its "(approximate geocoded match)" label open. The last thing clicked wins, including the orange "Needs a new driver" banner.
   - **Changed October 17 (destination pin, below):** when the destination is found too, the map fits **both** pins instead of zooming to the pickup only.
-- **Dispatcher destination pin (extra, October 17, `LeafletMap.jsx` only):** the selected request's destination shows as the orange flag pin with an always-visible **"Destination"** tag. The map fits pickup and destination with space at the edges (never closer than zoom 16). The destination is only typed text, so its pin is an address lookup ("approximate geocoded match"); vague text like "Lola's house" finds nothing and shows only the pickup, as before. "Show on map" for a driver still wins. Dispatcher map only (`focusPickup`); Resident and Driver maps are unchanged. Real destination pins are future Task 3.27.
+- **Dispatcher destination pin (extra, October 17, `LeafletMap.jsx` only):** the selected request's destination shows as the orange flag pin with an always-visible **"Destination"** tag. The map fits pickup and destination with space at the edges (never closer than zoom 16). The destination is only typed text, so its pin is an address lookup ("approximate geocoded match"); vague text like "Lola's house" finds nothing and shows only the pickup, as before. Dispatcher map only (`focusPickup`); Resident and Driver maps are unchanged. Real destination pins are future Task 3.27.
 - **3.6:** shows "Barangay Daanglungsod" (", Toledo City" left out), or "Barangay not set".
 - **3.8:** the website's loading screens lost the card too; loading words are dark and 17 so they read well on the grey page.
 - **3.9:** "Community / Personal Trip" was renamed **"Community Activity"**. Old rides keep the name they were saved with (History, Request Details, driver card, dispatcher), but the Admin counters and the "Ride for" filters count both names as one (`getPurpose` in `requestOptions.js`). The "Does anyone need help?" checkboxes also became plain.
@@ -207,6 +208,11 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - **Admin (part 1):** Users, Requests, Vehicles and Emergency Calls show it instead of the spinner. Their existing loading flags already end on success or error, so it can't get stuck.
   - **Dispatcher (part 2):** "Latest queue" and "Driver availability" show it until their first answer or an error arrives. Before, they said "Inbox empty" / "No registered drivers" while still loading. Firebase waits for the server while it can reach it, so no false "empty" flash when online; when offline, "Inbox empty" shows after about 10 seconds, as before. The emergency strip and sound load separately and never wait for it.
   - **Spinners kept on purpose:** Resident Verification, Driver Applications, Duty Records, and the start-up screens ("Checking admin access…" and the login gate, which phones share through `ScreenState.jsx`).
+- **3.20:**
+  - **Step A (phone, needs a new APK to reach testers):** every **15 seconds** the phone checks its GPS and saves only if the driver moved **20 m** or more, or **60 seconds** passed without a save (the plan said about 30 s / 50 m). Only while SakayNa is on screen and the driver is on duty and not on break; it stops in the background (for example Google Maps from Navigate), on break and at punch out. The saved step follows the ride (Accepted … Picked Up, otherwise Punch in), so `firestore.rules` did not change. Standing still indoors it can save every 30–45 s, because GPS readings jump more than 20 m.
+  - **Step B (website only):** the dispatcher map shows every on-duty driver in the "Driver availability" list as a pin labelled "Name · updated X min ago"; tapping the pin shows the step and clock time. After **2 minutes** without an update the pin turns grey and faded and the label starts with **"Old location"**. Pins move by a message into the map page, so the map never rebuilds (no blink, the zoom stays). Pickup and destination pins work as before.
+  - **"Show on map"** now **slides** the map to the driver's pin (it does not keep following). Tapping a request card or a "Needs a new driver" banner afterwards brings the ride's pins back.
+  - Drivers on APKs before Step A (demo-ready-18 and older) only save at the steps, so their pin is grey "Old location" between steps.
 
 ---
 
