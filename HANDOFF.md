@@ -7,6 +7,7 @@ Task 1.3 deployment and owner-reported test results were added October 14, 2026.
 Task 1.2 deployment and owner-reported test results were added October 14, 2026.
 The demo-ready-17 APK release was added October 14, 2026.
 The demo-ready-18 APK release (local build) and the new defense set were added October 18, 2026.
+The October 19 big-update work (UI refresh, 3.15, 3.17, 3.18, 3.20, 3.21, skeletons and fixes), what is not done, and the next steps were added October 19, 2026 (section 3, "big-update work, October 19").
 
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
@@ -292,8 +293,31 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 ### Next: defense readiness / APK choice
 
 - Decided (October 18, 2026): the defense set is the **demo-ready-18** APK (local build, debug-signed; testers must uninstall the old SakayNa first), the live website at **a18955c**, and rules **d464a70**. It replaces demo-ready-17. Going back to demo-ready-17 (EAS link expires October 28) would also need an uninstall first, because the signing keys differ.
-- Planned (October 19, 2026): **one** release, replacing the earlier "decide on October 20" plan (ROADMAP owner's decision 1). big-update is merged into master **once** (then master → main for the website) and the **demo-ready-19** APK is built from that merge. The release happens **as soon as everything is done and tested**; **noon, October 22 is the latest, not the target** (feature freeze: only work tested and committed by then goes in). **October 22 is kept for rehearsal, data cleanup and demo accounts.** Delete Account (3.15) and the Change Password removal are committed (`5171780`). Since `a18955c`, big-update has 3.20 live driver location (`ba91b9d`, `b290e19`), the Show on map button fix (`9f1c6fb`) and 3.21 live route line (`66e11f2`, `e9bf92a`); 3.20 Step A (phone) only reaches drivers with demo-ready-19. Until the release, the defense set stays demo-ready-18 / `a18955c` / rules `d464a70`.
+- Planned (October 19, 2026): **one** release, replacing the earlier "decide on October 20" plan (ROADMAP owner's decision 1). big-update is merged into master **once** (then master → main for the website) and the **demo-ready-19** APK is built from that merge. The release happens **as soon as everything is done and tested**; **noon, October 22 is the latest, not the target** (feature freeze: only work tested and committed by then goes in). **October 22 is kept for rehearsal, data cleanup and demo accounts.** What big-update has since `a18955c` is listed in "big-update work, October 19" below. Phone changes only reach testers with demo-ready-19. Until the release, the defense set stays demo-ready-18 / `a18955c` / rules `d464a70`.
 - Rehearse normal ride, cancellation, emergency form, duty/break, and Admin approval using the chosen APK and current website.
+
+### big-update work, October 19, 2026 (tested by the owner and committed; not released yet)
+
+Details and the full commit table are in ROADMAP.md, Phase 3 ("Progress on big-update", "Other work on big-update"). Rules are unchanged (`d464a70`).
+
+| Work | Commits |
+|---|---|
+| 3.20 live driver location (phone Step A, dispatcher map Step B), Show on map fix | `ba91b9d`, `b290e19`, `9f1c6fb` |
+| 3.21 live route line, driver/route labels on hover | `66e11f2`, `e9bf92a` |
+| 3.17 not touching the navigation bar (3 steps) | `4f46ef6`, `4e727f5`, `84a4deb` |
+| UI refresh (DESIGN.md "Style" `fd5a790`): Step 1 font/tokens/dates; resident home + **3.18** bottom bar; rest of resident; sign-up screens | `f71d34e`, `a7e77ec`, `df73822`, `4df10ed` |
+| UI refresh: driver screens; dispatcher website; Admin website (+ Admin skeletons, no 0s while loading) | `37c414b`, `b4b7917`, `c69a88d` |
+| **3.15 Delete Account** (Residents and Drivers) + Change Password removed | `5171780` |
+| Privacy Policy section 7 (how long records are kept), section 2 (live location) | `8609091`, `5319b3a` |
+| Terms / Privacy from the ☰ menu open on top of the menu (no flash) | `801fa37` |
+| Skeletons on the phone (driver Ride page, duty card, history, resident Your ride; Application Status) | `34525d4`, `5233ce4` |
+| Dispatcher map: every pin's label on hover; "Approximate location" line in Selected Request | `b8d38e0` |
+| Admin Overview one-screen dashboard (1280 px+, equal rows) + Admin header like the dispatcher's | `6fc80a0` |
+| Release plan docs | `af9d97f`, `3ec93b8` |
+
+**Not done:** Admin text under 15 px (some Admin text is still 12–14 px; left for its own fix), the Profile-editing part of 3.15, **3.19** Admin layout, **3.22** barangay alerting, **3.23** chat, **3.24** dark theme, **3.27** destination pin.
+
+**Next steps, in order:** (1) Admin text 15 px fix (website); (2) full pre-release test of big-update on phone and website; (3) release: merge big-update into master once, master → main (Vercel "Ready", check live pages), local build of **demo-ready-19** from that merge (EAS free builds are used up until November 1), phone test, tag; (4) October 22: data cleanup, demo accounts for every role, rehearsal. **Do not start the release before steps 1–2 are done and the owner says so.**
 
 ### Safety/security backlog: before real use; outside the freeze unless separately approved
 
@@ -354,7 +378,7 @@ Other optional plans stay deferred: Driver My DTR, automatic shift closing/corre
 3. **One small change.** Give exact phone/website test steps, then stop. Owner tests and commits before the next. This documentation-only commit is explicitly requested; code keeps the usual routine.
 4. Keep the Capstone simple and frozen. No unrelated refactoring, architecture, dependencies, server, or extra features. Stop when the approved requirement works.
 5. Necessary approved packages use **npx expo install**, never plain npm install.
-6. Follow DESIGN.md: light only, readable system font, green/orange (dark words on orange), emergency red, large tap areas, flat simple layout, documented website exceptions, large-text support, no unapproved LGU branding.
+6. Follow DESIGN.md: light only, green/orange (dark words on orange), emergency red, large tap areas, documented website exceptions, large-text support, no unapproved LGU branding. Since October 19 (big-update) its "Style" section also applies: Plus Jakarta Sans, white cards with soft shadows on an off-white page, corners 8/12/16/24/pill, pill buttons, text at least 15 px.
 
 ### Safe Firestore rules deploy
 
@@ -394,6 +418,7 @@ Check Vercel **Ready**, then test changed live pages. No release is part of this
 - architecture-review.md is an October 5 snapshot at 798072a with C1/C2 updates. Checklist still says APK 14 and suggests doing C2 although APK 15 is newer and C2 fixed. A2's Operations role-change workaround is gone. Recheck old line numbers/counts before work. Cleanup suggestions are not current implementation requests.
 - The actual filename is **Claude.md**, while plans refer to CLAUDE.md; Windows resolves both to this rulebook.
 - Vehicle pictures #11 is owner-supplied context, not a matching numbered item found in the checked files.
+- PRODUCT.md's password-eyes line still ends "Settings' Change Password boxes have no eyes", but Change Password was removed from Settings in `5171780` (October 19). PRODUCT.md does not yet describe the October 19 UI refresh, skeletons or Admin Overview layout either.
 
 ## Evidence and limits
 

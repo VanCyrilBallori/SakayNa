@@ -97,6 +97,8 @@ Enhance perceived performance, accessibility, and user feedback without altering
 
 **Status (October 17, 2026): Tasks 3.1 to 3.14, 3.13b and 3.16 are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Task 3.15 and Tasks 3.17 onward are not started. **Update October 18, 2026:** these tasks, the destination pin and the C3 fix (`9ab2187`) were merged into `master` at `a18955c`, which is now the live website and the phone-tested **demo-ready-18** APK. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
 
+**Update October 19, 2026:** on `big-update` (after `a18955c`, not released yet): **3.15** (Delete Account part), **3.17**, **3.18**, **3.20** and **3.21** are done, plus the **UI refresh** (DESIGN.md "Style") for every role and the sign-up screens, skeleton loading on phone and website, the Terms/Privacy menu fix, hover labels for every dispatcher map pin, the Admin Overview one-screen layout and header, and Privacy Policy sections 2 and 7. Every item was tested by the owner and committed; commits are in "Progress on big-update" and "Other work on big-update" below. **Not done:** see "Not done yet" and "Next steps" at the end of this section. The defense set is still demo-ready-18 / `a18955c` / rules `d464a70` until the release.
+
 ### Ground rules for Phase 3
 
 1. **The defense version stays frozen.** demo-ready-18 + website `a18955c` + rules `d464a70` are the safe defense set (changed October 18, 2026; before that it was demo-ready-17 + website `258258e`). Remember: the website is built from `master` → `main`, and **everything on master goes live**.
@@ -181,15 +183,18 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.16 Website skeleton loaders | `c0147ff` (Admin, part 1), `10be62d` (Dispatcher, part 2) | ✅ |
 | 3.20 Live driver location | `ba91b9d` (phone, Step A), `b290e19` (dispatcher map, Step B) | ✅ |
 | 3.21 Live route line | `66e11f2`, `e9bf92a` (labels on hover) | ✅ |
-| 3.17 Not touching the navigation bar | `4f46ef6` (Step 1), `4e727f5` (Step 2), Step 3 = the "3.17 Step 3" commit | ✅ |
+| 3.17 Not touching the navigation bar | `4f46ef6` (Step 1), `4e727f5` (Step 2), `84a4deb` (Step 3) | ✅ |
+| 3.18 Resident bottom bar (Your ride / History) | `a7e77ec` (with the resident home UI refresh) | ✅ |
+| 3.15 Delete Account (+ Change Password removed) | `5171780` | ✅ (Delete Account part; Profile-editing part not done) |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
 - **3.4:** inside Available, drivers with the app closed come after those with it open; then On a run, On break, Off duty, not approved. Same group = A to Z by name.
 - **3.5:** an exact pin is zoom 16; an address lookup is zoom **15** with its "(approximate geocoded match)" label open. The last thing clicked wins, including the orange "Needs a new driver" banner.
   - **Changed October 17 (destination pin, below):** when the destination is found too, the map fits **both** pins instead of zooming to the pickup only.
-- **Dispatcher destination pin (extra, October 17, `LeafletMap.jsx` only):** the selected request's destination shows as the orange flag pin with an always-visible **"Destination"** tag. The map fits pickup and destination with space at the edges (never closer than zoom 16). The destination is only typed text, so its pin is an address lookup ("approximate geocoded match"); vague text like "Lola's house" finds nothing and shows only the pickup, as before. Dispatcher map only (`focusPickup`); Resident and Driver maps are unchanged. Real destination pins are future Task 3.27.
-- **3.6:** shows "Barangay Daanglungsod" (", Toledo City" left out), or "Barangay not set".
+  - **Changed October 19 (`b8d38e0`):** the "(approximate geocoded match)" label no longer opens by itself; it shows on hover. Selected Request says "Approximate location (from typed address)" instead.
+- **Dispatcher destination pin (extra, October 17, `LeafletMap.jsx` only):** the selected request's destination shows as the orange flag pin with an always-visible **"Destination"** tag. The map fits pickup and destination with space at the edges (never closer than zoom 16). The destination is only typed text, so its pin is an address lookup ("approximate geocoded match"); vague text like "Lola's house" finds nothing and shows only the pickup, as before. Dispatcher map only (`focusPickup`); Resident and Driver maps are unchanged. Real destination pins are future Task 3.27. **Changed October 19 (`b8d38e0`):** the always-visible tag is gone; "Destination: …" shows on hover, click or keyboard focus.
+- **3.6:** shows "Barangay Daanglungsod" (", Toledo City" left out), or "Barangay not set". **Changed October 19 (`6fc80a0`):** the Admin header now uses the dispatcher's title: the icon, "SakayNa", and only "Daanglungsod" under it.
 - **3.8:** the website's loading screens lost the card too; loading words are dark and 17 so they read well on the grey page.
 - **3.9:** "Community / Personal Trip" was renamed **"Community Activity"**. Old rides keep the name they were saved with (History, Request Details, driver card, dispatcher), but the Admin counters and the "Ride for" filters count both names as one (`getPurpose` in `requestOptions.js`). The "Does anyone need help?" checkboxes also became plain.
 - **3.10:** empty or 0 gives "Enter a number from 1 to 50." on Review; the box takes 3 digits so "100" gets the message.
@@ -235,6 +240,66 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - Then the profile gets `deletedAt` and loses phone, phone number, address and picture fields (name and barangay stay), and the login is deleted. Rides, alerts and duty records stay (Privacy Policy section 7). No `firestore.rules` change.
   - If deleting the login fails after the mark is saved, logging in shows "This account was deleted" with **Finish deleting** / **Log out**.
   - Admin: Users shows a grey **Deleted** pill and "Deleted on …"; deleted accounts are left out of Resident Verification and Driver Applications (and their counts). Dispatcher: deleted drivers are not in Driver availability.
+- **3.18 (`a7e77ec`):** the resident home has a bottom bar with **Your ride** and **History**; Emergency stays at the top of both. History moved out of the ☰ menu into its own page (fixed header with filters and search, cards with status badges). Built together with the resident home's UI refresh. Chat (3.23) is not added.
+- **UI refresh (DESIGN.md "Style", `fd5a790`), every role (look only; no saving, rules or ride logic changed):**
+  - **Step 1 (`f71d34e`):** Plus Jakarta Sans everywhere, the color scales / corners / shadows as tokens in `constants/design.js`, one date format in `lib/dates.js`.
+  - **Resident (`a7e77ec`, `df73822`):** off-white page, white cards with soft shadows, pill buttons; Emergency keeps its 24 corners and stays the most obvious thing. No text under 15 on these screens.
+  - **Sign-up screens (`4df10ed`):** Create Account, Verify email, Choose role, resident registration, driver application.
+  - **Driver (`37c414b`):** three tabs (the open tab has a light-green pill behind its icon, like the resident bar; **this replaces 3.1's no-pill look, owner's choice October 19**), white ride card and Ride steps, pill buttons, "Inbox empty" empty state, duty card with 16 corners (Off duty is white), all pop-ups. The cancelled-ride **OK** and Ride details **Close** buttons are white, not red/green (red is only for emergencies).
+  - **Dispatcher website (`b4b7917`):** white request cards with the level as a pill (Emergency red, Urgent peach, others light green); **Emergency cards also get a 2 px red edge all around** (owner's choice; DESIGN.md allows no side stripes). White driver cards with tinted status pills (On a run stays solid deep green). Selected Request, map frame and header in the Style. The red emergency strip and the emergency form keep their colors and layout. Paddings and line heights of the no-scrolling layout (3.13) are unchanged.
+  - **Admin website (`c69a88d`):** `lib/theme.js` (only Admin uses it) moves onto the Style scales; white side menu and panel, count badges as pills (red for emergencies, orange with dark numbers for waiting approvals), pill buttons, 16-corner pop-ups, grey read-only boxes. **Text sizes and spacing were left as they were** (some Admin text is still 12–14 px; see "Not done yet").
+- **Skeleton loading (extends 3.16):**
+  - **Phone (`34525d4`, `5233ce4`):** the driver's Ride page, duty card and Ride history, the resident's "Your ride" card, and the driver Application Status page show the grey 3.16 placeholder until Firebase answers. Before, they briefly showed a false "Inbox empty", "Off duty" with Punch in, "No rides yet" or "No reason was given.". Each "has it answered?" flag turns on at the first answer or at an error, so a placeholder never stays.
+  - **Admin (`c69a88d`):** Resident Verification, Driver Applications and both Duty Records lists (the spinners 3.16 kept). **Overview** waits for users, requests, vehicles and applications, and **Reports** for the requests, so neither shows 0s or "No ride requests are loaded yet" while loading.
+  - Spinners kept on purpose: the start-up / access-check screens, "Opening the map…", the emergency "waiting for the dispatcher" circle, and small spinners inside buttons.
+- **Terms / Privacy from the ☰ menu (`801fa37`, phone):** they open in a full-screen window **on top of** the open menu, so the menu no longer closes and reopens (the flash). "← Back" and the phone's Back button return straight to the menu. The website still opens them in a new tab.
+- **Dispatcher map labels (`b8d38e0`, website):** the pickup and destination pins now behave like the driver pins (`e9bf92a`): their label shows only on mouse-over, click or keyboard focus and closes when the mouse leaves. **This replaces** the always-visible "Destination" tag (destination pin note above) and the self-opening "(approximate geocoded match)" label (3.5 note above). Instead, Selected Request shows a one-line **"Approximate location (from typed address)"** with a warning icon under the pickup when the pickup has no exact pin. Phone maps are unchanged.
+- **Admin Overview and header (`6fc80a0`, website):**
+  - From **1280 px** wide, Overview is a one-screen dashboard: top row Needs attention (1/3) + Requests over time (2/3, the 7 days / 4 weeks / 12 months choices next to its title); bottom row Ride requests, Drivers and vehicles, What rides were for, Waiting time. The two rows split the height evenly; the chart fits inside its half. The bottom cards measure their content, and no row gets shorter than the tallest card, so a too-short window scrolls instead of cutting text. Tested 1366×768 to 1920×1080. Narrower windows keep the stacked layout.
+  - The Admin panel is now the window height minus the header and margins, so the Admin page itself does not scroll.
+  - The Admin header uses the dispatcher's title (`HeaderBrand` in `AppBrandHeader.jsx`): the icon, "SakayNa", and only the barangay name under it (**this replaces 3.6's "Barangay Daanglungsod" under the big logo**).
+- **Privacy Policy (`8609091`, `5319b3a`):** section 7 says how long records are kept (ride requests and alerts 1 year, duty records 1 year, photos removed within 30 days after an account is rejected or deleted, a deleted account's history 1 year; removal is done by hand by the system administrator). Section 2 says the driver's location is also saved every 15–60 s while SakayNa is open (3.20).
+
+#### Other work on big-update (October 19, 2026)
+
+Also tested by the owner and committed on `big-update`.
+
+| Work | Commit(s) | Reaches testers via |
+|---|---|---|
+| DESIGN.md "Style" section (UI refresh, approved) | `fd5a790` | docs |
+| UI refresh Step 1: Plus Jakarta Sans, design tokens, one date format | `f71d34e` | APK + website |
+| UI refresh: resident home + 3.18 bottom bar | `a7e77ec` | APK + website |
+| UI refresh: rest of the resident screens | `df73822` | APK + website |
+| UI refresh: account-creation (sign-up) screens | `4df10ed` | APK + website |
+| UI refresh: driver screens | `37c414b` | APK |
+| UI refresh: dispatcher website | `b4b7917` | website |
+| UI refresh: Admin website + Admin skeletons + no 0s while loading | `c69a88d` | website |
+| Privacy Policy section 7 (how long records are kept) and section 2 (live driver location) | `8609091`, `5319b3a` | website + APK |
+| Terms / Privacy from the ☰ menu: open on top of the menu, no flash | `801fa37` | APK |
+| Skeletons on the phone (driver Ride page, duty card, Ride history; resident Your ride) | `34525d4` | APK |
+| Skeleton on the driver Application Status page | `5233ce4` | APK |
+| Dispatcher map: every pin's label on hover; approximate-pickup line in Selected Request | `b8d38e0` (earlier: `e9bf92a` driver/route labels, `9f1c6fb` Show on map button) | website |
+| Admin Overview on one screen + Admin header like the dispatcher's | `6fc80a0` | website |
+| Release plan: release as soon as done; Oct 22 noon is the latest | `3ec93b8` | docs |
+
+#### Not done yet (October 19, 2026)
+
+| Item | Status |
+|---|---|
+| **Admin text under 15 px** | Some Admin text is still 12–14 px (side menu, filter chips, pop-up subtitles and detail lines, small action buttons, count badges, Operations labels and inputs). Left out of the Admin UI refresh because density belongs to 3.19. **Next step** (below). |
+| 3.15, Profile-editing part | Not done (editing still lives in Settings). The Delete Account part is done. |
+| 3.19 Admin website layout (top bar, sidebar, card lists, denser desktop) | Not started. Not part of this release. |
+| 3.22 Emergency alerts ring the barangay's dispatcher first | Not started (needs a full emergency rehearsal plan first). |
+| 3.23 Chat between Resident and Driver | Not started (the only Phase 3 rules change; no rules deploy before the defense). |
+| 3.24 Light/Dark theme switch | Not started (goes against DESIGN.md "light only"; may be dropped). |
+| 3.27 Resident drops a destination pin | Not started (future). |
+
+#### Next steps (in this order)
+
+1. **Admin text 15 px fix** (website only): raise the remaining 12–14 px Admin text to at least 15 px (DESIGN.md minimum), one change, tested, committed.
+2. **Full pre-release test** of `big-update`: every role on the phone (development build) and the website: a normal ride, cancellation, emergency with the form, duty/break, Admin approval, Delete Account, Overview at 1366×768.
+3. **Release** (owner decision 1): merge `big-update` into `master` **once**, then `master` → `main` for Vercel (check "Ready" and the live pages), then the **local build** of **demo-ready-19** from that merge (EAS free builds are used up until November 1; same steps as demo-ready-18), phone-tested, tagged. Testers must uninstall the old SakayNa first. **Noon, October 22 is the latest**, not the target.
+4. **October 22:** data cleanup (old test rides, alerts and accounts), demo accounts for every role, and the defense rehearsal.
 
 ---
 
@@ -243,6 +308,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 #### Task 3.1: Driver bottom bar highlight ✅ Done (c7205dd)
 - **What changes:** in `app/driver-home.jsx`, the open tab shows a green icon and green bold word only. The grey-green box behind the icon (`tabIconOpen`) and the grey flash when pressed (`tabButtonPressed`) are removed.
 - **Could break:** nothing important. Only looks. The orange "new ride" dot stays.
+- **Changed October 19 (`37c414b`, owner's choice):** with the UI refresh the open tab has a light-green pill behind its icon again, like the resident bar (3.18).
 
 #### Task 3.2: Request form wording ✅ Done (e8284da)
 - **What changes:** `ResidentRequestForm.jsx`: the "Other" box placeholder becomes plain "Tell us briefly" (no "buying medicine"). The passenger phone label loses "(optional)".
@@ -311,6 +377,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 - **Could break:** only looks. Check the "No answer" overdue list still sorts the same.
 
 #### Task 3.15: Profile and Settings
+- **Status October 19, 2026:** the **Delete Account** part is done (`5171780`), and **Change Password was removed** from Settings instead of kept (owner's decision; Forgot password on Log in resets a password). The Profile-editing part below is **not done**: editing still lives in Settings. Details in "Progress on big-update".
 - **What changes:** for Residents and Drivers:
   - **Profile** (picture tap, 3.7) shows name, number, email, barangay. Editing name/number/email moves here (an "Edit" button) because it is no longer in Settings. **Decision needed**: OK?
   - **Settings** holds only: Change Password (already exists), Delete Account (new), and the theme switch (Task 3.24, shown only when that task is done).
