@@ -6,7 +6,8 @@ import { DESIGN_COLORS, FONT } from "../../../constants/design";
 // The title line at the top of every Admin section (DESIGN.md "Admin website exception"), the same as Overview's:
 // a 40 round badge with a white icon, the title, and one short explanation beside it (under it when there is no room).
 // red = the Emergency Calls badge; every other section is Hall Green. The icons match the side menu's.
-export default function AdminSectionHeader({ icon, title, subtitle, red = false }) {
+// right = something at the end of the line (Vehicles: its Add button).
+export default function AdminSectionHeader({ icon, title, subtitle, red = false, right = null }) {
   return (
     <View style={styles.header}>
       <View style={[styles.badge, { backgroundColor: red ? DESIGN_COLORS.emergencyRed : DESIGN_COLORS.hallGreen }]}>
@@ -18,6 +19,7 @@ export default function AdminSectionHeader({ icon, title, subtitle, red = false 
         </Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
+      {right}
     </View>
   );
 }
