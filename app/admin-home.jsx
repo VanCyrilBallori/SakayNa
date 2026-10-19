@@ -1,4 +1,4 @@
-import { FontAwesome } from "@expo/vector-icons";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { collection, doc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
@@ -54,6 +54,19 @@ const ADMIN_PAGE_CHROME_HEIGHT = 140;
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
 const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Driver Applications", "Duty Records", "Operations", "Requests", "Users", "Vehicles"];
+// The side menu's icon for each section (Material Community Icons, outline; always shown with its word).
+// The same icons as the sections' title lines.
+const SIDE_LINK_ICONS = {
+  Overview: "chart-bar",
+  "Emergency Calls": "phone-outline",
+  "Resident Verification": "account-check-outline",
+  "Driver Applications": "card-account-details-outline",
+  "Duty Records": "calendar-clock-outline",
+  Operations: "cog-outline",
+  Requests: "clipboard-list-outline",
+  Users: "account-group-outline",
+  Vehicles: "van-passenger",
+};
 const userRoleViews = ["All", "Resident", "Driver", "Dispatcher", "Admin"];
 const requestStatusFilters = ["All", "Pending", "Assigned", "In Progress", "Completed", "Cancelled"];
 // "Ride for" filter: the choices from the resident's request form. Old requests have no purpose, so they show under "All" only.
@@ -892,7 +905,8 @@ export default function AdminHome() {
             >
               <Text style={[styles.sidebarTitle, { color: theme.text }]}>Admin Tools</Text>
 
-              <ScrollView style={styles.panelScrollArea} contentContainerStyle={styles.panelScrollContent} showsVerticalScrollIndicator={false}>
+              {/* Wide windows: one row per section. Narrow windows (compact): the same items as a row of pills that wraps. */}
+              <ScrollView style={styles.panelScrollArea} contentContainerStyle={[styles.panelScrollContent, compact && styles.panelScrollContentCompact]} showsVerticalScrollIndicator={false}>
                 {sideLinks.map((label) => {
                   const active = selectedSection === label;
 
@@ -901,8 +915,11 @@ export default function AdminHome() {
                       key={label}
                       style={[styles.sideBlock, active && styles.sideBlockActive]}
                       onPress={() => setSelectedSection(label)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
                     >
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <View style={styles.sideBlockRow}>
+                        <MaterialCommunityIcons name={SIDE_LINK_ICONS[label]} size={24} color={active ? NEUTRAL[0] : NEUTRAL[900]} />
                         <Text style={[styles.sideBlockText, active && styles.sideBlockTextActive]}>{label}</Text>
                         {/* Count badges (DESIGN.md Style): pills. Red only for the emergency count; the "waiting for you"
                             counts are Sakay Orange with dark words (never white words on orange). */}
@@ -1246,7 +1263,7 @@ export default function AdminHome() {
 }
 
 // UI refresh (DESIGN.md "Style"): the corners, colors, shadows, font weights and button shapes follow the Style.
-// Text sizes and spacing are unchanged on purpose: how dense the Admin website is belongs to Task 3.19.
+// Text is at least 15. How dense the Admin website is: DESIGN.md "Admin website exception" (Task 3.19).
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: NEUTRAL[50] },
   accessPage: { flex: 1, backgroundColor: NEUTRAL[50], alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
@@ -1293,10 +1310,10 @@ const styles = StyleSheet.create({
   layoutRowCompact: { flexWrap: "wrap" },
   // The side menu and the content panel: white cards (16 corners, thin edge from the theme, Level 1 shadow).
   sidebar: {
-    width: 236,
+    width: 228,
     flexShrink: 0,
     gap: 10,
-    padding: 16,
+    padding: 12,
     borderWidth: 1,
     borderRadius: CORNER.card,
     alignSelf: "stretch",
@@ -1306,23 +1323,25 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "stretch",
   },
-  sidebarTitle: { fontSize: 20, fontFamily: FONT.bold },
+  sidebarTitle: { fontSize: 20, fontFamily: FONT.bold, paddingHorizontal: 4 },
   sidebarSubtitle: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 22, marginBottom: 6 },
   panelScrollArea: { flex: 1 },
-  panelScrollContent: { gap: 10, paddingBottom: 2 },
-  // One section in the side menu: a light green row (12 corners, DESIGN.md Style list rows); the open one is green
-  // with white words.
+  panelScrollContent: { gap: 4, paddingBottom: 2 },
+  // Narrow windows: the menu items side by side, wrapping onto more lines.
+  panelScrollContentCompact: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  // One section in the side menu (DESIGN.md "Admin website exception"): an icon and its word, left aligned, at least
+  // 48 tall. The open one is a green pill with white words; the others have no fill.
   sideBlock: {
     minHeight: 48,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: CORNER.input,
-    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: CORNER.pill,
     justifyContent: "center",
-    backgroundColor: GREEN[50],
   },
+  sideBlockRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   sideBlockActive: { backgroundColor: GREEN[600] },
-  sideBlockText: { flex: 1, fontSize: 15, fontFamily: FONT.semiBold, textAlign: "center", color: NEUTRAL[900] },
+  // flexGrow (not flex: 1), so the word keeps its width inside a narrow-window pill and pushes the badge to the end.
+  sideBlockText: { flexGrow: 1, flexShrink: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
   sideBlockTextActive: { color: NEUTRAL[0] },
   // The numbers next to a section name (count badges, DESIGN.md Style): pills.
   countBadge: { minWidth: 24, height: 24, paddingHorizontal: 6, marginLeft: 8, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: ORANGE[500] },
