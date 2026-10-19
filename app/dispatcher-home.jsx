@@ -231,77 +231,86 @@ function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
   // The driver's last known location (only while on duty, see dispatcherAvailabilityRows).
   const location = driver.location;
   const locationAgo = location?.atMs == null ? "" : now - location.atMs < 60_000 ? "just now" : `${formatDutyDuration(now - location.atMs)} ago`;
+  // The card is a plain box with two tap areas (above and below the "Show on map" button), not one big button:
+  // on the website a button inside a button is not allowed. Both tap areas do the same thing and press the whole card.
+  const [cardPressed, setCardPressed] = useState(false);
+  const tapAreaProps = { onPress, disabled: !canAssign, onPressIn: () => setCardPressed(true), onPressOut: () => setCardPressed(false) };
 
   return (
-    <Pressable
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.driverCard,
         !canAssign && styles.driverCardBlocked,
         canAssign && selected && styles.driverCardSelected,
-        canAssign && pressed && styles.driverCardPressed,
+        canAssign && cardPressed && styles.driverCardPressed,
       ]}
-      onPress={onPress}
-      disabled={!canAssign}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !canAssign, selected }}
-      accessibilityLabel={`${driver.name}, ${badgeLabel}. ${reportText ? `${reportText}. ` : ""}${canAssign ? "Tap to assign a ride." : `Can't assign: ${driver.blockReason}`}`}
     >
-      {/* Name and status on one line: a long name gets the "…", the status never does. */}
-      <View style={styles.driverTopRow}>
-        <OneLine style={[styles.driverName, !canAssign && styles.driverNameBlocked]}>{driver.name}</OneLine>
-        <View style={[styles.dutyBadge, { backgroundColor: badge.backgroundColor }]}>
-          <Text style={[styles.dutyBadgeText, { color: badge.color }]} numberOfLines={1}>
-            {badgeLabel}
-          </Text>
+      {/* Top tap area: the screen reader's one "assign" button for this card (the bottom area isn't a second one). */}
+      <Pressable
+        {...tapAreaProps}
+        style={[styles.driverCardTop, location && styles.driverCardTopAboveButton]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !canAssign, selected }}
+        accessibilityLabel={`${driver.name}, ${badgeLabel}. ${reportText ? `${reportText}. ` : ""}${canAssign ? "Tap to assign a ride." : `Can't assign: ${driver.blockReason}`}`}
+      >
+        {/* Name and status on one line: a long name gets the "…", the status never does. */}
+        <View style={styles.driverTopRow}>
+          <OneLine style={[styles.driverName, !canAssign && styles.driverNameBlocked]}>{driver.name}</OneLine>
+          <View style={[styles.dutyBadge, { backgroundColor: badge.backgroundColor }]}>
+            <Text style={[styles.dutyBadgeText, { color: badge.color }]} numberOfLines={1}>
+              {badgeLabel}
+            </Text>
+          </View>
         </View>
-      </View>
-      <OneLine style={styles.driverPlace}>{driver.barangay}</OneLine>
-      {sinceMs !== null ? (
-        <OneLine style={[styles.dutySince, styles.dutySinceLine]}>{`since ${formatManilaTime(sinceMs)} · ${formatDutyDuration(now - sinceMs)}`}</OneLine>
-      ) : null}
+        <OneLine style={styles.driverPlace}>{driver.barangay}</OneLine>
+        {sinceMs !== null ? (
+          <OneLine style={[styles.dutySince, styles.dutySinceLine]}>{`since ${formatManilaTime(sinceMs)} · ${formatDutyDuration(now - sinceMs)}`}</OneLine>
+        ) : null}
 
-      {driver.dutyStatus === "On break" && driver.breakNote ? <OneLine style={styles.driverMetaLine}>{`Note: ${driver.breakNote}`}</OneLine> : null}
-      {driver.activeAssignment ? <OneLine style={styles.driverMetaLine}>{`Ride: ${driver.activeAssignment.title || "Assigned ride"}`}</OneLine> : null}
-      <OneLine style={styles.driverMetaLine}>{`Vehicle: ${driver.linkedVehicle?.name || "No linked vehicle"}`}</OneLine>
+        {driver.dutyStatus === "On break" && driver.breakNote ? <OneLine style={styles.driverMetaLine}>{`Note: ${driver.breakNote}`}</OneLine> : null}
+        {driver.activeAssignment ? <OneLine style={styles.driverMetaLine}>{`Ride: ${driver.activeAssignment.title || "Assigned ride"}`}</OneLine> : null}
+        <OneLine style={styles.driverMetaLine}>{`Vehicle: ${driver.linkedVehicle?.name || "No linked vehicle"}`}</OneLine>
 
-      {/* Last known location: saved at each step and, while SakayNa is open on screen, every 15-60 s; never in the background (Task 3.20). */}
-      {/* The button has its own tap area, so it also works on a greyed-out card (a driver "On a run" is often the one to find). */}
-      {location ? (
-        <>
+        {/* Last known location: saved at each step and, while SakayNa is open on screen, every 15-60 s; never in the background (Task 3.20). */}
+        {location ? (
           <OneLine style={styles.driverMetaLine}>{`Last known location: ${locationAgo} (${LOCATION_STEP_LABELS[location.step] || location.step})`}</OneLine>
-          <Pressable
-            style={({ pressed }) => [styles.showOnMapButton, pressed && styles.showOnMapButtonPressed]}
-            onPress={(event) => {
-              // Only this button: don't also open the "Assign Request" window of the card around it.
-              event?.stopPropagation?.();
-              onShowOnMap();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`Show ${driver.name} on the map`}
-          >
-            <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
-            <Text style={styles.showOnMapText}>Show on map</Text>
-          </Pressable>
-        </>
-      ) : driver.dutyStatus !== "Off duty" ? (
-        <OneLine style={styles.driverMetaLine}>No location shared.</OneLine>
+        ) : driver.dutyStatus !== "Off duty" ? (
+          <OneLine style={styles.driverMetaLine}>No location shared.</OneLine>
+        ) : null}
+      </Pressable>
+
+      {/* Between the two tap areas, not inside them, so tapping it never opens the "Assign Request" window.
+          It also works on a greyed-out card (a driver "On a run" is often the one to find). */}
+      {location ? (
+        <Pressable
+          style={({ pressed }) => [styles.showOnMapButton, pressed && styles.showOnMapButtonPressed]}
+          onPress={onShowOnMap}
+          accessibilityRole="button"
+          accessibilityLabel={`Show ${driver.name} on the map`}
+        >
+          <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+          <Text style={styles.showOnMapText}>Show on map</Text>
+        </Pressable>
       ) : null}
 
-      {appClosed ? (
-        <View style={styles.appClosedBox}>
-          <MaterialCommunityIcons name="cellphone-off" size={22} color={DESIGN_COLORS.orangeDeep} />
-          <OneLine style={styles.appClosedText}>{`Available · app closed. Call ${driver.phoneNumber ? formatPhoneForDialing(driver.phoneNumber) : "the driver"} first.`}</OneLine>
-        </View>
-      ) : null}
-      {/* Same peach box as "app closed": the dispatcher should know before giving this driver another ride. */}
-      {report ? (
-        <View style={styles.appClosedBox}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={22} color={DESIGN_COLORS.orangeDeep} />
-          <OneLine style={styles.appClosedText}>{reportText}</OneLine>
-        </View>
-      ) : null}
-      {!canAssign ? <OneLine style={styles.blockReasonText}>{`Can't assign: ${driver.blockReason}`}</OneLine> : null}
-    </Pressable>
+      {/* Bottom tap area: the warnings, and the card's bottom edge. Not a tab stop (the top area is the card's button). */}
+      <Pressable {...tapAreaProps} focusable={false} style={styles.driverCardBottom}>
+        {appClosed ? (
+          <View style={styles.appClosedBox}>
+            <MaterialCommunityIcons name="cellphone-off" size={22} color={DESIGN_COLORS.orangeDeep} />
+            <OneLine style={styles.appClosedText}>{`Available · app closed. Call ${driver.phoneNumber ? formatPhoneForDialing(driver.phoneNumber) : "the driver"} first.`}</OneLine>
+          </View>
+        ) : null}
+        {/* Same peach box as "app closed": the dispatcher should know before giving this driver another ride. */}
+        {report ? (
+          <View style={styles.appClosedBox}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={22} color={DESIGN_COLORS.orangeDeep} />
+            <OneLine style={styles.appClosedText}>{reportText}</OneLine>
+          </View>
+        ) : null}
+        {!canAssign ? <OneLine style={styles.blockReasonText}>{`Can't assign: ${driver.blockReason}`}</OneLine> : null}
+      </Pressable>
+    </View>
   );
 }
 
@@ -1505,9 +1514,14 @@ const styles = StyleSheet.create({
   mapPlaceholderText: { marginTop: 12, maxWidth: 520, fontSize: 16, lineHeight: 24, color: "#61716B", textAlign: "center" },
   rightPanel: { flexBasis: 270, minWidth: 260, maxWidth: 280, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
   // Driver cards (driver-duty-plan.md Step 5, DESIGN.md look). Flat: no shadows.
-  driverCard: { padding: 14, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
+  // No padding on the card itself: its tap areas and the "Show on map" button hold the 14 around the edge.
+  driverCard: { borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
   driverCardSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen },
   driverCardPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  driverCardTop: { paddingTop: 14, paddingHorizontal: 14 },
+  // The 10 above "Show on map" belongs to the top tap area, so it opens Assign like before.
+  driverCardTopAboveButton: { paddingBottom: 10 },
+  driverCardBottom: { paddingHorizontal: 14, paddingBottom: 14 },
   // Greyed out: this driver can't be given a ride now (the reason is written on the card).
   driverCardBlocked: { borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
   driverName: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontWeight: "700", color: DESIGN_COLORS.ink },
@@ -1524,7 +1538,7 @@ const styles = StyleSheet.create({
   appClosedText: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: "700", color: DESIGN_COLORS.ink },
   // Outline button (DESIGN.md: corner 16, at least 48 tall, icon with a word).
   showOnMapButton: {
-    marginTop: 10,
+    marginHorizontal: 14,
     minHeight: 48,
     paddingHorizontal: 12,
     flexDirection: "row",
