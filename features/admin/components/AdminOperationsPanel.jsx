@@ -22,7 +22,7 @@ import {
   updateDispatcherScope,
 } from "../services/trustedAdminOperationsService";
 import AdminReportsSection from "./AdminReportsSection";
-import { FONT } from "../../../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, SHADOW } from "../../../constants/design";
 
 const EMPTY_DISPATCHER = { fullName: "", email: "", phoneNumber: "", temporaryPassword: "" };
 const ADMIN_CHANGE_REFUSED = "This change was not allowed. You can only manage non-Admin accounts in your own barangay. Check that this account belongs to your barangay.";
@@ -34,7 +34,7 @@ const toDateLabel = (value) => {
 };
 const statusOf = (user) => user.accountStatus || user.approvalStatus || ACCOUNT_STATUSES.ACTIVE;
 
-export default function AdminOperationsPanel({ users, vehicles, assignments, requests, adminId, adminName, adminBarangay, canManageUser, theme }) {
+export default function AdminOperationsPanel({ users, vehicles, assignments, requests, requestsLoading = false, adminId, adminName, adminBarangay, canManageUser, theme }) {
   const [view, setView] = useState("Accounts");
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("All");
@@ -118,18 +118,18 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     try { const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = `sakayna-request-summary-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url); setMessage("CSV report downloaded. Spreadsheet formula characters were neutralized."); } catch { setError("The browser blocked the CSV download. Please allow downloads and retry."); }
   };
 
-  const chip = (label, active, onPress) => <TouchableOpacity key={label} style={[styles.chip, { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface }]} onPress={onPress}><Text style={[styles.chipText, { color: active ? "#FFFFFF" : theme.text }]}>{label}</Text></TouchableOpacity>;
+  const chip = (label, active, onPress) => <TouchableOpacity key={label} style={[styles.chip, { borderColor: active ? GREEN[600] : theme.border, backgroundColor: active ? GREEN[600] : theme.surface }]} onPress={onPress}><Text style={[styles.chipText, { color: active ? NEUTRAL[0] : theme.text }]}>{label}</Text></TouchableOpacity>;
   const card = (children, key) => <View key={key} style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>{children}</View>;
 
   const renderAccounts = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Account Operations</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>The list is limited to the profiles already loaded by the Admin console. Passwords, tokens, and private documents are never displayed here.</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={search} onChangeText={setSearch} placeholder="Name, UID, phone, email, barangay..." placeholderTextColor={theme.subtleText} />
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={search} onChangeText={setSearch} placeholder="Name, UID, phone, email, barangay..." placeholderTextColor={theme.subtleText} />
     <View style={styles.fieldsRow}>
       <View style={styles.field}>
         <Text style={[styles.label, { color: theme.text }]}>Role</Text>
         <Dropdown fontFamily={FONT.regular}
-          style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
+          style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]}
           containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
           selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
           itemTextStyle={[styles.dropdownText, { color: theme.text }]}
@@ -145,7 +145,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
       <View style={styles.field}>
         <Text style={[styles.label, { color: theme.text }]}>Account status</Text>
         <Dropdown fontFamily={FONT.regular}
-          style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: theme.border }]}
+          style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]}
           containerStyle={[styles.dropdownContainer, { backgroundColor: theme.surface, borderColor: theme.border }]}
           selectedTextStyle={[styles.dropdownText, { color: theme.text }]}
           itemTextStyle={[styles.dropdownText, { color: theme.text }]}
@@ -176,11 +176,11 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     <Text style={[styles.title, { color: theme.text }]}>Add Dispatcher</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>Creates the login and profile for a new Dispatcher. You stay logged in. They log in with this email and the temporary password.</Text>
     <Text style={[styles.label, { color: theme.text }]}>Full name</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.fullName} onChangeText={(value) => setDispatcherField("fullName", value)} autoCapitalize="words" />
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={newDispatcher.fullName} onChangeText={(value) => setDispatcherField("fullName", value)} autoCapitalize="words" />
     <Text style={[styles.label, { color: theme.text }]}>Email</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.email} onChangeText={(value) => setDispatcherField("email", value)} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={newDispatcher.email} onChangeText={(value) => setDispatcherField("email", value)} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
     <Text style={[styles.label, { color: theme.text }]}>Phone number</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.phoneNumber} onChangeText={(value) => setDispatcherField("phoneNumber", value)} keyboardType="phone-pad" />
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={newDispatcher.phoneNumber} onChangeText={(value) => setDispatcherField("phoneNumber", value)} keyboardType="phone-pad" />
     <Text style={[styles.label, { color: theme.text }]}>Barangay</Text>
     <TextInput
       style={[styles.input, { color: theme.text, backgroundColor: theme.softSurface, borderColor: theme.border }]}
@@ -190,7 +190,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     />
     <Text style={[styles.copy, { color: theme.mutedText }]}>New Dispatchers belong to your barangay.</Text>
     <Text style={[styles.label, { color: theme.text }]}>Temporary password (at least 8 characters)</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={newDispatcher.temporaryPassword} onChangeText={(value) => setDispatcherField("temporaryPassword", value)} autoCapitalize="none" autoCorrect={false} />
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={newDispatcher.temporaryPassword} onChangeText={(value) => setDispatcherField("temporaryPassword", value)} autoCapitalize="none" autoCorrect={false} />
     <AppButton label="Create Dispatcher" loading={busy} disabled={!adminBarangay} onPress={createDispatcher} style={[styles.button, styles.pageButton]} />
   </>;
 
@@ -200,15 +200,15 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     {vehicles.map((vehicle) => card(<><Text style={[styles.cardTitle, { color: theme.text }]}>{vehicle.name || vehicle.id}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>{vehicle.plateNumber || "No plate"} | Status: {vehicle.status || "Available"} | Maintenance: {vehicle.maintenanceStatus || "None recorded"}</Text><Text style={[styles.copy, { color: theme.mutedText }]}>Next service: {formatDay(vehicle.nextMaintenanceDate)}</Text><AppButton label="Add maintenance record" variant="secondary" onPress={() => { setMaintenanceVehicle(vehicle); setMaintenance(DEFAULT_MAINTENANCE); }} style={[styles.button, styles.pageButton]} /></>, vehicle.id))}
   </>;
 
-  const renderReports = () => <AdminReportsSection requests={requests} onDownload={exportRequests} />;
+  const renderReports = () => <AdminReportsSection requests={requests} loading={requestsLoading} onDownload={exportRequests} />;
 
   const renderSettings = () => <>
     <Text style={[styles.title, { color: theme.text }]}>Operational Settings</Text>
     <Text style={[styles.copy, { color: theme.mutedText }]}>Only non-security display and form options are stored here. Firebase credentials, security rules, and environment variables are never editable in this screen.</Text>
     <Text style={[styles.label, { color: theme.text }]}>Public office phone</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={settings.publicOfficePhone} onChangeText={(value) => setSettings((current) => ({ ...current, publicOfficePhone: value }))} keyboardType="phone-pad" />
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={settings.publicOfficePhone} onChangeText={(value) => setSettings((current) => ({ ...current, publicOfficePhone: value }))} keyboardType="phone-pad" />
     <Text style={[styles.label, { color: theme.text }]}>Maintenance reminder days</Text>
-    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={String(settings.maintenanceReminderDays || "")} onChangeText={(value) => setSettings((current) => ({ ...current, maintenanceReminderDays: value }))} keyboardType="number-pad" />
+    <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={String(settings.maintenanceReminderDays || "")} onChangeText={(value) => setSettings((current) => ({ ...current, maintenanceReminderDays: value }))} keyboardType="number-pad" />
     <Text style={[styles.copy, { color: theme.mutedText }]}>Supported barangays currently saved: {(settings.supportedBarangays || []).length}. Barangay selection remains limited to the approved Toledo options in the Admin workflow.</Text>
     <AppButton label="Save operational settings" loading={busy} onPress={() => run(() => saveSystemSettings({ adminId, settings }), "Operational settings saved.")} style={[styles.button, styles.pageButton]} />
   </>;
@@ -235,14 +235,14 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
         <FeedbackMessage message={message} tone="success" />
         {!canManageSelectedUser ? <Text style={[styles.copy, { color: theme.mutedText }]}>Other barangay: view only</Text> : null}
         <Text style={[styles.copy, { color: theme.mutedText }]}>Authentication is not disabled by this client. Deactivation changes only the Firestore profile access state and preserves operational history.</Text>
-        <Text style={[styles.label, { color: theme.text }]}>Administrative reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={reason} onChangeText={setReason} multiline placeholder="Required for lifecycle changes" placeholderTextColor={theme.subtleText} />
+        <Text style={[styles.label, { color: theme.text }]}>Administrative reason</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={reason} onChangeText={setReason} multiline placeholder="Required for lifecycle changes" placeholderTextColor={theme.subtleText} />
         {/* A Resident sees the reason on their home screen when their account is Rejected, Suspended or Disabled. */}
         {selectedUser?.role === ROLES.RESIDENT && [ACCOUNT_STATUSES.REJECTED, ACCOUNT_STATUSES.SUSPENDED, ACCOUNT_STATUSES.DISABLED].includes(nextStatus) ? (
           <Text style={[styles.copy, { color: theme.mutedText }]}>The resident will see this reason.</Text>
         ) : null}
         <Text style={[styles.label, { color: theme.text }]}>Account status</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{Object.values(ACCOUNT_STATUSES).map((item) => chip(item, nextStatus === item, () => setNextStatus(item)))}</ScrollView>
         <AppButton label={`Apply status: ${nextStatus}`} loading={busy} disabled={!canManageSelectedUser} onPress={() => confirm("Confirm account status", `Update this profile to ${nextStatus}? Active Driver missions must be resolved first.`, () => run(() => changeAccountStatus({ adminId, targetUser: selectedUser, nextStatus, reason, activeAssignments: assignments }), "Account status updated.", selectedUser))} style={styles.button} />
-        {selectedUser?.role === ROLES.DISPATCHER ? <><Text style={[styles.label, { color: theme.text }]}>Dispatcher office</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopeOffice} onChangeText={setScopeOffice} /><Text style={[styles.label, { color: theme.text }]}>Operational phone</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={scopePhone} onChangeText={setScopePhone} keyboardType="phone-pad" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{TOLEDO_BARANGAY_OPTIONS.map((item) => chip(item.label, scopeAreas.includes(item.value), () => setScopeAreas((current) => current.includes(item.value) ? current.filter((value) => value !== item.value) : [...current, item.value])))}</ScrollView><AppButton label="Save Dispatcher scope" variant="secondary" loading={busy} disabled={!canManageSelectedUser} onPress={() => run(() => updateDispatcherScope({ adminId, targetUser: selectedUser, serviceAreas: scopeAreas, operationalPhone: scopePhone, office: scopeOffice }), "Dispatcher scope updated.", selectedUser)} style={styles.button} /></> : null}
+        {selectedUser?.role === ROLES.DISPATCHER ? <><Text style={[styles.label, { color: theme.text }]}>Dispatcher office</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={scopeOffice} onChangeText={setScopeOffice} /><Text style={[styles.label, { color: theme.text }]}>Operational phone</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={scopePhone} onChangeText={setScopePhone} keyboardType="phone-pad" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{TOLEDO_BARANGAY_OPTIONS.map((item) => chip(item.label, scopeAreas.includes(item.value), () => setScopeAreas((current) => current.includes(item.value) ? current.filter((value) => value !== item.value) : [...current, item.value])))}</ScrollView><AppButton label="Save Dispatcher scope" variant="secondary" loading={busy} disabled={!canManageSelectedUser} onPress={() => run(() => updateDispatcherScope({ adminId, targetUser: selectedUser, serviceAreas: scopeAreas, operationalPhone: scopePhone, office: scopeOffice }), "Dispatcher scope updated.", selectedUser)} style={styles.button} /></> : null}
         <Text style={[styles.copy, { color: theme.mutedText }]}>Active mission conflicts: {selectedUser ? getUserMissionConflicts(selectedUser.id, assignments).length : 0}</Text>
         <Text style={[styles.copy, { color: theme.mutedText }]}>Permanent deletion is coming soon. It requires a trusted backend to remove the Firebase Authentication account; nothing is queued or deleted from here. Use Deactivated status above to revoke access today.</Text>
         <AppButton label="Permanent deletion (coming soon)" variant="danger" disabled onPress={() => confirm("Request permanent deletion", "This creates a pending Phase 8 backend request. It does not delete Authentication or Firestore data now.", () => run(() => requestPermanentDeletion({ adminId, targetUser: selectedUser, reason }), "Permanent deletion request queued for backend review."))} style={styles.button} />
@@ -255,23 +255,35 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
         <Text style={[styles.title, { color: theme.text }]}>Vehicle Maintenance</Text>
         <Text style={[styles.copy, { color: theme.mutedText }]}>{maintenanceVehicle?.name || maintenanceVehicle?.id}</Text>
         <Text style={[styles.label, { color: theme.text }]}>Maintenance type</Text>
-        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={maintenance.maintenanceType} onChangeText={(value) => setMaintenance((current) => ({ ...current, maintenanceType: value }))} />
+        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={maintenance.maintenanceType} onChangeText={(value) => setMaintenance((current) => ({ ...current, maintenanceType: value }))} />
         <Text style={[styles.label, { color: theme.text }]}>Description</Text>
-        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={maintenance.description} onChangeText={(value) => setMaintenance((current) => ({ ...current, description: value }))} multiline />
+        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={maintenance.description} onChangeText={(value) => setMaintenance((current) => ({ ...current, description: value }))} multiline />
         <Text style={[styles.label, { color: theme.text }]}>Status</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {Object.values(VEHICLE_MAINTENANCE_STATUSES).map((item) => chip(item, maintenance.status === item, () => setMaintenance((current) => ({ ...current, status: item }))))}
         </ScrollView>
         <Text style={[styles.label, { color: theme.text }]}>Completed date (YYYY-MM-DD)</Text>
-        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={maintenance.completedAt} onChangeText={(value) => setMaintenance((current) => ({ ...current, completedAt: value }))} />
+        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={maintenance.completedAt} onChangeText={(value) => setMaintenance((current) => ({ ...current, completedAt: value }))} />
         <Text style={[styles.label, { color: theme.text }]}>Next service date (YYYY-MM-DD)</Text>
-        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]} value={maintenance.nextServiceDate} onChangeText={(value) => setMaintenance((current) => ({ ...current, nextServiceDate: value }))} />
+        <TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={maintenance.nextServiceDate} onChangeText={(value) => setMaintenance((current) => ({ ...current, nextServiceDate: value }))} />
         <AppButton label="Save maintenance record" loading={busy} onPress={() => confirm("Save maintenance", "This appends a maintenance record and may mark the vehicle under maintenance. It will not erase assignment history.", () => run(async () => { await saveMaintenanceRecord({ adminId, vehicle: maintenanceVehicle, form: maintenance, activeAssignments: assignments }); setMaintenanceVehicle(null); }, "Maintenance record saved."))} style={styles.button} />
         <AppButton label="Close" variant="secondary" onPress={() => setMaintenanceVehicle(null)} style={styles.button} />
       </ScrollView></View>
     </Modal>  </>;
 }
 
+// UI refresh (DESIGN.md "Style"): pill chips, 12-corner inputs, 16-corner cards and pop-up. Sizes unchanged (Task 3.19 decides Admin density).
 const styles = StyleSheet.create({
-  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 }, chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 12, borderRadius: 6, borderWidth: 1 }, chipText: { fontSize: 13, fontFamily: FONT.bold }, title: { fontSize: 21, fontFamily: FONT.extraBold, marginTop: 8, marginBottom: 6 }, copy: { fontFamily: FONT.regular, fontSize: 13, lineHeight: 19 }, label: { fontSize: 13, fontFamily: FONT.extraBold, marginTop: 12, marginBottom: 4 }, input: { fontFamily: FONT.regular, minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 }, dropdown: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: 6 }, dropdownText: { fontFamily: FONT.regular, fontSize: 14 }, fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 }, accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: 6, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontFamily: FONT.extraBold }, card: { marginTop: 10, borderWidth: 1, borderRadius: 8, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontFamily: FONT.extraBold }, button: { marginTop: 10 }, pageButton: { alignSelf: "flex-start" }, overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(0,0,0,0.45)" }, modal: { width: "100%", maxHeight: "92%", borderRadius: 8, padding: 18 }
+  nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 },
+  chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 1 }, chipText: { fontSize: 13, fontFamily: FONT.semiBold },
+  title: { fontSize: 21, fontFamily: FONT.bold, marginTop: 8, marginBottom: 6 }, copy: { fontFamily: FONT.regular, fontSize: 13, lineHeight: 19 },
+  label: { fontSize: 13, fontFamily: FONT.semiBold, marginTop: 12, marginBottom: 4 },
+  input: { fontFamily: FONT.regular, minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 },
+  dropdown: { minHeight: 44, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 12 }, dropdownContainer: { borderWidth: 1, borderRadius: CORNER.input, overflow: "hidden" }, dropdownText: { fontFamily: FONT.regular, fontSize: 14 },
+  fieldsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "flex-end", marginTop: 4 }, field: { flexGrow: 1, flexBasis: 160 },
+  accountsCountBox: { minHeight: 44, borderWidth: 1, borderRadius: CORNER.input, paddingHorizontal: 14, justifyContent: "center" }, accountsCountText: { fontSize: 14, fontFamily: FONT.bold },
+  card: { marginTop: 10, borderWidth: 1, borderRadius: CORNER.card, padding: 14, gap: 6 }, cardTitle: { fontSize: 16, fontFamily: FONT.bold },
+  button: { marginTop: 10 }, pageButton: { alignSelf: "flex-start" },
+  overlay: { flex: 1, justifyContent: "center", padding: 18, backgroundColor: "rgba(20, 33, 28, 0.55)" },
+  modal: { width: "100%", maxHeight: "92%", borderRadius: CORNER.card, padding: 18, backgroundColor: NEUTRAL[0], ...SHADOW.level3 },
 });

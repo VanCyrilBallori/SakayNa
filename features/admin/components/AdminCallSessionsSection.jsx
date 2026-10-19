@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDateTime, getDurationLabel } from "../../../lib/dates";
 import { formatPlace } from "../../../lib/placeText";
 
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.emergencyRed },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   mutedBody: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
@@ -206,21 +206,21 @@ const styles = StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.boardTint },
   chipCount: { minWidth: 28, height: 28, paddingHorizontal: 8, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  chipCountText: { fontSize: 15, fontFamily: FONT.extraBold, fontVariant: ["tabular-nums"] },
+  chipCountText: { fontSize: 15, fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
   chipText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   // Red has white words (DESIGN.md).
-  alarm: { borderRadius: 24, overflow: "hidden", backgroundColor: DESIGN_COLORS.redTint },
+  alarm: { borderRadius: CORNER.card, overflow: "hidden", backgroundColor: DESIGN_COLORS.redTint },
   alarmBand: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 16, backgroundColor: DESIGN_COLORS.emergencyRed },
-  alarmBandText: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.paperWhite },
+  alarmBandText: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
   alarmBody: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16, paddingTop: 16, paddingHorizontal: 16 },
   alarmWho: { flexGrow: 1, flexShrink: 1, flexBasis: 280, minWidth: 0 },
   alarmName: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
-  phoneBox: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 16, backgroundColor: DESIGN_COLORS.paperWhite },
-  phoneText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  phoneBox: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: CORNER.input, backgroundColor: DESIGN_COLORS.paperWhite },
+  phoneText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   alarmMessage: { paddingTop: 8, paddingBottom: 16, paddingHorizontal: 16, fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.emergencyRed },
 
-  list: { borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
+  list: { borderRadius: CORNER.card, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   listHeader: { paddingVertical: 6, backgroundColor: DESIGN_COLORS.boardTint },
   listHeaderText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.inkMuted },
   row: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 8, paddingHorizontal: 16 },
@@ -243,5 +243,5 @@ const styles = StyleSheet.create({
   rideTag: { paddingVertical: 2, paddingHorizontal: 10, borderRadius: 999, backgroundColor: DESIGN_COLORS.peachTint },
   rideTagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
-  emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  emptyState: { padding: 20, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });

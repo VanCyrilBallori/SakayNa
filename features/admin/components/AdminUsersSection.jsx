@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDate, formatDay } from "../../../lib/dates";
 import { getApprovalStatus, getProfilePhoto, getUserAddress, getUserName, getUserPhone } from "../utils/userFormatters";
 
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 22, color: DESIGN_COLORS.ink },
   label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
@@ -271,13 +271,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingLeft: 16,
     paddingRight: 4,
-    borderRadius: 16,
+    borderRadius: CORNER.input,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   searchInput: { fontFamily: FONT.regular, flex: 1, minWidth: 0, paddingVertical: 12, fontSize: 17, color: DESIGN_COLORS.ink },
-  clearSearch: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 16 },
+  clearSearch: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: CORNER.pill },
 
   // Pill-shaped choices, like the Requests filters.
   filterGroup: { gap: 8 },
@@ -299,11 +299,11 @@ const styles = StyleSheet.create({
   pillTextSelected: { color: DESIGN_COLORS.paperWhite },
   countBubble: { minWidth: 32, height: 32, paddingHorizontal: 8, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
   countBubbleSelected: { backgroundColor: DESIGN_COLORS.paperWhite },
-  countText: { fontSize: 15, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  countText: { fontSize: 15, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   countTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
 
   // The list: one white box with 24 corners, thin lines between users (like Emergency calls).
-  list: { borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
+  list: { borderRadius: CORNER.card, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   listHeader: { paddingVertical: 10, backgroundColor: DESIGN_COLORS.boardTint },
   listHeaderText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.inkMuted },
   row: { flexDirection: "row", alignItems: "center", gap: 16, paddingVertical: 14, paddingHorizontal: 16 },
@@ -319,13 +319,13 @@ const styles = StyleSheet.create({
   person: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: DESIGN_COLORS.boardTint },
   avatarImage: { width: 48, height: 48, borderRadius: 999 },
-  initials: { fontSize: 17, fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreenDeep },
+  initials: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreenDeep },
   cell: { flex: 1, minWidth: 0, gap: 2 },
   name: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   roleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   phone: { fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
   statusPill: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999 },
-  statusPillText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold },
+  statusPillText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold },
 
   actions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 },
   outlineButton: {
@@ -335,16 +335,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingHorizontal: 14,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
   outlineButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  outlineButtonText: { fontSize: 15, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  outlineButtonText: { fontSize: 15, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   buttonGrow: { flexGrow: 1 },
   buttonDisabled: { opacity: 0.58 },
   viewOnlyNotice: { width: "100%" },
 
-  emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  emptyState: { padding: 20, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });

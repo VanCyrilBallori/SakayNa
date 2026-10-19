@@ -46,7 +46,7 @@ import {
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import { formatPlace } from "../lib/placeText";
-import { FONT } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
 
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
@@ -772,7 +772,7 @@ export default function AdminHome() {
     }
 
     if (selectedSection === "Operations") {
-      return <AdminOperationsPanel users={users} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} adminId={authUser?.uid || ""} adminName={displayName} adminBarangay={adminBarangay} canManageUser={canManageUser} theme={theme} />;
+      return <AdminOperationsPanel users={users} vehicles={vehiclesWithDerivedStatus} assignments={driverAssignments} requests={requestsWithDerivedFields} requestsLoading={isLoadingRequests} adminId={authUser?.uid || ""} adminName={displayName} adminBarangay={adminBarangay} canManageUser={canManageUser} theme={theme} />;
     }
 
     if (selectedSection === "Requests") {
@@ -835,6 +835,8 @@ export default function AdminHome() {
 
     return (
       <AdminOverviewSection
+        // Until users, requests, vehicles and applications have all answered, Overview shows grey placeholders, not 0s.
+        loading={isLoadingUsers || isLoadingRequests || isLoadingVehicles || isLoadingApplications}
         numbers={overviewNumbers}
         pendingApplicationsCount={pendingApplications.length}
         dispatcherCount={dispatcherAccounts.length}
@@ -898,24 +900,26 @@ export default function AdminHome() {
                   return (
                     <TouchableOpacity
                       key={label}
-                      style={[styles.sideBlock, active && styles.sideBlockActive, { backgroundColor: active ? "#06774B" : "#EAF4EF" }]}
+                      style={[styles.sideBlock, active && styles.sideBlockActive]}
                       onPress={() => setSelectedSection(label)}
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                        <Text style={[styles.sideBlockText, { color: active ? "#FFFFFF" : "#214238" }]}>{label}</Text>
+                        <Text style={[styles.sideBlockText, active && styles.sideBlockTextActive]}>{label}</Text>
+                        {/* Count badges (DESIGN.md Style): pills. Red only for the emergency count; the "waiting for you"
+                            counts are Sakay Orange with dark words (never white words on orange). */}
                         {label === "Emergency Calls" && staleRingingCount > 0 ? (
-                          <View style={{ backgroundColor: "#C53A3A", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{staleRingingCount}</Text>
+                          <View style={[styles.countBadge, styles.countBadgeRed]}>
+                            <Text style={[styles.countBadgeText, styles.countBadgeTextRed]}>{staleRingingCount}</Text>
                           </View>
                         ) : null}
                         {label === "Resident Verification" && pendingVerifications.length > 0 ? (
-                          <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{pendingVerifications.length}</Text>
+                          <View style={styles.countBadge}>
+                            <Text style={styles.countBadgeText}>{pendingVerifications.length}</Text>
                           </View>
                         ) : null}
                         {label === "Driver Applications" && pendingApplications.length > 0 ? (
-                          <View style={{ backgroundColor: "#9A6700", borderRadius: 999, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", marginLeft: 8 }}>
-                            <Text style={{ color: "#FFFFFF", fontSize: 12, fontFamily: FONT.extraBold }}>{pendingApplications.length}</Text>
+                          <View style={styles.countBadge}>
+                            <Text style={styles.countBadgeText}>{pendingApplications.length}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -947,7 +951,7 @@ export default function AdminHome() {
                 <Text style={[styles.modalSubtitle, { color: theme.mutedText }]}>{selectedRequestRecord?.status || "Pending"} request record.</Text>
               </View>
               <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedRequestRecord(null)}>
-                <FontAwesome name="close" size={20} color="#111111" />
+                <FontAwesome name="close" size={20} color={NEUTRAL[900]} />
               </TouchableOpacity>
             </View>
 
@@ -988,14 +992,14 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
             <TextInput
-              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: NEUTRAL[100], borderColor: NEUTRAL[200], color: NEUTRAL[700] }]}
               value={userForm.fullName}
               editable={false}
             />
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: NEUTRAL[500], color: theme.text }]}
               placeholder="Phone number"
               placeholderTextColor={theme.subtleText}
               value={userForm.phoneNumber}
@@ -1005,7 +1009,7 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
             <TextInput
-              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: NEUTRAL[100], borderColor: NEUTRAL[200], color: NEUTRAL[700] }]}
               placeholder="Barangay"
               placeholderTextColor={theme.subtleText}
               value={userForm.barangay}
@@ -1014,7 +1018,7 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: NEUTRAL[500], color: theme.text }]}
               placeholder="Address"
               placeholderTextColor={theme.subtleText}
               value={userForm.address}
@@ -1031,11 +1035,11 @@ export default function AdminHome() {
                     key={status}
                     style={[
                       styles.filterChip,
-                      { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
+                      { borderColor: active ? GREEN[600] : theme.border, backgroundColor: active ? GREEN[600] : theme.surface },
                     ]}
                     disabled
                   >
-                    <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{status}</Text>
+                    <Text style={[styles.filterChipText, { color: active ? NEUTRAL[0] : theme.text }]}>{status}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -1059,7 +1063,7 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Name</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: NEUTRAL[500], color: theme.text }]}
               placeholder="Vehicle name"
               placeholderTextColor={theme.subtleText}
               value={vehicleForm.name}
@@ -1068,7 +1072,7 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Type</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: NEUTRAL[500], color: theme.text }]}
               placeholder="Ambulance, Van, SUV..."
               placeholderTextColor={theme.subtleText}
               value={vehicleForm.type}
@@ -1077,7 +1081,7 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Plate Number</Text>
             <TextInput
-              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: NEUTRAL[500], color: theme.text }]}
               placeholder="Plate number"
               placeholderTextColor={theme.subtleText}
               value={vehicleForm.plateNumber}
@@ -1095,11 +1099,11 @@ export default function AdminHome() {
                     key={ownerType}
                     style={[
                       styles.filterChip,
-                      { borderColor: active ? "#06774B" : theme.border, backgroundColor: active ? "#06774B" : theme.surface },
+                      { borderColor: active ? GREEN[600] : theme.border, backgroundColor: active ? GREEN[600] : theme.surface },
                     ]}
                     onPress={() => setVehicleForm((current) => ({ ...current, ownerType }))}
                   >
-                    <Text style={[styles.filterChipText, { color: active ? "#FFFFFF" : theme.text }]}>{ownerType}</Text>
+                    <Text style={[styles.filterChipText, { color: active ? NEUTRAL[0] : theme.text }]}>{ownerType}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -1208,21 +1212,21 @@ export default function AdminHome() {
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
             <TextInput
-              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: NEUTRAL[100], borderColor: NEUTRAL[200], color: NEUTRAL[700] }]}
               value={profile?.fullName || displayName}
               editable={false}
             />
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
             <TextInput
-              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: NEUTRAL[100], borderColor: NEUTRAL[200], color: NEUTRAL[700] }]}
               value={profile?.phoneNumber || ""}
               editable={false}
             />
 
             <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
             <TextInput
-              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+              style={[styles.profileInput, styles.readOnlyInput, { backgroundColor: NEUTRAL[100], borderColor: NEUTRAL[200], color: NEUTRAL[700] }]}
               value={profile?.barangay || "Not set (set it in the Firebase Console)"}
               editable={false}
             />
@@ -1242,10 +1246,12 @@ export default function AdminHome() {
   );
 }
 
+// UI refresh (DESIGN.md "Style"): the corners, colors, shadows, font weights and button shapes follow the Style.
+// Text sizes and spacing are unchanged on purpose: how dense the Admin website is belongs to Task 3.19.
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: "#F5F7F6" },
-  accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
-  accessText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#335E50", textAlign: "center" },
+  page: { flex: 1, backgroundColor: NEUTRAL[50] },
+  accessPage: { flex: 1, backgroundColor: NEUTRAL[50], alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
+  accessText: { fontSize: 15, fontFamily: FONT.semiBold, color: NEUTRAL[700], textAlign: "center" },
   content: { paddingBottom: 28 },
   header: {
     paddingHorizontal: 24,
@@ -1272,153 +1278,168 @@ const styles = StyleSheet.create({
   profileTrigger: {
     paddingVertical: 6,
     paddingHorizontal: 6,
-    borderRadius: 999,
+    borderRadius: CORNER.pill,
   },
   avatarCircle: {
     width: 42,
     height: 42,
-    borderRadius: 21,
+    borderRadius: CORNER.pill,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
     fontSize: 15,
-    fontFamily: FONT.extraBold,
+    fontFamily: FONT.bold,
   },
   container: { width: "100%", alignSelf: "stretch", paddingHorizontal: 22, paddingTop: 20 },
   containerCompact: { paddingHorizontal: 12, paddingTop: 14 },
   layoutRow: { width: "100%", flexDirection: "row", flexWrap: "nowrap", gap: 18, alignItems: "stretch" },
   layoutRowCompact: { flexWrap: "wrap" },
+  // The side menu and the content panel: white cards (16 corners, thin edge from the theme, Level 1 shadow).
   sidebar: {
     width: 236,
     flexShrink: 0,
     gap: 10,
     padding: 16,
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: CORNER.card,
     alignSelf: "stretch",
+    ...SHADOW.level1,
   },
   sidebarCompact: {
     width: "100%",
     alignSelf: "stretch",
   },
-  sidebarTitle: { fontSize: 20, fontFamily: FONT.extraBold },
+  sidebarTitle: { fontSize: 20, fontFamily: FONT.bold },
   sidebarSubtitle: { fontFamily: FONT.regular, fontSize: 13, lineHeight: 19, marginBottom: 6 },
   panelScrollArea: { flex: 1 },
   panelScrollContent: { gap: 10, paddingBottom: 2 },
+  // One section in the side menu: a light green row (12 corners, DESIGN.md Style list rows); the open one is green
+  // with white words.
   sideBlock: {
     minHeight: 48,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: CORNER.input,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: GREEN[50],
   },
-  sideBlockActive: { backgroundColor: "#06774B" },
-  sideBlockText: { flex: 1, fontSize: 14, fontFamily: FONT.extraBold, textAlign: "center" },
+  sideBlockActive: { backgroundColor: GREEN[600] },
+  sideBlockText: { flex: 1, fontSize: 14, fontFamily: FONT.semiBold, textAlign: "center", color: NEUTRAL[900] },
+  sideBlockTextActive: { color: NEUTRAL[0] },
+  // The numbers next to a section name (count badges, DESIGN.md Style): pills.
+  countBadge: { minWidth: 20, height: 20, paddingHorizontal: 5, marginLeft: 8, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: ORANGE[500] },
+  countBadgeRed: { backgroundColor: RED[600] },
+  countBadgeText: { fontSize: 12, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  countBadgeTextRed: { color: NEUTRAL[0] },
   mainArea: { flex: 1, minWidth: 0, gap: 12 },
-  contentPanel: { padding: 14, borderRadius: 18, borderWidth: 1 },
+  contentPanel: { padding: 14, borderRadius: CORNER.card, borderWidth: 1, ...SHADOW.level1 },
   contentPanelFixed: { flex: 1, minHeight: 0 },
   contentPanelScrollContent: { paddingBottom: 2 },
   verificationSection: { marginTop: 14 },
-  subsectionTitle: { fontSize: 18, fontFamily: FONT.extraBold },
+  subsectionTitle: { fontSize: 18, fontFamily: FONT.bold },
   verificationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 14 },
-  verificationCard: { flexGrow: 1, flexBasis: 300, padding: 18, borderRadius: 14, borderWidth: 1 },
+  verificationCard: { flexGrow: 1, flexBasis: 300, padding: 18, borderRadius: CORNER.card, borderWidth: 1 },
   verificationTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   verifyIdentity: { flexDirection: "row", gap: 12, flex: 1, minWidth: 0 },
-  verifyAvatar: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  verifyAvatar: { width: 48, height: 48, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center" },
   verifyIdentityCopy: { flex: 1 },
-  verifyName: { fontSize: 20, fontFamily: FONT.extraBold },
-  verifyMeta: { marginTop: 4, fontSize: 13, fontFamily: FONT.bold },
+  verifyName: { fontSize: 20, fontFamily: FONT.bold },
+  verifyMeta: { marginTop: 4, fontSize: 13, fontFamily: FONT.semiBold },
   verifyDetail: { fontFamily: FONT.regular, marginTop: 10, fontSize: 14, lineHeight: 21 },
-  pendingPill: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: 999, backgroundColor: "#F5A623" },
-  pendingPillText: { fontSize: 12, fontFamily: FONT.extraBold, color: "#111111" },
+  pendingPill: { paddingVertical: 7, paddingHorizontal: 11, borderRadius: CORNER.pill, backgroundColor: ORANGE[100] },
+  pendingPillText: { fontSize: 12, fontFamily: FONT.semiBold, color: ORANGE[800] },
   verifyActions: { flexDirection: "row", gap: 10, marginTop: 16 },
-  verifyButton: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  rejectButton: { backgroundColor: "#C62828" },
-  approveButton: { backgroundColor: "#06774B" },
-  verifyButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  verifyButton: { flex: 1, minHeight: 48, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center" },
+  rejectButton: { backgroundColor: RED[600] },
+  approveButton: { backgroundColor: GREEN[600] },
+  verifyButtonText: { fontSize: 14, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
   actionButtonDisabled: { opacity: 0.65 },
   documentGallery: { paddingRight: 8, gap: 10 },
   documentPreviewWrap: { marginTop: 14, alignSelf: "flex-start" },
-  documentImage: { width: 104, height: 70, borderRadius: 10, backgroundColor: "#EAF2EE" },
+  documentImage: { width: 104, height: 70, borderRadius: CORNER.small, backgroundColor: NEUTRAL[100] },
   filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12, marginBottom: 12 },
-  filterChip: { paddingVertical: 9, paddingHorizontal: 13, borderRadius: 999, borderWidth: 1 },
-  filterChipText: { fontSize: 13, fontFamily: FONT.extraBold },
-  limitNotice: { marginTop: 10, fontSize: 12, fontFamily: FONT.bold, fontStyle: "italic" },
+  filterChip: { paddingVertical: 9, paddingHorizontal: 13, borderRadius: CORNER.pill, borderWidth: 1 },
+  filterChipText: { fontSize: 13, fontFamily: FONT.semiBold },
+  limitNotice: { marginTop: 10, fontSize: 12, fontFamily: FONT.medium, fontStyle: "italic" },
   userLine: { fontFamily: FONT.regular, marginTop: 9, fontSize: 14, lineHeight: 21 },
   userActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16 },
-  smallActionButton: { minHeight: 38, paddingHorizontal: 12, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  editButton: { backgroundColor: "#06774B" },
-  deleteButton: { backgroundColor: "#C62828" },
-  smallActionButtonText: { fontSize: 13, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  smallActionButton: { minHeight: 38, paddingHorizontal: 14, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center" },
+  editButton: { backgroundColor: GREEN[600] },
+  deleteButton: { backgroundColor: RED[600] },
+  smallActionButtonText: { fontSize: 13, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
   vehicleToolbar: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 12 },
-  primaryActionButton: { minHeight: 46, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#06774B", alignItems: "center", justifyContent: "center" },
-  primaryActionButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  secondaryActionButton: { minHeight: 46, paddingHorizontal: 16, borderRadius: 12, backgroundColor: "#DDEAE4", alignItems: "center", justifyContent: "center" },
-  secondaryActionButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#214238" },
+  // Buttons (DESIGN.md Style): pills. Primary = green fill, white words. Secondary = white, grey edge, green words.
+  primaryActionButton: { minHeight: 48, paddingHorizontal: 20, borderRadius: CORNER.pill, backgroundColor: GREEN[600], alignItems: "center", justifyContent: "center" },
+  primaryActionButtonText: { fontSize: 14, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
+  secondaryActionButton: { minHeight: 48, paddingHorizontal: 20, borderRadius: CORNER.pill, borderWidth: 1.5, borderColor: NEUTRAL[500], backgroundColor: NEUTRAL[0], alignItems: "center", justifyContent: "center" },
+  secondaryActionButtonText: { fontSize: 14, fontFamily: FONT.semiBold, color: GREEN[700] },
   vehicleRow: { flexDirection: "row", flexWrap: "wrap", gap: 18, marginTop: 14 },
-  vehicleCard: { flexGrow: 1, flexBasis: 320, maxWidth: 420, padding: 18, borderRadius: 16, borderWidth: 1 },
+  vehicleCard: { flexGrow: 1, flexBasis: 320, maxWidth: 420, padding: 18, borderRadius: CORNER.card, borderWidth: 1 },
   vehicleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   vehicleHeaderCopy: { flex: 1 },
-  vehicleTitle: { fontSize: 22, fontFamily: FONT.extraBold },
-  vehicleMeta: { marginTop: 8, fontSize: 14, fontFamily: FONT.extraBold },
-  emptyState: { marginTop: 14, padding: 18, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center", gap: 8 },
-  emptyTitle: { fontSize: 16, fontFamily: FONT.extraBold, textAlign: "center" },
+  vehicleTitle: { fontSize: 22, fontFamily: FONT.bold },
+  vehicleMeta: { marginTop: 8, fontSize: 14, fontFamily: FONT.semiBold },
+  emptyState: { marginTop: 14, padding: 18, borderRadius: CORNER.card, borderWidth: 1, alignItems: "center", justifyContent: "center", gap: 8 },
+  emptyTitle: { fontSize: 16, fontFamily: FONT.bold, textAlign: "center" },
   emptyText: { fontFamily: FONT.regular, marginTop: 2, fontSize: 13, lineHeight: 19, textAlign: "center" },
-  infoPanel: { marginTop: 12, padding: 16, borderRadius: 16, borderWidth: 1, gap: 8 },
-  infoPanelTitle: { fontSize: 16, fontFamily: FONT.extraBold },
-  infoPanelText: { fontSize: 13, lineHeight: 20, fontFamily: FONT.bold },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.32)", alignItems: "center", justifyContent: "center", padding: 12 },
-  modalCard: { width: "100%", maxWidth: 560, maxHeight: "92%", borderRadius: 18, borderWidth: 1 },
+  infoPanel: { marginTop: 12, padding: 16, borderRadius: CORNER.card, borderWidth: 1, gap: 8 },
+  infoPanelTitle: { fontSize: 16, fontFamily: FONT.bold },
+  infoPanelText: { fontSize: 13, lineHeight: 20, fontFamily: FONT.medium },
+  // ---- Pop-ups (DESIGN.md Style): a dark see-through backdrop, white dialogs with 16 corners and a Level 3 shadow. ----
+  modalOverlay: { flex: 1, backgroundColor: "rgba(20, 33, 28, 0.55)", alignItems: "center", justifyContent: "center", padding: 12 },
+  modalCard: { width: "100%", maxWidth: 560, maxHeight: "92%", borderRadius: CORNER.card, borderWidth: 1, ...SHADOW.level3 },
   modalScrollContent: { padding: 20, gap: 12 },
   modalHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
-  modalTitle: { fontSize: 24, fontFamily: FONT.extraBold },
+  modalTitle: { fontSize: 24, fontFamily: FONT.bold },
   modalSubtitle: { fontFamily: FONT.regular, marginTop: 5, fontSize: 13, lineHeight: 19 },
-  modalCloseButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#EAF2EE", alignItems: "center", justifyContent: "center" },
-  detailBox: { padding: 16, borderRadius: 14, gap: 8 },
-  detailLine: { fontSize: 14, lineHeight: 21, fontFamily: FONT.bold },
-  menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.18)", paddingTop: 86, paddingRight: 18, alignItems: "flex-end" },
+  modalCloseButton: { width: 38, height: 38, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[100], alignItems: "center", justifyContent: "center" },
+  detailBox: { padding: 16, borderRadius: CORNER.input, gap: 8 },
+  detailLine: { fontSize: 14, lineHeight: 21, fontFamily: FONT.medium },
+  menuOverlay: { flex: 1, backgroundColor: "rgba(20, 33, 28, 0.18)", paddingTop: 86, paddingRight: 18, alignItems: "flex-end" },
+  // The account menu under the initials circle (a menu: 16 corners, Level 2 shadow).
   profileMenuCard: {
     width: 320,
     maxWidth: "92%",
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    borderRadius: CORNER.card,
+    borderWidth: 1,
+    borderColor: NEUTRAL[200],
+    backgroundColor: NEUTRAL[0],
     padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
+    ...SHADOW.level2,
   },
   profileMenuHeader: { alignItems: "center", paddingBottom: 16, borderBottomWidth: 1 },
-  profileMenuAvatar: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center" },
-  profileMenuAvatarText: { fontSize: 22, fontFamily: FONT.extraBold },
-  profileMenuName: { marginTop: 12, fontSize: 18, fontFamily: FONT.extraBold },
+  profileMenuAvatar: { width: 64, height: 64, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center" },
+  profileMenuAvatarText: { fontSize: 22, fontFamily: FONT.bold },
+  profileMenuName: { marginTop: 12, fontSize: 18, fontFamily: FONT.bold },
   profileMenuEmail: { fontFamily: FONT.regular, marginTop: 4, fontSize: 13 },
   profileMenuBody: { paddingTop: 12, gap: 4 },
-  menuItem: { minHeight: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  menuItem: { minHeight: 48, borderRadius: CORNER.input, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   menuItemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  menuItemText: { fontSize: 15, fontFamily: FONT.bold },
+  menuItemText: { fontSize: 15, fontFamily: FONT.semiBold },
   menuItemDisabled: { opacity: 0.58 },
-  menuItemSoon: { fontSize: 12, fontFamily: FONT.extraBold },
-  logoutMenuButton: { marginTop: 14, minHeight: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#0B7A4A" },
-  logoutMenuButtonText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  profileEditorCard: { width: "100%", maxWidth: 560, backgroundColor: "#FFFFFF", borderRadius: 20, borderWidth: 1, padding: 22 },
+  menuItemSoon: { fontSize: 12, fontFamily: FONT.semiBold },
+  // Log Out: a secondary pill (white, grey edge, green words), the same as the dispatcher's.
+  logoutMenuButton: { marginTop: 14, minHeight: 48, borderRadius: CORNER.pill, borderWidth: 1.5, borderColor: NEUTRAL[500], alignItems: "center", justifyContent: "center", backgroundColor: NEUTRAL[0] },
+  logoutMenuButtonText: { fontSize: 15, fontFamily: FONT.semiBold, color: GREEN[700] },
+  profileEditorCard: { width: "100%", maxWidth: 560, backgroundColor: NEUTRAL[0], borderRadius: CORNER.card, borderWidth: 1, padding: 22, ...SHADOW.level3 },
   // The X at the top-right of Edit Account, Vehicle editor and Profile.
   closeInCorner: { alignSelf: "flex-end" },
-  profileFieldLabel: { marginTop: 22, fontSize: 15, fontFamily: FONT.bold },
-  profileInput: { fontFamily: FONT.regular, marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, backgroundColor: "#FCFCFC", fontSize: 15, color: "#111111" },
-  readOnlyInput: { opacity: 0.78 },
-  primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
-  primarySaveButtonText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  confirmCard: { width: "100%", maxWidth: 520, borderRadius: 20, borderWidth: 1, padding: 22 },
+  profileFieldLabel: { marginTop: 22, fontSize: 15, fontFamily: FONT.semiBold },
+  // Inputs (DESIGN.md Style): white, 12 corners, a 1.5 edge (grey in the code; lighter on read-only boxes).
+  profileInput: { fontFamily: FONT.regular, marginTop: 10, minHeight: 50, borderWidth: 1.5, borderRadius: CORNER.input, paddingHorizontal: 14, backgroundColor: NEUTRAL[0], fontSize: 15, color: NEUTRAL[900] },
+  // Read-only boxes get a grey fill and a light edge in the code, so they don't look like they can be typed in.
+  readOnlyInput: {},
+  primarySaveButton: { marginTop: 28, minHeight: 56, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[600] },
+  primarySaveButtonText: { fontSize: 15, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
+  confirmCard: { width: "100%", maxWidth: 520, borderRadius: CORNER.card, borderWidth: 1, padding: 22, ...SHADOW.level3 },
   confirmActions: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 22 },
   confirmButton: { flex: 1, minWidth: 180 },
   imageModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", alignItems: "center", justifyContent: "center", padding: 20 },
   imageModalCloseArea: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
   imageModalPreview: { width: "100%", height: "84%" },
-  imageModalCloseText: { marginTop: 12, fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  feedbackText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#335E50" },
-  errorText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#B42318" },
+  imageModalCloseText: { marginTop: 12, fontSize: 14, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
+  feedbackText: { marginTop: 16, fontSize: 15, fontFamily: FONT.semiBold, color: GREEN[700] },
+  errorText: { marginTop: 16, fontSize: 15, fontFamily: FONT.semiBold, color: RED[600] },
 });

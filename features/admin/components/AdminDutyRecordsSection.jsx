@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { collection, onSnapshot, query, Timestamp, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import ListSkeleton from "../../../components/ui/ListSkeleton";
+import { CORNER, DESIGN_COLORS, FONT, GREEN } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
 import {
@@ -166,10 +167,7 @@ export default function AdminDutyRecordsSection() {
       ) : null}
 
       {loading ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator color={DESIGN_COLORS.hallGreen} />
-          <Text style={styles.emptyText}>Loading duty records...</Text>
-        </View>
+        <ListSkeleton label="Loading duty records" />
       ) : lines.length ? (
         <View style={styles.list}>
           {lines.map((line, index) => (
@@ -237,10 +235,7 @@ export default function AdminDutyRecordsSection() {
       ) : null}
 
       {!reportsLoaded ? (
-        <View style={styles.emptyState}>
-          <ActivityIndicator color={DESIGN_COLORS.hallGreen} />
-          <Text style={styles.emptyText}>Loading inability reports...</Text>
-        </View>
+        <ListSkeleton label="Loading inability reports" />
       ) : dayReports.length ? (
         <View style={styles.list}>
           {dayReports.map((report, index) => (
@@ -275,12 +270,13 @@ function Cell({ label, value }) {
   );
 }
 
-// The calendar box is a plain web element, so it takes a web style (not a StyleSheet one). Same look as the day buttons.
+// The calendar box is a plain web element, so it takes a web style (not a StyleSheet one). Same edge as the day
+// buttons, with the 12 corners of an input (DESIGN.md Style).
 const dateBoxStyle = {
   minHeight: 48,
   boxSizing: "border-box",
   padding: "0 12px",
-  borderRadius: 16,
+  borderRadius: 12,
   border: `1.5px solid ${DESIGN_COLORS.controlOutline}`,
   backgroundColor: DESIGN_COLORS.paperWhite,
   color: DESIGN_COLORS.ink,
@@ -289,14 +285,14 @@ const dateBoxStyle = {
 };
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   intro: { fontFamily: FONT.regular, marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, maxWidth: 760 },
 
   dayPicker: { marginTop: 16, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   dayButton: {
     minHeight: 48,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
     borderColor: DESIGN_COLORS.controlOutline,
     backgroundColor: DESIGN_COLORS.paperWhite,
@@ -306,9 +302,9 @@ const styles = StyleSheet.create({
   },
   dayButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
   dayButtonDisabled: { borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
-  dayButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  dayButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   dayButtonTextDisabled: { color: DESIGN_COLORS.inkMuted },
-  dayLabel: { paddingHorizontal: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  dayLabel: { paddingHorizontal: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   errorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 17, lineHeight: 24, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
 
@@ -317,10 +313,10 @@ const styles = StyleSheet.create({
   line: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingVertical: 16 },
   lineDivider: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
   nameCell: { flexBasis: 200, flexGrow: 1, maxWidth: 260, gap: 4 },
-  driverName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  driverName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   smallMuted: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  onDutyBadge: { alignSelf: "flex-start", marginTop: 2, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
-  onDutyBadgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
+  onDutyBadge: { alignSelf: "flex-start", marginTop: 2, paddingVertical: 4, paddingHorizontal: 12, borderRadius: CORNER.pill, backgroundColor: GREEN[100] },
+  onDutyBadgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: GREEN[800] },
   cells: { flexBasis: 480, flexGrow: 3, flexDirection: "row", flexWrap: "wrap", rowGap: 12, columnGap: 16 },
   cell: { flexBasis: 140, flexGrow: 1 },
   cellLabel: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
@@ -330,11 +326,11 @@ const styles = StyleSheet.create({
   cellValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   // Inability reports: same plain list as the time cards. Time on the left, then who, why, and which ride.
-  sectionTitle: { marginTop: 32, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  sectionTitle: { marginTop: 32, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   reportTime: { flexBasis: 100, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   reportCopy: { flexBasis: 240, flexGrow: 1, gap: 2 },
   reportReason: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
 
-  emptyState: { marginTop: 16, padding: 24, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  emptyState: { marginTop: 16, padding: 24, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
   emptyText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
 });

@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import ListSkeleton from "../../../components/ui/ListSkeleton";
+import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatShortDay, getDurationLabel } from "../../../lib/dates";
 
 // Light grey for "Cancelled" in the ride bar: it means "nothing happened", so it stays quiet.
@@ -124,7 +125,9 @@ function ActivityChart({ rangeLabel, activityBuckets }) {
   );
 }
 
+// loading = the users, requests, vehicles or applications have not answered yet: grey placeholders instead of 0s.
 export default function AdminOverviewSection({
+  loading = false,
   numbers,
   pendingApplicationsCount,
   dispatcherCount,
@@ -161,6 +164,10 @@ export default function AdminOverviewSection({
         </View>
       </View>
 
+      {loading ? (
+        <ListSkeleton rows={3} label="Loading the overview" />
+      ) : (
+      <>
       <Section icon="bell-outline" title="Needs attention" color="peach">
         <View style={styles.attentionRow}>
           <View style={styles.attentionItem}>
@@ -306,6 +313,8 @@ export default function AdminOverviewSection({
           latest {collectionLimit} requests.
         </Text>
       ) : null}
+      </>
+      )}
     </View>
   );
 }
@@ -315,17 +324,17 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   small: { fontSize: 15, lineHeight: 20, fontFamily: FONT.regular, color: DESIGN_COLORS.inkMuted },
   smallStrong: { fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   bigNumber: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
-  // Sections: soft color inside the white panel, 24 corners (DESIGN.md).
+  // Sections: soft color inside the white panel, 16 corners (DESIGN.md Style: info boxes).
   sectionRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "stretch" },
-  section: { padding: 16, gap: 12, borderRadius: 24, minWidth: 0 },
+  section: { padding: 16, gap: 12, borderRadius: CORNER.card, minWidth: 0 },
   greenSection: { backgroundColor: DESIGN_COLORS.boardTint },
   peachSection: { backgroundColor: DESIGN_COLORS.peachTint },
   ridesSection: { flexGrow: 5, flexShrink: 1, flexBasis: 300 },
@@ -333,7 +342,7 @@ const styles = StyleSheet.create({
   smallSection: { flexGrow: 1, flexShrink: 1, flexBasis: 260 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionBadge: { width: 36, height: 36, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  sectionTitle: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   attentionRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   attentionItem: { flexGrow: 1, flexShrink: 1, flexBasis: 260, flexDirection: "row", alignItems: "center", gap: 16, padding: 4 },
@@ -348,7 +357,7 @@ const styles = StyleSheet.create({
   legendSub: { marginLeft: 26 },
 
   barLineTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 },
-  barLineValue: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  barLineValue: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   barTrack: { height: 14, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   barFill: { height: "100%", borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
   meterTrack: { height: 18, marginTop: 8 },
@@ -380,9 +389,9 @@ const styles = StyleSheet.create({
   gridLine: { position: "absolute", left: 0, right: 0, height: 1, backgroundColor: DESIGN_COLORS.rule },
   columns: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, flexDirection: "row", alignItems: "flex-end" },
   column: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
-  columnValue: { marginBottom: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  columnValue: { marginBottom: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   columnBar: { width: 26, borderTopLeftRadius: 999, borderTopRightRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
   xLabels: { flexDirection: "row", marginLeft: Y_AXIS_WIDTH, marginTop: 8 },
   xLabel: { fontFamily: FONT.regular, flex: 1, textAlign: "center", fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  xLabelLast: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  xLabelLast: { fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 });

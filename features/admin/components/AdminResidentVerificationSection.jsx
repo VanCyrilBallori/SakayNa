@@ -3,7 +3,8 @@ import { useState } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 
 import { ACCOUNT_STATUSES } from "../../../constants/app";
-import { COLORS, FONT } from "../../../constants/design";
+import ListSkeleton from "../../../components/ui/ListSkeleton";
+import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { reviewResidentVerification } from "../services/adminOperationsService";
 
@@ -60,8 +61,8 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
 
   if (!adminBarangay) {
     return (
-      <View style={[styles.notice, { backgroundColor: COLORS.warningSurface, borderColor: COLORS.warning }]}>
-        <FontAwesome name="info-circle" size={24} color={COLORS.warning} />
+      <View style={[styles.notice, { backgroundColor: ORANGE[100], borderColor: ORANGE[300] }]}>
+        <FontAwesome name="info-circle" size={24} color={ORANGE[800]} />
         <View style={styles.noticeCopy}>
           <Text style={styles.noticeTitle}>Your admin account has no barangay yet</Text>
           <Text style={styles.noticeText}>It must be set in the Firebase Console. After that, the residents of your barangay who are waiting for review will appear here.</Text>
@@ -72,8 +73,8 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
 
   const photoHeight = Math.min(Math.max(height * 0.5, 300), 520);
   // Lighter red and green in Dark mode, so the text stays readable on the dark background.
-  const dangerText = theme.mode === "Dark" ? "#FF9C94" : COLORS.emergency;
-  const successText = theme.mode === "Dark" ? "#8FD9B3" : COLORS.primary;
+  const dangerText = theme.mode === "Dark" ? "#FF9C94" : RED[600];
+  const successText = theme.mode === "Dark" ? "#8FD9B3" : GREEN[700];
 
   return (
     <>
@@ -85,9 +86,7 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
       {doneMessage ? <Text style={[styles.doneText, { color: successText }]}>{doneMessage}</Text> : null}
 
       {isLoading ? (
-        <View style={[styles.emptyState, { borderColor: theme.border }]}>
-          <ActivityIndicator color={COLORS.primary} />
-        </View>
+        <ListSkeleton label="Loading residents waiting for review" />
       ) : loadError ? (
         <Text style={[styles.errorText, { color: dangerText }]}>{loadError}</Text>
       ) : verifications.length ? (
@@ -107,7 +106,7 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
         </View>
       ) : (
         <View style={[styles.emptyState, { borderColor: theme.border }]}>
-          <FontAwesome name="check-circle" size={28} color={COLORS.primary} />
+          <FontAwesome name="check-circle" size={28} color={GREEN[600]} />
           <Text style={[styles.emptyTitle, { color: theme.text }]}>No residents are waiting for review.</Text>
         </View>
       )}
@@ -128,7 +127,7 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
                   <Text style={[styles.rowLine, { color: theme.text }]}>{selected?.documentType || "Document type not given"}</Text>
                 </View>
                 <TouchableOpacity style={styles.closeButton} onPress={closeReview} accessibilityRole="button" accessibilityLabel="Close">
-                  <FontAwesome name="close" size={20} color="#17382E" />
+                  <FontAwesome name="close" size={20} color={NEUTRAL[900]} />
                 </TouchableOpacity>
               </View>
 
@@ -228,50 +227,51 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
   );
 }
 
+// UI refresh (DESIGN.md "Style"): 16-corner cards, pill buttons, Style weights. Sizes unchanged (Task 3.19 decides density).
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontFamily: FONT.extraBold },
+  title: { fontSize: 24, fontFamily: FONT.bold },
   subtitle: { marginTop: 4, fontSize: 15, lineHeight: 22, fontFamily: FONT.bold },
-  doneText: { marginTop: 12, fontSize: 15, fontFamily: FONT.extraBold, color: COLORS.primary },
-  errorText: { marginTop: 12, fontSize: 15, lineHeight: 22, fontFamily: FONT.bold, color: COLORS.emergency },
-  notice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 18, borderRadius: 14, borderWidth: 1 },
+  doneText: { marginTop: 12, fontSize: 15, fontFamily: FONT.semiBold, color: GREEN[700] },
+  errorText: { marginTop: 12, fontSize: 15, lineHeight: 22, fontFamily: FONT.semiBold, color: RED[600] },
+  notice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 18, borderRadius: CORNER.card, borderWidth: 1 },
   noticeCopy: { flex: 1 },
-  noticeTitle: { fontSize: 17, fontFamily: FONT.extraBold, color: COLORS.text },
-  noticeText: { marginTop: 4, fontSize: 15, lineHeight: 22, fontFamily: FONT.semiBold, color: COLORS.text },
-  emptyState: { marginTop: 14, padding: 22, borderRadius: 14, borderWidth: 1, alignItems: "center", gap: 10 },
-  emptyTitle: { fontSize: 16, fontFamily: FONT.extraBold, textAlign: "center" },
+  noticeTitle: { fontSize: 17, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  noticeText: { marginTop: 4, fontSize: 15, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  emptyState: { marginTop: 14, padding: 22, borderRadius: CORNER.card, borderWidth: 1, alignItems: "center", gap: 10 },
+  emptyTitle: { fontSize: 16, fontFamily: FONT.bold, textAlign: "center" },
   list: { marginTop: 14, gap: 12 },
-  row: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: 14, borderWidth: 1, flexWrap: "wrap" },
+  row: { flexDirection: "row", alignItems: "center", gap: 14, padding: 16, borderRadius: CORNER.card, borderWidth: 1, flexWrap: "wrap" },
   rowCopy: { flex: 1, minWidth: 180 },
-  rowName: { fontSize: 18, fontFamily: FONT.extraBold },
+  rowName: { fontSize: 18, fontFamily: FONT.bold },
   rowLine: { marginTop: 4, fontSize: 15, lineHeight: 21, fontFamily: FONT.semiBold },
-  reviewButton: { minHeight: 48, paddingHorizontal: 22, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  reviewButtonText: { fontSize: 16, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  reviewButton: { minHeight: 48, paddingHorizontal: 22, borderRadius: CORNER.pill, backgroundColor: GREEN[600], alignItems: "center", justifyContent: "center" },
+  reviewButtonText: { fontSize: 16, fontFamily: FONT.semiBold, color: "#FFFFFF" },
   overlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 12 },
-  card: { width: "100%", maxWidth: 620, maxHeight: "94%", borderRadius: 18, borderWidth: 1 },
+  card: { width: "100%", maxWidth: 620, maxHeight: "94%", borderRadius: CORNER.card, borderWidth: 1, ...SHADOW.level3 },
   cardContent: { padding: 18, gap: 14 },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  cardTitle: { fontSize: 22, fontFamily: FONT.extraBold },
-  closeButton: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#EAF2EE", alignItems: "center", justifyContent: "center" },
+  cardTitle: { fontSize: 22, fontFamily: FONT.bold },
+  closeButton: { width: 48, height: 48, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[100], alignItems: "center", justifyContent: "center" },
   photoBox: { width: "100%", borderRadius: 12 },
   photoMissing: { alignItems: "center", justifyContent: "center", padding: 16 },
   photoHintRow: { marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  photoHint: { fontSize: 14, fontFamily: FONT.bold },
+  photoHint: { fontSize: 14, fontFamily: FONT.medium },
   details: { padding: 14, borderRadius: 12, gap: 10 },
   detailRow: { gap: 2 },
-  detailLabel: { fontSize: 14, fontFamily: FONT.bold },
-  detailValue: { fontSize: 16, lineHeight: 22, fontFamily: FONT.bold },
+  detailLabel: { fontSize: 14, fontFamily: FONT.medium },
+  detailValue: { fontSize: 16, lineHeight: 22, fontFamily: FONT.semiBold },
   actionRow: { flexDirection: "row", gap: 12 },
-  actionButton: { flex: 1, minHeight: 52, borderRadius: 12, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
-  approveButton: { backgroundColor: COLORS.primary },
-  approveButtonText: { fontSize: 16, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  rejectButton: { borderWidth: 2, borderColor: COLORS.emergency },
-  rejectButtonText: { fontSize: 16, fontFamily: FONT.extraBold, color: COLORS.emergency },
-  confirmRejectButton: { backgroundColor: COLORS.emergency },
+  actionButton: { flex: 1, minHeight: 52, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
+  approveButton: { backgroundColor: GREEN[600] },
+  approveButtonText: { fontSize: 16, fontFamily: FONT.semiBold, color: "#FFFFFF" },
+  rejectButton: { borderWidth: 2, borderColor: RED[600] },
+  rejectButtonText: { fontSize: 16, fontFamily: FONT.semiBold, color: RED[600] },
+  confirmRejectButton: { backgroundColor: RED[600] },
   cancelButton: { borderWidth: 2 },
-  cancelButtonText: { fontSize: 16, fontFamily: FONT.extraBold },
+  cancelButtonText: { fontSize: 16, fontFamily: FONT.semiBold },
   decisionBox: { gap: 12 },
-  decisionText: { fontSize: 16, lineHeight: 23, fontFamily: FONT.bold },
-  reasonInput: { fontFamily: FONT.regular, minHeight: 96, borderWidth: 1, borderRadius: 12, padding: 12, fontSize: 16, lineHeight: 22, textAlignVertical: "top" },
+  decisionText: { fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold },
+  reasonInput: { fontFamily: FONT.regular, minHeight: 96, borderWidth: 1.5, borderRadius: 12, padding: 12, fontSize: 16, lineHeight: 22, textAlignVertical: "top" },
   reasonHint: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20 },
   fullPhotoPage: { flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center", padding: 8 },
   fullPhoto: { width: "100%", height: "90%" },

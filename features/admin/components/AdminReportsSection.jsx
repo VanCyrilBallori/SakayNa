@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import ListSkeleton from "../../../components/ui/ListSkeleton";
+import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDate, getAverageDuration, getDurationLabel, getTimestampMillis } from "../../../lib/dates";
 
 // Light grey for "Cancelled", the same as the Overview ride bar.
@@ -84,7 +85,8 @@ function LegendRow({ color, label, value, total }) {
   );
 }
 
-export default function AdminReportsSection({ requests, onDownload }) {
+// loading = the requests have not answered yet: grey placeholders instead of "No ride requests are loaded yet."
+export default function AdminReportsSection({ requests, loading = false, onDownload }) {
   const total = requests.length;
   const countStatus = (status) => requests.filter((request) => (request.status || "Pending") === status).length;
   const completed = countStatus("Completed");
@@ -130,7 +132,9 @@ export default function AdminReportsSection({ requests, onDownload }) {
         </View>
       </View>
 
-      {!total ? (
+      {loading ? (
+        <ListSkeleton rows={3} label="Loading the reports" />
+      ) : !total ? (
         <View style={styles.emptyState}>
           <Text style={styles.label}>No ride requests are loaded yet.</Text>
           <Text style={styles.small}>Reports appear here once residents send ride requests.</Text>
@@ -262,28 +266,28 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   small: { fontSize: 15, lineHeight: 20, fontFamily: FONT.regular, color: DESIGN_COLORS.inkMuted },
   bigNumber: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   period: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, paddingLeft: 6, paddingRight: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.boardTint },
   periodBadge: { width: 28, height: 28, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
-  periodText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  periodText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
-  // Sections: soft color inside the white panel, 24 corners (DESIGN.md).
+  // Sections: soft color inside the white panel, 16 corners (DESIGN.md Style: info boxes).
   sectionRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "stretch" },
-  section: { padding: 16, gap: 14, borderRadius: 24, minWidth: 0, backgroundColor: DESIGN_COLORS.boardTint },
+  section: { padding: 16, gap: 14, borderRadius: CORNER.card, minWidth: 0, backgroundColor: DESIGN_COLORS.boardTint },
   peachSection: { backgroundColor: DESIGN_COLORS.peachTint },
   wideSection: { flexGrow: 7, flexShrink: 1, flexBasis: 420 },
   smallSection: { flexGrow: 1, flexShrink: 1, flexBasis: 300 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionBadge: { width: 36, height: 36, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  sectionTitle: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
-  rateBox: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: 10, rowGap: 2, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESIGN_COLORS.paperWhite },
+  rateBox: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: 10, rowGap: 2, paddingVertical: 12, paddingHorizontal: 14, borderRadius: CORNER.input, backgroundColor: DESIGN_COLORS.paperWhite },
   stackBar: { flexDirection: "row", height: 28, gap: 2, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   stackPart: { minWidth: 6 },
   legend: { gap: 10 },
@@ -294,7 +298,7 @@ const styles = StyleSheet.create({
 
   barLineTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 },
   barLineLabel: { flexShrink: 1 },
-  barLineValue: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  barLineValue: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   barTrack: { height: 14, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   barFill: { height: "100%", borderRadius: 999 },
 
@@ -302,7 +306,7 @@ const styles = StyleSheet.create({
   downloadCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 320, minWidth: 0, gap: 8 },
   columns: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   columnTag: { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.paperWhite },
-  columnTagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  columnTagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   button: {
     minHeight: 48,
     flexDirection: "row",
@@ -310,11 +314,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingHorizontal: 20,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
   buttonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
+  buttonText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.paperWhite },
 
-  emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  emptyState: { padding: 20, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });

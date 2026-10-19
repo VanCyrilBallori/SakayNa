@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { getWhenText } from "../../resident/utils/requestMapper";
 import { getPurpose } from "../../resident/utils/requestOptions";
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
@@ -282,21 +282,21 @@ const styles = StyleSheet.create({
   pillTextSelected: { color: DESIGN_COLORS.paperWhite },
   countBubble: { minWidth: 32, height: 32, paddingHorizontal: 8, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
   countBubbleSelected: { backgroundColor: DESIGN_COLORS.paperWhite },
-  countText: { fontSize: 15, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  countText: { fontSize: 15, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   countTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
 
   grid: { gap: 16 },
   gridTwo: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" },
   // Cards: 24 corners, a thin line around, no shadow (DESIGN.md "Flat Board Rule").
-  card: { width: "100%", borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
+  card: { width: "100%", borderRadius: CORNER.card, borderWidth: 1, borderColor: DESIGN_COLORS.rule, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   cardHalf: { width: "48.5%" },
   band: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, paddingHorizontal: 18 },
-  bandText: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold },
+  bandText: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold },
   bandReference: { marginLeft: "auto", fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
   cardBody: { paddingTop: 16, paddingHorizontal: 18, paddingBottom: 18, gap: 14 },
 
   who: { gap: 8 },
-  name: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  name: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, backgroundColor: DESIGN_COLORS.boardTint },
   tagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   place: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   // A soft box, not a card inside a card: no border, just Board Tint.
-  facts: { flexDirection: "row", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
+  facts: { flexDirection: "row", gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderRadius: CORNER.input, backgroundColor: DESIGN_COLORS.boardTint },
   factsStacked: { flexDirection: "column" },
   fact: { flex: 1, minWidth: 0, gap: 2 },
   factLabelRow: { flexDirection: "row", alignItems: "center", gap: 5 },
@@ -326,12 +326,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingHorizontal: 20,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
   buttonFull: { width: "100%" },
   buttonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
+  buttonText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.paperWhite },
 
-  emptyState: { padding: 20, borderRadius: 24, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  emptyState: { padding: 20, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
 });
