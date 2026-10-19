@@ -133,6 +133,10 @@ Skills/resident.md section 6.
     grey "Old location" between steps.
   - On a narrow screen the map is above the driver list, so the
     dispatcher scrolls up after tapping Show on map.
+  - The route line (Task 3.21) is straight, not along the roads, so it
+    shows direction, not the real route or distance. A ride whose pickup
+    or destination is only typed words has no line there (most rides
+    after Picked Up, until Task 3.27 adds a destination pin).
 - **What to do for now:** read the "updated X min ago" label before
   trusting the pin; call the driver if it says "Old location".
 - **Future work:** tracking while the app is in the background or closed

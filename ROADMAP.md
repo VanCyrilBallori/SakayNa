@@ -180,6 +180,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.14 Admin Emergency Calls and Operations buttons | `66c04f5` | ✅ |
 | 3.16 Website skeleton loaders | `c0147ff` (Admin, part 1), `10be62d` (Dispatcher, part 2) | ✅ |
 | 3.20 Live driver location | `ba91b9d` (phone, Step A), `b290e19` (dispatcher map, Step B) | ✅ |
+| 3.21 Live route line | the "3.21: live route line" commit (`git log --grep 3.21`) | ✅ |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
@@ -213,6 +214,12 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - **Step B (website only):** the dispatcher map shows every on-duty driver in the "Driver availability" list as a pin labelled "Name · updated X min ago"; tapping the pin shows the step and clock time. After **2 minutes** without an update the pin turns grey and faded and the label starts with **"Old location"**. Pins move by a message into the map page, so the map never rebuilds (no blink, the zoom stays). Pickup and destination pins work as before.
   - **"Show on map"** now **slides** the map to the driver's pin (it does not keep following). Tapping a request card or a "Needs a new driver" banner afterwards brings the ride's pins back.
   - Drivers on APKs before Step A (demo-ready-18 and older) only save at the steps, so their pin is grey "Old location" between steps.
+  - **Extra fix (`9f1c6fb`):** the driver card is a plain box with two tap areas and "Show on map" between them, so the website no longer has a button inside a button. Same look.
+- **3.21 (website only, straight line as decided):**
+  - Every live driver pin with an active ride (Assigned … Arrived) gets a dashed line to the pickup: **green**, ending in a dot labelled **"Pickup · Name"**. After Picked Up it goes to the destination: **orange**, **"Drop-off · Name"**. The label is always visible, so color is never the only cue (DESIGN.md).
+  - When the pin is grey "Old location", the line and dot are grey and faded too, with the same label.
+  - The assignment only has the places as typed words, so the ride's request is read **once** for its map positions (dispatchers may read any request; no rules change). No map position = no line. Most destinations are typed words only, so after Picked Up most rides show no line until Task 3.27.
+  - The lines move like the pins (no map rebuild) and don't change how the map zooms to the selected request's pins.
 
 ---
 

@@ -10,6 +10,7 @@ import EmergencyAlertStrip from "../features/dispatcher/components/EmergencyAler
 import EmergencyRequestForm from "../features/dispatcher/components/EmergencyRequestForm";
 import useAlertSound from "../features/dispatcher/hooks/useAlertSound";
 import { assignDispatcherRequest } from "../features/dispatcher/services/dispatcherAssignmentService";
+import { getDestinationCoordinates, getMissionStatus, getPickupCoordinates } from "../features/driver/utils/driverMissionMapper";
 import { formatRequestDate, getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../features/resident/utils/requestMapper";
 import { BIG_GROUP_NOTE, isBigGroup } from "../features/resident/utils/requestOptions";
 import { startPhoneCall } from "../lib/phoneCall";
@@ -455,6 +456,10 @@ export default function DispatcherHome() {
   const [driverSchedules, setDriverSchedules] = useState([]);
   // Each driver's last known location, by driver id (driver-location-plan.md).
   const [driverLocations, setDriverLocations] = useState({});
+  // Where each active ride's line ends (Task 3.21), by request id: { pickup, destination } map positions or null.
+  const [rideEnds, setRideEnds] = useState({});
+  // Request ids already asked for, so each ride's request is read only once.
+  const rideEndsAskedRef = useRef(new Set());
   // The driver whose "Show on map" was tapped last: { id }, a new object each tap (null = none since the last ride pins).
   const [mapFocus, setMapFocus] = useState(null);
   // Goes up by one to make a fresh map, which zooms to the selected request's pins again (see showRidePins).
@@ -587,6 +592,11 @@ export default function DispatcherHome() {
           const ageMs = atMs == null ? null : now - atMs;
           const ago = ageMs === null ? "time unknown" : ageMs < 60_000 ? "just now" : `${formatDutyDuration(ageMs)} ago`;
           const old = ageMs === null || ageMs > OLD_LOCATION_MS;
+          // Live route line (Task 3.21): a straight dashed line to where this driver is going next:
+          // the pickup, or the destination after Picked Up. No map position there = no line.
+          const ride = driver.activeAssignment;
+          const ends = ride ? rideEnds[ride.requestId] : null;
+          const pickedUp = ride ? getMissionStatus(ride) === "Picked Up" : false;
           return {
             id: driver.id,
             latitude,
@@ -594,9 +604,12 @@ export default function DispatcherHome() {
             old,
             label: `${old ? "Old location · " : ""}${driver.name} · updated ${ago}`,
             details: `${driver.name} · ${LOCATION_STEP_LABELS[step] || step}${atMs == null ? "" : `, ${formatManilaTime(atMs)}`}`,
+            lineTo: (pickedUp ? ends?.destination : ends?.pickup) ?? null,
+            lineKind: pickedUp ? "destination" : "pickup",
+            lineLabel: `${pickedUp ? "Drop-off" : "Pickup"} · ${driver.name}`,
           };
         }),
-    [dispatcherAvailabilityRows, now]
+    [dispatcherAvailabilityRows, now, rideEnds]
   );
   // Back to the ride's pins after "Show on map" moved the map to a driver: a fresh map zooms to the
   // selected request's pickup and destination again, like before Step B. Without a "Show on map", nothing changes.
@@ -737,6 +750,27 @@ export default function DispatcherHome() {
 
     return unsubscribe;
   }, []);
+
+  // The map positions at the end of each active ride's line (Task 3.21). The assignment only has the pickup and
+  // destination as typed words, so the ride's request is read once (they don't change after assigning).
+  // Dispatchers may read any request (firestore.rules), so no rules change. If the read fails, the next
+  // change to the active rides tries again.
+  useEffect(() => {
+    activeAssignments.forEach((assignment) => {
+      const requestId = assignment.requestId;
+      if (!requestId || rideEndsAskedRef.current.has(requestId)) return;
+      rideEndsAskedRef.current.add(requestId);
+      getDoc(doc(db, "transportRequests", requestId))
+        .then((requestSnapshot) => {
+          const request = requestSnapshot.exists() ? requestSnapshot.data() : {};
+          setRideEnds((current) => ({ ...current, [requestId]: { pickup: getPickupCoordinates(request), destination: getDestinationCoordinates(request) } }));
+        })
+        .catch((error) => {
+          rideEndsAskedRef.current.delete(requestId);
+          console.log("Ride line position warning:", error);
+        });
+    });
+  }, [activeAssignments]);
 
   // Drivers' last known locations (driver-location-plan.md). Live, so "5 min ago (Arrived)" changes as soon as the driver taps a step.
   // Only dispatchers may read them (firestore.rules); for anyone else this just logs a warning.
