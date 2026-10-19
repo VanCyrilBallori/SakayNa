@@ -29,6 +29,7 @@ import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText
 import { formatDay, formatWhen } from "../lib/dates";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
+import ListSkeleton from "../components/ui/ListSkeleton";
 import DeleteAccountSheet from "../components/DeleteAccountSheet";
 import LeafletMap from "../components/LeafletMap";
 import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
@@ -145,6 +146,14 @@ export default function DriverHome() {
   const [duty, setDuty] = useState({ dutyStatus: "Off duty", dutyStatusSince: null, shiftId: "", breakType: "", breakNote: "" });
   const [assignedTransfer, setAssignedTransfer] = useState(null);
   const [currentMissionRequest, setCurrentMissionRequest] = useState(null);
+  // "Has Firebase answered yet?" for the duty status, the current ride and the ride history. Until then a grey
+  // placeholder shows (ListSkeleton), not "Off duty", "Inbox empty" or "No rides yet". Each one turns on at the
+  // first answer OR at an error, so the placeholder can never stay forever.
+  const [dutyLoaded, setDutyLoaded] = useState(false);
+  const [assignmentsLoaded, setAssignmentsLoaded] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  // The requestId whose ride details have answered (the ride card needs them, and they arrive a moment after the ride).
+  const [requestLookupId, setRequestLookupId] = useState("");
   const [missionMessage, setMissionMessage] = useState({ message: "", tone: "info" });
   // Shown after a ride was cancelled by the resident and removed: { title, reason }.
   const [cancelledNotice, setCancelledNotice] = useState(null);
@@ -231,8 +240,12 @@ export default function DriverHome() {
           breakType: data?.breakType ?? "",
           breakNote: data?.breakNote ?? "",
         });
+        setDutyLoaded(true);
       },
-      (error) => console.log("Driver duty status listener warning:", error)
+      (error) => {
+        console.log("Driver duty status listener warning:", error);
+        setDutyLoaded(true);
+      }
     );
 
     const markAppClosed = () => {
@@ -306,8 +319,12 @@ export default function DriverHome() {
           .filter((assignment) => ["Assigned", "In Progress"].includes(assignment.status));
 
         setAssignedTransfer(assignments[0] ?? null);
+        setAssignmentsLoaded(true);
       },
-      (error) => console.log("Driver assignment listener warning:", error)
+      (error) => {
+        console.log("Driver assignment listener warning:", error);
+        setAssignmentsLoaded(true);
+      }
     );
 
     return unsubscribe;
@@ -318,7 +335,18 @@ export default function DriverHome() {
       setCurrentMissionRequest(null);
       return undefined;
     }
-    const unsubscribe = onSnapshot(doc(db, "transportRequests", assignedTransfer.requestId), (snapshot) => setCurrentMissionRequest(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null), () => setCurrentMissionRequest(null));
+    const requestId = assignedTransfer.requestId;
+    const unsubscribe = onSnapshot(
+      doc(db, "transportRequests", requestId),
+      (snapshot) => {
+        setCurrentMissionRequest(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
+        setRequestLookupId(requestId);
+      },
+      () => {
+        setCurrentMissionRequest(null);
+        setRequestLookupId(requestId);
+      }
+    );
     return unsubscribe;
   }, [accessStatus, assignedTransfer?.requestId]);
 
@@ -384,8 +412,12 @@ export default function DriverHome() {
           });
 
         setAssignmentHistory(assignments);
+        setHistoryLoaded(true);
       },
-      (error) => console.log("Driver assignment history warning:", error)
+      (error) => {
+        console.log("Driver assignment history warning:", error);
+        setHistoryLoaded(true);
+      }
     );
 
     return unsubscribe;
@@ -448,6 +480,8 @@ export default function DriverHome() {
 
   const request = currentMissionRequest ?? assignedTransfer?.request;
   const missionStatus = getMissionStatus(assignedTransfer || {});
+  // The Ride page waits (grey placeholder) until the rides have answered and, if there is a ride, its details too.
+  const rideLoading = !assignmentsLoaded || Boolean(assignedTransfer?.requestId && !request && requestLookupId !== assignedTransfer.requestId);
 
   // Live location (ROADMAP Task 3.20 Step A): the step name saved with each live update.
   // The ride's step while it is Accepted ... Picked Up, otherwise "Punch in" (the names firestore.rules allows).
@@ -760,19 +794,27 @@ export default function DriverHome() {
         {activePage === "availability" ? (
           <View style={[styles.pageColumn, styles.availabilityPage]}>
             <ScrollView style={styles.dutyCardArea} showsVerticalScrollIndicator={false}>
-              <DriverDutyCard
-                driverId={authUser.uid}
-                driverName={profile?.fullName || displayName}
-                duty={duty}
-                activeRideStatus={assignedTransfer?.status ?? ""}
-                rideTitle={request?.title || assignedTransfer?.title || ""}
-              />
+              {/* Until the duty status (and whether there is a ride) has answered: a grey placeholder, not a false
+                  "Off duty" with a Punch in button. */}
+              {dutyLoaded && assignmentsLoaded ? (
+                <DriverDutyCard
+                  driverId={authUser.uid}
+                  driverName={profile?.fullName || displayName}
+                  duty={duty}
+                  activeRideStatus={assignedTransfer?.status ?? ""}
+                  rideTitle={request?.title || assignedTransfer?.title || ""}
+                />
+              ) : (
+                <ListSkeleton rows={1} label="Loading your duty status" />
+              )}
             </ScrollView>
             <ScrollView style={styles.historyPanel} contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
               <Text style={styles.historyHeading} accessibilityRole="header">
                 Ride history
               </Text>
-              {assignmentHistory.length ? (
+              {!historyLoaded ? (
+                <ListSkeleton rows={3} label="Loading your ride history" />
+              ) : assignmentHistory.length ? (
                 assignmentHistory.map((assignment, index) => <HistoryRow key={assignment.id} assignment={assignment} first={index === 0} />)
               ) : (
                 <Text style={styles.historyMeta}>No rides yet. Rides you get will show here.</Text>
@@ -819,7 +861,10 @@ export default function DriverHome() {
                   </View>
                 ) : null}
 
-                {request ? (
+                {rideLoading ? (
+                  // Still waiting for Firebase: a grey placeholder card, never a false "Inbox empty".
+                  <ListSkeleton rows={1} label="Loading your ride" />
+                ) : request ? (
                   <>
                     {/* The task card (driver-home-restyle-plan.md Piece 3). */}
                     <DriverRideCard

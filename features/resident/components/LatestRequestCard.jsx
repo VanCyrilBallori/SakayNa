@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, RED, SHADOW } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getDestinationLabel, getPickupLabel, getRideProgress, getWhenText, RIDE_STEPS } from "../utils/requestMapper";
@@ -26,12 +27,9 @@ export default function LatestRequestCard({ request, loading, error, onPress }) 
     );
   }
 
+  // Still loading: a grey placeholder card (the same as the History page's), not a box of words.
   if (loading) {
-    return (
-      <View style={styles.messageBox}>
-        <Text style={styles.messageText}>Loading your ride…</Text>
-      </View>
-    );
+    return <ListSkeleton rows={1} label="Loading your ride" />;
   }
 
   // Empty state (DESIGN.md Style): an icon in a tinted circle, a title and one sentence.

@@ -3,9 +3,10 @@ import { AccessibilityInfo, Animated, Platform, StyleSheet, View } from "react-n
 
 import { DESIGN_COLORS } from "../../constants/design";
 
-// Grey placeholder cards shown while a website list is still loading (Task 3.16).
+// Grey placeholder cards shown while a list or a card is still loading, on the website and the phone (Task 3.16).
+// rows = how many cards: 3 for a list, 1 for a single card (the resident's "Your ride", the driver's ride and duty card).
 // Show it only while loading: after loading ends (or fails), the screen shows its own list, empty or error message.
-// The cards fade softly so the page doesn't look frozen. They stay still if the computer asks for reduced motion.
+// The cards fade softly so the page doesn't look frozen. They stay still if the phone or computer asks for reduced motion.
 // label = what a screen reader says, for example "Loading registered users".
 export default function ListSkeleton({ rows = 3, label = "Loading" }) {
   const opacity = useRef(new Animated.Value(1)).current;
