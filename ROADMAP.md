@@ -390,7 +390,8 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 ### Owner's decisions (October 14, 2026)
 
 1. Build Phase 3 on `big-update`. **No rules deploy before October 23.**
-   - **Changed October 19 (replaces "decide on October 20"):** **one** release on **October 22**: big-update is merged into master **once** (then master → main for the website), and the **demo-ready-19** APK is built from that merge. **Feature freeze at noon, October 22**: only work that is tested and committed by then goes in.
+   - **Changed October 19 (replaces "decide on October 20"):** **one** release: big-update is merged into master **once** (then master → main for the website), and the **demo-ready-19** APK is built from that merge.
+   - **Updated October 19:** the release happens **as soon as everything is done and tested**. **Noon, October 22 is the latest, not the target** (feature freeze: only work that is tested and committed by then goes in). **October 22 is kept for rehearsal, data cleanup and demo accounts.**
 2. Compact = fewer boxes and less space. Phone text stays ≥ 15 and taps ≥ 48. The Admin website may be denser (write that exception in DESIGN.md at Task 3.19).
 3. Passenger phone (3.2): **required**.
 4. "Community / Personal Trip" (3.9): **rename it**; Claude suggests names, the owner chooses.
