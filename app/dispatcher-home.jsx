@@ -332,6 +332,9 @@ function SelectedRequestDetails({ request, now, oneRow = false }) {
 
   const phone = request.contactNumber || request.residentPhone || "";
   const bookedForSomeoneElse = request.ridingFor === "other";
+  // No exact map pin for the pickup: the map can only guess it from the typed address (its label says so on hover only),
+  // so Selected Request says it in words under the pickup, where the dispatcher always sees it.
+  const pickupIsApproximate = !(typeof request.pickup?.latitude === "number" && typeof request.pickup?.longitude === "number");
 
   const pickup = [formatPlace(request.pickupLocation), request.barangay].filter(Boolean).filter((value, index, list) => list.indexOf(value) === index).join(", ");
   // Columns 2-4 (column 1 is the passenger). Each value is one line (Notes: up to 2), then "…" and the full text on mouse hover.
@@ -402,6 +405,13 @@ function SelectedRequestDetails({ request, now, oneRow = false }) {
                 <OneLine style={styles.detailsValue} lines={label === "Notes" ? 2 : 1}>
                   {value}
                 </OneLine>
+                {/* One line only (like every value here), so Selected Request keeps its fixed height (DETAILS_HEIGHT). */}
+                {label === "Pickup" && pickupIsApproximate ? (
+                  <View style={styles.approximateRow}>
+                    <MaterialCommunityIcons name="alert-outline" size={16} color={ORANGE[800]} />
+                    <OneLine style={styles.approximateText}>Approximate location (from typed address)</OneLine>
+                  </View>
+                ) : null}
               </View>
             ))}
           </View>
@@ -1554,6 +1564,10 @@ const styles = StyleSheet.create({
   // Small grey labels, sentence case (DESIGN.md Style list rows), with the value under them.
   detailsLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
   detailsValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 22, color: NEUTRAL[900] },
+  // "Approximate location (from typed address)" under the pickup: small dark-orange words with a warning icon,
+  // 15 / 20 on one line (+22 makes the Pickup column 116, still under the passenger box's 126).
+  approximateRow: { marginTop: 2, flexDirection: "row", alignItems: "center", gap: 4 },
+  approximateText: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: ORANGE[800] },
   // Map frame (DESIGN.md Style): 16 corners, a thin neutral edge, a Level 1 shadow.
   mapPanel: { flex: 4, minWidth: 360, height: 560, borderRadius: CORNER.card, backgroundColor: NEUTRAL[0], borderWidth: 1, borderColor: NEUTRAL[200], overflow: "hidden", ...SHADOW.level1 },
   mapPanelCompact: { flexBasis: "100%", minWidth: 0, height: 560 },
