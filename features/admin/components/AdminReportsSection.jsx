@@ -120,16 +120,14 @@ export default function AdminReportsSection({ requests, loading = false, onDownl
 
   return (
     <View style={styles.page}>
-      <View style={styles.header}>
-        <View style={styles.headerBadge}>
-          <MaterialCommunityIcons name="file-chart-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-        </View>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Reports</Text>
-          <Text style={styles.subtitle}>
-            Numbers from the ride requests loaded in the Admin console. Download them as a spreadsheet file below.
-          </Text>
-        </View>
+      {/* Reports opens inside Operations, under its title line, so it has a plain sub-heading like the other Operations views. */}
+      <View>
+        <Text style={styles.title} accessibilityRole="header">
+          Reports
+        </Text>
+        <Text style={styles.subtitle}>
+          Numbers from the ride requests loaded in the Admin console. Download them as a spreadsheet file below.
+        </Text>
       </View>
 
       {loading ? (
@@ -262,11 +260,8 @@ export default function AdminReportsSection({ requests, loading = false, onDownl
 }
 
 const styles = StyleSheet.create({
-  page: { width: "100%", gap: 16, paddingVertical: 10 },
-  header: { flexDirection: "row", alignItems: "center", gap: 16 },
-  headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
-  headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  page: { width: "100%", gap: 12 },
+  title: { fontSize: 21, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Image, Platform, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
+import AdminSectionHeader from "./AdminSectionHeader";
 import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDate, formatDay } from "../../../lib/dates";
 import { getApprovalStatus, getProfilePhoto, getUserAddress, getUserName, getUserPhone } from "../utils/userFormatters";
@@ -161,15 +162,11 @@ export default function AdminUsersSection({
 
   return (
     <View style={styles.page}>
-      <View style={styles.header}>
-        <View style={styles.headerBadge}>
-          <MaterialCommunityIcons name="account-group-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-        </View>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Users</Text>
-          <Text style={styles.subtitle}>Everyone with a SakayNa account. Edit fixes contact details. Change status opens Operations.</Text>
-        </View>
-      </View>
+      <AdminSectionHeader
+        icon="account-group-outline"
+        title="Users"
+        subtitle="Everyone with a SakayNa account. Edit fixes contact details. Change status opens Operations."
+      />
 
       {Platform.OS === "web" ? (
         <View style={styles.filterGroup}>
@@ -252,12 +249,7 @@ export default function AdminUsersSection({
 }
 
 const styles = StyleSheet.create({
-  page: { width: "100%", gap: 16, padding: 10 },
-  header: { flexDirection: "row", alignItems: "center", gap: 16 },
-  headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
-  headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  page: { width: "100%", gap: 12 },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 22, color: DESIGN_COLORS.ink },
   label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   small: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },

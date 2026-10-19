@@ -22,6 +22,7 @@ import {
   updateDispatcherScope,
 } from "../services/trustedAdminOperationsService";
 import AdminReportsSection from "./AdminReportsSection";
+import AdminSectionHeader from "./AdminSectionHeader";
 import { CORNER, FONT, GREEN, NEUTRAL, SHADOW } from "../../../constants/design";
 
 const EMPTY_DISPATCHER = { fullName: "", email: "", phoneNumber: "", temporaryPassword: "" };
@@ -222,6 +223,9 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
   const viewContent = { Accounts: renderAccounts, "Add Dispatcher": renderStaff, Maintenance: renderVehicles, Reports: renderReports, Settings: renderSettings, Logs: renderLogs }[view];
   return <>
     <View>
+      <View style={styles.sectionHeader}>
+        <AdminSectionHeader icon="cog-outline" title="Operations" subtitle="Account status, Dispatchers, vehicle maintenance, reports, settings and the activity log." />
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.nav}>{["Accounts", "Add Dispatcher", "Maintenance", "Reports", "Settings", "Logs"].map((item) => chip(item, view === item, () => setView(item)))}</ScrollView>
       <FeedbackMessage message={error} tone="error" />
       <FeedbackMessage message={message} tone="success" />
@@ -274,6 +278,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
 
 // UI refresh (DESIGN.md "Style"): pill chips, 12-corner inputs, 16-corner cards and pop-up. Text at least 15 (DESIGN.md); spacing unchanged.
 const styles = StyleSheet.create({
+  sectionHeader: { marginBottom: 12 },
   nav: { gap: 8, paddingBottom: 14 }, row: { gap: 8, paddingVertical: 6 },
   chip: { minHeight: 38, justifyContent: "center", paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 1 }, chipText: { fontSize: 15, fontFamily: FONT.semiBold },
   title: { fontSize: 21, fontFamily: FONT.bold, marginTop: 8, marginBottom: 6 }, copy: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 22 },

@@ -4,6 +4,7 @@ import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Tex
 
 import { ACCOUNT_STATUSES } from "../../../constants/app";
 import ListSkeleton from "../../../components/ui/ListSkeleton";
+import AdminSectionHeader from "./AdminSectionHeader";
 import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { reviewResidentVerification } from "../services/adminOperationsService";
@@ -78,10 +79,11 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
 
   return (
     <>
-      <Text style={[styles.title, { color: theme.text }]}>Resident Verification</Text>
-      <Text style={[styles.subtitle, { color: theme.text }]}>
-        {adminBarangay} · {isLoading ? "Loading..." : `${verifications.length} waiting for review`}
-      </Text>
+      <AdminSectionHeader
+        icon="account-check-outline"
+        title="Resident Verification"
+        subtitle={`${adminBarangay} · ${isLoading ? "Loading..." : `${verifications.length} waiting for review`}`}
+      />
 
       {doneMessage ? <Text style={[styles.doneText, { color: successText }]}>{doneMessage}</Text> : null}
 
@@ -229,8 +231,6 @@ export default function AdminResidentVerificationSection({ theme, adminId, admin
 
 // UI refresh (DESIGN.md "Style"): 16-corner cards, pill buttons, Style weights. Sizes unchanged (Task 3.19 decides density).
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontFamily: FONT.bold },
-  subtitle: { marginTop: 4, fontSize: 15, lineHeight: 22, fontFamily: FONT.bold },
   doneText: { marginTop: 12, fontSize: 15, fontFamily: FONT.semiBold, color: GREEN[700] },
   errorText: { marginTop: 12, fontSize: 15, lineHeight: 22, fontFamily: FONT.semiBold, color: RED[600] },
   notice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 18, borderRadius: CORNER.card, borderWidth: 1 },

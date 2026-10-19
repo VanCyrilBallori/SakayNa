@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
+import AdminSectionHeader from "./AdminSectionHeader";
 import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDateTime, getDurationLabel } from "../../../lib/dates";
 import { formatPlace } from "../../../lib/placeText";
@@ -109,17 +110,12 @@ export default function AdminCallSessionsSection({ callSessions, isLoadingCallSe
 
   return (
     <View style={styles.page}>
-      <View style={styles.header}>
-        <View style={styles.headerBadge}>
-          <MaterialCommunityIcons name="phone-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-        </View>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Emergency calls</Text>
-          <Text style={styles.subtitle}>
-            Every Emergency alert from residents, newest first. A call with no answer after 30 seconds moves to the top.
-          </Text>
-        </View>
-      </View>
+      <AdminSectionHeader
+        red
+        icon="phone-outline"
+        title="Emergency calls"
+        subtitle="Every Emergency alert from residents, newest first. A call with no answer after 30 seconds moves to the top."
+      />
 
       {callSessionsError ? <Text style={styles.errorText}>{callSessionsError}</Text> : null}
 
@@ -191,12 +187,7 @@ export default function AdminCallSessionsSection({ callSessions, isLoadingCallSe
 
 const styles = StyleSheet.create({
   // Not wider than about 1200px, so each call fits on one line on a desktop monitor but doesn't stretch across a huge screen.
-  page: { width: "100%", maxWidth: 1200, gap: 16, padding: 10 },
-  header: { flexDirection: "row", alignItems: "center", gap: 16 },
-  headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.emergencyRed },
-  headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  page: { width: "100%", maxWidth: 1200, gap: 12 },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   mutedBody: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
   bold: { fontFamily: FONT.bold, color: DESIGN_COLORS.ink },

@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
+import AdminSectionHeader from "./AdminSectionHeader";
 import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
 import { formatDateTime } from "../../../lib/dates";
 import { getWhenText } from "../../resident/utils/requestMapper";
@@ -188,17 +189,11 @@ export default function AdminRequestsSection({
 
   return (
     <View style={styles.page}>
-      <View style={styles.header}>
-        <View style={styles.headerBadge}>
-          <MaterialCommunityIcons name="van-passenger" size={24} color={DESIGN_COLORS.paperWhite} />
-        </View>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Requests</Text>
-          <Text style={styles.subtitle}>
-            Every ride request from residents, newest first. Tap View details to see the passenger, help needed and all times.
-          </Text>
-        </View>
-      </View>
+      <AdminSectionHeader
+        icon="clipboard-list-outline"
+        title="Requests"
+        subtitle="Every ride request from residents, newest first. Tap View details to see the passenger, help needed and all times."
+      />
 
       <View style={styles.filters}>
         <View style={styles.filterGroup}>
@@ -251,12 +246,7 @@ export default function AdminRequestsSection({
 }
 
 const styles = StyleSheet.create({
-  page: { width: "100%", gap: 16, padding: 10 },
-  header: { flexDirection: "row", alignItems: "center", gap: 16 },
-  headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
-  headerCopy: { flex: 1, minWidth: 0 },
-  title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  subtitle: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  page: { width: "100%", gap: 12 },
   body: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   label: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   small: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },

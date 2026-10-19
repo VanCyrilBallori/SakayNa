@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
+import AdminSectionHeader from "./AdminSectionHeader";
 import { CORNER, DESIGN_COLORS, FONT, GREEN } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
@@ -106,13 +107,11 @@ export default function AdminDutyRecordsSection() {
 
   return (
     <View>
-      <Text style={styles.title} accessibilityRole="header">
-        Duty Records (DTR)
-      </Text>
-      <Text style={styles.intro}>
-        Each driver&apos;s time card for one day, worked out from their punch records. Times are Manila time. A shift is listed on the day it
-        started. The records can&apos;t be changed.
-      </Text>
+      <AdminSectionHeader
+        icon="calendar-clock-outline"
+        title="Duty Records (DTR)"
+        subtitle="Each driver's time card for one day, worked out from their punch records. Times are Manila time. A shift is listed on the day it started. The records can't be changed."
+      />
 
       {/* Day picker: one day back or forward, or any day from the calendar box. No date package needed. */}
       <View style={styles.dayPicker}>
@@ -285,10 +284,9 @@ const dateBoxStyle = {
 };
 
 const styles = StyleSheet.create({
-  title: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   intro: { fontFamily: FONT.regular, marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, maxWidth: 760 },
 
-  dayPicker: { marginTop: 16, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
+  dayPicker: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   dayButton: {
     minHeight: 48,
     paddingHorizontal: 12,

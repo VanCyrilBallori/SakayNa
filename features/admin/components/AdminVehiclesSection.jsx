@@ -2,6 +2,7 @@ import { Text, TouchableOpacity, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { formatDate } from "../../../lib/dates";
+import AdminSectionHeader from "./AdminSectionHeader";
 
 export default function AdminVehiclesSection({
   theme,
@@ -18,6 +19,8 @@ export default function AdminVehiclesSection({
 }) {
   return (
     <>
+      <AdminSectionHeader icon="van-passenger" title="Vehicles" subtitle="The barangay vehicles that dispatch can assign. Archived ones keep their history." />
+
       <View style={styles.vehicleToolbar}>
         <TouchableOpacity style={styles.primaryActionButton} onPress={() => openVehicleEditor()}>
           <Text style={styles.primaryActionButtonText}>Add City/Barangay Vehicle</Text>
