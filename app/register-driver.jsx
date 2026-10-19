@@ -10,7 +10,7 @@ import BottomSheetPicker from "../components/BottomSheetPicker";
 import BrandLogo from "../components/BrandLogo";
 import ScreenState from "../components/ui/ScreenState";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS, ROLES } from "../constants/app";
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, RED, SHADOW } from "../constants/design";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import { auth, db } from "../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../lib/barangays";
@@ -28,13 +28,13 @@ import { pickPhoto, uploadPhotos } from "../lib/uploadPhoto";
 
 // DESIGN.md colors, under the short names this page already uses.
 const colors = {
-  page: DESIGN_COLORS.paperWhite,
-  heading: DESIGN_COLORS.ink,
-  muted: DESIGN_COLORS.inkMuted,
-  link: DESIGN_COLORS.hallGreen,
-  card: DESIGN_COLORS.boardTint,
-  line: DESIGN_COLORS.rule,
-  outline: DESIGN_COLORS.controlOutline,
+  page: NEUTRAL[0],
+  heading: NEUTRAL[900],
+  muted: NEUTRAL[700],
+  link: GREEN[600],
+  card: NEUTRAL[100],
+  line: NEUTRAL[200],
+  outline: NEUTRAL[500],
   ripple: "rgba(11, 122, 75, 0.12)",
 };
 
@@ -358,7 +358,7 @@ export default function RegisterDriver() {
                 android_ripple={{ color: colors.ripple }}
                 accessibilityRole="button"
               >
-                <Text style={[styles.buttonText, { color: DESIGN_COLORS.hallGreen }]}>Back</Text>
+                <Text style={[styles.buttonText, { color: GREEN[600] }]}>Back</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.button, styles.nextButton, pressed && styles.filledPressed]}
@@ -391,7 +391,7 @@ function StepBar({ step }) {
           <View key={name} style={styles.stepItem}>
             <View style={styles.stepCircleRow}>
               {/* The line on each side of the circle. The first and last hide their outer line. */}
-              <View style={[styles.stepLine, { backgroundColor: index === 0 ? "transparent" : number <= step ? DESIGN_COLORS.hallGreen : colors.line }]} />
+              <View style={[styles.stepLine, { backgroundColor: index === 0 ? "transparent" : number <= step ? GREEN[600] : colors.line }]} />
               <View style={[styles.stepCircle, done || current ? styles.stepCircleActive : { borderColor: colors.outline }]}>
                 {done ? (
                   <MaterialCommunityIcons name="check" size={20} color="#FFFFFF" />
@@ -399,7 +399,7 @@ function StepBar({ step }) {
                   <Text style={[styles.stepNumber, { color: current ? "#FFFFFF" : colors.muted }]}>{number}</Text>
                 )}
               </View>
-              <View style={[styles.stepLine, { backgroundColor: index === STEP_NAMES.length - 1 ? "transparent" : number < step ? DESIGN_COLORS.hallGreen : colors.line }]} />
+              <View style={[styles.stepLine, { backgroundColor: index === STEP_NAMES.length - 1 ? "transparent" : number < step ? GREEN[600] : colors.line }]} />
             </View>
             <Text style={[styles.stepName, { color: current ? colors.heading : colors.muted }, current && styles.stepNameCurrent]} numberOfLines={1}>
               {name}
@@ -429,7 +429,7 @@ function PersonalPage({ form, updateField, photos, onAddPhoto }) {
           value={form.fullName}
           onChangeText={(value) => updateField("fullName", value)}
           placeholder="Juan Dela Cruz"
-          placeholderTextColor={DESIGN_COLORS.placeholder}
+          placeholderTextColor={NEUTRAL[600]}
           autoCapitalize="words"
           accessibilityLabel="Full Name"
         />
@@ -446,7 +446,7 @@ function PersonalPage({ form, updateField, photos, onAddPhoto }) {
           value={form.phone}
           onChangeText={(value) => updateField("phone", value)}
           placeholder="09XX XXX XXXX"
-          placeholderTextColor={DESIGN_COLORS.placeholder}
+          placeholderTextColor={NEUTRAL[600]}
           keyboardType="phone-pad"
           maxLength={16}
           accessibilityLabel="Contact Number"
@@ -473,7 +473,7 @@ function PersonalPage({ form, updateField, photos, onAddPhoto }) {
           value={form.address}
           onChangeText={(value) => updateField("address", value)}
           placeholder="e.g. 123 Rizal St., Purok 2"
-          placeholderTextColor={DESIGN_COLORS.placeholder}
+          placeholderTextColor={NEUTRAL[600]}
           accessibilityLabel="House number, street, or purok"
         />
       </Field>
@@ -503,7 +503,7 @@ function LicensePage({ form, updateField, photos, onAddPhoto }) {
           value={form.licenseNumber}
           onChangeText={(value) => updateField("licenseNumber", value)}
           placeholder="e.g. N01-12-345678"
-          placeholderTextColor={DESIGN_COLORS.placeholder}
+          placeholderTextColor={NEUTRAL[600]}
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={20}
@@ -615,7 +615,7 @@ function ReviewPage({ form, email, photos, confirmed, onToggleConfirmed }) {
         accessibilityRole="checkbox"
         accessibilityState={{ checked: confirmed }}
       >
-        <MaterialCommunityIcons name={confirmed ? "checkbox-marked" : "checkbox-blank-outline"} size={30} color={confirmed ? DESIGN_COLORS.hallGreen : colors.outline} />
+        <MaterialCommunityIcons name={confirmed ? "checkbox-marked" : "checkbox-blank-outline"} size={30} color={confirmed ? GREEN[600] : colors.outline} />
         <Text style={[styles.confirmText, { color: colors.heading }]}>
           The information I gave is true, and I allow SakayNa admins to review these documents. My name, phone number and vehicle will be
           shown to the residents I&apos;m assigned to.
@@ -628,9 +628,9 @@ function ReviewPage({ form, email, photos, confirmed, onToggleConfirmed }) {
 // One light panel on the Review page: a heading, the details, and small photos.
 function ReviewSection({ icon, title, rows, thumbs }) {
   return (
-    <View style={[styles.summary, { backgroundColor: colors.card }]}>
+    <View style={styles.summary}>
       <View style={styles.summaryHeading}>
-        <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} />
+        <MaterialCommunityIcons name={icon} size={22} color={GREEN[600]} />
         <Text style={[styles.summaryTitle, { color: colors.heading }]} accessibilityRole="header">
           {title}
         </Text>
@@ -664,7 +664,7 @@ function SubmittedPage({ onGoHome }) {
   return (
     <View style={styles.submitted}>
       <View style={[styles.submittedDisc, { backgroundColor: colors.card }]}>
-        <MaterialCommunityIcons name="check" size={56} color={DESIGN_COLORS.hallGreen} />
+        <MaterialCommunityIcons name="check" size={56} color={GREEN[600]} />
       </View>
       <Text style={[styles.submittedTitle, { color: colors.heading }]} accessibilityRole="header">
         Submitted
@@ -691,7 +691,7 @@ function Field({ icon, label, children }) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
-        <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} />
+        <MaterialCommunityIcons name={icon} size={22} color={GREEN[600]} />
         <Text style={[styles.label, { color: colors.heading }]}>{label}</Text>
       </View>
       {children}
@@ -731,7 +731,7 @@ function DateInput({ form, updateField, prefix, label }) {
           value={form[`${prefix}Day`]}
           onChangeText={(value) => updateField(`${prefix}Day`, onlyNumbers(value))}
           placeholder="Day"
-          placeholderTextColor={DESIGN_COLORS.placeholder}
+          placeholderTextColor={NEUTRAL[600]}
           keyboardType="number-pad"
           maxLength={2}
           accessibilityLabel={`${label}, day`}
@@ -741,7 +741,7 @@ function DateInput({ form, updateField, prefix, label }) {
           value={form[`${prefix}Year`]}
           onChangeText={(value) => updateField(`${prefix}Year`, onlyNumbers(value))}
           placeholder="Year"
-          placeholderTextColor={DESIGN_COLORS.placeholder}
+          placeholderTextColor={NEUTRAL[600]}
           keyboardType="number-pad"
           maxLength={4}
           accessibilityLabel={`${label}, year`}
@@ -764,7 +764,7 @@ function PhotoSlot({ photo, onPress, onRemove, name }) {
         accessibilityRole="button"
         accessibilityLabel={`Add a photo of ${name}. Take a photo or choose from gallery`}
       >
-        <MaterialCommunityIcons name="camera-outline" size={36} color={DESIGN_COLORS.hallGreen} />
+        <MaterialCommunityIcons name="camera-outline" size={36} color={GREEN[600]} />
         <Text style={styles.photoBoxText}>Take a photo or choose from gallery</Text>
       </Pressable>
     );
@@ -787,7 +787,7 @@ function PhotoSlot({ photo, onPress, onRemove, name }) {
           accessibilityRole="button"
           accessibilityLabel={`Change photo of ${name}`}
         >
-          <MaterialCommunityIcons name="camera-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+          <MaterialCommunityIcons name="camera-outline" size={22} color={GREEN[600]} />
           <Text style={styles.smallButtonText}>Change photo</Text>
         </Pressable>
         {onRemove ? (
@@ -798,7 +798,7 @@ function PhotoSlot({ photo, onPress, onRemove, name }) {
             accessibilityRole="button"
             accessibilityLabel={`Remove photo of ${name}`}
           >
-            <MaterialCommunityIcons name="trash-can-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+            <MaterialCommunityIcons name="trash-can-outline" size={22} color={GREEN[600]} />
             <Text style={styles.smallButtonText}>Remove</Text>
           </Pressable>
         ) : null}
@@ -816,25 +816,25 @@ const styles = StyleSheet.create({
   stepCircleRow: { flexDirection: "row", alignItems: "center", width: "100%" },
   stepLine: { flex: 1, height: 2 },
   stepCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
-  stepCircleActive: { backgroundColor: DESIGN_COLORS.hallGreen, borderColor: DESIGN_COLORS.hallGreen },
-  stepNumber: { fontSize: 16, fontFamily: FONT.extraBold },
-  stepName: { marginTop: 6, fontSize: 14, fontFamily: FONT.semiBold },
-  stepNameCurrent: { fontFamily: FONT.extraBold },
-  stepCount: { marginTop: 12, fontSize: 16, fontFamily: FONT.semiBold },
-  title: { marginTop: 4, marginBottom: 12, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold },
+  stepCircleActive: { backgroundColor: GREEN[600], borderColor: GREEN[600] },
+  stepNumber: { fontSize: 17, fontFamily: FONT.bold },
+  stepName: { marginTop: 6, fontSize: 15, fontFamily: FONT.semiBold },
+  stepNameCurrent: { fontFamily: FONT.bold },
+  stepCount: { marginTop: 12, fontSize: 15, fontFamily: FONT.semiBold },
+  title: { marginTop: 4, marginBottom: 12, fontSize: 28, lineHeight: 34, fontFamily: FONT.bold },
   field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold },
-  fieldNote: { fontFamily: FONT.regular, marginBottom: 10, fontSize: 16, lineHeight: 23 },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold },
+  fieldNote: { fontFamily: FONT.regular, marginBottom: 10, fontSize: 15, lineHeight: 20 },
   input: {
     fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    borderRadius: 16,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.input,
     fontSize: 17,
-    color: DESIGN_COLORS.ink,
+    color: NEUTRAL[900],
     backgroundColor: "#FFFFFF",
   },
   dateBlock: { gap: 10 },
@@ -848,7 +848,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderWidth: 1.5,
-    borderRadius: 16,
+    borderRadius: CORNER.input,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
@@ -856,64 +856,64 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: "#FFFFFF",
   },
-  clearanceChoiceSelected: { borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.hallGreen },
-  clearanceChoiceText: { flexShrink: 1, fontSize: 16, lineHeight: 21, fontFamily: FONT.bold },
+  clearanceChoiceSelected: { borderColor: GREEN[600], backgroundColor: GREEN[600] },
+  clearanceChoiceText: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold },
   slotGap: { marginTop: 12 },
   photoBox: {
     minHeight: 128,
     padding: 16,
     borderWidth: 2,
     borderStyle: "dashed",
-    borderColor: DESIGN_COLORS.hallGreen,
-    borderRadius: 16,
+    borderColor: GREEN[600],
+    borderRadius: CORNER.input,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: DESIGN_COLORS.boardTint,
+    backgroundColor: NEUTRAL[100],
   },
-  photoBoxText: { fontSize: 17, lineHeight: 23, fontFamily: FONT.bold, textAlign: "center", color: DESIGN_COLORS.hallGreen },
+  photoBoxText: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, textAlign: "center", color: GREEN[600] },
   photoPreviewBlock: { gap: 10 },
-  photoPreview: { width: "100%", maxHeight: 240, borderRadius: 16 },
+  photoPreview: { width: "100%", maxHeight: 240, borderRadius: CORNER.input },
   photoButtons: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   smallButton: {
     minHeight: 48,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.hallGreen,
-    borderRadius: 16,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.pill,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  smallButtonText: { fontSize: 16, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
+  smallButtonText: { fontSize: 17, fontFamily: FONT.semiBold, color: GREEN[600] },
   hintRow: { flexDirection: "row", gap: 10, marginTop: 10 },
-  hintText: { fontFamily: FONT.regular, flex: 1, fontSize: 16, lineHeight: 23 },
-  summary: { marginBottom: 12, borderRadius: 24, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
+  hintText: { fontFamily: FONT.regular, flex: 1, fontSize: 15, lineHeight: 20 },
+  summary: { marginBottom: 12, borderRadius: CORNER.card, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
   summaryHeading: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
-  summaryTitle: { flexShrink: 1, fontSize: 18, fontFamily: FONT.extraBold },
+  summaryTitle: { flexShrink: 1, fontSize: 17, fontFamily: FONT.bold },
   summaryRow: { paddingVertical: 6 },
-  summaryLabel: { fontSize: 14, fontFamily: FONT.semiBold },
-  summaryValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 23 },
+  summaryLabel: { fontSize: 15, fontFamily: FONT.semiBold },
+  summaryValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 24 },
   thumbRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 },
   thumb: { width: 96 },
-  thumbImage: { width: 96, height: 72, borderRadius: 16, backgroundColor: "#FFFFFF" },
-  thumbCaption: { marginTop: 4, fontSize: 14, fontFamily: FONT.semiBold },
+  thumbImage: { width: 96, height: 72, borderRadius: CORNER.input, backgroundColor: "#FFFFFF" },
+  thumbCaption: { marginTop: 4, fontSize: 15, fontFamily: FONT.semiBold },
   confirmRow: { minHeight: 56, marginTop: 8, flexDirection: "row", alignItems: "center", gap: 12 },
-  confirmText: { fontFamily: FONT.regular, flex: 1, fontSize: 16, lineHeight: 23 },
+  confirmText: { fontFamily: FONT.regular, flex: 1, fontSize: 17, lineHeight: 24 },
   spacer: { flexGrow: 1, minHeight: 24 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed },
+  errorText: { marginBottom: 12, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: RED[600] },
   buttonRow: { flexDirection: "row", gap: 12 },
-  button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  backButton: { borderWidth: 1.5, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: "#FFFFFF" },
-  nextButton: { backgroundColor: DESIGN_COLORS.hallGreen },
+  button: { flex: 1, minHeight: 56, paddingHorizontal: 12, borderRadius: CORNER.pill, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  backButton: { borderWidth: 1.5, borderColor: NEUTRAL[500], backgroundColor: "#FFFFFF" },
+  nextButton: { backgroundColor: GREEN[600] },
   homeButton: { flex: 0, alignSelf: "stretch" },
   pressed: { opacity: 0.88 },
-  filledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, textAlign: "center" },
+  filledPressed: { backgroundColor: GREEN[800] },
+  buttonText: { fontSize: 17, fontFamily: FONT.semiBold, textAlign: "center" },
   submitted: { flexGrow: 1, alignItems: "center", paddingTop: 24 },
   submittedDisc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center" },
-  submittedTitle: { marginTop: 20, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center" },
-  submittedText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center" },
+  submittedTitle: { marginTop: 20, fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, textAlign: "center" },
+  submittedText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 24, textAlign: "center" },
 });

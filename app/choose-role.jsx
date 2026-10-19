@@ -4,7 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL } from "../constants/design";
 import { auth } from "../firebase";
 
 // The two account types a person can create by themselves.
@@ -29,13 +29,13 @@ const ROLE_CHOICES = [
 // Always light, like the landing page.
 // DESIGN.md colors, under the short names this page already uses.
 const colors = {
-  page: DESIGN_COLORS.paperWhite,
-  heading: DESIGN_COLORS.ink,
-  muted: DESIGN_COLORS.inkMuted,
-  link: DESIGN_COLORS.hallGreen,
-  card: DESIGN_COLORS.boardTint,
-  line: DESIGN_COLORS.rule,
-  outline: DESIGN_COLORS.controlOutline,
+  page: NEUTRAL[0],
+  heading: NEUTRAL[900],
+  muted: NEUTRAL[700],
+  link: GREEN[600],
+  card: NEUTRAL[100],
+  line: NEUTRAL[200],
+  outline: NEUTRAL[500],
   ripple: "rgba(11, 122, 75, 0.12)",
 };
 
@@ -140,22 +140,22 @@ function RoleButton({ choice, filled = false, colors, onPress }) {
 const styles = StyleSheet.create({
   page: { flex: 1 },
   content: { flexGrow: 1, paddingHorizontal: 20 },
-  backButton: { width: 48, height: 48, marginLeft: -8, alignItems: "center", justifyContent: "center", borderRadius: 24 },
-  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center" },
-  subtitle: { fontFamily: FONT.regular, marginTop: 10, fontSize: 16, lineHeight: 23, textAlign: "center" },
+  backButton: { width: 48, height: 48, marginLeft: -8, alignItems: "center", justifyContent: "center", borderRadius: CORNER.pill },
+  title: { marginTop: 24, fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, textAlign: "center" },
+  subtitle: { fontFamily: FONT.regular, marginTop: 10, fontSize: 17, lineHeight: 24, textAlign: "center" },
   // Takes the free space in the middle of the screen and centers the two explanations in it.
   explanations: { flex: 1, justifyContent: "center", gap: 28, paddingVertical: 40, width: "100%", maxWidth: 440, alignSelf: "center" },
   explanationRow: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
   iconDisc: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
   explanationText: { flex: 1, paddingTop: 2 },
-  explanationTitle: { fontSize: 18, lineHeight: 24, fontFamily: FONT.extraBold },
-  explanationCopy: { fontFamily: FONT.regular, marginTop: 4, fontSize: 16, lineHeight: 23 },
+  explanationTitle: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold },
+  explanationCopy: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 24 },
   buttons: { gap: 12, width: "100%", maxWidth: 480, alignSelf: "center" },
   button: {
     minHeight: 60,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
     overflow: "hidden",
     flexDirection: "row",
@@ -163,8 +163,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 12,
   },
-  buttonFilled: { backgroundColor: DESIGN_COLORS.hallGreen, borderColor: DESIGN_COLORS.hallGreen },
-  buttonFilledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep, borderColor: DESIGN_COLORS.hallGreenDeep },
+  buttonFilled: { backgroundColor: GREEN[600], borderColor: GREEN[600] },
+  buttonFilledPressed: { backgroundColor: GREEN[800], borderColor: GREEN[800] },
   buttonPressed: { opacity: 0.88 },
-  buttonText: { fontSize: 18, fontFamily: FONT.extraBold },
+  buttonText: { fontSize: 17, fontFamily: FONT.semiBold },
 });

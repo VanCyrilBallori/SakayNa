@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
 import WebAuthPanel from "../components/WebAuthPanel";
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, RED } from "../constants/design";
 import { auth } from "../firebase";
 import { getAuthErrorMessage } from "../lib/session";
 
@@ -101,7 +101,7 @@ export default function Signup() {
             accessibilityLabel="Back"
             hitSlop={8}
           >
-            <MaterialCommunityIcons name="arrow-left" size={28} color={DESIGN_COLORS.ink} />
+            <MaterialCommunityIcons name="arrow-left" size={28} color={NEUTRAL[900]} />
           </Pressable>
         )}
 
@@ -118,7 +118,7 @@ export default function Signup() {
             value={email}
             onChangeText={setEmail}
             placeholder="juan@example.com"
-            placeholderTextColor={DESIGN_COLORS.placeholder}
+            placeholderTextColor={NEUTRAL[600]}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -173,7 +173,7 @@ export default function Signup() {
           accessibilityRole="button"
           accessibilityLabel="Back to home"
         >
-          <MaterialCommunityIcons name="home-outline" size={26} color={DESIGN_COLORS.ink} />
+          <MaterialCommunityIcons name="home-outline" size={26} color={NEUTRAL[900]} />
         </Pressable>
       ) : null}
     </KeyboardAvoidingView>
@@ -185,7 +185,7 @@ function Field({ icon, label, children }) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
-        <MaterialCommunityIcons name={icon} size={22} color={DESIGN_COLORS.hallGreen} />
+        <MaterialCommunityIcons name={icon} size={22} color={GREEN[600]} />
         <Text style={styles.label}>{label}</Text>
       </View>
       {children}
@@ -278,7 +278,7 @@ function PasswordBox({ value, onChangeText, placeholder, label, editable }) {
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={DESIGN_COLORS.placeholder}
+        placeholderTextColor={NEUTRAL[600]}
         secureTextEntry={!showing}
         autoCapitalize="none"
         autoCorrect={false}
@@ -301,7 +301,7 @@ function PasswordBox({ value, onChangeText, placeholder, label, editable }) {
         accessibilityState={{ disabled: !editable }}
       >
         <View pointerEvents="none" accessible={false}>
-          <MaterialCommunityIcons name={showing ? "eye-off-outline" : "eye-outline"} size={24} color={DESIGN_COLORS.inkMuted} selectable={false} />
+          <MaterialCommunityIcons name={showing ? "eye-off-outline" : "eye-outline"} size={24} color={NEUTRAL[700]} selectable={false} />
         </View>
       </Pressable>
       {Platform.OS === "web" ? (
@@ -314,49 +314,49 @@ function PasswordBox({ value, onChangeText, placeholder, label, editable }) {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite },
+  page: { flex: 1, backgroundColor: NEUTRAL[50] },
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
-  backArrow: { width: 48, height: 48, marginLeft: -8, alignItems: "center", justifyContent: "center", borderRadius: 24 },
+  backArrow: { width: 48, height: 48, marginLeft: -8, alignItems: "center", justifyContent: "center", borderRadius: CORNER.pill },
   logo: { alignSelf: "center", marginTop: 4, marginBottom: 28 },
-  title: { marginBottom: 8, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { marginBottom: 8, fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, color: NEUTRAL[900] },
   field: { marginTop: 16 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
   input: {
     fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    borderRadius: 16,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.input,
     fontSize: 17,
-    color: DESIGN_COLORS.ink,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    color: NEUTRAL[900],
+    backgroundColor: NEUTRAL[0],
   },
   passwordBox: {
     minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    borderRadius: 16,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.input,
+    backgroundColor: NEUTRAL[0],
   },
-  passwordInput: { fontFamily: FONT.regular, flex: 1, minHeight: 56, paddingLeft: 14, paddingRight: 4, fontSize: 17, color: DESIGN_COLORS.ink },
-  eyeButton: { width: 52, height: 52, alignItems: "center", justifyContent: "center", borderRadius: 26 },
+  passwordInput: { fontFamily: FONT.regular, flex: 1, minHeight: 56, paddingLeft: 14, paddingRight: 4, fontSize: 17, color: NEUTRAL[900] },
+  eyeButton: { width: 52, height: 52, alignItems: "center", justifyContent: "center", borderRadius: CORNER.pill },
   // Prevent selection and the long-press menu only on the eye, never in the input.
   webEyeButton: { userSelect: "none", WebkitTouchCallout: "none", touchAction: "none" },
   webEyeHint: { position: "absolute", width: 1, height: 1, overflow: "hidden", clipPath: "inset(50%)" },
-  helperText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.inkMuted },
+  helperText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
   spacer: { flexGrow: 1, minHeight: 28 },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed },
-  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
-  pressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, color: "#FFFFFF" },
+  errorText: { marginBottom: 12, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: RED[600] },
+  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: CORNER.pill, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: GREEN[600] },
+  pressed: { backgroundColor: GREEN[800] },
+  buttonText: { fontSize: 17, fontFamily: FONT.semiBold, color: "#FFFFFF" },
   loginRow: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", columnGap: 6 },
-  loginText: { fontFamily: FONT.regular, fontSize: 16, lineHeight: 23, color: DESIGN_COLORS.ink },
+  loginText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[900] },
   loginLink: { minHeight: 48, justifyContent: "center" },
-  loginLinkText: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
+  loginLinkText: { fontFamily: FONT.bold, color: GREEN[600], textDecorationLine: "underline" },
   // Wide screens (website on a computer): two halves side by side, form in the middle of the right half.
   widePage: { flexDirection: "row" },
   wideRight: { flex: 1 },
@@ -371,10 +371,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    borderRadius: 16,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    borderRadius: CORNER.pill,
+    backgroundColor: NEUTRAL[0],
   },
-  linkPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  linkPressed: { backgroundColor: NEUTRAL[100] },
   wideSpacer: { height: 28 },
 });

@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BrandLogo from "../components/BrandLogo";
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, RED } from "../constants/design";
 import { auth } from "../firebase";
 import { getPostAuthenticationRoute } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
@@ -118,7 +118,7 @@ export default function VerifyEmail() {
 
         <View style={styles.middle}>
           <View style={styles.disc}>
-            <MaterialCommunityIcons name="email-outline" size={52} color={DESIGN_COLORS.hallGreen} />
+            <MaterialCommunityIcons name="email-outline" size={52} color={GREEN[600]} />
           </View>
 
           <Text style={styles.title} accessibilityRole="header">
@@ -165,7 +165,7 @@ export default function VerifyEmail() {
             accessibilityRole="button"
             accessibilityState={{ disabled: cooldown > 0, busy: isSending }}
           >
-            <Text style={[styles.buttonText, { color: cooldown > 0 ? DESIGN_COLORS.inkMuted : DESIGN_COLORS.hallGreen }]}>
+            <Text style={[styles.buttonText, { color: cooldown > 0 ? NEUTRAL[700] : GREEN[600] }]}>
               {isSending ? "Sending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend email"}
             </Text>
           </Pressable>
@@ -188,29 +188,29 @@ export default function VerifyEmail() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite },
+  page: { flex: 1, backgroundColor: NEUTRAL[50] },
   content: { flexGrow: 1, width: "100%", maxWidth: 560, alignSelf: "center", paddingHorizontal: 20 },
   logo: { alignSelf: "center" },
   // Takes the free space between the logo and the buttons and centers the message in it.
   middle: { flexGrow: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32 },
-  disc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.boardTint },
-  title: { marginTop: 24, fontSize: 28, lineHeight: 36, fontFamily: FONT.extraBold, textAlign: "center", color: DESIGN_COLORS.ink },
-  bodyText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 25, textAlign: "center", color: DESIGN_COLORS.ink },
-  email: { fontFamily: FONT.extraBold },
-  helperText: { fontFamily: FONT.regular, marginTop: 16, maxWidth: 420, fontSize: 16, lineHeight: 23, textAlign: "center", color: DESIGN_COLORS.inkMuted },
+  disc: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[50] },
+  title: { marginTop: 24, fontSize: 28, lineHeight: 34, fontFamily: FONT.bold, textAlign: "center", color: NEUTRAL[900] },
+  bodyText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 420, fontSize: 17, lineHeight: 24, textAlign: "center", color: NEUTRAL[900] },
+  email: { fontFamily: FONT.bold },
+  helperText: { fontFamily: FONT.regular, marginTop: 16, maxWidth: 420, fontSize: 15, lineHeight: 20, textAlign: "center", color: NEUTRAL[700] },
   noMargin: { marginTop: 0 },
-  inkText: { color: DESIGN_COLORS.ink },
-  errorText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, textAlign: "center", color: DESIGN_COLORS.emergencyRed },
-  successText: { marginBottom: 12, fontSize: 16, lineHeight: 23, fontFamily: FONT.semiBold, textAlign: "center", color: DESIGN_COLORS.hallGreen },
+  inkText: { color: NEUTRAL[900] },
+  errorText: { marginBottom: 12, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, textAlign: "center", color: RED[600] },
+  successText: { marginBottom: 12, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, textAlign: "center", color: GREEN[600] },
   buttons: { gap: 12 },
-  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: 16, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  filledButton: { backgroundColor: DESIGN_COLORS.hallGreen },
-  outlinedButton: { borderWidth: 1.5, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.paperWhite },
-  waitingButton: { borderColor: DESIGN_COLORS.controlOutline },
+  button: { minHeight: 56, paddingHorizontal: 12, borderRadius: CORNER.pill, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  filledButton: { backgroundColor: GREEN[600] },
+  outlinedButton: { borderWidth: 1.5, borderColor: NEUTRAL[500], backgroundColor: NEUTRAL[0] },
+  waitingButton: { borderColor: NEUTRAL[500] },
   // Pressed: darker green (filled) or Board Tint behind the words (outlined), like Log In.
-  filledPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  outlinedPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  buttonText: { fontSize: 17, fontFamily: FONT.extraBold, textAlign: "center" },
+  filledPressed: { backgroundColor: GREEN[800] },
+  outlinedPressed: { backgroundColor: NEUTRAL[100] },
+  buttonText: { fontSize: 17, fontFamily: FONT.semiBold, textAlign: "center" },
   textLink: { minHeight: 48, alignItems: "center", justifyContent: "center" },
-  textLinkText: { fontSize: 16, lineHeight: 23, fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen, textDecorationLine: "underline" },
+  textLinkText: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: GREEN[600], textDecorationLine: "underline" },
 });
