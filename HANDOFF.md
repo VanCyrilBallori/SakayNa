@@ -8,7 +8,7 @@ Task 1.2 deployment and owner-reported test results were added October 14, 2026.
 The demo-ready-17 APK release was added October 14, 2026.
 The demo-ready-18 APK release (local build) and the new defense set were added October 18, 2026.
 The October 19 big-update work (UI refresh, 3.15, 3.17, 3.18, 3.20, 3.21, skeletons and fixes), what is not done, and the next steps were added October 19, 2026 (section 3, "big-update work, October 19").
-The owner's decision that Chat (3.23), the City Admin / Super Admin role (3.25), 3.19, 3.22 and 3.24 are future work, and that 3.27 is optional, was added October 19, 2026 (section 3, "Future work / recommendations").
+The owner's decision that Chat (3.23), the City Admin / Super Admin role (3.25), 3.22 and 3.24 are future work, and that 3.27 is optional, was added October 19, 2026 (section 3, "Future work / recommendations"). 3.19 was first on that list, then built the same evening (decision 14); it is done (section 3, "big-update work, October 19").
 
 The owner says the survey demo is finished. The thesis defense is **October 23, 2026**. The app is frozen: only bug fixes and small, safe changes. The test Admin's barangay is **Daanglungsod, Toledo City**. These details come from the owner; older notes have not caught up.
 
@@ -315,12 +315,18 @@ Details and the full commit table are in ROADMAP.md, Phase 3 ("Progress on big-u
 | Dispatcher map: every pin's label on hover; "Approximate location" line in Selected Request | `b8d38e0` |
 | Admin Overview one-screen dashboard (1280 px+, equal rows) + Admin header like the dispatcher's | `6fc80a0` |
 | Release plan docs | `af9d97f`, `3ec93b8` |
+| Admin text at least 15 px (no layout change); PRODUCT.md update | `ec140b1`, `a30599a` |
+| Admin Overview chart fits its card on short windows | `60f2747` |
+| **3.19 Admin website layout** (owner's decision 14, evening of October 19; website only, layout and spacing only): DESIGN.md "Admin website exception", side menu with icons, the same title line on every section, Requests short cards (emergency rides keep a red edge and a red "Emergency" pill), Users, Verification/Applications list rows, Operations tabs and 2-column cards, Vehicles, Duty Records and Reports spacing | `02d4c54`, `10c1395`, `f11ec69`, `d840673`, `df31234`, `e9b9cd1`, `0ee8cdd`, `d7394d1`, `c94fdbe` |
+| Pre-release test checklist `docs/pre-release-test.md` (group E covers 3.19) | `604ed84` (and the 3.19 docs commit) |
 
-**Not done:** Admin text under 15 px (some Admin text is still 12–14 px; left for its own fix), the Profile-editing part of 3.15. **3.27** destination pin is **optional, only if there is time after the release test**.
+Tag **`pre-admin-layout`** (pushed) points to `604ed84`, the code just before 3.19, in case the Admin layout must be undone.
 
-**Future work (owner's decision, October 19, 2026; not built for the capstone because of time):** **3.23** chat, **3.25** City Admin / Super Admin role, **3.19** Admin layout, **3.22** barangay-first emergency ringing, **3.24** dark mode. They are listed under "Future work / recommendations" below and in ROADMAP.md (decision 13).
+**Not done:** the Profile-editing part of 3.15. **3.27** destination pin is **optional, only if there is time after the release test**.
 
-**Next steps, in order:** (1) Admin text 15 px fix (website); (2) full pre-release test of big-update on phone and website; (3) release: merge big-update into master once, master → main (Vercel "Ready", check live pages), local build of **demo-ready-19** from that merge (EAS free builds are used up until November 1), phone test, tag; (4) October 22: data cleanup, demo accounts for every role, rehearsal. **Do not start the release before steps 1–2 are done and the owner says so.**
+**Future work (owner's decision, October 19, 2026; not built for the capstone because of time):** **3.23** chat, **3.25** City Admin / Super Admin role, **3.22** barangay-first emergency ringing, **3.24** dark mode. They are listed under "Future work / recommendations" below and in ROADMAP.md (decision 13). **3.19** was on this list too, but the owner built it the same evening (decision 14): it is done.
+
+**Next steps, in order:** (1) ~~Admin text 15 px fix~~ done (`ec140b1`), and 3.19 done; (2) full pre-release test of big-update on phone and website from `docs/pre-release-test.md`; (3) release: merge big-update into master once, master → main (Vercel "Ready", check live pages), local build of **demo-ready-19** from that merge (EAS free builds are used up until November 1), phone test, tag; (4) October 22: data cleanup, demo accounts for every role, rehearsal. **Do not start the release before steps 1–2 are done and the owner says so.**
 
 ### Safety/security backlog: before real use; outside the freeze unless separately approved
 
@@ -373,11 +379,10 @@ The owner calls this **#11**, but no matching numbered vehicle-picture requireme
 | F11-F12 | Automated rules/helper tests; health-data privacy, access, retention, removal decisions. |
 | 3.23 | Chat between Resident and Driver (needs a new collection and a rules deploy). Owner's decision October 19: not built for the capstone. |
 | 3.25 | City Admin / Super Admin role above Barangay Admins (splits every Admin rule). Owner's decision October 19: not built for the capstone. |
-| 3.19 | Admin website layout: top bar, sidebar, card lists, denser desktop. |
 | 3.22 | Emergency alerts ring the barangay's own dispatcher first, everyone after 30 seconds (needs a full emergency rehearsal plan). |
 | 3.24 | Light/Dark theme switch (DESIGN.md is light only). |
 
-Details of 3.19–3.25 are in ROADMAP.md Phase 3 ("Future work / recommendations", decision 13). 3.27 (resident destination pin) is not future work: it is optional, only if there is time after the release test.
+Details of 3.22–3.25 are in ROADMAP.md Phase 3 ("Future work / recommendations", decision 13). 3.19 is done (decision 14). 3.27 (resident destination pin) is not future work: it is optional, only if there is time after the release test.
 
 Other optional plans stay deferred: Driver My DTR, automatic shift closing/corrections, DTR exports, Dispatcher Take back/Free driver tools, Android Back switching driver pages. None is newly approved.
 

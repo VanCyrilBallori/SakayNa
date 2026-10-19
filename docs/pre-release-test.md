@@ -6,7 +6,7 @@ Test everything on `big-update` once, on the phone and the website, before the r
 **Do not start the release** (merge into master, website, demo-ready-19 APK) until every group below
 passes and the owner says so.
 
-Time: about 1 hour 45 minutes. Each group shows its time. Do them in this order: later groups use what
+Time: about 1 hour 50 minutes. Each group shows its time. Do them in this order: later groups use what
 earlier groups made (rides, alerts, duty records).
 
 ---
@@ -136,25 +136,40 @@ Phone R stays **on the SakayNa screen** until Answer.
       and the strip is gone.
 - [ ] Admin window: Emergency Calls lists today's three alerts with the right status.
 
-## E. Admin website (15 min)
+## E. Admin website, including the new 3.19 layout (20 min)
 
 Use admin1 in window 2. Chrome's size can be set with F12 → Ctrl+Shift+M → Responsive.
 
+**Layout (3.19), at 1366×768**
+- [ ] **Side menu**: every section is a row with an icon and its word, left aligned. The open one is a
+      green pill with white words. Waiting counts are orange numbers at the end of their row (a red number
+      only for an Emergency Call nobody answered).
+- [ ] **Title lines**: every section starts the same way: a round icon (red for Emergency calls, green for
+      the others), a big title, and a short explanation beside or under it.
+- [ ] **Text size**: no Admin text looks tiny. Nothing is cut off or overlapping.
+
+**Each section**
 - [ ] **Overview at 1366×768**: two rows, no scrolling. The chart bars and day names stay inside the
       chart card. Numbers match today's tests (the active and completed counts went up).
 - [ ] **Overview at 1366×600**: the panel scrolls. Nothing overlaps.
-- [ ] **Text size**: no Admin text looks tiny (side menu, count badges, filter chips, pop-up lines,
-      Operations labels). Nothing is cut off.
-- [ ] **Requests**: today's rides are listed. Open one: details show "Pinned location" for a pinned
-      pickup.
-- [ ] **Users**: search for jeb. Open his account: other-barangay and Admin accounts are view only.
-- [ ] **Resident Verification / Driver Applications**: they open, with grey placeholders while loading,
-      then the list (or an empty state).
+- [ ] **Requests**: short cards, 2 per row, the same height in a row. The emergency ride from group D has
+      a **red edge** and a red **"Emergency"** pill. Click a card: the details pop-up opens and shows
+      "Pinned location" for a pinned pickup. The Status and Ride for filters still match their counts.
+- [ ] **Users**: Search and Role on one line. Search for jeb. Other-barangay and Admin accounts are view
+      only. (After group G: the deleted account has a grey Deleted pill.)
+- [ ] **Resident Verification / Driver Applications**: grey placeholders while loading, then one white
+      list with a **Review** button on each row (or an empty state). Review opens the same pop-up.
 - [ ] **Duty Records**: today's record for jeb: punch in, the break, rides completed, and the
-      "I can't do this ride" report from group C.
-- [ ] **Operations → Logs**: newest first.
-- [ ] **Reports**: download the CSV. It opens in Excel or Sheets.
-- [ ] **Vehicles**: the list loads, and Edit opens.
+      "I can't do this ride" report from group C. The day buttons work.
+- [ ] **Operations**: one row of 6 tabs. Accounts: search and filters on one line, cards 2 per row,
+      **Manage profile** opens the pop-up (close it without saving). **Logs**: one list, newest first.
+- [ ] **Reports** (an Operations tab): download the CSV. It opens in Excel or Sheets.
+- [ ] **Vehicles**: the **Add City/Barangay Vehicle** button is on the title line. Cards 3 per row. Edit
+      opens the editor (close it without saving).
+
+**Narrow window (900 wide)**
+- [ ] The side menu is a row of pills above the panel. Requests and Operations show 1 card per row, the
+      Operations tabs wrap onto 2 lines, Vehicles shows 2 per row. Nothing is cut off.
 
 ## F. Dispatcher extras (5 min)
 

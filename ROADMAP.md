@@ -97,9 +97,11 @@ Enhance perceived performance, accessibility, and user feedback without altering
 
 **Status (October 17, 2026): Tasks 3.1 to 3.14, 3.13b and 3.16 are done on `big-update`** (each tested by the owner and committed; commits in "Progress on big-update" below). Task 3.15 and Tasks 3.17 onward are not started. **Update October 18, 2026:** these tasks, the destination pin and the C3 fix (`9ab2187`) were merged into `master` at `a18955c`, which is now the live website and the phone-tested **demo-ready-18** APK. Written October 14, 2026 from the group lead's list. Each task still needs its own "explain → OK → build → test → commit" round.
 
-**Update October 19, 2026:** on `big-update` (after `a18955c`, not released yet): **3.15** (Delete Account part), **3.17**, **3.18**, **3.20** and **3.21** are done, plus the **UI refresh** (DESIGN.md "Style") for every role and the sign-up screens, skeleton loading on phone and website, the Terms/Privacy menu fix, hover labels for every dispatcher map pin, the Admin Overview one-screen layout and header, and Privacy Policy sections 2 and 7. Every item was tested by the owner and committed; commits are in "Progress on big-update" and "Other work on big-update" below. **Not done:** see "Not done yet" and "Next steps" at the end of this section. The defense set is still demo-ready-18 / `a18955c` / rules `d464a70` until the release.
+**Update October 19, 2026:** on `big-update` (after `a18955c`, not released yet): **3.15** (Delete Account part), **3.17**, **3.18**, **3.20** and **3.21** are done, plus the **UI refresh** (DESIGN.md "Style") for every role and the sign-up screens, skeleton loading on phone and website, the Terms/Privacy menu fix, hover labels for every dispatcher map pin, the Admin Overview one-screen layout and header, Privacy Policy sections 2 and 7, Admin text at least 15 px and **3.19** Admin layout (decision 14). Every item was tested by the owner and committed; commits are in "Progress on big-update" and "Other work on big-update" below. **Not done:** see "Not done yet" and "Next steps" at the end of this section. The defense set is still demo-ready-18 / `a18955c` / rules `d464a70` until the release.
 
 **Owner's decision, October 19, 2026 (decision 13):** because there is not enough time, **3.23 Chat** and **3.25 City Admin / Super Admin role** will **not** be built for the capstone. **3.19** Admin layout, **3.22** barangay-first emergency ringing and **3.24** dark mode are future work too. **3.27** resident destination pin is optional, only if there is time after the release test. See "Future work / recommendations" below.
+
+**Changed later on October 19, 2026 (decision 14):** the owner chose to build **3.19** after all, that evening. It is **done** (steps 1–10 below, tag `pre-admin-layout` = `604ed84` marks the code before it). 3.22, 3.23, 3.24 and 3.25 stay future work.
 
 ### Ground rules for Phase 3
 
@@ -152,7 +154,7 @@ Rules = changes `firestore.rules` (must be deployed). Web = needs a website rele
 
 ### Suggested order (safest and most important first)
 
-**Changed October 19, 2026 (decision 13):** 3.19, 3.22, 3.23, 3.24 and 3.25 are future work, not part of the capstone; 3.27 is optional. The order below is kept as the original plan.
+**Changed October 19, 2026 (decisions 13 and 14):** 3.22, 3.23, 3.24 and 3.25 are future work, not part of the capstone; 3.27 is optional; 3.19 is done. The order below is kept as the original plan.
 
 1. **Stage A (3.1 → 3.8):** quick wins, tiny risk, each easy to test and undo.
 2. **Resident form (3.9 → 3.11):** the lead's first and most detailed request. Do all three, then one development build for the date/time picker.
@@ -190,6 +192,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.17 Not touching the navigation bar | `4f46ef6` (Step 1), `4e727f5` (Step 2), `84a4deb` (Step 3) | ✅ |
 | 3.18 Resident bottom bar (Your ride / History) | `a7e77ec` (with the resident home UI refresh) | ✅ |
 | 3.15 Delete Account (+ Change Password removed) | `5171780` | ✅ (Delete Account part; Profile-editing part not done) |
+| 3.19 Admin website layout | `02d4c54` (DESIGN.md exception), `10c1395` (side menu), `f11ec69` (title lines), `d840673` (Requests), `df31234` (Users), `e9b9cd1` (Verification, Applications), `0ee8cdd` (Operations), `d7394d1` (Vehicles), `c94fdbe` (Duty Records, Reports) | ✅ |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
@@ -251,7 +254,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - **Sign-up screens (`4df10ed`):** Create Account, Verify email, Choose role, resident registration, driver application.
   - **Driver (`37c414b`):** three tabs (the open tab has a light-green pill behind its icon, like the resident bar; **this replaces 3.1's no-pill look, owner's choice October 19**), white ride card and Ride steps, pill buttons, "Inbox empty" empty state, duty card with 16 corners (Off duty is white), all pop-ups. The cancelled-ride **OK** and Ride details **Close** buttons are white, not red/green (red is only for emergencies).
   - **Dispatcher website (`b4b7917`):** white request cards with the level as a pill (Emergency red, Urgent peach, others light green); **Emergency cards also get a 2 px red edge all around** (owner's choice; DESIGN.md allows no side stripes). White driver cards with tinted status pills (On a run stays solid deep green). Selected Request, map frame and header in the Style. The red emergency strip and the emergency form keep their colors and layout. Paddings and line heights of the no-scrolling layout (3.13) are unchanged.
-  - **Admin website (`c69a88d`):** `lib/theme.js` (only Admin uses it) moves onto the Style scales; white side menu and panel, count badges as pills (red for emergencies, orange with dark numbers for waiting approvals), pill buttons, 16-corner pop-ups, grey read-only boxes. **Text sizes and spacing were left as they were** (some Admin text is still 12–14 px; see "Not done yet").
+  - **Admin website (`c69a88d`):** `lib/theme.js` (only Admin uses it) moves onto the Style scales; white side menu and panel, count badges as pills (red for emergencies, orange with dark numbers for waiting approvals), pill buttons, 16-corner pop-ups, grey read-only boxes. **Text sizes and spacing were left as they were** here; later fixed by the Admin text 15 px change (`ec140b1`) and 3.19 (denser layout).
 - **Skeleton loading (extends 3.16):**
   - **Phone (`34525d4`, `5233ce4`):** the driver's Ride page, duty card and Ride history, the resident's "Your ride" card, and the driver Application Status page show the grey 3.16 placeholder until Firebase answers. Before, they briefly showed a false "Inbox empty", "Off duty" with Punch in, "No rides yet" or "No reason was given.". Each "has it answered?" flag turns on at the first answer or at an error, so a placeholder never stays.
   - **Admin (`c69a88d`):** Resident Verification, Driver Applications and both Duty Records lists (the spinners 3.16 kept). **Overview** waits for users, requests, vehicles and applications, and **Reports** for the requests, so neither shows 0s or "No ride requests are loaded yet" while loading.
@@ -262,6 +265,17 @@ All of these are tested by the owner and committed on `big-update`. Phone change
   - From **1280 px** wide, Overview is a one-screen dashboard: top row Needs attention (1/3) + Requests over time (2/3, the 7 days / 4 weeks / 12 months choices next to its title); bottom row Ride requests, Drivers and vehicles, What rides were for, Waiting time. The two rows split the height evenly; the chart fits inside its half. The bottom cards measure their content, and no row gets shorter than the tallest card, so a too-short window scrolls instead of cutting text. Tested 1366×768 to 1920×1080. Narrower windows keep the stacked layout.
   - The Admin panel is now the window height minus the header and margins, so the Admin page itself does not scroll.
   - The Admin header uses the dispatcher's title (`HeaderBrand` in `AppBrandHeader.jsx`): the icon, "SakayNa", and only the barangay name under it (**this replaces 3.6's "Barangay Daanglungsod" under the big logo**).
+- **3.19 Admin website layout (website only; layout and spacing only, no saving, rules or logic changed; text stays ≥ 15):**
+  - **Step 1 (`02d4c54`):** DESIGN.md "Admin website exception": less empty space, not smaller text; small list buttons and filter chips may be 40 tall; main pop-up actions stay ≥ 48.
+  - **Step 2 (`10c1395`), side menu:** one left-aligned row per section with an icon and its word; the open one is a green pill; count badges at the end. Under 1080 px wide the menu is a row of wrapping pills above the panel.
+  - **Step 3 (`f11ec69`), title lines:** every section starts like Overview (`AdminSectionHeader.jsx`): a 40 round icon (red for Emergency Calls), the title, a short explanation. Vehicles and Operations got a title; Reports (inside Operations) has a smaller sub-heading.
+  - **Step 4 (`d840673`), Requests:** short cards, 1/2/3 per row, equal height; the whole card opens the details pop-up. **Emergency rides keep a 2 px red edge and a red "Emergency" pill**, like the dispatcher's queue (old "Emergency Request" rides too). Status pills are tinted with their word.
+  - **Step 5 (`df31234`), Users:** search and Role on one line, tighter rows, 40-tall buttons and chips, tinted status pills.
+  - **Step 6 (`e9b9cd1`), Resident Verification and Driver Applications:** one white list with thin lines, one detail line per person, Review button at the end. The review pop-ups are unchanged.
+  - **Step 7 (`0ee8cdd`), Operations:** one row of tabs; Accounts (search and filters on one line) and Maintenance as cards, 2 per row; Logs as one list; Add Dispatcher and Settings forms at most 560 wide.
+  - **Step 8 (`d7394d1`), Vehicles:** the Add button on the title line; cards 3/2/1 per row with Edit/Delete at the bottom.
+  - **Step 9 (`c94fdbe`), Duty Records and Reports:** Duty Records list in a white box, 40-tall day buttons; Reports card titles 18 (under the 21 "Reports" heading). Emergency Calls unchanged (already compact since 3.14).
+  - **Left out on purpose:** a search box in the top bar for every section, and separate detail pages (the existing pop-ups are kept).
 - **Privacy Policy (`8609091`, `5319b3a`):** section 7 says how long records are kept (ride requests and alerts 1 year, duty records 1 year, photos removed within 30 days after an account is rejected or deleted, a deleted account's history 1 year; removal is done by hand by the system administrator). Section 2 says the driver's location is also saved every 15–60 s while SakayNa is open (3.20).
 
 #### Other work on big-update (October 19, 2026)
@@ -285,14 +299,17 @@ Also tested by the owner and committed on `big-update`.
 | Dispatcher map: every pin's label on hover; approximate-pickup line in Selected Request | `b8d38e0` (earlier: `e9bf92a` driver/route labels, `9f1c6fb` Show on map button) | website |
 | Admin Overview on one screen + Admin header like the dispatcher's | `6fc80a0` | website |
 | Release plan: release as soon as done; Oct 22 noon is the latest | `3ec93b8` | docs |
+| Admin text at least 15 px (no layout change) | `ec140b1` | website |
+| Admin Overview chart fits its card on short windows (measured box, scrolls if too short) | `60f2747` | website |
+| PRODUCT.md (no Change Password, new UI, activity log line) | `a30599a` | docs |
+| Pre-release test checklist (`docs/pre-release-test.md`) | `604ed84` | docs |
 
 #### Not done yet (October 19, 2026)
 
 | Item | Status |
 |---|---|
-| **Admin text under 15 px** | Some Admin text is still 12–14 px (side menu, filter chips, pop-up subtitles and detail lines, small action buttons, count badges, Operations labels and inputs). Left out of the Admin UI refresh because density belongs to 3.19. **Next step** (below). |
 | 3.15, Profile-editing part | Not done (editing still lives in Settings). The Delete Account part is done. |
-| 3.19, 3.22, 3.23, 3.24, 3.25 | **Future work** (owner's decision 13, October 19): not built for the capstone. See "Future work / recommendations" below. |
+| 3.22, 3.23, 3.24, 3.25 | **Future work** (owner's decision 13, October 19): not built for the capstone. See "Future work / recommendations" below. (3.19 was also on this list until decision 14; it is done.) |
 | 3.27 Resident drops a destination pin | Not started. **Optional, only if there is time after the release test.** |
 
 #### Future work / recommendations (not built for the capstone)
@@ -301,7 +318,6 @@ Owner's decision 13 (October 19, 2026): these are left out because there is not 
 
 | Item | What it would add | Why it waits / what it needs |
 |---|---|---|
-| 3.19 Admin website layout | Top bar, left sidebar, card lists, denser desktop look | Moves every Admin section into a new frame; each must be retested. Needs an "Admin website exception" in DESIGN.md. |
 | 3.22 Barangay-first emergency ringing | Alerts ring the barangay's own dispatcher first, then everyone after 30 seconds | Changes who hears an emergency; needs a full emergency rehearsal plan and tests (covered, uncovered, covering dispatcher offline). |
 | 3.23 Chat between Resident and Driver | Short text messages for one ride | A new database collection and a `firestore.rules` change (live deploy); Privacy Policy update. |
 | 3.24 Light/Dark theme switch | A dark look for every screen | Touches almost every file; goes against DESIGN.md "light only"; emergency red contrast must be rechecked. |
@@ -310,8 +326,8 @@ Owner's decision 13 (October 19, 2026): these are left out because there is not 
 
 #### Next steps (in this order)
 
-1. **Admin text 15 px fix** (website only): raise the remaining 12–14 px Admin text to at least 15 px (DESIGN.md minimum), one change, tested, committed.
-2. **Full pre-release test** of `big-update`: every role on the phone (development build) and the website: a normal ride, cancellation, emergency with the form, duty/break, Admin approval, Delete Account, Overview at 1366×768.
+1. ~~**Admin text 15 px fix**~~ **Done** (`ec140b1`), and **3.19** Admin layout **done** (decision 14).
+2. **Full pre-release test** of `big-update` from `docs/pre-release-test.md`: every role on the phone (development build) and the website: a normal ride, cancellation, emergency with the form, duty/break, Admin approval and the new Admin layout (group E), Delete Account, big text.
 3. **Release** (owner decision 1): merge `big-update` into `master` **once**, then `master` → `main` for Vercel (check "Ready" and the live pages), then the **local build** of **demo-ready-19** from that merge (EAS free builds are used up until November 1; same steps as demo-ready-18), phone-tested, tagged. Testers must uninstall the old SakayNa first. **Noon, October 22 is the latest**, not the target.
 4. **October 22:** data cleanup (old test rides, alerts and accounts), demo accounts for every role, and the defense rehearsal.
 
@@ -415,7 +431,7 @@ Owner's decision 13 (October 19, 2026): these are left out because there is not 
 - **Must keep:** DESIGN.md says the Emergency button is "visible and one tap away in every state". It must stay on every tab.
 - **Could break:** `resident-home.jsx` (1,646 lines) also contains the whole emergency alert and auto-call system. The bar must only wrap the page; the emergency code must not be moved or changed. Full emergency test afterwards.
 
-#### Task 3.19: Admin website layout (future work, decision 13)
+#### Task 3.19: Admin website layout ✅ Done (decision 14; commits in "Progress on big-update", details in "Changes made along the way")
 - **What changes:** `app/admin-home.jsx` becomes three parts: **top bar** (logo, barangay, search, Admin's picture) that never scrolls away; **left sidebar** with the sections; **content area** that scrolls and shows lists of cards/rows. Click a card → its detail page. Denser text/spacing for desktop, aiming for how it looks at 75% browser zoom on the Dell monitor. Needs a written "Admin website exception" in DESIGN.md (like the emergency form's).
 - **Could break:** every Admin section is moved into the new frame: approvals, Users, Duty Records, Operations, Reports, Emergency Calls. Each must be retested. Logic and rules are not touched.
 
@@ -485,6 +501,7 @@ Owner's decision 13 (October 19, 2026): these are left out because there is not 
 11. Dark mode (3.24): keep it, but do it last. **Changed October 19: future work (decision 13).**
 12. Chat (3.23): "rider" means the **Driver**. Chat is Resident ↔ Driver only. **Changed October 19: not built for the capstone (decision 13).**
 13. **(October 19, 2026)** Because of time, Chat (3.23) and the City Admin / Super Admin role (3.25) will **not** be built for the capstone. 3.19 Admin layout, 3.22 barangay-first emergency ringing and 3.24 dark mode are future work too. 3.27 destination pin is optional, only if there is time after the release test. All are listed in "Future work / recommendations".
+14. **(October 19, 2026, evening)** Build **3.19** Admin layout after all (replaces decision 13 for 3.19 only). Layout and spacing only, text ≥ 15, Overview and header not redone. Done in 10 steps; the tag `pre-admin-layout` (`604ed84`) marks the code before it.
 
 ---
 
