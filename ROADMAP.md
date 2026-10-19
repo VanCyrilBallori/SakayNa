@@ -180,7 +180,7 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 | 3.14 Admin Emergency Calls and Operations buttons | `66c04f5` | ✅ |
 | 3.16 Website skeleton loaders | `c0147ff` (Admin, part 1), `10be62d` (Dispatcher, part 2) | ✅ |
 | 3.20 Live driver location | `ba91b9d` (phone, Step A), `b290e19` (dispatcher map, Step B) | ✅ |
-| 3.21 Live route line | the "3.21: live route line" commit (`git log --grep 3.21`) | ✅ |
+| 3.21 Live route line | `66e11f2`, `e9bf92a` (labels on hover) | ✅ |
 
 **Changes made along the way (different from, or more than, the plan above):**
 - **3.2:** the passenger's phone is **required** (owner's decision 3).
@@ -375,7 +375,8 @@ All of these are tested by the owner and committed on `big-update`. Phone change
 
 ### Owner's decisions (October 14, 2026)
 
-1. Build Phase 3 on `big-update`. On **October 20** the owner decides whether to merge the finished parts. **No rules deploy before October 23.**
+1. Build Phase 3 on `big-update`. **No rules deploy before October 23.**
+   - **Changed October 19 (replaces "decide on October 20"):** **one** release on **October 22**: big-update is merged into master **once** (then master → main for the website), and the **demo-ready-19** APK is built from that merge. **Feature freeze at noon, October 22**: only work that is tested and committed by then goes in.
 2. Compact = fewer boxes and less space. Phone text stays ≥ 15 and taps ≥ 48. The Admin website may be denser (write that exception in DESIGN.md at Task 3.19).
 3. Passenger phone (3.2): **required**.
 4. "Community / Personal Trip" (3.9): **rename it**; Claude suggests names, the owner chooses.

@@ -292,6 +292,7 @@ Related #8/#34: old alerts still marked ringing can reappear after Dispatcher re
 ### Next: defense readiness / APK choice
 
 - Decided (October 18, 2026): the defense set is the **demo-ready-18** APK (local build, debug-signed; testers must uninstall the old SakayNa first), the live website at **a18955c**, and rules **d464a70**. It replaces demo-ready-17. Going back to demo-ready-17 (EAS link expires October 28) would also need an uninstall first, because the signing keys differ.
+- Planned (October 19, 2026): **one** release on **October 22**, replacing the earlier "decide on October 20" plan (ROADMAP owner's decision 1). big-update is merged into master **once** (then master → main for the website) and the **demo-ready-19** APK is built from that merge. **Feature freeze at noon, October 22**: only work tested and committed by then goes in. Since `a18955c`, big-update has 3.20 live driver location (`ba91b9d`, `b290e19`), the Show on map button fix (`9f1c6fb`) and 3.21 live route line (`66e11f2`, `e9bf92a`); 3.20 Step A (phone) only reaches drivers with demo-ready-19. Until the release, the defense set stays demo-ready-18 / `a18955c` / rules `d464a70`.
 - Rehearse normal ride, cancellation, emergency form, duty/break, and Admin approval using the chosen APK and current website.
 
 ### Safety/security backlog: before real use; outside the freeze unless separately approved
