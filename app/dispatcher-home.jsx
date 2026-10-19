@@ -29,6 +29,10 @@ import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from ".
 // changed in Firestore, so it comes back by itself if the signal starts again.
 const STUCK_ALERT_MS = 600_000;
 const STUCK_CHECK_INTERVAL_MS = 10_000;
+// A live driver pin older than this turns grey and says "Old location" (ROADMAP Task 3.20 Step B):
+// the driver's phone saves at least every minute while SakayNa is open, so 2 minutes means it is in the
+// background (for example Google Maps is open), the driver is on break, or the app is closed.
+const OLD_LOCATION_MS = 2 * 60 * 1000;
 
 // Heights (px) for the no-scrolling dispatcher layout (Task 3.13). Selected Request never scrolls and never
 // shrinks: every value is one line (Notes two), so its height is known. If the window (minus the red strip)
@@ -212,7 +216,7 @@ const queueOrder = (request) => {
 // One driver in the "Driver availability" list (driver-duty-plan.md Step 5, DESIGN.md look):
 // name, duty status badge, how long they have been in it, and why they can't be assigned (greyed out).
 // "now" is the screen's 10-second clock, so the time moves every 10 seconds.
-// onShowOnMap = zooms the Live Map to the driver's last known location (driver-location-plan.md).
+// onShowOnMap = slides the Live Map to the driver's live pin (driver-location-plan.md, Task 3.20 Step B).
 function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
   const badge = DUTY_BADGES[driver.dutyStatus] || DUTY_BADGES["Off duty"];
   const badgeLabel = driver.dutyStatus === "On break" && driver.breakType ? `On break · ${driver.breakType}` : badge.label;
@@ -260,7 +264,7 @@ function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
       {driver.activeAssignment ? <OneLine style={styles.driverMetaLine}>{`Ride: ${driver.activeAssignment.title || "Assigned ride"}`}</OneLine> : null}
       <OneLine style={styles.driverMetaLine}>{`Vehicle: ${driver.linkedVehicle?.name || "No linked vehicle"}`}</OneLine>
 
-      {/* Last known location: saved only when the driver tapped a step, never in the background (driver-location-plan.md). */}
+      {/* Last known location: saved at each step and, while SakayNa is open on screen, every 15-60 s; never in the background (Task 3.20). */}
       {/* The button has its own tap area, so it also works on a greyed-out card (a driver "On a run" is often the one to find). */}
       {location ? (
         <>
@@ -442,8 +446,10 @@ export default function DispatcherHome() {
   const [driverSchedules, setDriverSchedules] = useState([]);
   // Each driver's last known location, by driver id (driver-location-plan.md).
   const [driverLocations, setDriverLocations] = useState({});
-  // The driver whose "Show on map" was tapped (null = the map shows the selected request).
-  const [mapDriverId, setMapDriverId] = useState(null);
+  // The driver whose "Show on map" was tapped last: { id }, a new object each tap (null = none since the last ride pins).
+  const [mapFocus, setMapFocus] = useState(null);
+  // Goes up by one to make a fresh map, which zooms to the selected request's pins again (see showRidePins).
+  const [mapRebuildCount, setMapRebuildCount] = useState(0);
 
   const visibleRequests = useMemo(() => requests.filter((request) => !assignedRequestIds.includes(request.id)), [assignedRequestIds, requests]);
   const pendingRequests = useMemo(() => visibleRequests.filter((request) => request.status === "Pending"), [visibleRequests]);
@@ -559,19 +565,37 @@ export default function DispatcherHome() {
       }).sort(compareDriverRows),
     [driverLocations, driversWithAssignments, unableReports, vehicles]
   );
-  // The driver shown on the Live Map, if they still have a location (it goes away when they punch out).
-  const mapDriver = dispatcherAvailabilityRows.find((driver) => driver.id === mapDriverId && driver.location) ?? null;
-  // Only a new place makes a new map (not every 10-second tick of the clock).
-  const mapDriverLatitude = mapDriver?.location.latitude ?? null;
-  const mapDriverLongitude = mapDriver?.location.longitude ?? null;
-  const mapDriverCoordinates = useMemo(
-    () => (mapDriverLatitude === null ? null : [mapDriverLatitude, mapDriverLongitude]),
-    [mapDriverLatitude, mapDriverLongitude]
+  // Live driver pins on the Live Map (ROADMAP Task 3.20 Step B): only drivers in this dispatcher's
+  // "Driver availability" list who have a location (on duty; punching out removes the pin).
+  // Worked out again every 10-second clock tick, so "updated 1 min ago" and the grey "Old location" stay current.
+  // The map only moves its pins for this; it is never rebuilt (see liveDrivers in LeafletMap.jsx).
+  const liveMapDrivers = useMemo(
+    () =>
+      dispatcherAvailabilityRows
+        .filter((driver) => driver.location)
+        .map((driver) => {
+          const { latitude, longitude, step, atMs } = driver.location;
+          const ageMs = atMs == null ? null : now - atMs;
+          const ago = ageMs === null ? "time unknown" : ageMs < 60_000 ? "just now" : `${formatDutyDuration(ageMs)} ago`;
+          const old = ageMs === null || ageMs > OLD_LOCATION_MS;
+          return {
+            id: driver.id,
+            latitude,
+            longitude,
+            old,
+            label: `${old ? "Old location · " : ""}${driver.name} · updated ${ago}`,
+            details: `${driver.name} · ${LOCATION_STEP_LABELS[step] || step}${atMs == null ? "" : `, ${formatManilaTime(atMs)}`}`,
+          };
+        }),
+    [dispatcherAvailabilityRows, now]
   );
-  // A clock time, not "5 min ago": a label that changed every 10 seconds would reload the map every 10 seconds.
-  const mapDriverLabel = mapDriver
-    ? `${mapDriver.name} · ${LOCATION_STEP_LABELS[mapDriver.location.step] || mapDriver.location.step}${mapDriver.location.atMs == null ? "" : `, ${formatManilaTime(mapDriver.location.atMs)}`}`
-    : "";
+  // Back to the ride's pins after "Show on map" moved the map to a driver: a fresh map zooms to the
+  // selected request's pickup and destination again, like before Step B. Without a "Show on map", nothing changes.
+  const showRidePins = () => {
+    if (!mapFocus) return;
+    setMapFocus(null);
+    setMapRebuildCount((count) => count + 1);
+  };
 
   useEffect(() => {
     setRequestsLoaded(false);
@@ -1048,8 +1072,8 @@ export default function DispatcherHome() {
               style={({ pressed }) => [styles.givenBackBanner, pressed && styles.givenBackBannerPressed]}
               onPress={() => {
                 setSelectedRequest(request);
-                // Back to the ride's pins (hides a driver shown with "Show on map"), like the request cards.
-                setMapDriverId(null);
+                // Back to the ride's pins (after a "Show on map"), like the request cards.
+                showRidePins();
               }}
               accessibilityRole="button"
               accessibilityHint="Shows this ride in Selected Request"
@@ -1109,7 +1133,7 @@ export default function DispatcherHome() {
         ]}
       >
         <View style={[styles.mapPlaceholder, fillWindow && styles.mapPlaceholderFill]}>
-          <LeafletMap title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} driverCoordinates={mapDriverCoordinates} driverLabel={mapDriverLabel} focusPickup minHeight={fillWindow ? 0 : 280} />
+          <LeafletMap key={mapRebuildCount} title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={selectedRequest?.pickupLocation || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${selectedRequest.pickupLocation} - ${selectedRequest.pickupDetails}` : selectedRequest?.pickupLocation || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} liveDrivers={liveMapDrivers} focusLiveDriver={mapFocus} focusPickup minHeight={fillWindow ? 0 : 280} />
         </View>
       </View>
     );
@@ -1154,8 +1178,8 @@ export default function DispatcherHome() {
                       ]}
                       onPress={() => {
                         setSelectedRequest(request);
-                        // Back to the ride's pins (hides a driver shown with "Show on map").
-                        setMapDriverId(null);
+                        // Back to the ride's pins (after a "Show on map").
+                        showRidePins();
                       }}
                     >
                       <View style={styles.requestTop}>
@@ -1201,7 +1225,7 @@ export default function DispatcherHome() {
                   <ListSkeleton label="Loading drivers" />
                 ) : dispatcherAvailabilityRows.length ? (
                   dispatcherAvailabilityRows.map((driver) => (
-                    <DriverDutyRow key={driver.id} driver={driver} now={now} selected={selectedDriver?.id === driver.id} onPress={() => openAssignModal(driver)} onShowOnMap={() => setMapDriverId(driver.id)} />
+                    <DriverDutyRow key={driver.id} driver={driver} now={now} selected={selectedDriver?.id === driver.id} onPress={() => openAssignModal(driver)} onShowOnMap={() => setMapFocus({ id: driver.id })} />
                   ))
                 ) : (
                   <View style={styles.emptyDriversCard}>

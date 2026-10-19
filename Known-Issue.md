@@ -115,20 +115,29 @@ Skills/resident.md section 6.
 ### "Show on map": the location can be old, rough, or missing
 
 - **Found:** Oct 4, 2026 (driver-location-plan.md).
-- **What it is:** A driver's location is saved only when they tap Punch
-  in, Accept, En route, Arrived or Picked up (never in the background),
-  so it is a *last known* place, not a live one. Also:
+- **What it is:** A driver's location is saved when they tap Punch
+  in, Accept, En route, Arrived or Picked up, and (since Task 3.20 Step A)
+  every 15-60 seconds while SakayNa is open on screen and they are on duty
+  and not on break. It is never saved in the background (for example
+  while Google Maps is open). Since Step B the dispatcher map shows every
+  on-duty driver in the list as a live pin with "updated X min ago";
+  after 2 minutes without an update the pin turns grey and says "Old
+  location". Also:
   - A driver who forgets to punch out keeps their last location visible
     to dispatchers until they punch out.
   - If the driver chose "Approximate" in Android's location pop-up, the
     pin can be a few km off.
   - Drivers on the website or on APKs before demo-ready-12 never share
-    a location ("No location shared.").
+    a location ("No location shared."). Drivers on APKs before Step A
+    (demo-ready-18 and older) only save at the steps, so their pin turns
+    grey "Old location" between steps.
   - On a narrow screen the map is above the driver list, so the
     dispatcher scrolls up after tapping Show on map.
-- **What to do for now:** read the "5 min ago (Arrived)" line before
-  trusting the pin; call the driver if it is old.
-- **Future work:** live tracking (driver-location-plan.md, "Not now").
+- **What to do for now:** read the "updated X min ago" label before
+  trusting the pin; call the driver if it says "Old location".
+- **Future work:** tracking while the app is in the background or closed
+  (needs a background-location permission, a new native package and a
+  Google Play review; ROADMAP Task 3.20 "Not included").
 - **Status:** Open. The light version on purpose.
 
 ### Driver location: what firestore.rules can't check
