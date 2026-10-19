@@ -16,7 +16,7 @@ import { formatRequestDate, getAssistanceText, getPassengerCountText, getPasseng
 import { BIG_GROUP_NOTE, isBigGroup } from "../features/resident/utils/requestOptions";
 import { startPhoneCall } from "../lib/phoneCall";
 import LeafletMap from "../components/LeafletMap";
-import { DESIGN_COLORS, FONT } from "../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
 import { db } from "../firebase";
 import { getTimestampMillis } from "../lib/dates";
 import {
@@ -76,12 +76,13 @@ const compareDriverRows = (first, second) =>
   || first.name.localeCompare(second.name, undefined, { sensitivity: "base" })
   || first.id.localeCompare(second.id);
 
-// The badge on each driver card: always a word with its color (DESIGN.md).
+// The badge on each driver card: always a word with its color (DESIGN.md). Tinted pills (DESIGN.md Style
+// "Status badges"); "On a run" keeps the deep green fill of the driver's "On a run" card, so it differs from Available.
 const DUTY_BADGES = {
-  Available: { label: "Available", backgroundColor: DESIGN_COLORS.hallGreen, color: DESIGN_COLORS.paperWhite },
-  "On break": { label: "On break", backgroundColor: DESIGN_COLORS.sakayOrange, color: DESIGN_COLORS.ink },
-  "On a run": { label: "On a run", backgroundColor: DESIGN_COLORS.hallGreenDeep, color: DESIGN_COLORS.paperWhite },
-  "Off duty": { label: "Off duty", backgroundColor: DESIGN_COLORS.inkMuted, color: DESIGN_COLORS.paperWhite },
+  Available: { label: "Available", backgroundColor: GREEN[100], color: GREEN[800] },
+  "On break": { label: "On break", backgroundColor: ORANGE[100], color: ORANGE[800] },
+  "On a run": { label: "On a run", backgroundColor: GREEN[800], color: NEUTRAL[0] },
+  "Off duty": { label: "Off duty", backgroundColor: NEUTRAL[200], color: NEUTRAL[800] },
 };
 
 // The step saved with a driver's last known location (driver-location-plan.md), in everyday words.
@@ -93,16 +94,18 @@ const LOCATION_STEP_LABELS = {
   "Picked Up": "Picked up",
 };
 
+// The level badge on a request (DESIGN.md Style "Status badges"): a pill with the level word. The cards themselves
+// are white. chip = the pill's color, chipText = its word color. Red only for Emergency; Urgent is orange with dark words.
 const getRequestStyle = (level) => {
   if (level === "Emergency") {
-    return { color: "#F6D0D0", chip: "#C53A3A" };
+    return { chip: RED[600], chipText: NEUTRAL[0] };
   }
 
   if (level === "Urgent") {
-    return { color: "#F5EFCE", chip: "#989400" };
+    return { chip: ORANGE[100], chipText: ORANGE[800] };
   }
 
-  return { color: "#D1E6DD", chip: "#06774B" };
+  return { chip: GREEN[100], chipText: GREEN[800] };
 };
 
 // "+639171234567" → "0917 123 4567", so it is easy to read and dial from an office phone.
@@ -290,7 +293,7 @@ function DriverDutyRow({ driver, now, selected, onPress, onShowOnMap }) {
           accessibilityRole="button"
           accessibilityLabel={`Show ${driver.name} on the map`}
         >
-          <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+          <MaterialCommunityIcons name="map-marker-outline" size={22} color={GREEN[700]} />
           <Text style={styles.showOnMapText}>Show on map</Text>
         </Pressable>
       ) : null}
@@ -354,7 +357,7 @@ function SelectedRequestDetails({ request, now, oneRow = false }) {
       <View style={[styles.detailsTop, oneRow && styles.detailsTopOneRow]}>
         <Text style={styles.detailsHeading}>Selected Request</Text>
         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
-          <Text style={styles.requestChipText}>{request.level}</Text>
+          <Text style={[styles.requestChipText, { color: request.chipText }]}>{request.level}</Text>
         </View>
         <OneLine style={styles.detailsTitle}>{request.title}</OneLine>
         <WhenLabel request={request} now={now} style={[styles.detailsMuted, styles.detailsTopText]} oneLine />
@@ -646,8 +649,8 @@ export default function DispatcherHome() {
             summary: data.summary ?? "Resident transport request waiting for dispatcher assignment.",
             residentId: data.residentId ?? "",
             residentName: data.residentName ?? "Resident",
-            color: requestStyle.color,
             chip: requestStyle.chip,
+            chipText: requestStyle.chipText,
           };
         });
 
@@ -1216,11 +1219,7 @@ export default function DispatcherHome() {
                   visibleRequests.map((request) => (
                       <TouchableOpacity
                       key={request.id}
-                      style={[
-                        styles.requestCard,
-                        { backgroundColor: request.color },
-                        selectedRequest?.id === request.id && styles.requestCardActive,
-                      ]}
+                      style={[styles.requestCard, request.level === "Emergency" && styles.requestCardEmergency, selectedRequest?.id === request.id && styles.requestCardActive]}
                       onPress={() => {
                         setSelectedRequest(request);
                         // Back to the ride's pins (after a "Show on map").
@@ -1229,7 +1228,7 @@ export default function DispatcherHome() {
                     >
                       <View style={styles.requestTop}>
                         <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
-                          <Text style={styles.requestChipText}>{request.level}</Text>
+                          <Text style={[styles.requestChipText, { color: request.chipText }]}>{request.level}</Text>
                         </View>
                         <WhenLabel request={request} now={now} style={styles.requestStatus} oneLine />
                       </View>
@@ -1354,7 +1353,7 @@ export default function DispatcherHome() {
                     onPress={() => setRequestToAssign(request)}
                   >
                     <View style={[styles.requestChip, { backgroundColor: request.chip }]}>
-                      <Text style={styles.requestChipText}>{request.level}</Text>
+                      <Text style={[styles.requestChipText, { color: request.chipText }]}>{request.level}</Text>
                     </View>
                     <View style={styles.modalRequestCopy}>
                       <Text style={styles.modalRequestTitle}>{request.title}</Text>
@@ -1483,8 +1482,9 @@ export default function DispatcherHome() {
 
 const styles = StyleSheet.create({
   // The red strip + the page, one column (Task 3.13). In the no-scrolling layout it gets the window's height (in the code).
-  screen: { flex: 1, backgroundColor: "#F5F7F6" },
-  page: { flex: 1, backgroundColor: "#F5F7F6" },
+  // The off-white page behind the white cards (DESIGN.md Style).
+  screen: { flex: 1, backgroundColor: NEUTRAL[50] },
+  page: { flex: 1, backgroundColor: NEUTRAL[50] },
   // No-scrolling layout: the page under the strip fills the rest; minHeight 0 lets the columns shrink and scroll inside.
   pageFill: { flex: 1, minHeight: 0 },
   fillScroll: { flex: 1 },
@@ -1504,75 +1504,92 @@ const styles = StyleSheet.create({
   containerCompact: { padding: 16, gap: 14 },
   mainGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16, alignItems: "stretch" },
   // Side columns 270 wide (never under 260 or over 280), so the map gets the rest (Task 3.13).
-  leftPanel: { flexBasis: 270, minWidth: 260, maxWidth: 280, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
+  // A light tinted area (not a card: the white cards sit inside it, and DESIGN.md says no card inside a card).
+  leftPanel: { flexBasis: 270, minWidth: 260, maxWidth: 280, height: 560, padding: 12, borderRadius: CORNER.card, backgroundColor: NEUTRAL[100], gap: 10 },
   sidePanelCompact: { flexBasis: "100%", minWidth: 0, maxWidth: "100%", height: "auto" },
-  panelLabel: { fontSize: 16, fontFamily: FONT.bold, color: "#496B5F" },
+  panelLabel: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
   panelScrollArea: { flex: 1 },
-  panelScrollContent: { gap: 10, paddingBottom: 2 },
-  requestCard: { borderRadius: 18, padding: 16 },
-  requestCardActive: { borderWidth: 2, borderColor: "#06774B" },
+  // A little room at the bottom and sides so the cards' soft shadows are not cut off by the scroll area.
+  panelScrollContent: { gap: 10, paddingBottom: 4, paddingHorizontal: 2 },
+  // A white card (DESIGN.md Style): 16 corners, a thin neutral edge, a Level 1 shadow. The level is the pill on top.
+  requestCard: { borderRadius: CORNER.card, padding: 16, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  // An Emergency ride: a 2px red edge all around, like the Active emergency card (owner's choice Oct 19; DESIGN.md
+  // allows no side stripes). The red "Emergency" pill stays, so it is never color alone.
+  requestCardEmergency: { borderWidth: 2, borderColor: RED[600] },
+  // The tapped card: a thicker green edge AND a light green fill (not color alone: the edge is thicker too).
+  // On a tapped Emergency card the green wins; the red pill still says "Emergency".
+  requestCardActive: { borderWidth: 2, borderColor: GREEN[600], backgroundColor: GREEN[50] },
   // Chip and ASAP / Scheduled on one line (Task 3.13): the chip keeps its size, the time text gets the "…".
   requestTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  requestChip: { flexShrink: 0, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, alignSelf: "flex-start" },
-  requestChipText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: "#FFFFFF" },
-  requestStatus: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: "#344640" },
-  requestTitle: { marginTop: 10, fontSize: 18, fontFamily: FONT.extraBold, color: "#111111" },
-  requestMeta: { fontFamily: FONT.regular, marginTop: 10, fontSize: 15, lineHeight: 20, color: "#465752" },
-  requestHelp: { marginTop: 6, fontFamily: FONT.bold, color: "#24342E" },
+  requestChip: { flexShrink: 0, paddingVertical: 8, paddingHorizontal: 14, borderRadius: CORNER.pill, alignSelf: "flex-start" },
+  // White unless a request's own word color is given (the vehicle pill in Assign Request has white words).
+  requestChipText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: "#FFFFFF" },
+  requestStatus: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[700] },
+  requestTitle: { marginTop: 10, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  requestMeta: { fontFamily: FONT.regular, marginTop: 10, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
+  requestHelp: { marginTop: 6, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
   // 10 or more people (Task 3.10): dark bold words with a warning icon, readable on every card color.
   bigGroupRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 6 },
   bigGroupText: { flex: 1, marginTop: 0, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   whenPassed: { color: "#B42318", fontFamily: FONT.extraBold },
   assignEarlyWarning: { marginTop: 12, padding: 12, borderRadius: 12, overflow: "hidden", backgroundColor: "#FFF3CD", color: "#5C3F00", fontSize: 14, lineHeight: 20, fontFamily: FONT.bold },
-  detailsPanel: { padding: 16, borderRadius: 20, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5E0" },
-  detailsHeading: { flexShrink: 0, fontSize: 20, lineHeight: 26, fontFamily: FONT.extraBold, color: "#06774B" },
-  detailsEmpty: { fontFamily: FONT.regular, marginTop: 8, fontSize: 15, color: "#60716B" },
+  // A white card (DESIGN.md Style): 16 corners, a thin neutral edge, a Level 1 shadow. Same padding and edge width
+  // as before, so its height (DETAILS_HEIGHT) is unchanged.
+  detailsPanel: { padding: 16, borderRadius: CORNER.card, backgroundColor: NEUTRAL[0], borderWidth: 1, borderColor: NEUTRAL[200], ...SHADOW.level1 },
+  detailsHeading: { flexShrink: 0, fontSize: 20, lineHeight: 26, fontFamily: FONT.bold, color: GREEN[700] },
+  detailsEmpty: { fontFamily: FONT.regular, marginTop: 8, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
   // Top line: heading, chip, title, when, reference · sent. Wraps only on a narrow window; long parts get "…".
   detailsTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 12, rowGap: 6 },
   detailsTopOneRow: { flexWrap: "nowrap" },
-  detailsTitle: { flexShrink: 1, fontSize: 20, lineHeight: 26, fontFamily: FONT.extraBold, color: "#111111" },
+  detailsTitle: { flexShrink: 1, fontSize: 20, lineHeight: 26, fontFamily: FONT.bold, color: NEUTRAL[900] },
   detailsTopText: { flexShrink: 1 },
-  detailsMuted: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: "#60716B" },
+  detailsMuted: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
   // 4 columns side by side (each at least 200 wide); on a narrow window they go under each other.
   detailsColumns: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", columnGap: 24, rowGap: 12 },
   detailsColumn: { flexGrow: 1, flexBasis: 200, minWidth: 0, gap: 10 },
-  detailsPhoneBlock: { padding: 12, borderRadius: 16, backgroundColor: "#E5F4ED", gap: 2 },
-  detailsPassenger: { fontSize: 18, lineHeight: 24, fontFamily: FONT.extraBold, color: "#111111" },
-  detailsPhone: { fontSize: 26, lineHeight: 32, fontFamily: FONT.extraBold, letterSpacing: 0.5, color: "#06774B", fontVariant: ["tabular-nums"] },
-  detailsLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: "#496B5F" },
-  detailsValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 22, color: "#111111" },
-  mapPanel: { flex: 4, minWidth: 360, height: 560, borderRadius: 22, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D6DFDB", overflow: "hidden" },
+  // The passenger box: a light green tinted box (12 corners: it sits inside the card).
+  detailsPhoneBlock: { padding: 12, borderRadius: CORNER.input, backgroundColor: GREEN[50], gap: 2 },
+  detailsPassenger: { fontSize: 18, lineHeight: 24, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  detailsPhone: { fontSize: 26, lineHeight: 32, fontFamily: FONT.extraBold, letterSpacing: 0.5, color: GREEN[700], fontVariant: ["tabular-nums"] },
+  // Small grey labels, sentence case (DESIGN.md Style list rows), with the value under them.
+  detailsLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  detailsValue: { fontFamily: FONT.regular, marginTop: 2, fontSize: 17, lineHeight: 22, color: NEUTRAL[900] },
+  // Map frame (DESIGN.md Style): 16 corners, a thin neutral edge, a Level 1 shadow.
+  mapPanel: { flex: 4, minWidth: 360, height: 560, borderRadius: CORNER.card, backgroundColor: NEUTRAL[0], borderWidth: 1, borderColor: NEUTRAL[200], overflow: "hidden", ...SHADOW.level1 },
   mapPanelCompact: { flexBasis: "100%", minWidth: 0, height: 560 },
-  mapPlaceholder: { flex: 1, minHeight: 560, alignItems: "stretch", justifyContent: "flex-start", backgroundColor: "#F7F9F8" },
+  mapPlaceholder: { flex: 1, minHeight: 560, alignItems: "stretch", justifyContent: "flex-start", backgroundColor: NEUTRAL[50] },
   mapCrossWrap: { width: 92, height: 92, borderRadius: 46, borderWidth: 2, borderColor: "#CDD6D2", alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   mapCross: { fontFamily: FONT.regular, fontSize: 58, lineHeight: 58, color: "#A4B0AA" },
   mapPlaceholderTitle: { marginTop: 18, fontSize: 26, fontFamily: FONT.extraBold, color: "#2D3934", textAlign: "center" },
   mapPlaceholderText: { fontFamily: FONT.regular, marginTop: 12, maxWidth: 520, fontSize: 16, lineHeight: 24, color: "#61716B", textAlign: "center" },
-  rightPanel: { flexBasis: 270, minWidth: 260, maxWidth: 280, height: 560, padding: 12, borderRadius: 20, backgroundColor: "#E3E7E5", gap: 10 },
-  // Driver cards (driver-duty-plan.md Step 5, DESIGN.md look). Flat: no shadows.
+  rightPanel: { flexBasis: 270, minWidth: 260, maxWidth: 280, height: 560, padding: 12, borderRadius: CORNER.card, backgroundColor: NEUTRAL[100], gap: 10 },
+  // Driver cards (driver-duty-plan.md Step 5): white cards (DESIGN.md Style) with a thin edge and a Level 1 shadow.
   // No padding on the card itself: its tap areas and the "Show on map" button hold the 14 around the edge.
-  driverCard: { borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
-  driverCardSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen },
-  driverCardPressed: { backgroundColor: DESIGN_COLORS.boardTint },
+  driverCard: { borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  driverCardSelected: { borderWidth: 2, borderColor: GREEN[600], backgroundColor: GREEN[50] },
+  driverCardPressed: { backgroundColor: NEUTRAL[100] },
   driverCardTop: { paddingTop: 14, paddingHorizontal: 14 },
   // The 10 above "Show on map" belongs to the top tap area, so it opens Assign like before.
   driverCardTopAboveButton: { paddingBottom: 10 },
   driverCardBottom: { paddingHorizontal: 14, paddingBottom: 14 },
   // Greyed out: this driver can't be given a ride now (the reason is written on the card).
-  driverCardBlocked: { borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.boardTint },
-  driverName: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  driverNameBlocked: { color: DESIGN_COLORS.inkMuted },
-  driverPlace: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  dutyBadge: { flexShrink: 0, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999 },
+  // Greyed out: this driver can't be given a ride now (the reason is written on the card). Flat, no shadow.
+  driverCardBlocked: { borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[100], boxShadow: "none" },
+  driverName: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  driverNameBlocked: { color: NEUTRAL[700] },
+  driverPlace: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
+  // Status badge (DESIGN.md Style): a pill with a tinted background and the status word.
+  dutyBadge: { flexShrink: 0, paddingVertical: 4, paddingHorizontal: 12, borderRadius: CORNER.pill },
   // Driver card's first line (Task 3.13): the name (shrinks, gets the "…") then the status badge (never shrinks).
   driverTopRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dutySinceLine: { marginTop: 6 },
-  dutyBadgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold },
-  dutySince: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, fontVariant: ["tabular-nums"] },
-  driverMetaLine: { fontFamily: FONT.regular, marginTop: 6, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.ink },
-  appClosedBox: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
-  appClosedText: { flex: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  // Outline button (DESIGN.md: corner 16, at least 48 tall, icon with a word).
+  dutyBadgeText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold },
+  dutySince: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: NEUTRAL[700], fontVariant: ["tabular-nums"] },
+  driverMetaLine: { fontFamily: FONT.regular, marginTop: 6, fontSize: 15, lineHeight: 20, color: NEUTRAL[900] },
+  // "App closed" / "Reported: can't do a ride": a peach tinted box (12 corners: it sits inside the card).
+  appClosedBox: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: CORNER.input, backgroundColor: ORANGE[100] },
+  appClosedText: { flex: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  // A secondary pill (DESIGN.md Style): white, grey edge, green words, at least 48 tall, icon with a word.
   showOnMapButton: {
     marginHorizontal: 14,
     minHeight: 48,
@@ -1581,21 +1598,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    backgroundColor: NEUTRAL[0],
   },
-  showOnMapButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  showOnMapText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
-  blockReasonText: { marginTop: 10, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  showOnMapButtonPressed: { backgroundColor: NEUTRAL[100] },
+  showOnMapText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: GREEN[700] },
+  blockReasonText: { marginTop: 10, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
   assignErrorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
-  emptyRequestsCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
-  emptyRequestsTitle: { fontSize: 16, fontFamily: FONT.extraBold, color: "#24342E" },
-  emptyRequestsText: { fontFamily: FONT.regular, marginTop: 6, fontSize: 15, lineHeight: 20, color: "#66776F" },
-  emptyDriversCard: { padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
-  emptyDriversTitle: { fontSize: 16, fontFamily: FONT.extraBold, color: "#24342E" },
-  emptyDriversText: { fontFamily: FONT.regular, marginTop: 6, fontSize: 15, lineHeight: 20, color: "#66776F" },
+  // "Inbox empty" / "No registered drivers": white cards like the others.
+  emptyRequestsCard: { padding: 16, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  emptyRequestsTitle: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  emptyRequestsText: { fontFamily: FONT.regular, marginTop: 6, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
+  emptyDriversCard: { padding: 16, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  emptyDriversTitle: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  emptyDriversText: { fontFamily: FONT.regular, marginTop: 6, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
   actionButtonDisabled: { opacity: 0.65 },
   modalOverlay: {
     flex: 1,
@@ -1660,48 +1678,51 @@ const styles = StyleSheet.create({
   callerPhoneText: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   callerLine: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   callerLabel: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  // "Open location in Maps": a secondary pill (white, grey edge, green words).
   callerMapButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     minHeight: 52,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
+    borderColor: NEUTRAL[500],
   },
-  callerMapButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  callerMapText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
-  // "Active emergency" card: flat sign with a red edge (it is an emergency), at most 640 wide on a computer.
+  callerMapButtonPressed: { backgroundColor: NEUTRAL[100] },
+  callerMapText: { fontSize: 17, fontFamily: FONT.semiBold, color: GREEN[700] },
+  // "Active emergency" card: a white card with a red edge (it is an emergency), at most 640 wide on a computer.
+  // 16 corners and a Level 1 shadow (DESIGN.md Style); the red edge stays.
   activeCard: {
     width: "100%",
     maxWidth: 640,
     padding: 16,
-    borderRadius: 24,
+    borderRadius: CORNER.card,
     borderWidth: 2,
     borderColor: DESIGN_COLORS.emergencyRed,
     backgroundColor: DESIGN_COLORS.paperWhite,
+    ...SHADOW.level1,
   },
-  activeTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
-  // "Open emergency form" on the card: the main action, so solid Hall Green.
+  activeTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  // "Open emergency form" on the card: the main action, so a solid green pill.
   formButton: {
     minHeight: 52,
     marginTop: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     backgroundColor: DESIGN_COLORS.hallGreen,
   },
   formButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  formButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: DESIGN_COLORS.paperWhite },
+  formButtonText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.paperWhite },
   hidden: { display: "none" },
   rideCreatedLine: { marginTop: 16, flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  rideCreatedText: { flex: 1, fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  // "Needs a new driver" banner (driver-pages-plan.md Step 2b): Sakay Orange with Ink words, card corners, no shadow.
+  rideCreatedText: { flex: 1, fontSize: 17, lineHeight: 24, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
+  // "Needs a new driver" banner (driver-pages-plan.md Step 2b): Sakay Orange with Ink words, 16 corners (DESIGN.md Style banner).
   givenBackBanner: {
     width: "100%",
     maxWidth: 640,
@@ -1709,34 +1730,35 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 12,
     padding: 16,
-    borderRadius: 24,
+    borderRadius: CORNER.card,
     backgroundColor: DESIGN_COLORS.sakayOrange,
+    ...SHADOW.level1,
   },
   givenBackBannerPressed: { opacity: 0.85 },
   givenBackBannerCopy: { flex: 1 },
-  givenBackBannerTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  givenBackBannerTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   givenBackBannerText: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  // The same message on the ride's card in the list: a small orange box with dark words.
-  givenBackTag: { alignSelf: "flex-start", maxWidth: "100%", marginTop: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, backgroundColor: DESIGN_COLORS.sakayOrange },
-  givenBackTagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  // And in Selected Request: a peach box (important info).
-  givenBackBox: { marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
+  // The same message on the ride's card in the list: a small orange pill with dark words.
+  givenBackTag: { alignSelf: "flex-start", maxWidth: "100%", marginTop: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: CORNER.pill, backgroundColor: DESIGN_COLORS.sakayOrange },
+  givenBackTagText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
+  // And in Selected Request: a peach box (important info), 12 corners because it sits inside the card.
+  givenBackBox: { marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: CORNER.input, backgroundColor: DESIGN_COLORS.peachTint },
   givenBackBoxText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  givenBackBoxStrong: { fontFamily: FONT.extraBold },
-  // White button with a clear grey edge ("End emergency" on the card, "Keep it open" in the question).
+  givenBackBoxStrong: { fontFamily: FONT.bold },
+  // White pill with a clear grey edge ("End emergency" on the card, "Keep it open" in the question).
   outlineButton: {
     minHeight: 52,
     marginTop: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
+    borderColor: NEUTRAL[500],
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: DESIGN_COLORS.paperWhite,
   },
-  outlineButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  outlineButtonText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  outlineButtonPressed: { backgroundColor: NEUTRAL[100] },
+  outlineButtonText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   // "End this emergency?" question.
   endCard: { width: "100%", maxWidth: 440, padding: 24, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
   endTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
