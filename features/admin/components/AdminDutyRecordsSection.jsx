@@ -5,7 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import AdminSectionHeader from "./AdminSectionHeader";
-import { CORNER, DESIGN_COLORS, FONT, GREEN } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
 import {
@@ -272,7 +272,7 @@ function Cell({ label, value }) {
 // The calendar box is a plain web element, so it takes a web style (not a StyleSheet one). Same edge as the day
 // buttons, with the 12 corners of an input (DESIGN.md Style).
 const dateBoxStyle = {
-  minHeight: 48,
+  minHeight: 40,
   boxSizing: "border-box",
   padding: "0 12px",
   borderRadius: 12,
@@ -284,11 +284,12 @@ const dateBoxStyle = {
 };
 
 const styles = StyleSheet.create({
-  intro: { fontFamily: FONT.regular, marginTop: 6, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, maxWidth: 760 },
+  intro: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, maxWidth: 760 },
 
   dayPicker: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
+  // 40 tall: Admin website controls (DESIGN.md "Admin website exception").
   dayButton: {
-    minHeight: 48,
+    minHeight: 40,
     paddingHorizontal: 12,
     borderRadius: CORNER.pill,
     borderWidth: 1.5,
@@ -306,10 +307,10 @@ const styles = StyleSheet.create({
 
   errorText: { marginTop: 12, padding: 12, borderRadius: 16, fontSize: 17, lineHeight: 24, fontFamily: FONT.semiBold, color: DESIGN_COLORS.emergencyRed, backgroundColor: DESIGN_COLORS.redTint },
 
-  // A plain list with thin lines between drivers (no cards inside the admin panel).
-  list: { marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: DESIGN_COLORS.rule },
-  line: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingVertical: 16 },
-  lineDivider: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
+  // One white list box with thin lines between drivers, like Users (Task 3.19).
+  list: { marginTop: 12, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
+  line: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  lineDivider: { borderTopWidth: 1, borderTopColor: NEUTRAL[200] },
   nameCell: { flexBasis: 200, flexGrow: 1, maxWidth: 260, gap: 4 },
   driverName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   smallMuted: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
@@ -324,11 +325,11 @@ const styles = StyleSheet.create({
   cellValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
 
   // Inability reports: same plain list as the time cards. Time on the left, then who, why, and which ride.
-  sectionTitle: { marginTop: 32, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  sectionTitle: { marginTop: 24, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   reportTime: { flexBasis: 100, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   reportCopy: { flexBasis: 240, flexGrow: 1, gap: 2 },
   reportReason: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
 
-  emptyState: { marginTop: 16, padding: 24, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
+  emptyState: { marginTop: 12, padding: 18, borderRadius: CORNER.card, alignItems: "center", gap: 8, backgroundColor: DESIGN_COLORS.boardTint },
   emptyText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
 });

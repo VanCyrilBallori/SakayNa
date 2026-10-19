@@ -274,13 +274,14 @@ const styles = StyleSheet.create({
 
   // Sections: soft color inside the white panel, 16 corners (DESIGN.md Style: info boxes).
   sectionRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "stretch" },
-  section: { padding: 16, gap: 14, borderRadius: CORNER.card, minWidth: 0, backgroundColor: DESIGN_COLORS.boardTint },
+  section: { padding: 14, gap: 12, borderRadius: CORNER.card, minWidth: 0, backgroundColor: DESIGN_COLORS.boardTint },
   peachSection: { backgroundColor: DESIGN_COLORS.peachTint },
   wideSection: { flexGrow: 7, flexShrink: 1, flexBasis: 420 },
   smallSection: { flexGrow: 1, flexShrink: 1, flexBasis: 300 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionBadge: { width: 36, height: 36, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { flexShrink: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  sectionBadge: { width: 32, height: 32, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  // 18: smaller than the "Reports" heading (21) above these cards.
+  sectionTitle: { flexShrink: 1, fontSize: 18, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
 
   rateBox: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: 10, rowGap: 2, paddingVertical: 12, paddingHorizontal: 14, borderRadius: CORNER.input, backgroundColor: DESIGN_COLORS.paperWhite },
   stackBar: { flexDirection: "row", height: 28, gap: 2, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
