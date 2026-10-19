@@ -13,12 +13,21 @@ const Y_AXIS_WIDTH = 36;
 // The one-screen dashboard (wide windows): from this window width. Its chart is never shorter than MIN and never
 // taller than MAX (tall screens give the chart the extra height, up to MAX).
 const WIDE_WINDOW = 1280;
-const MIN_FILL_PLOT_HEIGHT = 80;
+// The chart's box on the dashboard: room for the number above the tallest column (24), the plot (at least 48)
+// and the day names under it (8 space + 20 line = 28). So the box is never shorter than 100.
+const VALUE_SPACE = 24;
+const X_LABEL_SPACE = 28;
+const MIN_FILL_PLOT_HEIGHT = 48;
+const FILL_BOX_MIN_HEIGHT = VALUE_SPACE + MIN_FILL_PLOT_HEIGHT + X_LABEL_SPACE;
+const MAX_FILL_PLOT_HEIGHT = 360;
+// The numbers on the left (0, 1, 2, 3) need at least this much room each, or they would sit on top of each other.
+// With less room they are hidden; every column still shows its own number.
+const Y_LABEL_MIN_GAP = 22;
 // The dashboard cards' padding (12 above and below), and the smallest row the chart card fits in:
-// padding 24 + title row with the choices 48 + summary 34 + space above the plot 20 + plot 80 + day names 20 + gaps 24 = 250.
+// padding 24 + title row with the choices 48 + gap 8 + summary (up to two lines) 58 + gap 8 + chart box 100 = 246, so 250.
+// A shorter window does not squeeze the rows below this: the panel scrolls instead.
 const DASH_CARD_PADDING = 12;
 const TOP_ROW_MIN_HEIGHT = 250;
-const MAX_FILL_PLOT_HEIGHT = 360;
 
 // The three time choices for the chart. The value is what admin-home keeps in rangeLabel.
 const RANGE_OPTIONS = [
@@ -82,11 +91,15 @@ function BarLine({ label, valueText, ratio }) {
   );
 }
 
-// fill = the one-screen dashboard: the plot takes all the height left in its card (measured with onLayout),
-// between MIN_FILL_PLOT_HEIGHT and MAX_FILL_PLOT_HEIGHT. Otherwise the plot is PLOT_HEIGHT tall, as before.
+// fill = the one-screen dashboard: the chart takes all the height left in its card. An empty box fills that
+// space and is measured (onLayout); the plot and day names are then drawn inside it at the measured size. The box's
+// size comes only from the card, never from the plot inside it, so the chart shrinks again when the window gets
+// shorter (before, the plot pushed its own box open and could only grow). Otherwise the plot is PLOT_HEIGHT tall.
 function ActivityChart({ rangeLabel, activityBuckets, fill = false }) {
-  const [measuredHeight, setMeasuredHeight] = useState(MIN_FILL_PLOT_HEIGHT);
-  const plotHeight = fill ? Math.min(MAX_FILL_PLOT_HEIGHT, Math.max(MIN_FILL_PLOT_HEIGHT, measuredHeight)) : PLOT_HEIGHT;
+  const [boxHeight, setBoxHeight] = useState(0);
+  const plotHeight = fill
+    ? Math.min(MAX_FILL_PLOT_HEIGHT, Math.max(MIN_FILL_PLOT_HEIGHT, boxHeight - VALUE_SPACE - X_LABEL_SPACE))
+    : PLOT_HEIGHT;
   const range = RANGE_OPTIONS.find((option) => option.value === rangeLabel) || RANGE_OPTIONS[0];
   const total = activityBuckets.reduce((sum, bucket) => sum + bucket.value, 0);
   const max = Math.max(...activityBuckets.map((bucket) => bucket.value), 1);
@@ -101,34 +114,25 @@ function ActivityChart({ rangeLabel, activityBuckets, fill = false }) {
   const busiestName =
     range.unit === "day" ? formatShortDay(busiest.start) : range.unit === "week" ? `week of ${busiest.label}` : busiest.label;
   const lastIndex = activityBuckets.length - 1;
+  // A very short plot hides the numbers on the left (they would overlap) and gives their space to the columns.
+  const showYLabels = !fill || plotHeight / Math.max(1, ticks.length - 1) >= Y_LABEL_MIN_GAP;
+  const axisWidth = showYLabels ? Y_AXIS_WIDTH : 0;
 
-  return (
+  const plotAndLabels = (
     <>
-      <View style={styles.chartSummary}>
-        <Text style={styles.body}>
-          <Text style={styles.bigNumber}>{total}</Text>
-          <Text style={styles.label}> {total === 1 ? "request" : "requests"}</Text>
-          <Text style={styles.small}> {range.period}</Text>
-        </Text>
-        {total ? (
-          <Text style={styles.small}>
-            Busiest {range.unit}: <Text style={styles.smallStrong}>{busiestName}</Text> ({busiest.value})
-          </Text>
-        ) : null}
-      </View>
-
       <View
-        style={[styles.plotRow, fill && styles.plotRowFill]}
-        onLayout={fill ? (event) => setMeasuredHeight(Math.round(event.nativeEvent.layout.height)) : undefined}
+        style={styles.plotRow}
         accessible
         accessibilityLabel={`Ride requests per ${range.unit}: ${activityBuckets.map((bucket) => `${bucket.label} ${bucket.value}`).join(", ")}`}
       >
-        <View style={[styles.yAxis, { height: plotHeight }]}>
-          {ticks.map((tick) => (
-            <Text key={tick} style={[styles.yLabel, { bottom: (tick / top) * plotHeight - 10 }]}>
-              {tick}
-            </Text>
-          ))}
+        <View style={[styles.yAxis, { width: axisWidth, height: plotHeight }]}>
+          {showYLabels
+            ? ticks.map((tick) => (
+                <Text key={tick} style={[styles.yLabel, { bottom: (tick / top) * plotHeight - 10 }]}>
+                  {tick}
+                </Text>
+              ))
+            : null}
         </View>
         <View style={[styles.plot, { height: plotHeight }]}>
           {ticks.map((tick) => (
@@ -145,7 +149,7 @@ function ActivityChart({ rangeLabel, activityBuckets, fill = false }) {
         </View>
       </View>
 
-      <View style={styles.xLabels}>
+      <View style={[styles.xLabels, { marginLeft: axisWidth }]}>
         {activityBuckets.map((bucket, index) => {
           const isLast = index === lastIndex;
           return (
@@ -155,6 +159,32 @@ function ActivityChart({ rangeLabel, activityBuckets, fill = false }) {
           );
         })}
       </View>
+    </>
+  );
+
+  return (
+    <>
+      <View style={styles.chartSummary}>
+        <Text style={styles.body}>
+          <Text style={styles.bigNumber}>{total}</Text>
+          <Text style={styles.label}> {total === 1 ? "request" : "requests"}</Text>
+          <Text style={styles.small}> {range.period}</Text>
+        </Text>
+        {total ? (
+          <Text style={styles.small}>
+            Busiest {range.unit}: <Text style={styles.smallStrong}>{busiestName}</Text> ({busiest.value})
+          </Text>
+        ) : null}
+      </View>
+
+      {fill ? (
+        // The measured box. Drawn only after it is measured, so the chart never shows at a wrong size first.
+        <View style={styles.fillBox} onLayout={(event) => setBoxHeight(Math.floor(event.nativeEvent.layout.height))}>
+          {boxHeight ? <View style={styles.fillBoxInner}>{plotAndLabels}</View> : null}
+        </View>
+      ) : (
+        plotAndLabels
+      )}
     </>
   );
 }
@@ -427,8 +457,9 @@ const styles = StyleSheet.create({
   dashRowEqual: { flexGrow: 1, flexBasis: 0 },
   // Equal shares of the row (the chart card gets a bigger share). minWidth 0 lets long words wrap instead of pushing.
   dashCard: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
-  // The chart card: twice the share of Needs attention (about 2/3 of the row).
-  dashChartCard: { flexGrow: 2 },
+  // The chart card: twice the share of Needs attention (about 2/3 of the row). overflow hidden is only a last
+  // safety net: nothing in it is ever drawn outside the card.
+  dashChartCard: { flexGrow: 2, overflow: "hidden" },
   sectionCompact: { padding: DASH_CARD_PADDING, gap: 8 },
   // The measured wrapper inside a card (onContentHeight): the same gaps as the card itself.
   sectionInner: { gap: 12 },
@@ -443,8 +474,10 @@ const styles = StyleSheet.create({
   stackBarCompact: { height: 16 },
   legendCompact: { gap: 6 },
   attentionItemStacked: { flexBasis: "auto", flexGrow: 0 },
-  // The plot takes the height left in the chart card; the bars sit at its bottom.
-  plotRowFill: { flexGrow: 1, minHeight: MIN_FILL_PLOT_HEIGHT, marginTop: 20, alignItems: "flex-end" },
+  // The chart box takes the height left in the chart card (flexBasis 0: its own content never makes it taller).
+  // The plot and day names sit at its bottom. It clips, so the chart never reaches into the cards below.
+  fillBox: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minHeight: FILL_BOX_MIN_HEIGHT, overflow: "hidden" },
+  fillBoxInner: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "flex-end" },
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
@@ -507,7 +540,7 @@ const styles = StyleSheet.create({
 
   chartSummary: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", columnGap: 16, rowGap: 4 },
   // The space above the plot leaves room for the number on the tallest column.
-  plotRow: { flexDirection: "row", marginTop: 24 },
+  plotRow: { flexDirection: "row", marginTop: VALUE_SPACE },
   yAxis: { width: Y_AXIS_WIDTH, height: PLOT_HEIGHT },
   yLabel: { fontFamily: FONT.regular, position: "absolute", right: 8, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted, fontVariant: ["tabular-nums"] },
   plot: { flex: 1, height: PLOT_HEIGHT },
