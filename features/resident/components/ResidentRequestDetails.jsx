@@ -1,6 +1,7 @@
 import { FontAwesome } from "@expo/vector-icons";
 import { useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppButton from "../../../components/ui/AppButton";
 import CloseButton from "../../../components/ui/CloseButton";
@@ -17,6 +18,8 @@ const DetailLine = ({ label, value }) => <View style={styles.detailLine}><Text s
 // One request's details. The "Cancel request" pop-up lives here too, so this window works the same
 // wherever it is opened from (Request History, or the latest request card on the home screen).
 export default function ResidentRequestDetails({ request, visible, onClose }) {
+  // Android draws this window behind its own bottom bar (◁ ○ □), so leave that much room at the bottom (Task 3.17).
+  const insets = useSafeAreaInsets();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [cancelError, setCancelError] = useState("");
@@ -43,7 +46,7 @@ export default function ResidentRequestDetails({ request, visible, onClose }) {
     finally { setCancelling(false); }
   };
 
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.card}><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}><CloseButton onPress={onClose} label="Close request details" style={styles.close} /><Text style={styles.title}>Request details</Text><Text style={styles.reference}>{request.reference}</Text><View style={[styles.status, { backgroundColor: status.tone === "danger" ? COLORS.emergencySurface : status.tone === "success" ? "#E7F5ED" : COLORS.warningSurface }]}><FontAwesome name={status.icon} size={14} color={status.tone === "danger" ? COLORS.emergency : status.tone === "success" ? COLORS.success : COLORS.warning} /><Text style={styles.statusText}>{status.label}</Text></View>
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><View style={styles.overlay}><View style={styles.card}><ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}><CloseButton onPress={onClose} label="Close request details" style={styles.close} /><Text style={styles.title}>Request details</Text><Text style={styles.reference}>{request.reference}</Text><View style={[styles.status, { backgroundColor: status.tone === "danger" ? COLORS.emergencySurface : status.tone === "success" ? "#E7F5ED" : COLORS.warningSurface }]}><FontAwesome name={status.icon} size={14} color={status.tone === "danger" ? COLORS.emergency : status.tone === "success" ? COLORS.success : COLORS.warning} /><Text style={styles.statusText}>{status.label}</Text></View>
   <DetailLine label="Ride for" value={request.title || request.serviceType} /><DetailLine label="When" value={getWhenText(request)} /><DetailLine label="Pickup" value={getPickupLabel(request)} /><DetailLine label="Landmark" value={request.pickupDetails} /><DetailLine label="Going to" value={getDestinationLabel(request)} /><DetailLine label="Passenger" value={getPassengerName(request)} /><DetailLine label="Contact number" value={request.contactNumber} /><DetailLine label="People riding" value={getPassengerCountText(request)} /><DetailLine label="Help needed" value={getAssistanceText(request)} />{request.additionalNotes ? <DetailLine label="Notes" value={request.additionalNotes} /> : null}<DetailLine label="Submitted" value={formatRequestDate(request.createdAt)} /><DetailLine label="Latest update" value={formatRequestDate(request.latestUpdatedAt)} />
   <View style={styles.section}><Text style={styles.sectionTitle}>Assigned responder</Text>{driverName ? <><DetailLine label="Driver" value={driverName} /><DetailLine label="Vehicle" value={[vehicle, request.vehiclePlateNumber ? `Plate ${request.vehiclePlateNumber}` : ""].filter(Boolean).join(" | ")} /><DetailLine label="Contact" value={request.assignedDriverPhone || request.driverContactNumber || "Contact is not available yet"} /></> : <Text style={styles.muted}>Not yet assigned. Dispatcher contact is shown only when linked to this request.</Text>}{dispatcherName ? <><DetailLine label="Dispatcher" value={dispatcherName} /><DetailLine label="Dispatcher contact" value={request.dispatcherOfficePhone || "Contact is not available yet"} /></> : null}</View>
   {pickupCoordinates || destinationCoordinates ? <View style={styles.map}><LeafletMap title={`Route for ${request.reference}`} pickupLabel={getPickupLabel(request)} destinationLabel={getDestinationLabel(request)} pickupCoordinates={pickupCoordinates} destinationCoordinates={destinationCoordinates} /></View> : null}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import LeafletMap from "../../../components/LeafletMap";
 import AppButton from "../../../components/ui/AppButton";
@@ -15,6 +16,8 @@ export default function MapLocationModal({ visible, initialLocation, onClose, on
   // Where the map starts when no pin is placed yet.
   // undefined = still checking, null = the Poblacion (the map's default), [lat, lng] = the resident's location.
   const [startCenter, setStartCenter] = useState(undefined);
+  // Android draws this window behind its own bottom bar (◁ ○ □), so leave that much room at the bottom (Task 3.17).
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) {
@@ -58,7 +61,7 @@ export default function MapLocationModal({ visible, initialLocation, onClose, on
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.card}>
+        <View style={[styles.card, { paddingBottom: insets.bottom + SPACING.lg }]}>
           <View style={styles.header}>
             <View style={styles.headerCopy}><Text style={styles.title}>Pin Pickup Location</Text><Text style={styles.subtitle}>Tap the map to place the pickup marker, then confirm it.</Text></View>
             <CloseButton onPress={onClose} label="Close map picker" />
