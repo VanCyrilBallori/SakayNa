@@ -18,7 +18,7 @@ import {
   View,
 } from "react-native";
 
-import BrandLogo from "../components/BrandLogo";
+import { HeaderBrand } from "../components/AppBrandHeader";
 import CloseButton from "../components/ui/CloseButton";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import AdminCallSessionsSection from "../features/admin/components/AdminCallSessionsSection";
@@ -48,6 +48,9 @@ import { useTheme } from "../lib/theme";
 import { formatPlace } from "../lib/placeText";
 import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
 
+// Header (padding 36 + the 54 initials button, taller than the 50 SakayNa title + line 1 = 91) + 20 above the panel
+// + 28 below it, plus 1 to spare.
+const ADMIN_PAGE_CHROME_HEIGHT = 140;
 const CITY_VEHICLE_OWNER = "City/Barangay Vehicle";
 const DRIVER_VEHICLE_OWNER = "Driver-Owned Vehicle";
 const sideLinks = ["Overview", "Emergency Calls", "Resident Verification", "Driver Applications", "Duty Records", "Operations", "Requests", "Users", "Vehicles"];
@@ -262,7 +265,9 @@ export default function AdminHome() {
       return null;
     }
 
-    return Math.max(540, height - 210);
+    // The window minus the header (91), the space above the panel (20) and below it (28), so the page itself never
+    // scrolls and Overview can fill the panel on one screen. Under 420 the page scrolls instead, as before.
+    return Math.max(420, height - ADMIN_PAGE_CHROME_HEIGHT);
   }, [compact, height]);
   const { authUser, displayName, profile, profileStatus } = useCurrentUserProfile();
   const { theme } = useTheme();
@@ -299,8 +304,6 @@ export default function AdminHome() {
   // Resident Verification and Driver Applications: only this Admin's own barangay.
   // The barangay is set on the Admin's profile in the Firebase Console.
   const adminBarangay = profile?.barangay || "";
-  // Under the logo (Task 3.6), like the resident's place strip: "Daanglungsod, Toledo City" shows as "Barangay Daanglungsod".
-  const adminBarangayName = adminBarangay.replace(/,\s*Toledo City$/i, "").trim();
 
   const {
     users,
@@ -865,12 +868,8 @@ export default function AdminHome() {
     <>
       <ScrollView style={[styles.page, { backgroundColor: theme.page }]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.header, { backgroundColor: theme.headerBg, borderBottomColor: theme.headerBorder }]}>
-          <View style={styles.headerBrand}>
-            <BrandLogo variant="main" height={compact ? 30 : 36} />
-            <Text style={[styles.headerBarangay, { color: theme.mutedText }]}>
-              {adminBarangayName ? `Barangay ${adminBarangayName}` : "Barangay not set"}
-            </Text>
-          </View>
+          {/* The same title as the dispatcher website: icon, "SakayNa", and the barangay name under it (AppBrandHeader.jsx). */}
+          <HeaderBrand barangay={adminBarangay} compact={width < 900} />
 
           <View style={[styles.headerRight, narrow && styles.headerRightCompact]}>
             <TouchableOpacity style={[styles.profileTrigger, { backgroundColor: theme.headerBg }]} onPress={() => setProfileMenuOpen(true)}>
@@ -1263,9 +1262,6 @@ const styles = StyleSheet.create({
     gap: 16,
     flexWrap: "wrap",
   },
-  // The logo with the Admin's barangay under it (Task 3.6). Body size (DESIGN.md: 17/24, 500).
-  headerBrand: { gap: 4, flexShrink: 1 },
-  headerBarangay: { fontSize: 17, lineHeight: 24, fontFamily: FONT.medium },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
@@ -1336,7 +1332,8 @@ const styles = StyleSheet.create({
   mainArea: { flex: 1, minWidth: 0, gap: 12 },
   contentPanel: { padding: 14, borderRadius: CORNER.card, borderWidth: 1, ...SHADOW.level1 },
   contentPanelFixed: { flex: 1, minHeight: 0 },
-  contentPanelScrollContent: { paddingBottom: 2 },
+  // flexGrow: Overview's one-screen dashboard can fill the whole panel; other sections are just as tall as their content.
+  contentPanelScrollContent: { flexGrow: 1, paddingBottom: 2 },
   verificationSection: { marginTop: 14 },
   subsectionTitle: { fontSize: 18, fontFamily: FONT.bold },
   verificationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 14, marginTop: 14 },

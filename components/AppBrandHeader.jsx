@@ -28,7 +28,7 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
   };
 
   const barangayName = (barangay || "").replace(/,\s*Toledo City$/i, "").trim();
-  // Under the logo: only the name ("Daanglungsod"). The account menu still says "Barangay Daanglungsod".
+  // The account menu says "Barangay Daanglungsod" (under the logo it is only the name, see HeaderBrand).
   const barangayText = barangayName ? `Barangay ${barangayName}` : "Barangay not set";
 
   // Close the menu first, then log out (the page's own function goes to Log In first, then signs out).
@@ -39,23 +39,7 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
 
   return (
     <View style={[styles.header, compact && styles.headerCompact]}>
-      {/* The logo picture "Logo (main)" has the word SakayNa inside it, so the barangay can't sit under the word.
-          Instead: the icon alone ("secondary" logo), and next to it a text column with "SakayNa" and, right under it,
-          the barangay name, both left-aligned and centered beside the icon. */}
-      <View style={styles.brandWrap}>
-        <BrandLogo variant="secondary" height={compact ? 36 : 44} accessible={false} />
-        <View style={styles.brandText}>
-          {/* Written like the logo: "Sakay" in the logo's own green, "Na" in black, bold italic.
-              The logo's exact lettering is a font the app doesn't load, so this uses the system's bold italic. */}
-          <Text style={[styles.wordmark, compact && styles.wordmarkCompact]} accessibilityRole="header">
-            <Text style={styles.wordmarkSakay}>Sakay</Text>
-            <Text style={styles.wordmarkNa}>Na</Text>
-          </Text>
-          <Text style={styles.barangay} numberOfLines={1}>
-            {barangayName || "Barangay not set"}
-          </Text>
-        </View>
-      </View>
+      <HeaderBrand barangay={barangay} compact={compact} />
 
       <View style={styles.rightWrap}>
         {onToggleSound ? (
@@ -106,6 +90,32 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
           </Pressable>
         </View>
       </Modal>
+    </View>
+  );
+}
+
+// The title at the left of the website headers: the icon, "SakayNa", and the barangay name under it.
+// Shared by the dispatcher header (above) and the Admin header (app/admin-home.jsx), so both always look the same.
+// barangay = the profile's barangay, e.g. "Daanglungsod, Toledo City": only "Daanglungsod" is shown (no repeated Toledo City).
+// The logo picture "Logo (main)" has the word SakayNa inside it, so the barangay can't sit under the word.
+// Instead: the icon alone ("secondary" logo), and next to it a text column with "SakayNa" and, right under it,
+// the barangay name, both left-aligned and centered beside the icon.
+export function HeaderBrand({ barangay = "", compact = false }) {
+  const barangayName = (barangay || "").replace(/,\s*Toledo City$/i, "").trim();
+  return (
+    <View style={styles.brandWrap}>
+      <BrandLogo variant="secondary" height={compact ? 36 : 44} accessible={false} />
+      <View style={styles.brandText}>
+        {/* Written like the logo: "Sakay" in the logo's own green, "Na" in black, bold italic.
+            The logo's exact lettering is a font the app doesn't load, so this uses the system's bold italic. */}
+        <Text style={[styles.wordmark, compact && styles.wordmarkCompact]} accessibilityRole="header">
+          <Text style={styles.wordmarkSakay}>Sakay</Text>
+          <Text style={styles.wordmarkNa}>Na</Text>
+        </Text>
+        <Text style={styles.barangay} numberOfLines={1}>
+          {barangayName || "Barangay not set"}
+        </Text>
+      </View>
     </View>
   );
 }

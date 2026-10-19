@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import ListSkeleton from "../../../components/ui/ListSkeleton";
 import { CORNER, DESIGN_COLORS, FONT } from "../../../constants/design";
@@ -9,6 +10,15 @@ import { formatShortDay, getDurationLabel } from "../../../lib/dates";
 const CANCELLED_GREY = "#B9C6C0";
 const PLOT_HEIGHT = 200;
 const Y_AXIS_WIDTH = 36;
+// The one-screen dashboard (wide windows): from this window width. Its chart is never shorter than MIN and never
+// taller than MAX (tall screens give the chart the extra height, up to MAX).
+const WIDE_WINDOW = 1280;
+const MIN_FILL_PLOT_HEIGHT = 80;
+// The dashboard cards' padding (12 above and below), and the smallest row the chart card fits in:
+// padding 24 + title row with the choices 48 + summary 34 + space above the plot 20 + plot 80 + day names 20 + gaps 24 = 250.
+const DASH_CARD_PADDING = 12;
+const TOP_ROW_MIN_HEIGHT = 250;
+const MAX_FILL_PLOT_HEIGHT = 360;
 
 // The three time choices for the chart. The value is what admin-home keeps in rangeLabel.
 const RANGE_OPTIONS = [
@@ -23,17 +33,35 @@ const getNiceStep = (max) => [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000].find
 const getPercent = (value, total) => (total ? Math.round((value / total) * 100) : 0);
 
 // A section on its own soft color with a round icon badge, like the dispatcher's Emergency request form.
-function Section({ icon, title, color = "green", children, style }) {
+// compact = the one-screen dashboard (wide windows): a smaller badge and a 17 title, so two rows of cards fit.
+// right = something on the right of the title (the chart's 7 days / 4 weeks / 12 months choices).
+// onContentHeight(height) = tells how tall the card's content naturally is (its words may wrap), so the dashboard
+// never makes a row shorter than that.
+function Section({ icon, title, color = "green", children, style, compact = false, right = null, onContentHeight }) {
   const orange = color === "peach";
-  return (
-    <View style={[styles.section, orange ? styles.peachSection : styles.greenSection, style]}>
-      <View style={styles.sectionTitleRow}>
-        <View style={[styles.sectionBadge, { backgroundColor: orange ? DESIGN_COLORS.sakayOrange : DESIGN_COLORS.hallGreen }]}>
-          <MaterialCommunityIcons name={icon} size={20} color={orange ? DESIGN_COLORS.ink : DESIGN_COLORS.paperWhite} />
-        </View>
-        <Text style={styles.sectionTitle}>{title}</Text>
+  const titleRow = (
+    <View style={styles.sectionTitleRow}>
+      <View style={[styles.sectionBadge, compact && styles.sectionBadgeCompact, { backgroundColor: orange ? DESIGN_COLORS.sakayOrange : DESIGN_COLORS.hallGreen }]}>
+        <MaterialCommunityIcons name={icon} size={compact ? 18 : 20} color={orange ? DESIGN_COLORS.ink : DESIGN_COLORS.paperWhite} />
       </View>
-      {children}
+      <Text style={[styles.sectionTitle, compact && styles.sectionTitleCompact]}>{title}</Text>
+      {right ? <View style={styles.sectionTitleRight}>{right}</View> : null}
+    </View>
+  );
+  return (
+    <View style={[styles.section, compact && styles.sectionCompact, orange ? styles.peachSection : styles.greenSection, style]}>
+      {onContentHeight ? (
+        // One wrapper (with the same gap), only as tall as its content, so its height can be measured.
+        <View style={compact ? styles.sectionInnerCompact : styles.sectionInner} onLayout={(event) => onContentHeight(Math.ceil(event.nativeEvent.layout.height))}>
+          {titleRow}
+          {children}
+        </View>
+      ) : (
+        <>
+          {titleRow}
+          {children}
+        </>
+      )}
     </View>
   );
 }
@@ -42,8 +70,9 @@ function Section({ icon, title, color = "green", children, style }) {
 function BarLine({ label, valueText, ratio }) {
   return (
     <View>
+      {/* A long label wraps onto a second line (narrow dashboard cards) instead of pushing the number out. */}
       <View style={styles.barLineTop}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, styles.barLineLabel]}>{label}</Text>
         <Text style={styles.barLineValue}>{valueText}</Text>
       </View>
       <View style={styles.barTrack}>
@@ -53,7 +82,11 @@ function BarLine({ label, valueText, ratio }) {
   );
 }
 
-function ActivityChart({ rangeLabel, activityBuckets }) {
+// fill = the one-screen dashboard: the plot takes all the height left in its card (measured with onLayout),
+// between MIN_FILL_PLOT_HEIGHT and MAX_FILL_PLOT_HEIGHT. Otherwise the plot is PLOT_HEIGHT tall, as before.
+function ActivityChart({ rangeLabel, activityBuckets, fill = false }) {
+  const [measuredHeight, setMeasuredHeight] = useState(MIN_FILL_PLOT_HEIGHT);
+  const plotHeight = fill ? Math.min(MAX_FILL_PLOT_HEIGHT, Math.max(MIN_FILL_PLOT_HEIGHT, measuredHeight)) : PLOT_HEIGHT;
   const range = RANGE_OPTIONS.find((option) => option.value === rangeLabel) || RANGE_OPTIONS[0];
   const total = activityBuckets.reduce((sum, bucket) => sum + bucket.value, 0);
   const max = Math.max(...activityBuckets.map((bucket) => bucket.value), 1);
@@ -85,26 +118,27 @@ function ActivityChart({ rangeLabel, activityBuckets }) {
       </View>
 
       <View
-        style={styles.plotRow}
+        style={[styles.plotRow, fill && styles.plotRowFill]}
+        onLayout={fill ? (event) => setMeasuredHeight(Math.round(event.nativeEvent.layout.height)) : undefined}
         accessible
         accessibilityLabel={`Ride requests per ${range.unit}: ${activityBuckets.map((bucket) => `${bucket.label} ${bucket.value}`).join(", ")}`}
       >
-        <View style={styles.yAxis}>
+        <View style={[styles.yAxis, { height: plotHeight }]}>
           {ticks.map((tick) => (
-            <Text key={tick} style={[styles.yLabel, { bottom: (tick / top) * PLOT_HEIGHT - 10 }]}>
+            <Text key={tick} style={[styles.yLabel, { bottom: (tick / top) * plotHeight - 10 }]}>
               {tick}
             </Text>
           ))}
         </View>
-        <View style={styles.plot}>
+        <View style={[styles.plot, { height: plotHeight }]}>
           {ticks.map((tick) => (
-            <View key={tick} style={[styles.gridLine, { bottom: (tick / top) * PLOT_HEIGHT }]} />
+            <View key={tick} style={[styles.gridLine, { bottom: (tick / top) * plotHeight }]} />
           ))}
           <View style={styles.columns}>
             {activityBuckets.map((bucket) => (
               <View key={bucket.key} style={styles.column}>
                 {bucket.value ? <Text style={styles.columnValue}>{bucket.value}</Text> : null}
-                <View style={[styles.columnBar, { height: bucket.value ? Math.max(6, (bucket.value / top) * PLOT_HEIGHT) : 0 }]} />
+                <View style={[styles.columnBar, { height: bucket.value ? Math.max(6, (bucket.value / top) * plotHeight) : 0 }]} />
               </View>
             ))}
           </View>
@@ -140,6 +174,17 @@ export default function AdminOverviewSection({
   atLimit,
   collectionLimit,
 }) {
+  // Wide window (1280 px and up, e.g. 1366 x 768): the one-screen dashboard, two rows of three cards, no scrolling.
+  // Narrower: the cards wrap and the panel scrolls, as before.
+  const { width } = useWindowDimensions();
+  const wide = width >= WIDE_WINDOW;
+  // How tall each bottom card's content is (measured; it grows when words wrap). Both dashboard rows are at least
+  // the tallest one plus the card's padding, and never less than the chart card needs (TOP_ROW_MIN_HEIGHT).
+  const [bottomContentHeights, setBottomContentHeights] = useState({});
+  const measureBottomCard = (key) => (height) =>
+    setBottomContentHeights((current) => (current[key] === height ? current : { ...current, [key]: height }));
+  const rowMinHeight = Math.max(TOP_ROW_MIN_HEIGHT, Math.max(0, ...Object.values(bottomContentHeights)) + 2 * DASH_CARD_PADDING);
+
   const totalRequests = numbers.active + numbers.completed + numbers.cancelled;
   const purposeTotal = numbers.medical + numbers.community + numbers.other;
   const purposeMax = Math.max(numbers.medical, numbers.community, numbers.other, 1);
@@ -152,13 +197,178 @@ export default function AdminOverviewSection({
   const waitScale = Math.max(averageDispatchTime || 0, averageResponseTime || 0, 1) * 1.15;
   const activeSplit = requestStatusStats.map((stat) => `${stat.value} ${stat.label}`).join(" · ");
 
-  return (
-    <View style={styles.page}>
-      <View style={styles.header}>
-        <View style={styles.headerBadge}>
-          <MaterialCommunityIcons name="chart-bar" size={24} color={DESIGN_COLORS.paperWhite} />
+  const rangeChoices = (
+    <View style={styles.rangeRow}>
+      {RANGE_OPTIONS.map((option) => {
+        const selected = option.value === rangeLabel;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => setRangeLabel(option.value)}
+            style={[styles.rangeChoice, selected && styles.rangeChoiceSelected]}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+          >
+            <Text style={[styles.rangeChoiceText, selected && styles.rangeChoiceTextSelected]}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  // The six cards. The same cards in both layouts; only where they sit (and how big the titles are) changes.
+  const needsAttention = (
+    <Section icon="bell-outline" title="Needs attention" color="peach" compact={wide} style={wide ? styles.dashCard : null}>
+      <View style={[styles.attentionRow, wide && styles.attentionRowStacked]}>
+        <View style={[styles.attentionItem, wide && styles.attentionItemStacked]}>
+          <Text style={styles.bigNumber}>{pendingApplicationsCount}</Text>
+          <View style={styles.attentionCopy}>
+            <Text style={styles.label}>Driver {pendingApplicationsCount === 1 ? "application" : "applications"} waiting</Text>
+            <Text style={styles.small}>Review them in Driver Applications.</Text>
+          </View>
         </View>
-        <View style={styles.headerCopy}>
+        <View style={[styles.attentionItem, wide && styles.attentionItemStacked]}>
+          <Text style={styles.bigNumber}>{numbers.active}</Text>
+          <View style={styles.attentionCopy}>
+            <Text style={styles.label}>Ride {numbers.active === 1 ? "request" : "requests"} still active</Text>
+            <Text style={styles.small}>Not completed or cancelled yet.</Text>
+          </View>
+        </View>
+      </View>
+    </Section>
+  );
+
+  const rideRequests = (
+    <Section icon="van-passenger" title="Ride requests" compact={wide} onContentHeight={wide ? measureBottomCard("rides") : undefined} style={wide ? styles.dashCard : styles.ridesSection}>
+      <Text style={styles.body}>
+        <Text style={styles.bigNumber}>{totalRequests}</Text>
+        <Text style={styles.label}> ride requests in total</Text>
+      </Text>
+
+      {/* One bar: orange Active, green Completed, grey Cancelled. Every color also has its word and number below. */}
+      <View
+        style={[styles.stackBar, wide && styles.stackBarCompact]}
+        accessible
+        accessibilityLabel={`${numbers.active} active, ${numbers.completed} completed, ${numbers.cancelled} cancelled`}
+      >
+        {totalRequests ? (
+          <>
+            {numbers.active ? <View style={[styles.stackPart, { flex: numbers.active, backgroundColor: DESIGN_COLORS.sakayOrange }]} /> : null}
+            {numbers.completed ? <View style={[styles.stackPart, { flex: numbers.completed, backgroundColor: DESIGN_COLORS.hallGreen }]} /> : null}
+            {numbers.cancelled ? <View style={[styles.stackPart, { flex: numbers.cancelled, backgroundColor: CANCELLED_GREY }]} /> : null}
+          </>
+        ) : (
+          <View style={[styles.stackPart, { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite }]} />
+        )}
+      </View>
+
+      <View style={[styles.legend, wide && styles.legendCompact]}>
+        <View>
+          <View style={styles.legendRow}>
+            <View style={[styles.legendDot, { backgroundColor: DESIGN_COLORS.sakayOrange }]} />
+            <Text style={[styles.label, styles.legendLabel]}>Active</Text>
+            <Text style={styles.barLineValue}>{numbers.active}</Text>
+          </View>
+          <Text style={[styles.small, styles.legendSub]}>{activeSplit}</Text>
+        </View>
+        <View style={styles.legendRow}>
+          <View style={[styles.legendDot, { backgroundColor: DESIGN_COLORS.hallGreen }]} />
+          <Text style={[styles.label, styles.legendLabel]}>Completed</Text>
+          <Text style={styles.barLineValue}>
+            {numbers.completed} <Text style={styles.small}>({getPercent(numbers.completed, totalRequests)}%)</Text>
+          </Text>
+        </View>
+        <View style={styles.legendRow}>
+          <View style={[styles.legendDot, { backgroundColor: CANCELLED_GREY }]} />
+          <Text style={[styles.label, styles.legendLabel]}>Cancelled</Text>
+          <Text style={styles.barLineValue}>
+            {numbers.cancelled} <Text style={styles.small}>({getPercent(numbers.cancelled, totalRequests)}%)</Text>
+          </Text>
+        </View>
+      </View>
+    </Section>
+  );
+
+  const requestsOverTime = (
+    <Section
+      icon="chart-bar"
+      title="Requests over time"
+      compact={wide}
+      right={wide ? rangeChoices : null}
+      style={wide ? [styles.dashCard, styles.dashChartCard] : styles.chartSection}
+    >
+      {wide ? null : rangeChoices}
+      <ActivityChart rangeLabel={rangeLabel} activityBuckets={activityBuckets} fill={wide} />
+    </Section>
+  );
+
+  const ridePurposes = (
+    <Section icon="clipboard-text-outline" title="What rides were for" compact={wide} onContentHeight={wide ? measureBottomCard("purposes") : undefined} style={wide ? styles.dashCard : styles.smallSection}>
+      {purposes.map((purpose) => (
+        <BarLine
+          key={purpose.label}
+          label={purpose.label}
+          valueText={`${purpose.value} (${getPercent(purpose.value, purposeTotal)}%)`}
+          ratio={purpose.value / purposeMax}
+        />
+      ))}
+    </Section>
+  );
+
+  const waitingTime = (
+    <Section icon="clock-outline" title="Waiting time" compact={wide} onContentHeight={wide ? measureBottomCard("waiting") : undefined} style={wide ? styles.dashCard : styles.smallSection}>
+      <Text style={styles.small}>Average, counted from when the request was sent.</Text>
+      <BarLine
+        label="Until a driver is assigned"
+        valueText={getDurationLabel(averageDispatchTime)}
+        ratio={(averageDispatchTime || 0) / waitScale}
+      />
+      <BarLine
+        label="Until the driver accepts"
+        valueText={getDurationLabel(averageResponseTime)}
+        ratio={(averageResponseTime || 0) / waitScale}
+      />
+    </Section>
+  );
+
+  const driversAndVehicles = (
+    <Section icon="account-group-outline" title="Drivers and vehicles" compact={wide} onContentHeight={wide ? measureBottomCard("drivers") : undefined} style={wide ? styles.dashCard : styles.smallSection}>
+      <View>
+        <Text style={styles.body}>
+          <Text style={styles.bigNumber}>{numbers.availableDrivers}</Text>
+          <Text style={styles.label}> of {numbers.drivers} drivers available now</Text>
+        </Text>
+        <View style={[styles.barTrack, styles.meterTrack]}>
+          <View style={[styles.barFill, { width: `${getPercent(numbers.availableDrivers, numbers.drivers)}%` }]} />
+        </View>
+      </View>
+      <View style={styles.facts}>
+        <View style={styles.fact}>
+          <Text style={styles.bigNumber}>{numbers.vehicles}</Text>
+          <Text style={styles.small}>Vehicles registered</Text>
+        </View>
+        <View style={styles.fact}>
+          <Text style={styles.bigNumber}>{dispatcherCount}</Text>
+          <Text style={styles.small}>Dispatcher {dispatcherCount === 1 ? "account" : "accounts"}</Text>
+        </View>
+      </View>
+    </Section>
+  );
+
+  const limitNote = atLimit ? (
+    <Text style={styles.small}>
+      The totals count every request. The waiting times, the chart, and the Pending / Assigned / In Progress split use only the
+      latest {collectionLimit} requests.
+    </Text>
+  ) : null;
+
+  return (
+    <View style={[styles.page, wide && styles.pageWide]}>
+      <View style={[styles.header, wide && styles.headerWide]}>
+        <View style={[styles.headerBadge, wide && styles.headerBadgeWide]}>
+          <MaterialCommunityIcons name="chart-bar" size={wide ? 22 : 24} color={DESIGN_COLORS.paperWhite} />
+        </View>
+        <View style={[styles.headerCopy, wide && styles.headerCopyWide]}>
           <Text style={styles.title}>Overview</Text>
           <Text style={styles.subtitle}>Ride requests, drivers and vehicles for all of Toledo City.</Text>
         </View>
@@ -166,154 +376,37 @@ export default function AdminOverviewSection({
 
       {loading ? (
         <ListSkeleton rows={3} label="Loading the overview" />
+      ) : wide ? (
+        // The one-screen dashboard (owner's layout, Oct 19). Top row: Needs attention (1/3) + the chart (2/3).
+        // Bottom row: four equal cards. The two rows split the height evenly; the chart fits inside its half.
+        // Neither row is ever shorter than rowMinHeight; if the window is too short for that, the panel scrolls instead.
+        <>
+          <View style={[styles.dashRow, styles.dashRowEqual, { minHeight: rowMinHeight }]}>
+            {needsAttention}
+            {requestsOverTime}
+          </View>
+          <View style={[styles.dashRow, styles.dashRowEqual, { minHeight: rowMinHeight }]}>
+            {rideRequests}
+            {driversAndVehicles}
+            {ridePurposes}
+            {waitingTime}
+          </View>
+          {limitNote}
+        </>
       ) : (
-      <>
-      <Section icon="bell-outline" title="Needs attention" color="peach">
-        <View style={styles.attentionRow}>
-          <View style={styles.attentionItem}>
-            <Text style={styles.bigNumber}>{pendingApplicationsCount}</Text>
-            <View style={styles.attentionCopy}>
-              <Text style={styles.label}>Driver {pendingApplicationsCount === 1 ? "application" : "applications"} waiting</Text>
-              <Text style={styles.small}>Review them in Driver Applications.</Text>
-            </View>
+        <>
+          {needsAttention}
+          <View style={styles.sectionRow}>
+            {rideRequests}
+            {requestsOverTime}
           </View>
-          <View style={styles.attentionItem}>
-            <Text style={styles.bigNumber}>{numbers.active}</Text>
-            <View style={styles.attentionCopy}>
-              <Text style={styles.label}>Ride {numbers.active === 1 ? "request" : "requests"} still active</Text>
-              <Text style={styles.small}>Not completed or cancelled yet.</Text>
-            </View>
+          <View style={styles.sectionRow}>
+            {ridePurposes}
+            {waitingTime}
+            {driversAndVehicles}
           </View>
-        </View>
-      </Section>
-
-      <View style={styles.sectionRow}>
-        <Section icon="van-passenger" title="Ride requests" style={styles.ridesSection}>
-          <Text style={styles.body}>
-            <Text style={styles.bigNumber}>{totalRequests}</Text>
-            <Text style={styles.label}> ride requests in total</Text>
-          </Text>
-
-          {/* One bar: orange Active, green Completed, grey Cancelled. Every color also has its word and number below. */}
-          <View
-            style={styles.stackBar}
-            accessible
-            accessibilityLabel={`${numbers.active} active, ${numbers.completed} completed, ${numbers.cancelled} cancelled`}
-          >
-            {totalRequests ? (
-              <>
-                {numbers.active ? <View style={[styles.stackPart, { flex: numbers.active, backgroundColor: DESIGN_COLORS.sakayOrange }]} /> : null}
-                {numbers.completed ? <View style={[styles.stackPart, { flex: numbers.completed, backgroundColor: DESIGN_COLORS.hallGreen }]} /> : null}
-                {numbers.cancelled ? <View style={[styles.stackPart, { flex: numbers.cancelled, backgroundColor: CANCELLED_GREY }]} /> : null}
-              </>
-            ) : (
-              <View style={[styles.stackPart, { flex: 1, backgroundColor: DESIGN_COLORS.paperWhite }]} />
-            )}
-          </View>
-
-          <View style={styles.legend}>
-            <View>
-              <View style={styles.legendRow}>
-                <View style={[styles.legendDot, { backgroundColor: DESIGN_COLORS.sakayOrange }]} />
-                <Text style={[styles.label, styles.legendLabel]}>Active</Text>
-                <Text style={styles.barLineValue}>{numbers.active}</Text>
-              </View>
-              <Text style={[styles.small, styles.legendSub]}>{activeSplit}</Text>
-            </View>
-            <View style={styles.legendRow}>
-              <View style={[styles.legendDot, { backgroundColor: DESIGN_COLORS.hallGreen }]} />
-              <Text style={[styles.label, styles.legendLabel]}>Completed</Text>
-              <Text style={styles.barLineValue}>
-                {numbers.completed} <Text style={styles.small}>({getPercent(numbers.completed, totalRequests)}%)</Text>
-              </Text>
-            </View>
-            <View style={styles.legendRow}>
-              <View style={[styles.legendDot, { backgroundColor: CANCELLED_GREY }]} />
-              <Text style={[styles.label, styles.legendLabel]}>Cancelled</Text>
-              <Text style={styles.barLineValue}>
-                {numbers.cancelled} <Text style={styles.small}>({getPercent(numbers.cancelled, totalRequests)}%)</Text>
-              </Text>
-            </View>
-          </View>
-        </Section>
-
-        <Section icon="chart-bar" title="Requests over time" style={styles.chartSection}>
-          <View style={styles.rangeRow}>
-            {RANGE_OPTIONS.map((option) => {
-              const selected = option.value === rangeLabel;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setRangeLabel(option.value)}
-                  style={[styles.rangeChoice, selected && styles.rangeChoiceSelected]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                >
-                  <Text style={[styles.rangeChoiceText, selected && styles.rangeChoiceTextSelected]}>{option.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <ActivityChart rangeLabel={rangeLabel} activityBuckets={activityBuckets} />
-        </Section>
-      </View>
-
-      <View style={styles.sectionRow}>
-        <Section icon="clipboard-text-outline" title="What rides were for" style={styles.smallSection}>
-          {purposes.map((purpose) => (
-            <BarLine
-              key={purpose.label}
-              label={purpose.label}
-              valueText={`${purpose.value} (${getPercent(purpose.value, purposeTotal)}%)`}
-              ratio={purpose.value / purposeMax}
-            />
-          ))}
-        </Section>
-
-        <Section icon="clock-outline" title="Waiting time" style={styles.smallSection}>
-          <Text style={styles.small}>Average, counted from when the request was sent.</Text>
-          <BarLine
-            label="Until a driver is assigned"
-            valueText={getDurationLabel(averageDispatchTime)}
-            ratio={(averageDispatchTime || 0) / waitScale}
-          />
-          <BarLine
-            label="Until the driver accepts"
-            valueText={getDurationLabel(averageResponseTime)}
-            ratio={(averageResponseTime || 0) / waitScale}
-          />
-        </Section>
-
-        <Section icon="account-group-outline" title="Drivers and vehicles" style={styles.smallSection}>
-          <View>
-            <Text style={styles.body}>
-              <Text style={styles.bigNumber}>{numbers.availableDrivers}</Text>
-              <Text style={styles.label}> of {numbers.drivers} drivers available now</Text>
-            </Text>
-            <View style={[styles.barTrack, styles.meterTrack]}>
-              <View style={[styles.barFill, { width: `${getPercent(numbers.availableDrivers, numbers.drivers)}%` }]} />
-            </View>
-          </View>
-          <View style={styles.facts}>
-            <View style={styles.fact}>
-              <Text style={styles.bigNumber}>{numbers.vehicles}</Text>
-              <Text style={styles.small}>Vehicles registered</Text>
-            </View>
-            <View style={styles.fact}>
-              <Text style={styles.bigNumber}>{dispatcherCount}</Text>
-              <Text style={styles.small}>Dispatcher {dispatcherCount === 1 ? "account" : "accounts"}</Text>
-            </View>
-          </View>
-        </Section>
-      </View>
-
-      {atLimit ? (
-        <Text style={styles.small}>
-          The totals count every request. The waiting times, the chart, and the Pending / Assigned / In Progress split use only the
-          latest {collectionLimit} requests.
-        </Text>
-      ) : null}
-      </>
+          {limitNote}
+        </>
       )}
     </View>
   );
@@ -321,6 +414,37 @@ export default function AdminOverviewSection({
 
 const styles = StyleSheet.create({
   page: { width: "100%", gap: 16, padding: 10 },
+  // ---- The one-screen dashboard (wide windows, owner's layout Oct 19): top row Needs attention (1/3) + chart (2/3),
+  // growing into the rest of the panel so the chart gets the most space; bottom row four equal cards at their natural
+  // height. All text stays 15 or more; long labels wrap instead of shrinking. ----
+  pageWide: { flexGrow: 1, gap: 12, padding: 0 },
+  headerWide: { gap: 12 },
+  headerBadgeWide: { width: 40, height: 40 },
+  // Title and subtitle on one line when there is room.
+  headerCopyWide: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: 12 },
+  dashRow: { flexDirection: "row", gap: 12, alignItems: "stretch" },
+  // Both rows get an equal share of the height (flexBasis 0); minHeight (in the code) keeps them from getting too short.
+  dashRowEqual: { flexGrow: 1, flexBasis: 0 },
+  // Equal shares of the row (the chart card gets a bigger share). minWidth 0 lets long words wrap instead of pushing.
+  dashCard: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  // The chart card: twice the share of Needs attention (about 2/3 of the row).
+  dashChartCard: { flexGrow: 2 },
+  sectionCompact: { padding: DASH_CARD_PADDING, gap: 8 },
+  // The measured wrapper inside a card (onContentHeight): the same gaps as the card itself.
+  sectionInner: { gap: 12 },
+  sectionInnerCompact: { gap: 8 },
+  sectionBadgeCompact: { width: 28, height: 28 },
+  sectionTitleCompact: { fontSize: 17, lineHeight: 22 },
+  // The chart choices at the right end of the title line.
+  sectionTitleRight: { marginLeft: "auto" },
+  // In the tall top row, the two numbers sit in the middle of their card.
+  attentionRowStacked: { flexGrow: 1, flexDirection: "column", justifyContent: "center", gap: 16 },
+  // A thinner ride bar and closer legend lines in the narrow bottom cards.
+  stackBarCompact: { height: 16 },
+  legendCompact: { gap: 6 },
+  attentionItemStacked: { flexBasis: "auto", flexGrow: 0 },
+  // The plot takes the height left in the chart card; the bars sit at its bottom.
+  plotRowFill: { flexGrow: 1, minHeight: MIN_FILL_PLOT_HEIGHT, marginTop: 20, alignItems: "flex-end" },
   header: { flexDirection: "row", alignItems: "center", gap: 16 },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
   headerCopy: { flex: 1, minWidth: 0 },
@@ -357,6 +481,7 @@ const styles = StyleSheet.create({
   legendSub: { marginLeft: 26 },
 
   barLineTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 },
+  barLineLabel: { flexShrink: 1 },
   barLineValue: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
   barTrack: { height: 14, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
   barFill: { height: "100%", borderRadius: 999, backgroundColor: DESIGN_COLORS.hallGreen },
