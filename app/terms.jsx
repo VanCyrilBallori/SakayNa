@@ -68,11 +68,19 @@ const sections = [
   },
 ];
 
+// The page at /terms (website footer, links).
 export default function TermsOfService() {
+  return <TermsContent />;
+}
+
+// The page's content. The phone's ☰ menu shows it in a pop-up window on top of the menu (ResidentSideMenu.jsx),
+// so Back returns straight to the open menu. onBack = close that window. onOpenPrivacy = show the Privacy Policy
+// in the same window (a normal link would open the page hidden under the window).
+export function TermsContent({ onBack, onOpenPrivacy }) {
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <View style={styles.card}>
-        <PageBackButton />
+        <PageBackButton onPress={onBack} />
 
         <Text style={styles.title}>SakayNa Terms of Service</Text>
         <Text style={styles.updated}>Last updated: September 28, 2026</Text>
@@ -88,14 +96,20 @@ export default function TermsOfService() {
           </View>
         ))}
 
-        <Link
-          href="/privacy"
-          target={Platform.OS === "web" ? "_blank" : undefined}
-          rel={Platform.OS === "web" ? "noopener noreferrer" : undefined}
-          style={styles.link}
-        >
-          Read our Privacy Policy
-        </Link>
+        {onOpenPrivacy ? (
+          <Text style={styles.link} onPress={onOpenPrivacy} accessibilityRole="link">
+            Read our Privacy Policy
+          </Text>
+        ) : (
+          <Link
+            href="/privacy"
+            target={Platform.OS === "web" ? "_blank" : undefined}
+            rel={Platform.OS === "web" ? "noopener noreferrer" : undefined}
+            style={styles.link}
+          >
+            Read our Privacy Policy
+          </Link>
+        )}
       </View>
     </ScrollView>
   );

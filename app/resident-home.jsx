@@ -959,7 +959,6 @@ export default function ResidentHome() {
       <ResidentSideMenu
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
-        onReopen={() => setMenuOpen(true)}
         name={displayName}
         profile={activeProfile}
         officePhone={officePhone}

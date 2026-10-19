@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Alert, Animated, Easing, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -11,18 +11,21 @@ import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../../../cons
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getAccountStatusLabel } from "../../../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser } from "../../../lib/session";
+import { PrivacyContent } from "../../../app/privacy";
+import { TermsContent } from "../../../app/terms";
 
 // The ☰ menu on the resident home screen. It slides in from the left.
 // Tapping the dark area, the X, or the phone's Back button closes it.
 // officePhone = the city office number the admin saved (publicOfficePhone). It can be empty.
 // The driver home uses this menu too. It gives no onOpenHistory (no "Request History" row; Ride history is on
 // the Availability page) and its own onLogOut, which saves "Offline" before signing out.
-// onReopen = opens this menu again (the screen's setMenuOpen(true)): used when coming back from Terms or Privacy.
-export default function ResidentSideMenu({ visible, onClose, onReopen, name, profile, officePhone, onOpenHistory, onOpenProfile, onOpenSettings, onLogOut }) {
+export default function ResidentSideMenu({ visible, onClose, name, profile, officePhone, onOpenHistory, onOpenProfile, onOpenSettings, onLogOut }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [helpOpen, setHelpOpen] = useState(false);
+  // The legal page shown on top of the menu on the phone: "terms", "privacy", or "" (none).
+  const [legalPage, setLegalPage] = useState("");
 
   // The menu covers most of the screen but leaves a strip of the home screen showing on the right.
   const panelWidth = Math.min(340, width * 0.86);
@@ -42,25 +45,19 @@ export default function ResidentSideMenu({ visible, onClose, onReopen, name, pro
     action();
   };
 
-  // Website legal pages open separately; the phone app keeps its normal page navigation.
-  // On the phone, closing Terms or Privacy brings back this menu (where they were opened), not the bare home page.
-  const reopenOnReturnRef = useRef(false);
-  const openLegalPage = (path) => {
+  // Terms of Service / Privacy Policy. page = "terms" or "privacy".
+  // Website: a new tab, and the menu closes. Phone: a pop-up window on top of the menu, which stays open underneath.
+  // (The menu is a pop-up window too, and Android always draws those above normal pages, so a normal page would
+  // need the menu closed first and opened again on the way back: that was the flash.) Back closes only the top window.
+  const openLegalPage = (page) => {
     if (Platform.OS === "web") {
-      window.open(path, "_blank", "noopener,noreferrer");
+      onClose();
+      window.open(`/${page}`, "_blank", "noopener,noreferrer");
       return;
     }
-    reopenOnReturnRef.current = Boolean(onReopen);
-    router.push(path);
+    setLegalPage(page);
   };
-  // Runs each time the home screen is shown again (also the first time, when nothing was opened yet).
-  useFocusEffect(
-    useCallback(() => {
-      if (!reopenOnReturnRef.current) return;
-      reopenOnReturnRef.current = false;
-      onReopen?.();
-    }, [onReopen])
-  );
+  const closeLegalPage = () => setLegalPage("");
 
   const logOut = async () => {
     if (onLogOut) {
@@ -125,8 +122,8 @@ export default function ResidentSideMenu({ visible, onClose, onReopen, name, pro
               <View style={styles.divider} />
 
               <MenuRow icon="phone-outline" label="Help / Contact office" onPress={() => go(() => setHelpOpen(true))} />
-              <MenuRow icon="file-document-outline" label="Terms of Service" onPress={() => go(() => openLegalPage("/terms"))} />
-              <MenuRow icon="shield-lock-outline" label="Privacy Policy" onPress={() => go(() => openLegalPage("/privacy"))} />
+              <MenuRow icon="file-document-outline" label="Terms of Service" onPress={() => openLegalPage("terms")} />
+              <MenuRow icon="shield-lock-outline" label="Privacy Policy" onPress={() => openLegalPage("privacy")} />
 
               {/* Pushes Log out to the bottom of the menu when there is room. */}
               <View style={styles.spacer} />
@@ -135,6 +132,19 @@ export default function ResidentSideMenu({ visible, onClose, onReopen, name, pro
               <MenuRow icon="logout" label="Log out" onPress={logOut} />
             </ScrollView>
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Terms / Privacy on the phone: a full-screen window on top of the open menu. The phone's Back button and
+          "← Back" close it, and the menu is still there. A green strip goes behind the clock, so its white icons show. */}
+      <Modal visible={Boolean(legalPage)} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={closeLegalPage}>
+        <View style={[styles.legalWindow, { paddingBottom: insets.bottom }]}>
+          <View style={[styles.legalClockArea, { height: insets.top }]} />
+          {legalPage === "privacy" ? (
+            <PrivacyContent onBack={closeLegalPage} onOpenTerms={() => setLegalPage("terms")} />
+          ) : (
+            <TermsContent onBack={closeLegalPage} onOpenPrivacy={() => setLegalPage("privacy")} />
+          )}
         </View>
       </Modal>
 
@@ -200,6 +210,9 @@ function MenuRow({ icon, label, onPress }) {
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(20, 33, 28, 0.55)" },
+  // The Terms / Privacy window: the same light page color as those pages, the home header green behind the clock.
+  legalWindow: { flex: 1, backgroundColor: "#F6F7F3" },
+  legalClockArea: { backgroundColor: GREEN[600] },
   // White panel, 16 corners on the right, a soft shadow to the right (DESIGN.md Style).
   panel: {
     position: "absolute",
