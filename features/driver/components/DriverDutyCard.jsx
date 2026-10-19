@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../../../constants/design";
 import { db } from "../../../firebase";
 import { getTimestampMillis } from "../../../lib/dates";
 import { formatDutyDuration, formatManilaTime, formatTimer, summarizeShift } from "../../../lib/dutyTime";
@@ -276,6 +276,8 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
           <Pressable style={styles.dismissArea} onPress={closeBreakSheet} accessibilityRole="button" accessibilityLabel="Close" />
 
           <Animated.View style={[styles.sheet, { maxHeight: sheetHeight, transform: [{ translateY: sheetY }] }]} accessibilityViewIsModal>
+            {/* The grabber bar: shows this is a sheet that came up from the bottom (DESIGN.md Style "Bottom sheets"). */}
+            <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle} accessibilityRole="header">
                 Take a break
@@ -405,35 +407,37 @@ function SummaryRow({ label, value, last = false }) {
 }
 
 const styles = StyleSheet.create({
-  // Card corner 24, flat (no shadow), one big word in Board size. Padding 16 (compact, Task 3.12).
-  card: { borderRadius: 24, paddingHorizontal: 16, paddingVertical: 16 },
-  cardOffDuty: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1, borderColor: DESIGN_COLORS.rule },
-  cardAvailable: { backgroundColor: DESIGN_COLORS.hallGreen },
+  // Card corner 16 with a Level 1 shadow (DESIGN.md Style), one big word in Board size. Padding 16 (compact, Task 3.12).
+  // The card's color still shows the duty status, always with the status word.
+  card: { borderRadius: CORNER.card, paddingHorizontal: 16, paddingVertical: 16, ...SHADOW.level1 },
+  // Off duty: a white card with a thin neutral edge (white on off-white needs the edge in daylight).
+  cardOffDuty: { backgroundColor: NEUTRAL[0], borderWidth: 1, borderColor: NEUTRAL[200] },
+  cardAvailable: { backgroundColor: GREEN[600] },
   // Light peach with an orange edge and dark words, like the resident's "account pending" banner
   // (approved by the group, Oct 2026). Bright orange stays for small accents only (the edge, the icon).
   // 2 dp edge, so the padding is 2 less to keep the same inside size.
-  cardOnBreak: { backgroundColor: DESIGN_COLORS.peachTint, borderWidth: 2, borderColor: DESIGN_COLORS.sakayOrange, paddingHorizontal: 14, paddingVertical: 14 },
+  cardOnBreak: { backgroundColor: ORANGE[100], borderWidth: 2, borderColor: ORANGE[500], paddingHorizontal: 14, paddingVertical: 14 },
   // Same deep green as the "Assigned" / "On the way" bands.
-  cardOnRun: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  rideWaitingText: { marginTop: 16, fontSize: 17, lineHeight: 24, fontFamily: FONT.bold },
+  cardOnRun: { backgroundColor: GREEN[800] },
+  rideWaitingText: { marginTop: 16, fontSize: 17, lineHeight: 24, fontFamily: FONT.semiBold },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  availableDot: { width: 16, height: 16, borderRadius: 999, backgroundColor: DESIGN_COLORS.paperWhite },
+  availableDot: { width: 16, height: 16, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[0] },
   statusWord: { flexShrink: 1, fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold },
-  timerText: { marginTop: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, fontVariant: ["tabular-nums"] },
+  timerText: { marginTop: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, fontVariant: ["tabular-nums"] },
   bodyText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24 },
   smallText: { marginTop: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium },
-  inkText: { color: DESIGN_COLORS.ink },
-  inkMutedText: { color: DESIGN_COLORS.inkMuted },
-  whiteText: { color: DESIGN_COLORS.paperWhite },
+  inkText: { color: NEUTRAL[900] },
+  inkMutedText: { color: NEUTRAL[700] },
+  whiteText: { color: NEUTRAL[0] },
 
-  // Buttons: corner 16, main actions at least 56 tall, full width on a phone.
+  // Buttons: pills (DESIGN.md Style), main actions at least 56 tall, full width on a phone.
   mainButton: {
     width: "100%",
     maxWidth: 480,
     minHeight: 56,
     marginTop: 20,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
@@ -443,67 +447,71 @@ const styles = StyleSheet.create({
   // The card's own buttons (Task 3.12): 48 tall, 16 above. The pop-up buttons keep mainButton's 56.
   dutyButton: { minHeight: 48, marginTop: 16 },
   // Punch in / Resume duty: the main action, 56 tall (DESIGN.md main button).
-  punchInButton: { minHeight: 56, backgroundColor: DESIGN_COLORS.hallGreen },
+  punchInButton: { minHeight: 56, backgroundColor: GREEN[600] },
   // Start break + Punch out side by side; each at least 140 wide, so they wrap to two rows when they don't fit.
   buttonRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 16 },
   halfButton: { width: undefined, flexGrow: 1, flexBasis: 140, marginTop: 0 },
-  punchInPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  punchInText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.paperWhite },
-  whiteButton: { backgroundColor: DESIGN_COLORS.paperWhite },
-  whiteButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  whiteButtonText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
-  buttonDisabled: { backgroundColor: DESIGN_COLORS.boardTint, borderWidth: 1.5, borderColor: DESIGN_COLORS.rule },
-  buttonDisabledText: { color: DESIGN_COLORS.inkMuted },
-  outlineOnGreen: { borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },
-  outlineOnGreenPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  outlineOnGreenText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
+  punchInPressed: { backgroundColor: GREEN[800] },
+  punchInText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
+  whiteButton: { backgroundColor: NEUTRAL[0] },
+  whiteButtonPressed: { backgroundColor: NEUTRAL[100] },
+  whiteButtonText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: GREEN[700] },
+  // Disabled (DESIGN.md Style): neutral 200 fill with neutral 700 words, and the words say why.
+  buttonDisabled: { backgroundColor: NEUTRAL[200] },
+  buttonDisabledText: { color: NEUTRAL[700] },
+  outlineOnGreen: { borderWidth: 2, borderColor: NEUTRAL[0] },
+  outlineOnGreenPressed: { backgroundColor: GREEN[800] },
+  outlineOnGreenText: { flexShrink: 1, textAlign: "center", fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
   buttonBusy: { opacity: 0.75 },
 
-  messageBox: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
-  messageBoxError: { backgroundColor: DESIGN_COLORS.redTint },
-  messageText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  messageTextError: { color: DESIGN_COLORS.emergencyRed, fontFamily: FONT.semiBold },
+  messageBox: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 12, borderRadius: CORNER.card, backgroundColor: NEUTRAL[100] },
+  messageBoxError: { backgroundColor: RED[50] },
+  messageText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[900] },
+  messageTextError: { color: RED[600], fontFamily: FONT.semiBold },
 
-  // Pop-up (same look as the resident's "Send emergency alert?" pop-up, in green).
-  overlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16, backgroundColor: "rgba(0,0,0,0.28)" },
-  confirmCard: { width: "100%", maxWidth: 440, alignItems: "center", padding: 24, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
-  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
-  confirmText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink, textAlign: "center" },
+  // "Punch out?" pop-up (DESIGN.md Style dialog): white, 16 corners, Level 3 shadow, the dark backdrop behind.
+  overlay: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16, backgroundColor: "rgba(20, 33, 28, 0.55)" },
+  confirmCard: { width: "100%", maxWidth: 440, alignItems: "center", padding: 24, borderRadius: CORNER.card, backgroundColor: NEUTRAL[0], ...SHADOW.level3 },
+  confirmTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  confirmText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24, color: NEUTRAL[900], textAlign: "center" },
   summaryList: { alignSelf: "stretch", marginTop: 16 },
   summaryRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: 8, paddingVertical: 10 },
-  summaryRowLine: { borderBottomWidth: 1, borderBottomColor: DESIGN_COLORS.rule },
-  summaryLabel: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  summaryValue: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
-  confirmButton: { alignSelf: "stretch", maxWidth: undefined, backgroundColor: DESIGN_COLORS.hallGreen },
-  confirmButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
+  summaryRowLine: { borderBottomWidth: 1, borderBottomColor: NEUTRAL[200] },
+  summaryLabel: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700] },
+  summaryValue: { fontSize: 17, lineHeight: 24, fontFamily: FONT.semiBold, color: NEUTRAL[900], fontVariant: ["tabular-nums"] },
+  confirmButton: { alignSelf: "stretch", maxWidth: undefined, backgroundColor: GREEN[600] },
+  confirmButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
+  // "Keep working" / "Cancel": white pill with a grey edge.
   cancelButton: {
     alignSelf: "stretch",
     minHeight: 56,
     marginTop: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
+    borderColor: NEUTRAL[500],
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    backgroundColor: NEUTRAL[0],
   },
-  cancelPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  cancelText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  cancelPressed: { backgroundColor: NEUTRAL[100] },
+  cancelText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
 
-  // "Take a break" sheet (slides up; top corners 24).
+  // "Take a break" sheet (DESIGN.md Style bottom sheet): slides up, grabber bar, top corners 24, Level 3 shadow.
   sheetBackdrop: { flex: 1, justifyContent: "flex-end" },
-  sheetBackdropColor: { backgroundColor: "rgba(0,0,0,0.4)" },
+  sheetBackdropColor: { backgroundColor: "rgba(20, 33, 28, 0.55)" },
   dismissArea: { flex: 1 },
   // flexShrink lets the sheet get shorter (instead of going off the top) when the keyboard is open.
-  sheet: { flexShrink: 1, width: "100%", maxWidth: 640, alignSelf: "center", backgroundColor: DESIGN_COLORS.paperWhite, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" },
-  sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingLeft: 24, paddingRight: 12, paddingTop: 16, paddingBottom: 8 },
-  sheetTitle: { flex: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
-  closeButton: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  sheet: { flexShrink: 1, width: "100%", maxWidth: 640, alignSelf: "center", backgroundColor: NEUTRAL[0], borderTopLeftRadius: CORNER.sheet, borderTopRightRadius: CORNER.sheet, overflow: "hidden", ...SHADOW.level3 },
+  grabber: { alignSelf: "center", width: 40, height: 5, marginTop: 10, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[300] },
+  sheetHeader: { flexDirection: "row", alignItems: "center", gap: 12, paddingLeft: 24, paddingRight: 12, paddingTop: 6, paddingBottom: 8 },
+  sheetTitle: { flex: 1, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  closeButton: { width: 48, height: 48, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center" },
   sheetScroll: { flexGrow: 0 },
   sheetContent: { paddingHorizontal: 24 },
-  sheetIntro: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
-  fieldLabel: { marginTop: 24, marginBottom: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  sheetIntro: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700] },
+  fieldLabel: { marginTop: 24, marginBottom: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  // A list row for each kind of break: 12 corners (DESIGN.md Style selected list rows), at least 56 tall.
   breakOption: {
     flexDirection: "row",
     alignItems: "center",
@@ -511,24 +519,26 @@ const styles = StyleSheet.create({
     minHeight: 60,
     marginBottom: 8,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: CORNER.input,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    backgroundColor: NEUTRAL[0],
     overflow: "hidden",
   },
-  breakOptionSelected: { borderWidth: 2, borderColor: DESIGN_COLORS.hallGreen, backgroundColor: DESIGN_COLORS.boardTint },
-  breakOptionText: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  breakOptionTextSelected: { color: DESIGN_COLORS.hallGreenDeep },
+  // The chosen break: a thicker green edge, a light green row and a filled radio (not color alone).
+  breakOptionSelected: { borderWidth: 2, borderColor: GREEN[600], backgroundColor: GREEN[50] },
+  breakOptionText: { flex: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  breakOptionTextSelected: { color: GREEN[800] },
+  // Input (DESIGN.md Style): white, 12 corners, a 1.5 grey edge, 17 words.
   noteInput: {
     fontFamily: FONT.regular,
     minHeight: 56,
     paddingHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: CORNER.input,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
+    borderColor: NEUTRAL[500],
     fontSize: 17,
-    color: DESIGN_COLORS.ink,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    color: NEUTRAL[900],
+    backgroundColor: NEUTRAL[0],
   },
 });

@@ -4,7 +4,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import FeedbackMessage from "../../../components/ui/FeedbackMessage";
 import { MISSION_STATUSES } from "../../../constants/app";
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL } from "../../../constants/design";
 import { getDestinationCoordinates, getDestinationLabel, getPickupCoordinates, getPickupLabel } from "../utils/driverMissionMapper";
 
 // One navigation button that follows the ride step (driver-home-restyle-plan.md Piece 4a):
@@ -35,7 +35,7 @@ export default function DriverNavigateButton({ request, status }) {
   return (
     <View>
       <Pressable style={({ pressed }) => [styles.navButton, pressed && styles.navButtonPressed]} onPress={openMap} accessibilityRole="button">
-        <MaterialCommunityIcons name="navigation-variant-outline" size={24} color={DESIGN_COLORS.hallGreen} />
+        <MaterialCommunityIcons name="navigation-variant-outline" size={24} color={GREEN[700]} />
         <Text style={styles.navButtonText}>{toDestination ? "Navigate to destination" : "Navigate to pickup"}</Text>
       </Pressable>
       <FeedbackMessage message={warning} tone="warning" />
@@ -44,19 +44,19 @@ export default function DriverNavigateButton({ request, status }) {
 }
 
 const styles = StyleSheet.create({
-  // White with a grey-green edge, 56 tall (same look as before the move).
+  // A secondary pill (DESIGN.md Style): white with a grey edge and green words, 56 tall.
   navButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     minHeight: 56,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    backgroundColor: NEUTRAL[0],
   },
-  navButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  navButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
+  navButtonPressed: { backgroundColor: NEUTRAL[100] },
+  navButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: GREEN[700] },
 });

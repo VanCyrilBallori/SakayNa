@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, NEUTRAL, SHADOW } from "../../../constants/design";
 import { formatManilaTime } from "../../../lib/dutyTime";
 
 // The ride steps after Accept, in order. "field" = the time each step already saves on the assignment
@@ -69,8 +69,9 @@ export default function DriverRideSteps({ assignment, status }) {
 const CIRCLE_SIZE = 28;
 
 const styles = StyleSheet.create({
-  card: { padding: 16, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
-  title: { marginBottom: 12, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  // A white card (DESIGN.md Style): 16 corners, a thin neutral edge and a Level 1 shadow.
+  card: { padding: 16, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  title: { marginBottom: 12, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
   row: { flexDirection: "row", gap: 12 },
   markerColumn: { width: CIRCLE_SIZE, alignItems: "center" },
   circle: { width: CIRCLE_SIZE, height: CIRCLE_SIZE, alignItems: "center", justifyContent: "center" },
@@ -78,13 +79,13 @@ const styles = StyleSheet.create({
   nextDot: { width: 20, height: 20, borderRadius: 10, backgroundColor: DESIGN_COLORS.sakayOrange },
   notYetRing: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: DESIGN_COLORS.controlOutline, backgroundColor: DESIGN_COLORS.paperWhite },
   // Decorative line between the circles (DESIGN.md: Rule is for decoration only).
-  line: { flex: 1, width: 2, minHeight: 12, backgroundColor: DESIGN_COLORS.rule },
+  line: { flex: 1, width: 2, minHeight: 12, backgroundColor: NEUTRAL[300] },
   // The words line up with the middle of the 28 circle (22 line + 3 above).
   textRow: { flex: 1, flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", columnGap: 8, paddingTop: 3 },
   textRowSpace: { paddingBottom: 16 },
-  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  notYetLabel: { fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
-  time: { fontSize: 15, lineHeight: 22, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
+  label: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  notYetLabel: { fontFamily: FONT.medium, color: NEUTRAL[700] },
+  time: { fontSize: 15, lineHeight: 22, fontFamily: FONT.medium, color: NEUTRAL[700] },
   // Small orange words: Orange Deep (DESIGN.md), never the bright orange on white.
   next: { fontSize: 15, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.orangeDeep },
 });

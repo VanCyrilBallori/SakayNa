@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, AppState, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import AppButton from "../components/ui/AppButton";
 import CloseButton from "../components/ui/CloseButton";
 import DriverDutyCard from "../features/driver/components/DriverDutyCard";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
@@ -30,7 +31,7 @@ import { normalizePhilippinePhone } from "../features/resident/utils/requestVali
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import DeleteAccountSheet from "../components/DeleteAccountSheet";
 import LeafletMap from "../components/LeafletMap";
-import { CORNER, DESIGN_COLORS, FONT, NEUTRAL, RED } from "../constants/design";
+import { CORNER, FONT, GREEN, NEUTRAL, ORANGE, RED, SHADOW } from "../constants/design";
 import { auth, db } from "../firebase";
 import {
   DRIVER_AVAILABILITY_SHIFT,
@@ -788,14 +789,13 @@ export default function DriverHome() {
               <>
                 {cancelledNotice ? (
                   <View style={styles.cancelledNotice} accessibilityRole="alert">
-                    <FontAwesome name="ban" size={24} color="#B42318" />
+                    <MaterialCommunityIcons name="cancel" size={24} color={RED[600]} />
                     <View style={styles.cancelledNoticeCopy}>
                       <Text style={styles.cancelledNoticeTitle}>The resident cancelled this ride: {cancelledNotice.title}</Text>
                       {cancelledNotice.reason ? <Text style={styles.cancelledNoticeText}>Reason: {cancelledNotice.reason}</Text> : null}
                       <Text style={styles.cancelledNoticeText}>It was removed from your rides. You and the vehicle are free again.</Text>
-                      <TouchableOpacity style={styles.cancelledNoticeButton} onPress={() => setCancelledNotice(null)} accessibilityRole="button">
-                        <Text style={styles.cancelledNoticeButtonText}>OK</Text>
-                      </TouchableOpacity>
+                      {/* White, not red: OK only closes the note (red is for emergencies and "can't be undone"). */}
+                      <AppButton label="OK" variant="secondary" onPress={() => setCancelledNotice(null)} style={styles.cancelledNoticeButton} />
                     </View>
                   </View>
                 ) : null}
@@ -807,23 +807,15 @@ export default function DriverHome() {
                     <Text style={styles.unableNoticeTitle}>You told dispatch you can&apos;t do this ride ({unableNotice.reason}).</Text>
                     <Text style={styles.unableNoticeText}>Dispatch will give it to another driver.</Text>
                     <Text style={styles.unableNoticeText}>If you can&apos;t take more rides, take a break or punch out.</Text>
-                    <Pressable
-                      style={({ pressed }) => [styles.unableNoticeMainButton, pressed && styles.unableNoticeMainButtonPressed]}
+                    <AppButton
+                      label="Open Availability"
                       onPress={() => {
                         setUnableNotice(null);
                         setActivePage("availability");
                       }}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.unableNoticeMainButtonText}>Open Availability</Text>
-                    </Pressable>
-                    <Pressable
-                      style={({ pressed }) => [styles.unableNoticeOkButton, pressed && styles.tabButtonPressed]}
-                      onPress={() => setUnableNotice(null)}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.unableNoticeOkButtonText}>OK</Text>
-                    </Pressable>
+                      style={styles.unableNoticeMainButton}
+                    />
+                    <AppButton label="OK" variant="secondary" onPress={() => setUnableNotice(null)} />
                   </View>
                 ) : null}
 
@@ -853,8 +845,11 @@ export default function DriverHome() {
                     )}
                   </>
                 ) : (
+                  // Empty state (DESIGN.md Style): a 48 icon in a 96 tinted circle, a title and one sentence.
                   <View style={styles.inboxEmpty}>
-                    <MaterialCommunityIcons name="email-outline" size={48} color={DESIGN_COLORS.inkMuted} />
+                    <View style={styles.inboxEmptyIcon}>
+                      <MaterialCommunityIcons name="email-outline" size={48} color={GREEN[700]} />
+                    </View>
                     <Text style={styles.inboxEmptyTitle}>Inbox empty</Text>
                     <Text style={styles.inboxEmptyText}>Rides assigned to you by dispatch will appear here.</Text>
                   </View>
@@ -880,7 +875,8 @@ export default function DriverHome() {
         </ScrollView>
         )}
 
-        {/* Bottom bar: icon + word for each page. The open page is green and bold.
+        {/* Bottom bar: icon + word for each page, the same as the resident bar (Task 3.18; owner's choice Oct 19,
+            replacing Task 3.1's no-pill look). The open page has a green-100 pill behind its icon and a bold green word.
             An orange dot on Ride while a new ride waits for Accept. Words wrap with large text, never cut off. */}
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom }]}>
           <View style={styles.bottomBarRow} accessibilityRole="tablist">
@@ -896,8 +892,8 @@ export default function DriverHome() {
                   accessibilityState={{ selected: isOpen }}
                   accessibilityLabel={showDot ? `${page.label}, new ride waiting` : page.label}
                 >
-                  <View style={styles.tabIcon}>
-                    <MaterialCommunityIcons name={page.icon} size={24} color={isOpen ? DESIGN_COLORS.hallGreen : DESIGN_COLORS.inkMuted} />
+                  <View style={[styles.tabIcon, isOpen && styles.tabIconOpen]}>
+                    <MaterialCommunityIcons name={page.icon} size={28} color={isOpen ? GREEN[700] : NEUTRAL[700]} />
                     {showDot ? <View style={styles.tabDot} /> : null}
                   </View>
                   <Text style={[styles.tabLabel, isOpen && styles.tabLabelOpen]}>{page.label}</Text>
@@ -907,41 +903,45 @@ export default function DriverHome() {
           </View>
         </View>
 
-        <Modal visible={reviewOpen} transparent animationType="fade" onRequestClose={() => setReviewOpen(false)}>
-          <View style={styles.modalOverlay}>
+        <Modal visible={reviewOpen} transparent animationType="fade" onRequestClose={() => setReviewOpen(false)} statusBarTranslucent navigationBarTranslucent>
+          <View style={[styles.modalOverlay, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}>
+            {/* A dialog (DESIGN.md Style). Each detail is a small grey label with the value under it,
+                like the resident's Request details. It scrolls when the phone's text is large. */}
             <View style={[styles.reviewCard, compact && styles.reviewCardCompact]}>
-              <Text style={styles.reviewTitle}>Ride details</Text>
-              <Text style={styles.reviewLine}>Passenger: {getPassengerName(request, assignedTransfer)}</Text>
-              {request?.contactNumber ? (
-                <TouchableOpacity onPress={() => startPhoneCall(request.contactNumber)} accessibilityRole="button" accessibilityLabel={`Call passenger at ${request.contactNumber}`}>
-                  <Text style={styles.reviewLine}>
-                    Phone: <Text style={styles.phoneLink}>{request.contactNumber}</Text>
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={styles.reviewLine}>Phone: Not provided</Text>
-              )}
-              {/* Emergency-form rides say "Patients" and "Emergency: …", like the ride card (emergency-request-form-plan.md Part B). */}
-              {isEmergencyFormRide(request) ? (
-                <Text style={styles.reviewLine}>Patients: {getPatientCountText(request)}</Text>
-              ) : (
-                <Text style={styles.reviewLine}>Passengers: {getPassengerCountText(request)}</Text>
-              )}
-              <Text style={styles.reviewLine}>Assistance: {getAssistanceText(request)}</Text>
-              {request?.additionalNotes ? <Text style={styles.reviewLine}>Notes: {request.additionalNotes}</Text> : null}
-              <Text style={styles.reviewLine}>
-                Request: {isEmergencyFormRide(request) ? getEmergencyRideTitle(request) : request?.emergencyType ?? request?.title ?? "Transport Request"}
-              </Text>
-              {request?.summary ? <Text style={styles.reviewLine}>Summary: {request.summary}</Text> : null}
-              {request?.level ? <Text style={styles.reviewLine}>Priority: {request.level}</Text> : null}
-              <Text style={styles.reviewLine}>When: {getWhenText(request)}</Text>
-              <Text style={styles.reviewLine}>Pickup: {formatPlace(request?.pickupLocation) ?? "Pickup location pending"}</Text>
-              {request?.pickupDetails ? <Text style={styles.reviewLine}>Landmark: {request.pickupDetails}</Text> : null}
-              <Text style={styles.reviewLine}>Destination: {request?.destination ?? "Nearest available response center"}</Text>
-              <Text style={styles.reviewLine}>Vehicle: {getVehicleName(request, assignedTransfer)}</Text>
-              <TouchableOpacity style={styles.reviewCloseButton} onPress={() => setReviewOpen(false)}>
-                <Text style={styles.reviewCloseButtonText}>Close</Text>
-              </TouchableOpacity>
+              <ScrollView style={styles.editorScroll} showsVerticalScrollIndicator={false}>
+                <Text style={styles.reviewTitle} accessibilityRole="header">Ride details</Text>
+                <DetailLine label="Passenger" value={getPassengerName(request, assignedTransfer)} />
+                {request?.contactNumber ? (
+                  <Pressable
+                    style={({ pressed }) => [styles.detailLine, pressed && styles.detailLinePressed]}
+                    onPress={() => startPhoneCall(request.contactNumber)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Call passenger at ${request.contactNumber}`}
+                  >
+                    <Text style={styles.detailLabel}>Phone</Text>
+                    <Text style={[styles.detailValue, styles.phoneLink]}>{request.contactNumber}</Text>
+                  </Pressable>
+                ) : (
+                  <DetailLine label="Phone" value="Not provided" />
+                )}
+                {/* Emergency-form rides say "Patients" and "Emergency: …", like the ride card (emergency-request-form-plan.md Part B). */}
+                {isEmergencyFormRide(request) ? (
+                  <DetailLine label="Patients" value={getPatientCountText(request)} />
+                ) : (
+                  <DetailLine label="Passengers" value={getPassengerCountText(request)} />
+                )}
+                <DetailLine label="Assistance" value={getAssistanceText(request)} />
+                {request?.additionalNotes ? <DetailLine label="Notes" value={request.additionalNotes} /> : null}
+                <DetailLine label="Request" value={isEmergencyFormRide(request) ? getEmergencyRideTitle(request) : request?.emergencyType ?? request?.title ?? "Transport Request"} />
+                {request?.summary ? <DetailLine label="Summary" value={request.summary} /> : null}
+                {request?.level ? <DetailLine label="Priority" value={request.level} /> : null}
+                <DetailLine label="When" value={getWhenText(request)} />
+                <DetailLine label="Pickup" value={formatPlace(request?.pickupLocation) ?? "Pickup location pending"} />
+                {request?.pickupDetails ? <DetailLine label="Landmark" value={request.pickupDetails} /> : null}
+                <DetailLine label="Destination" value={request?.destination ?? "Nearest available response center"} />
+                <DetailLine label="Vehicle" value={getVehicleName(request, assignedTransfer)} last />
+                <AppButton label="Close" variant="secondary" onPress={() => setReviewOpen(false)} style={styles.reviewCloseButton} />
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -990,36 +990,36 @@ export default function DriverHome() {
         />
 
         <Modal visible={profileEditorOpen} transparent animationType="fade" onRequestClose={() => setProfileEditorOpen(false)}>
-          <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-            <View style={[styles.profileEditorCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.profileEditorCard, compact && styles.reviewCardCompact]}>
               <CloseButton onPress={() => setProfileEditorOpen(false)} label="Close profile" style={styles.closeInCorner} />
 
-              <Text style={[styles.reviewTitle, { color: theme.text }]}>Profile</Text>
-              <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Driver account details currently saved in your profile.</Text>
+              <Text style={styles.modalTitle}>Profile</Text>
+              <Text style={styles.profileEditorSubtitle}>Driver account details currently saved in your profile.</Text>
 
-              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Full Name</Text>
-                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.fullName || displayName || "Not set"}</Text>
+              <View style={styles.profileInfoCard}>
+                <Text style={styles.profileInfoLabel}>Full name</Text>
+                <Text style={styles.profileInfoValue}>{profile?.fullName || displayName || "Not set"}</Text>
               </View>
 
-              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Email Address</Text>
-                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.email || authUser?.email || "Not set"}</Text>
+              <View style={styles.profileInfoCard}>
+                <Text style={styles.profileInfoLabel}>Email address</Text>
+                <Text style={styles.profileInfoValue}>{profile?.email || authUser?.email || "Not set"}</Text>
               </View>
 
-              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Phone Number</Text>
-                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.phoneNumber || profile?.phone || "Not set"}</Text>
+              <View style={styles.profileInfoCard}>
+                <Text style={styles.profileInfoLabel}>Phone number</Text>
+                <Text style={styles.profileInfoValue}>{profile?.phoneNumber || profile?.phone || "Not set"}</Text>
               </View>
 
-              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Barangay</Text>
-                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.barangay || "Not set"}</Text>
+              <View style={styles.profileInfoCard}>
+                <Text style={styles.profileInfoLabel}>Barangay</Text>
+                <Text style={styles.profileInfoValue}>{profile?.barangay || "Not set"}</Text>
               </View>
 
-              <View style={[styles.profileInfoCard, { backgroundColor: theme.surfaceMuted }]}>
-                <Text style={[styles.profileInfoLabel, { color: theme.secondaryText }]}>Address</Text>
-                <Text style={[styles.profileInfoValue, { color: theme.text }]}>{profile?.address || "Not set"}</Text>
+              <View style={styles.profileInfoCard}>
+                <Text style={styles.profileInfoLabel}>Address</Text>
+                <Text style={styles.profileInfoValue}>{profile?.address || "Not set"}</Text>
               </View>
             </View>
           </View>
@@ -1028,72 +1028,63 @@ export default function DriverHome() {
         <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)} statusBarTranslucent navigationBarTranslucent>
           {/* The keyboard helper adds space for the keyboard; the card gets shorter and scrolls,
               so the box being typed in stays visible. Full-screen (translucent) so the space is measured correctly. */}
-          <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay, paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-            <View style={[styles.profileEditorCard, styles.editorCardFit, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <KeyboardAvoidingView behavior="padding" style={[styles.modalOverlay, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+            <View style={[styles.profileEditorCard, styles.editorCardFit, compact && styles.reviewCardCompact]}>
               <ScrollView style={styles.editorScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                 <CloseButton onPress={() => setSettingsOpen(false)} label="Close settings" style={styles.closeInCorner} />
 
-                <Text style={[styles.reviewTitle, { color: theme.text }]}>Settings</Text>
-                <Text style={[styles.profileEditorSubtitle, { color: theme.mutedText }]}>Update your name, phone number, email or address.</Text>
+                <Text style={styles.modalTitle}>Settings</Text>
+                <Text style={styles.profileEditorSubtitle}>Update your name, phone number, email or address.</Text>
 
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Full Name</Text>
+                <Text style={styles.profileFieldLabel}>Full Name</Text>
                 <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  style={styles.profileInput}
                   value={settingsForm.fullName}
                   onChangeText={(value) => setSettingsForm((current) => ({ ...current, fullName: value }))}
                   placeholder="Full name"
-                  placeholderTextColor={theme.subtleText}
+                  placeholderTextColor={NEUTRAL[600]}
                 />
 
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Phone Number</Text>
+                <Text style={styles.profileFieldLabel}>Phone Number</Text>
                 <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  style={styles.profileInput}
                   value={settingsForm.phoneNumber}
                   onChangeText={(value) => setSettingsForm((current) => ({ ...current, phoneNumber: value }))}
                   placeholder="Phone number"
-                  placeholderTextColor={theme.subtleText}
+                  placeholderTextColor={NEUTRAL[600]}
                   keyboardType="phone-pad"
                 />
 
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Email Address</Text>
+                <Text style={styles.profileFieldLabel}>Email Address</Text>
                 <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  style={styles.profileInput}
                   value={settingsForm.email}
                   onChangeText={(value) => setSettingsForm((current) => ({ ...current, email: value }))}
                   placeholder="Email address"
-                  placeholderTextColor={theme.subtleText}
+                  placeholderTextColor={NEUTRAL[600]}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
 
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Barangay</Text>
-                {/* Read-only: the barangay is locked after sign-up. Only an Admin can change it. */}
-                <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.surfaceMuted, borderColor: theme.border, color: theme.mutedText }]}
-                  value={settingsForm.barangay || "Not set"}
-                  editable={false}
-                />
-                <Text style={[styles.profileFieldHint, { color: theme.mutedText }]}>Only an admin can change your barangay.</Text>
+                <Text style={styles.profileFieldLabel}>Barangay</Text>
+                {/* Read-only: the barangay is locked after sign-up. Only an Admin can change it. Grey box = can't be typed in. */}
+                <TextInput style={[styles.profileInput, styles.profileInputLocked]} value={settingsForm.barangay || "Not set"} editable={false} />
+                <Text style={styles.profileFieldHint}>Only an admin can change your barangay.</Text>
 
-                <Text style={[styles.profileFieldLabel, { color: theme.text }]}>Address</Text>
+                <Text style={styles.profileFieldLabel}>Address</Text>
                 <TextInput
-                  style={[styles.profileInput, { backgroundColor: theme.inputBg, borderColor: theme.border, color: theme.text }]}
+                  style={styles.profileInput}
                   value={settingsForm.address}
                   onChangeText={(value) => setSettingsForm((current) => ({ ...current, address: value }))}
                   placeholder="Street or landmark"
-                  placeholderTextColor={theme.subtleText}
+                  placeholderTextColor={NEUTRAL[600]}
                 />
 
                 {profileError ? <Text style={styles.errorText}>{profileError}</Text> : null}
                 {profileMessage ? <Text style={styles.feedbackText}>{profileMessage}</Text> : null}
 
-                <TouchableOpacity
-                  style={[styles.primarySaveButton, savingProfile && styles.actionButtonDisabled]}
-                  onPress={saveDriverSettings}
-                  disabled={savingProfile}
-                >
-                  <Text style={styles.primarySaveButtonText}>{savingProfile ? "Saving..." : "Save Settings"}</Text>
-                </TouchableOpacity>
+                {/* A green pill, 56 tall. While saving: the grey disabled look (DESIGN.md Style). */}
+                <AppButton label={savingProfile ? "Saving..." : "Save Settings"} onPress={saveDriverSettings} disabled={savingProfile} style={styles.primarySaveButton} />
 
                 {/* Delete account (Task 3.15): last, apart from the rest, red words on white. */}
                 <View style={styles.dangerDivider} />
@@ -1115,6 +1106,16 @@ export default function DriverHome() {
         <DeleteAccountSheet visible={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} blockedReason={deleteBlockedReason} />
       </View>
     </>
+  );
+}
+
+// One line of the Ride details pop-up: a small grey label, the value under it, a thin line under both (not after the last).
+function DetailLine({ label, value, last = false }) {
+  return (
+    <View style={[styles.detailLine, last && styles.detailLineLast]}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -1141,8 +1142,8 @@ const styles = StyleSheet.create({
   dangerDivider: { height: 1, marginTop: 24, backgroundColor: NEUTRAL[200] },
   deleteAccountButton: { marginTop: 16, minHeight: 48, paddingHorizontal: 20, borderRadius: CORNER.pill, borderWidth: 1.5, borderColor: RED[600], backgroundColor: NEUTRAL[0], alignItems: "center", justifyContent: "center" },
   deleteAccountButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: RED[600] },
-  // The whole screen: header, page, bottom bar. Board Tint behind the white cards (DESIGN.md).
-  page: { flex: 1, backgroundColor: DESIGN_COLORS.boardTint },
+  // The whole screen: header, page, bottom bar. The off-white page behind the white cards (DESIGN.md Style).
+  page: { flex: 1, backgroundColor: NEUTRAL[50] },
   accessPage: { flex: 1, backgroundColor: "#F5F7F6", alignItems: "center", justifyContent: "center", gap: 10, padding: 24 },
   accessText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#335E50", textAlign: "center" },
   // Place strip: Hall Green across the top, white text, the ☰ button at its left (same as the resident home).
@@ -1153,17 +1154,17 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingRight: 16,
     paddingBottom: 4,
-    backgroundColor: DESIGN_COLORS.hallGreen,
+    backgroundColor: GREEN[600],
   },
-  // 48 x 48 so it is easy to tap. 16 corners (DESIGN.md button corner), darker green while pressed.
+  // 48 x 48 so it is easy to tap. Fully round (DESIGN.md Style: buttons are pills), darker green while pressed.
   menuButton: {
     width: 48,
     height: 48,
-    borderRadius: 16,
+    borderRadius: CORNER.pill,
     alignItems: "center",
     justifyContent: "center",
   },
-  menuButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
+  menuButtonPressed: { backgroundColor: GREEN[800] },
   placeNames: { flex: 1, flexDirection: "row", flexWrap: "wrap", paddingVertical: 10 },
   placeText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: "#FFFFFF" },
   // The open page (driver-pages-plan.md Step 1). flexGrow: 1 = at least as tall as the space, so the map can fill it.
@@ -1172,55 +1173,57 @@ const styles = StyleSheet.create({
   // One column, 16 side margins, 12 between parts. At most 640 wide so lines stay easy to read on the website.
   pageColumn: { flex: 1, width: "100%", maxWidth: 640, alignSelf: "center", padding: 16, gap: 12 },
   // Map page: the map takes all the space left above the button, but never less than 280.
-  bigMap: { flex: 1, minHeight: 280, borderRadius: 24, overflow: "hidden", backgroundColor: DESIGN_COLORS.paperWhite },
-  // Availability page (Task 3.12): no gap, so the history panel can tuck 24 under the card.
+  // A map frame (DESIGN.md Style): 16 corners and a thin neutral edge.
+  bigMap: { flex: 1, minHeight: 280, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], overflow: "hidden", backgroundColor: NEUTRAL[0] },
+  // Availability page (Task 3.12): no gap, so the history panel can tuck 16 under the card.
   availabilityPage: { gap: 0 },
   // The duty card: drawn above the history (zIndex) and at most 60% of the page; scrolls inside if taller.
   dutyCardArea: { flexGrow: 0, maxHeight: "60%", zIndex: 1 },
-  // The history: a white panel that starts 24 up, behind the card's round bottom edge, and scrolls by itself.
-  historyPanel: { flex: 1, marginTop: -24, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite },
-  historyList: { paddingTop: 36, paddingBottom: 16, paddingHorizontal: 16 },
-  historyHeading: { marginBottom: 4, fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  // The history: a white card (16 corners, thin edge, Level 1 shadow) that starts 16 up, behind the duty card's
+  // round bottom edge, and scrolls by itself.
+  historyPanel: { flex: 1, marginTop: -CORNER.card, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
+  historyList: { paddingTop: CORNER.card + 12, paddingBottom: 16, paddingHorizontal: 16 },
+  historyHeading: { marginBottom: 4, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
   // One short row per ride: title + status on top, place · date under it. A thin line between rows.
   historyRow: { paddingVertical: 12, gap: 4 },
-  historyRowLine: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
+  historyRowLine: { borderTopWidth: 1, borderTopColor: NEUTRAL[200] },
   historyRowTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  historyTitle: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  historyStatus: { paddingHorizontal: 10, paddingVertical: 2, borderRadius: 999, overflow: "hidden", backgroundColor: DESIGN_COLORS.boardTint, fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  historyMeta: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
-  mapNote: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  // Bottom bar: white, a thin line on top. paddingBottom (in the code) keeps it above the phone's own buttons.
-  bottomBar: { borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
-  bottomBarRow: { flexDirection: "row", width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 8, paddingVertical: 4 },
+  historyTitle: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  // Status badge (DESIGN.md Style): a pill with a tinted background and the status word.
+  historyStatus: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: CORNER.pill, overflow: "hidden", backgroundColor: NEUTRAL[100], fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  historyMeta: { fontFamily: FONT.medium, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
+  mapNote: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700], textAlign: "center" },
+  // Bottom bar (same as the resident bar, Task 3.18): white, a thin line and a soft shadow on top.
+  // paddingBottom (in the code) keeps it above the phone's own buttons.
+  bottomBar: { borderTopWidth: 1, borderTopColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], boxShadow: "0 -2px 8px rgba(20, 33, 28, 0.06)" },
+  bottomBarRow: { flexDirection: "row", width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 8, paddingVertical: 6 },
   // Three equal buttons, at least 56 tall (DESIGN.md main action size).
-  tabButton: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 4, borderRadius: 16 },
-  tabButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  tabIcon: { paddingHorizontal: 16, paddingVertical: 2, borderRadius: 16 },
-  // The open page is shown by a green icon and a green bold word (bold = more than color). No box behind the icon.
+  tabButton: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 4, borderRadius: CORNER.card },
+  // The open page: a green-100 pill behind the icon (a shape, so it is not color alone) and a bold green word.
+  tabIcon: { paddingHorizontal: 20, paddingVertical: 4, borderRadius: CORNER.pill },
+  tabIconOpen: { backgroundColor: GREEN[100] },
   // The "new ride" dot: Sakay Orange, fully round, with a white ring.
-  tabDot: { position: "absolute", top: 0, right: 10, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite, backgroundColor: DESIGN_COLORS.sakayOrange },
-  tabLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  tabLabelOpen: { fontFamily: FONT.extraBold, color: DESIGN_COLORS.hallGreen },
-  // Empty inbox card.
-  inboxEmpty: { paddingHorizontal: 24, paddingVertical: 32, borderRadius: 24, backgroundColor: DESIGN_COLORS.paperWhite, alignItems: "center" },
-  inboxEmptyTitle: { marginTop: 12, fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink, textAlign: "center" },
-  inboxEmptyText: { fontFamily: FONT.regular, marginTop: 8, maxWidth: 360, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted, textAlign: "center" },
-  cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: "#B42318", backgroundColor: "#FDE8E7" },
+  tabDot: { position: "absolute", top: 0, right: 12, width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: NEUTRAL[0], backgroundColor: ORANGE[500] },
+  tabLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700], textAlign: "center" },
+  tabLabelOpen: { fontFamily: FONT.bold, color: GREEN[700] },
+  // "Inbox empty" (DESIGN.md Style empty state) on a white card: 16 corners, thin edge, Level 1 shadow.
+  inboxEmpty: { paddingHorizontal: 16, paddingVertical: 24, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], alignItems: "center", ...SHADOW.level1 },
+  inboxEmptyIcon: { width: 96, height: 96, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[50] },
+  inboxEmptyTitle: { marginTop: 16, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  inboxEmptyText: { fontFamily: FONT.regular, marginTop: 4, maxWidth: 360, fontSize: 17, lineHeight: 24, color: NEUTRAL[700], textAlign: "center" },
+  // "The resident cancelled this ride": a red-tint info box with a thin red edge (16 corners).
+  cancelledNotice: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 16, borderRadius: CORNER.card, borderWidth: 1, borderColor: RED[600], backgroundColor: RED[50] },
   cancelledNoticeCopy: { flex: 1 },
-  // The note after "I can't do this ride": a Peach Tint box with card corners, buttons stacked (main one on top).
-  unableNotice: { padding: 16, gap: 8, borderRadius: 24, backgroundColor: DESIGN_COLORS.peachTint },
-  unableNoticeTitle: { fontSize: 17, lineHeight: 24, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
-  unableNoticeText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  unableNoticeMainButton: { minHeight: 48, marginTop: 4, paddingHorizontal: 16, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.hallGreen },
-  unableNoticeMainButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  unableNoticeMainButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.paperWhite },
-  unableNoticeOkButton: { minHeight: 48, paddingHorizontal: 16, borderRadius: 16, borderWidth: 1.5, borderColor: DESIGN_COLORS.controlOutline, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.paperWhite },
-  unableNoticeOkButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  cancelledNoticeTitle: { fontSize: 17, lineHeight: 23, fontFamily: FONT.extraBold, color: "#7A1A12" },
-  cancelledNoticeText: { fontFamily: FONT.regular, marginTop: 4, fontSize: 15, lineHeight: 21, color: "#7A1A12" },
-  cancelledNoticeButton: { alignSelf: "flex-start", minHeight: 48, marginTop: 10, paddingHorizontal: 24, borderRadius: 12, backgroundColor: "#B42318", alignItems: "center", justifyContent: "center" },
-  cancelledNoticeButtonText: { fontSize: 16, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  phoneLink: { fontSize: 17, fontFamily: FONT.bold, color: "#06774B", textDecorationLine: "underline" },
+  // The note after "I can't do this ride": a Peach Tint box (16 corners, thin orange edge, like the resident's
+  // "account pending" banner), buttons stacked (main one on top).
+  unableNotice: { padding: 16, gap: 8, borderRadius: CORNER.card, borderWidth: 1, borderColor: ORANGE[300], backgroundColor: ORANGE[100] },
+  unableNoticeTitle: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  unableNoticeText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[900] },
+  unableNoticeMainButton: { marginTop: 4 },
+  cancelledNoticeTitle: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: RED[700] },
+  cancelledNoticeText: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 24, color: RED[700] },
+  cancelledNoticeButton: { alignSelf: "flex-start", minWidth: 120, marginTop: 12 },
+  phoneLink: { fontFamily: FONT.semiBold, color: GREEN[700], textDecorationLine: "underline" },
   mapBlankTitle: { marginTop: 14, fontSize: 24, fontFamily: FONT.extraBold, color: "#2F3B46", textAlign: "center" },
   mapBlankText: { fontFamily: FONT.regular, marginTop: 10, fontSize: 15, lineHeight: 23, color: "#65727C", textAlign: "center" },
   driverActionRow: { padding: 14, flexDirection: "row", flexWrap: "wrap", gap: 10, borderTopWidth: 1, borderTopColor: "#E4EBE7", backgroundColor: "#FFFFFF" },
@@ -1252,29 +1255,41 @@ const styles = StyleSheet.create({
   schedulePrimaryButton: { marginTop: 16, minHeight: 48, borderRadius: 12, backgroundColor: "#06774B", alignItems: "center", justifyContent: "center", paddingHorizontal: 14 },
   schedulePrimaryButtonText: { fontSize: 14, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   actionButtonDisabled: { opacity: 0.65 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.28)", alignItems: "center", justifyContent: "center", padding: 20 },
-  reviewCard: { width: "100%", maxWidth: 520, padding: 22, borderRadius: 20, backgroundColor: "#FFFFFF" },
-  reviewCardCompact: { padding: 18 },
-  reviewTitle: { fontSize: 26, fontFamily: FONT.extraBold, color: "#111111" },
-  reviewLine: { fontFamily: FONT.regular, marginTop: 12, fontSize: 15, lineHeight: 22, color: "#40504A" },
-  reviewCloseButton: { marginTop: 22, minHeight: 54, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
-  reviewCloseButtonText: { fontSize: 16, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  // Settings / Change Password cards: flexShrink lets the card get shorter when the keyboard is open, and the
+  // ---- Pop-ups (DESIGN.md Style): a dark see-through backdrop, white dialogs with 16 corners and a
+  // Level 3 shadow, pill buttons. The same look as the resident's Profile and Settings. ----
+  modalOverlay: { flex: 1, backgroundColor: "rgba(20, 33, 28, 0.55)", alignItems: "center", justifyContent: "center", padding: 16 },
+  // Ride details. flexShrink + the ScrollView inside: it gets shorter and scrolls instead of going off the screen.
+  reviewCard: { width: "100%", maxWidth: 560, flexShrink: 1, padding: 24, borderRadius: CORNER.card, backgroundColor: NEUTRAL[0], ...SHADOW.level3 },
+  reviewCardCompact: { padding: 20 },
+  reviewTitle: { marginBottom: 4, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  // One detail: a small grey label (sentence case) and the value under it, a thin line between details.
+  detailLine: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: NEUTRAL[100] },
+  detailLineLast: { borderBottomWidth: 0 },
+  detailLinePressed: { backgroundColor: GREEN[50] },
+  detailLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  detailValue: { marginTop: 2, fontSize: 17, lineHeight: 24, fontFamily: FONT.regular, color: NEUTRAL[900] },
+  reviewCloseButton: { minHeight: 56, marginTop: 16 },
+  // Settings card: flexShrink lets the card get shorter when the keyboard is open, and the
   // ScrollView inside (flexGrow 0 = only as tall as its content) scrolls instead.
   editorCardFit: { flexShrink: 1 },
   editorScroll: { flexGrow: 0 },
-  profileEditorCard: { width: "100%", maxWidth: 520, borderRadius: 20, borderWidth: 1, padding: 22 },
-  // The X at the top-right of Profile, Settings and Change Password.
+  // Profile and Settings dialogs.
+  profileEditorCard: { width: "100%", maxWidth: 560, padding: 24, borderRadius: CORNER.card, backgroundColor: NEUTRAL[0], ...SHADOW.level3 },
+  // The X at the top-right of Profile and Settings.
   closeInCorner: { alignSelf: "flex-end" },
-  profileEditorSubtitle: { fontFamily: FONT.regular, marginTop: 8, fontSize: 14, lineHeight: 21 },
-  profileInfoCard: { marginTop: 16, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14 },
-  profileInfoLabel: { fontSize: 12, fontFamily: FONT.extraBold, textTransform: "uppercase", letterSpacing: 0.4 },
-  profileInfoValue: { marginTop: 6, fontSize: 15, lineHeight: 22, fontFamily: FONT.bold },
-  profileFieldLabel: { marginTop: 20, fontSize: 15, fontFamily: FONT.bold },
-  profileInput: { fontFamily: FONT.regular, marginTop: 10, minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, fontSize: 15, color: "#111111" },
-  profileFieldHint: { marginTop: 6, fontSize: 14, fontFamily: FONT.semiBold },
-  primarySaveButton: { marginTop: 28, minHeight: 52, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#06774B" },
-  primarySaveButtonText: { fontSize: 15, fontFamily: FONT.extraBold, color: "#FFFFFF" },
-  feedbackText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#335E50" },
-  errorText: { marginTop: 16, fontSize: 15, fontFamily: FONT.bold, color: "#B42318" },
+  modalTitle: { marginTop: 4, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
+  profileEditorSubtitle: { fontFamily: FONT.regular, marginTop: 4, fontSize: 15, lineHeight: 20, color: NEUTRAL[700], textAlign: "center" },
+  // One profile detail: a tinted box with a small grey label (sentence case, no ALL-CAPS) and the value.
+  profileInfoCard: { marginTop: 12, borderRadius: CORNER.input, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: NEUTRAL[100] },
+  profileInfoLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  profileInfoValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  profileFieldLabel: { marginTop: 16, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  // Inputs (DESIGN.md Style): white, 12 corners, a 1.5 grey edge, 17 words.
+  profileInput: { fontFamily: FONT.regular, marginTop: 8, minHeight: 52, borderWidth: 1.5, borderColor: NEUTRAL[500], borderRadius: CORNER.input, paddingHorizontal: 14, backgroundColor: NEUTRAL[0], fontSize: 17, color: NEUTRAL[900] },
+  // The read-only Barangay box: grey fill, lighter edge, grey words, so it doesn't look like it can be typed in.
+  profileInputLocked: { borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[100], color: NEUTRAL[700] },
+  profileFieldHint: { marginTop: 6, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  primarySaveButton: { marginTop: 24, minHeight: 56 },
+  feedbackText: { marginTop: 16, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: GREEN[700] },
+  errorText: { marginTop: 16, fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: RED[600] },
 });

@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DESIGN_COLORS, FONT } from "../../../constants/design";
+import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, ORANGE, SHADOW } from "../../../constants/design";
 import { startPhoneCall } from "../../../lib/phoneCall";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getScheduledDate, getWhenText } from "../../resident/utils/requestMapper";
 import { getDestinationLabel, getEmergencyRideTitle, getPatientCountText, getPickupLabel, isEmergencyFormRide } from "../utils/driverMissionMapper";
@@ -133,7 +133,7 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
               accessibilityRole="button"
               accessibilityLabel={`Call passenger at ${request.contactNumber}`}
             >
-              <MaterialCommunityIcons name="phone-outline" size={24} color={DESIGN_COLORS.hallGreen} />
+              <MaterialCommunityIcons name="phone-outline" size={24} color={GREEN[700]} />
               <Text style={styles.callButtonText}>Call passenger</Text>
             </Pressable>
           ) : (
@@ -148,7 +148,7 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
           accessibilityLabel="See ride details"
         >
           <Text style={styles.detailsLinkText}>Ride details</Text>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={DESIGN_COLORS.hallGreen} />
+          <MaterialCommunityIcons name="chevron-right" size={24} color={GREEN[700]} />
         </Pressable>
       </View>
     </View>
@@ -158,20 +158,23 @@ export default function DriverRideCard({ request, assignment, missionStatus, veh
 const MARKER_SIZE = 14;
 
 const styles = StyleSheet.create({
+  // A white card (DESIGN.md Style): 16 corners, a thin neutral edge and a Level 1 shadow (like the resident's "Your ride").
   card: {
-    borderRadius: 24,
-    backgroundColor: DESIGN_COLORS.paperWhite,
-    // Keeps the band's corners inside the card's rounded corners.
-    overflow: "hidden",
+    borderRadius: CORNER.card,
+    borderWidth: 1,
+    borderColor: NEUTRAL[200],
+    backgroundColor: NEUTRAL[0],
+    ...SHADOW.level1,
   },
-  // "Title" size (DESIGN.md): the one big thing on the card.
-  band: { minHeight: 56, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12 },
-  bandText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.extraBold },
+  // "Title" size (DESIGN.md): the one big thing on the card. The band follows the card's top corners
+  // (1 less than the card, because of the card's 1dp edge), so the shadow is not cut off by overflow.
+  band: { minHeight: 56, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12, borderTopLeftRadius: CORNER.card - 1, borderTopRightRadius: CORNER.card - 1 },
+  bandText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold },
   body: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  title: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  title: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
   whenRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
-  whenText: { flex: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
-  scheduledWhen: { fontFamily: FONT.bold, color: DESIGN_COLORS.orangeDeep },
+  whenText: { flex: 1, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  scheduledWhen: { fontFamily: FONT.bold, color: ORANGE[700] },
 
   route: { marginTop: 16 },
   routeRow: { flexDirection: "row", gap: 12 },
@@ -182,24 +185,25 @@ const styles = StyleSheet.create({
   destinationMarker: { backgroundColor: DESIGN_COLORS.sakayOrange },
   routeJoin: { flex: 1, width: 2, minHeight: 12, marginVertical: 4, backgroundColor: DESIGN_COLORS.hallGreen },
   routeText: { flex: 1, paddingBottom: 12 },
-  routeLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
-  routePlace: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  landmark: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  routeLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  routePlace: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  landmark: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
 
+  // Tinted boxes inside the card: 12 corners (smaller than the card's 16), no edge or shadow (not a card in a card).
   boxes: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
-  box: { flexGrow: 1, flexBasis: 130, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.boardTint },
-  boxLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: DESIGN_COLORS.inkMuted },
-  boxValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  boxSmall: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
+  box: { flexGrow: 1, flexBasis: 130, paddingHorizontal: 12, paddingVertical: 10, borderRadius: CORNER.input, backgroundColor: NEUTRAL[100] },
+  boxLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
+  boxValue: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
+  boxSmall: { fontFamily: FONT.regular, marginTop: 2, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
 
-  helpBox: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
-  helpText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  helpLabel: { fontFamily: FONT.bold },
+  helpBox: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: CORNER.input, backgroundColor: ORANGE[100] },
+  helpText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[900] },
+  helpLabel: { fontFamily: FONT.semiBold },
   factsBox: { gap: 4 },
 
-  passenger: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: DESIGN_COLORS.rule },
-  passengerName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
-  // A white button with an edge, so it doesn't compete with the green Accept / next-step button.
+  passenger: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: NEUTRAL[200] },
+  passengerName: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
+  // A secondary pill (white, grey edge, green words), so it doesn't compete with the green Accept / next-step button.
   callButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -207,18 +211,18 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 48,
     marginTop: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
+    paddingHorizontal: 20,
+    borderRadius: CORNER.pill,
     borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
+    borderColor: NEUTRAL[500],
+    backgroundColor: NEUTRAL[0],
   },
-  callButtonPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  callButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
-  noPhone: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.inkMuted },
+  callButtonPressed: { backgroundColor: NEUTRAL[100] },
+  callButtonText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: GREEN[700] },
+  noPhone: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 24, color: NEUTRAL[700] },
 
   // "Ride details ›": a green text button, 48 tall so it is easy to tap.
-  detailsLink: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", minHeight: 48, marginTop: 4, paddingRight: 4, borderRadius: 16 },
-  detailsLinkPressed: { backgroundColor: DESIGN_COLORS.boardTint },
-  detailsLinkText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: DESIGN_COLORS.hallGreen },
+  detailsLink: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", minHeight: 48, marginTop: 4, paddingLeft: 4, paddingRight: 8, borderRadius: CORNER.pill },
+  detailsLinkPressed: { backgroundColor: GREEN[50] },
+  detailsLinkText: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: GREEN[700] },
 });
