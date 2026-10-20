@@ -224,7 +224,10 @@ Ink = neutral 900. Ratios are against white unless stated.
   20 inside text and chips, 24 in rows and buttons, 28 in big tiles and the
   bottom bar.
 - Icon color follows its text. An icon never stands alone without a word
-  (except the documented "Back to home" house button).
+  (except the documented "Back to home" house button, and the driver duty
+  card's "i" button: 48 to tap, read as "Punch info" by screen readers; it
+  opens a small label with the card's explaining sentences. Owner's choice,
+  Oct 20, 2026).
 
 ### Motion
 - Press: 100 ms, slightly darker fill (and scale 0.98 for cards and big buttons).

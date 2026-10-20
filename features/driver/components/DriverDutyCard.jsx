@@ -143,17 +143,24 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
     <View>
       {dutyStatus === "On break" ? (
         <View style={[styles.card, styles.cardOnBreak]}>
+          {/* One top line: the kind-of-break icon, "On break", the break timer, the "i" (owner's choice, Oct 20).
+              The kind of break ("Lunch break") is in the "i" label, since the timer now just says "Break time". */}
           <View style={styles.statusRow}>
             <MaterialCommunityIcons name={BREAK_ICONS[duty.breakType] || "coffee-outline"} size={30} color={DESIGN_COLORS.orangeDeep} />
-            <Text style={[styles.statusWord, styles.inkText]} accessibilityRole="header">
-              On break
-            </Text>
+            <View style={styles.statusMain}>
+              <Text style={[styles.statusWord, styles.inkText]} accessibilityRole="header">
+                On break
+              </Text>
+              <CardTimer
+                label="Break time"
+                time={breakLengthMs === null ? "--:--:--" : formatTimer(breakLengthMs)}
+                spokenLabel={`${duty.breakType || "Break"} break for ${formatDutyDuration(breakLengthMs ?? 0)}`}
+              />
+            </View>
+            <PunchInfo
+              lines={[`${duty.breakType || "Break"} break.`, duty.breakNote ? `Note: ${duty.breakNote}` : "", "Dispatch can't give you rides. Your time on duty is paused."]}
+            />
           </View>
-          <Text style={[styles.timerText, styles.inkText]} accessibilityLabel={`${duty.breakType || "Break"} break for ${formatDutyDuration(breakLengthMs ?? 0)}`}>
-            {duty.breakType || "Break"} break · {breakLengthMs === null ? "--:--:--" : formatTimer(breakLengthMs)}
-          </Text>
-          {duty.breakNote ? <Text style={[styles.bodyText, styles.inkText]}>Note: {duty.breakNote}</Text> : null}
-          <Text style={[styles.smallText, styles.inkText]}>Dispatch can&apos;t give you rides. Your time on duty is paused.</Text>
 
           <Pressable
             style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
@@ -190,14 +197,16 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
             <Text style={[styles.statusWord, styles.inkText]} accessibilityRole="header">
               Off duty
             </Text>
+            {/* Android's location pop-up can't explain itself, so the second line does (phone only: the website shares no location). */}
+            <PunchInfo
+              lines={[
+                "Dispatch can't give you rides until you punch in.",
+                Platform.OS !== "web"
+                  ? "When you punch in, SakayNa asks for your location. It is saved only when you tap Punch in, Accept, En route, Arrived or Picked up. Never in the background."
+                  : "",
+              ]}
+            />
           </View>
-          <Text style={[styles.bodyText, styles.inkMutedText]}>Dispatch can&apos;t give you rides until you punch in.</Text>
-          {/* Android's location pop-up can't explain itself, so this line does (phone only: the website shares no location). */}
-          {Platform.OS !== "web" ? (
-            <Text style={[styles.bodyText, styles.inkMutedText]}>
-              When you punch in, SakayNa asks for your location. It is saved only when you tap Punch in, Accept, En route, Arrived or Picked up. Never in the background.
-            </Text>
-          ) : null}
 
           <Pressable
             style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.punchInButton, pressed && styles.punchInPressed, saving && styles.buttonBusy]}
@@ -213,18 +222,25 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
         </View>
       ) : (
         <View style={[styles.card, styles.cardAvailable]}>
+          {/* One top line: the dot, "Available", the "On duty for" timer, the "i" (owner's choice, Oct 20). */}
           <View style={styles.statusRow}>
             <View style={styles.availableDot} />
-            <Text style={[styles.statusWord, styles.whiteText]} accessibilityRole="header">
-              Available
-            </Text>
+            <View style={styles.statusMain}>
+              <Text style={[styles.statusWord, styles.whiteText]} accessibilityRole="header">
+                Available
+              </Text>
+              <CardTimer
+                onGreen
+                label="On duty for"
+                time={summary.punchInMs === null ? "--:--:--" : formatTimer(summary.onDutyMs)}
+                spokenLabel={`On duty for ${formatDutyDuration(summary.onDutyMs)}`}
+              />
+            </View>
+            <PunchInfo
+              onGreen
+              lines={[summary.punchInMs === null ? "" : `Punched in at ${formatManilaTime(summary.punchInMs)}.`, "Dispatch can give you rides."]}
+            />
           </View>
-          <Text style={[styles.timerText, styles.whiteText]} accessibilityLabel={`On duty for ${formatDutyDuration(summary.onDutyMs)}`}>
-            On duty for {summary.punchInMs === null ? "--:--:--" : formatTimer(summary.onDutyMs)}
-          </Text>
-          <Text style={[styles.smallText, styles.whiteText]}>
-            {summary.punchInMs === null ? "Dispatch can give you rides." : `Punched in at ${formatManilaTime(summary.punchInMs)} · Dispatch can give you rides.`}
-          </Text>
 
           {/* A ride is waiting for you: no break and no punch out until it is answered (or finished). */}
           {activeRideStatus ? (
@@ -232,7 +248,8 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
               {activeRideStatus === "Assigned" ? "You have a new ride. Accept it on the Ride page first." : "Finish your current ride first."}
             </Text>
           ) : (
-            // Side by side (Task 3.12); with large text they wrap onto two rows instead of being cut off.
+            // Side by side (Task 3.12) when both fit with their words on one line; if not (narrow phone, large text),
+            // each one takes a full row, so the words stay on one line and are never cut off.
             <View style={styles.buttonRow}>
               <Pressable
                 style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.halfButton, styles.whiteButton, pressed && styles.whiteButtonPressed, saving && styles.buttonBusy]}
@@ -243,7 +260,9 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
                 accessibilityState={{ disabled: saving }}
               >
                 <MaterialCommunityIcons name="coffee-outline" size={24} color={DESIGN_COLORS.hallGreen} />
-                <Text style={styles.whiteButtonText}>Start break</Text>
+                <Text style={styles.whiteButtonText} numberOfLines={1}>
+                  Start break
+                </Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.mainButton, styles.dutyButton, styles.halfButton, styles.outlineOnGreen, pressed && styles.outlineOnGreenPressed, saving && styles.buttonBusy]}
@@ -254,7 +273,9 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
                 accessibilityState={{ disabled: saving, busy: saving }}
               >
                 {saving ? <ActivityIndicator color={DESIGN_COLORS.paperWhite} /> : <MaterialCommunityIcons name="logout" size={24} color={DESIGN_COLORS.paperWhite} />}
-                <Text style={styles.outlineOnGreenText}>{saving ? "Saving..." : "Punch out"}</Text>
+                <Text style={styles.outlineOnGreenText} numberOfLines={1}>
+                  {saving ? "Saving..." : "Punch out"}
+                </Text>
               </Pressable>
             </View>
           )}
@@ -397,6 +418,67 @@ export default function DriverDutyCard({ driverId, driverName, duty, activeRideS
   );
 }
 
+// The small "i" at the right end of a card's top line (owner's choice, Oct 20). Tapping it shows the card's
+// explaining sentences in a small label just under it, the same look as the dispatcher's map pin labels:
+// white, a thin dark edge, dark bold words. Tapping anywhere, or Android's Back button, closes it.
+// lines = the sentences to show (an empty "" line is skipped). onGreen = a white "i" on the green card.
+function PunchInfo({ lines, onGreen = false }) {
+  const { width } = useWindowDimensions();
+  const buttonRef = useRef(null);
+  // Where the label goes on the screen ({ top, right }), or null while it is closed.
+  const [place, setPlace] = useState(null);
+
+  // Find where the "i" is on the screen, then open the label right under it, lined up with its right side.
+  const openInfo = () => {
+    buttonRef.current?.measureInWindow((x, y, buttonWidth, buttonHeight) => {
+      setPlace({ top: y + buttonHeight, right: Math.max(8, width - (x + buttonWidth)) });
+    });
+  };
+  const closeInfo = () => setPlace(null);
+
+  return (
+    <>
+      {/* 48 x 48 to tap (DESIGN.md touch size); the circle itself is 24. */}
+      <Pressable
+        ref={buttonRef}
+        style={({ pressed }) => [styles.infoButton, pressed && (onGreen ? styles.infoButtonPressedOnGreen : styles.infoButtonPressed)]}
+        onPress={openInfo}
+        accessibilityRole="button"
+        accessibilityLabel="Punch info"
+      >
+        <MaterialCommunityIcons name="information-outline" size={24} color={onGreen ? NEUTRAL[0] : NEUTRAL[900]} />
+      </Pressable>
+
+      {/* animationType="none": the label appears at once, like the dispatcher's pin labels. */}
+      <Modal visible={Boolean(place)} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={closeInfo}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={closeInfo} accessibilityRole="button" accessibilityLabel="Close punch info">
+          {place ? (
+            <View style={[styles.infoLabel, { top: place.top, right: place.right, maxWidth: Math.min(360, width - 16) }]}>
+              {lines.filter(Boolean).map((line) => (
+                <Text key={line} style={styles.infoText}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+// The timer on a card's top line: two small lines, the label on top ("On duty for") and the time under it.
+// spokenLabel = what a screen reader says instead ("On duty for 1 hr 5 min").
+function CardTimer({ label, time, spokenLabel, onGreen = false }) {
+  const textColor = onGreen ? styles.whiteText : styles.inkText;
+  return (
+    <View style={styles.cardTimer} accessible accessibilityLabel={spokenLabel}>
+      <Text style={[styles.cardTimerLabel, textColor]}>{label}</Text>
+      <Text style={[styles.cardTimerTime, textColor]}>{time}</Text>
+    </View>
+  );
+}
+
 function SummaryRow({ label, value, last = false }) {
   return (
     <View style={[styles.summaryRow, !last && styles.summaryRowLine]}>
@@ -423,12 +505,27 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   availableDot: { width: 16, height: 16, borderRadius: CORNER.pill, backgroundColor: NEUTRAL[0] },
   statusWord: { flexShrink: 1, fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold },
+  // The status word and the timer. They sit side by side; if they don't fit (very large text), the timer
+  // moves under the word (flexWrap), so nothing overlaps or is cut off. The "i" stays at the right end.
+  statusMain: { flex: 1, flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 12, rowGap: 4 },
+  // Pushed to the right, next to the "i". Small (15) label, Label-size (17) time with even-width numbers.
+  cardTimer: { marginLeft: "auto", alignItems: "flex-end" },
+  cardTimerLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium },
+  cardTimerTime: { fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, fontVariant: ["tabular-nums"] },
   timerText: { marginTop: 8, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, fontVariant: ["tabular-nums"] },
-  bodyText: { fontFamily: FONT.regular, marginTop: 8, fontSize: 17, lineHeight: 24 },
   smallText: { marginTop: 4, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium },
   inkText: { color: NEUTRAL[900] },
-  inkMutedText: { color: NEUTRAL[700] },
   whiteText: { color: NEUTRAL[0] },
+
+  // The "i" button: pushed to the right end of the top line. The negative margins keep the card from growing
+  // taller for the 48 tap area, and line the circle up with the card's right edge.
+  infoButton: { marginLeft: "auto", marginVertical: -7, marginRight: -12, width: 48, height: 48, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center" },
+  infoButtonPressed: { backgroundColor: "rgba(20, 33, 28, 0.08)" },
+  infoButtonPressedOnGreen: { backgroundColor: "rgba(255, 255, 255, 0.16)" },
+  // The info label (like the dispatcher's map pin label): white, a thin dark edge, dark bold words,
+  // 8 corners (small tag) and a Level 2 shadow (it floats above the page).
+  infoLabel: { position: "absolute", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: CORNER.small, borderWidth: 1, borderColor: NEUTRAL[900], backgroundColor: NEUTRAL[0], ...SHADOW.level2 },
+  infoText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: NEUTRAL[900] },
 
   // Buttons: pills (DESIGN.md Style), main actions at least 56 tall, full width on a phone.
   mainButton: {
@@ -448,9 +545,11 @@ const styles = StyleSheet.create({
   dutyButton: { minHeight: 48, marginTop: 16 },
   // Punch in / Resume duty: the main action, 56 tall (DESIGN.md main button).
   punchInButton: { minHeight: 56, backgroundColor: GREEN[600] },
-  // Start break + Punch out side by side; each at least 140 wide, so they wrap to two rows when they don't fit.
+  // Start break + Punch out: each button is as wide as its icon and one line of words (flexBasis "auto"). If both
+  // fit on one row they share it (flexGrow fills the rest); if not, the second wraps to its own full-width row.
+  // Side padding 12 (not 20) so they fit side by side on more phones.
   buttonRow: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 16 },
-  halfButton: { width: undefined, flexGrow: 1, flexBasis: 140, marginTop: 0 },
+  halfButton: { width: undefined, flexGrow: 1, flexShrink: 1, flexBasis: "auto", marginTop: 0, paddingHorizontal: 12, gap: 8 },
   punchInPressed: { backgroundColor: GREEN[800] },
   punchInText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.semiBold, color: NEUTRAL[0] },
   whiteButton: { backgroundColor: NEUTRAL[0] },

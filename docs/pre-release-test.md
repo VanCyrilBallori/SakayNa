@@ -1,6 +1,7 @@
 # Pre-release test: big-update
 
-Written October 19, 2026. This is step 2 of the release plan (ROADMAP.md, Phase 3, "Next steps").
+Written October 19, 2026. Updated October 20: the driver's ride history (new look, on the Availability page) and the duty
+card's "i" label (groups A, B, C, H). This is step 2 of the release plan (ROADMAP.md, Phase 3, "Next steps").
 Test everything on `big-update` once, on the phone and the website, before the release.
 
 **Do not start the release** (merge into master, website, demo-ready-19 APK) until every group below
@@ -65,7 +66,13 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 ## B. Normal ride + live location + route line (25 min)
 
 **Driver goes on duty**
-- [ ] Phone D: Availability → **Punch in**, allow location.
+- [ ] Phone D: Availability. Expected: the Off duty card is one line, [clock] **Off duty** with a small
+      **"i"** at the right, then the Punch in button. Tap the "i": a small white label with a dark edge shows
+      "Dispatch can't give you rides until you punch in." and the location sentence. Tap anywhere: it closes.
+- [ ] Phone D: **Punch in**, allow location.
+- [ ] Phone D: the card's top line is [dot] **Available**, then "On duty for" with the running time under it,
+      then the "i" at the right end. **Start break** and **Punch out** each have their words on one line.
+      Tap the "i": "Punched in at …" and "Dispatch can give you rides." Tap outside: it closes.
 - [ ] Dispatcher: jeb is in Driver availability as Available. On the map, jeb's pin appears. Hover it:
       "jeb · updated X min ago".
 - [ ] Dispatcher: jeb's card → **Show on map**. Expected: the map slides to jeb's pin.
@@ -91,6 +98,11 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 - [ ] Phone D: **Complete mission**. Issues encountered: leave empty. Confirm.
 - [ ] Phone R: the ride shows Completed. **History** tab: the ride is there with a Completed badge.
       Filters and search work.
+- [ ] Phone D: **Availability**. Expected: laid out like the Resident's History page: the duty card on top
+      (where the Resident has Emergency), then "Ride history" with filters and search, then one white card per
+      ride (grey placeholder cards while loading). The card and the title stay put while the list scrolls. The
+      ride is there with a grey **Completed** pill, its SKN reference and "Assigned …". Status filter, ride
+      filter and search (type the SKN reference) work. The cards have no arrow and nothing opens when tapped.
 
 **Live location (do this during the ride, or right after)**
 - [ ] Walk at least 20 m with Phone D, SakayNa open. Expected: within about a minute, jeb's pin moves on
@@ -101,6 +113,9 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 
 **Duty and break**
 - [ ] Phone D: **Start break** (Lunch). Dispatcher: jeb shows On break, and can't be assigned.
+- [ ] Phone D: the On break card's top line is [break icon] **On break**, then "Break time" with the running
+      time under it, then the "i". Tap the "i": "Lunch break.", the note (if you typed one) and "Dispatch can't
+      give you rides. Your time on duty is paused." Android's Back button closes it.
 - [ ] Phone D: **Resume duty**. Dispatcher: jeb is Available again.
 - [ ] Keep jeb punched in for groups C and D.
 
@@ -113,6 +128,8 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 - [ ] Phone R: a new ride, As soon as possible. Dispatcher assigns it to jeb.
 - [ ] Phone D: **Accept**, then **I can't do this ride** → Why? **Vehicle problem** → confirm.
 - [ ] Dispatcher: orange **"Needs a new driver"** banner. jeb's card says "Reported: can't do a ride".
+- [ ] Phone D: **Availability**, Ride history: that ride shows a grey **"Can't do"** pill. Status filter
+      **Can't do** shows it.
 - [ ] Dispatcher: assign it again to jeb (or another driver). Phone D: **Accept**, then finish the ride or
       leave it for later. Phone R: the ride is back on track.
 
@@ -205,8 +222,11 @@ Then reopen SakayNa.
       scroll, and Emergency is still visible.
 - [ ] Phone R: ☰ → Terms, then Privacy Policy. They open on top of the menu with no flash. **← Back**
       returns to the menu.
-- [ ] Phone D: Ride page with a ride, Availability (the duty card plus Ride history below it), Complete
-      mission pop-up. The duty card never covers the whole screen. The buttons stay readable.
+- [ ] Phone D: Ride page with a ride, Availability (the duty card, the label from its "i", and the Ride
+      history under it), Complete mission pop-up. Words wrap, the "i" label stays on the screen, the buttons
+      stay readable. On the duty card the timer may move under "Available" / "On break", but nothing overlaps;
+      Start break and Punch out may stack, but each keeps its words on one line, never cut off. The duty card never covers the whole screen: the Ride history list still has room and
+      scrolls.
 - [ ] Website: Chrome zoom **125%** (Ctrl and +) on the dispatcher and Admin pages. Expected: still usable,
       and the pages scroll instead of overlapping.
 - [ ] Set the phone's font size back to normal.

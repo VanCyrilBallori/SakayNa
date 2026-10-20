@@ -15,9 +15,16 @@ const statusOptions = [{ label: "All statuses", value: "All" }, { label: "Active
 const purposeOptions = [{ label: "All rides", value: "All" }, ...PURPOSE_OPTIONS.map((purpose) => ({ label: purpose, value: purpose }))];
 const isActive = (status) => ["Pending", "Assigned", "In Progress"].includes(status || "Pending");
 
+// The driver's History tab uses this same page (forDriver). A driver's ride has its own steps, so it has its own status list.
+const DRIVER_ACTIVE = ["Assigned", "Accepted", "En Route", "Arrived", "Picked Up"];
+const driverStatusOptions = [{ label: "All statuses", value: "All" }, { label: "Active", value: "Active" }, { label: "Completed", value: "Completed" }, { label: "Can't do", value: "Unable" }, { label: "Cancelled", value: "Cancelled" }];
+// The words on the driver's status pill. Any other status shows as it is saved (Assigned, Accepted, Arrived, Completed...).
+const DRIVER_STATUS_WORDS = { "En Route": "En route", "Picked Up": "Picked up", Unable: "Can't do" };
+
 // The History page of the resident's bottom bar (Task 3.18; before, a pop-up from the ☰ menu).
 // The newest 50 requests with filters and a search. Tapping one opens its Request Details.
-export default function ResidentRequestHistory({ requests, loading, error }) {
+// forDriver = the driver's History tab: the driver's own rides, driver words, and no tapping (no details pop-up).
+export default function ResidentRequestHistory({ requests, loading, error, forDriver = false }) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [search, setSearch] = useState("");
@@ -28,16 +35,17 @@ export default function ResidentRequestHistory({ requests, loading, error }) {
   const fixedFilters = height >= 640 && fontScale <= 1.3;
 
   const filteredRequests = useMemo(() => requests.filter((request) => {
-    const matchesStatus = statusFilter === "All" || (statusFilter === "Active" ? isActive(request.status) : request.status === statusFilter);
+    const active = forDriver ? DRIVER_ACTIVE.includes(request.status) : isActive(request.status);
+    const matchesStatus = statusFilter === "All" || (statusFilter === "Active" ? active : request.status === statusFilter);
     const matchesType = typeFilter === "All" || getPurpose(request) === typeFilter;
     const query = search.trim().toLowerCase();
     return matchesStatus && matchesType && (!query || request.reference.toLowerCase().includes(query) || request.id.toLowerCase().includes(query));
-  }), [requests, search, statusFilter, typeFilter]);
+  }), [forDriver, requests, search, statusFilter, typeFilter]);
 
   const filters = (
     <>
       <View style={styles.filters}>
-        <Dropdown fontFamily={FONT.regular} style={styles.filter} selectedTextStyle={styles.filterText} itemTextStyle={styles.filterText} data={statusOptions} labelField="label" valueField="value" value={statusFilter} onChange={(item) => setStatusFilter(item.value)} accessibilityLabel="Filter by status" />
+        <Dropdown fontFamily={FONT.regular} style={styles.filter} selectedTextStyle={styles.filterText} itemTextStyle={styles.filterText} data={forDriver ? driverStatusOptions : statusOptions} labelField="label" valueField="value" value={statusFilter} onChange={(item) => setStatusFilter(item.value)} accessibilityLabel="Filter by status" />
         <Dropdown fontFamily={FONT.regular} style={styles.filter} selectedTextStyle={styles.filterText} itemTextStyle={styles.filterText} data={purposeOptions} labelField="label" valueField="value" value={typeFilter} onChange={(item) => setTypeFilter(item.value)} accessibilityLabel="Filter by ride" />
       </View>
       <TextInput style={styles.search} value={search} onChangeText={setSearch} placeholder="Search request reference" placeholderTextColor={NEUTRAL[600]} autoCapitalize="characters" />
@@ -48,7 +56,7 @@ export default function ResidentRequestHistory({ requests, loading, error }) {
     <View style={styles.page}>
       {/* Fixed header: does not scroll. */}
       <View style={styles.header}>
-        <Text style={styles.title} accessibilityRole="header">Request history</Text>
+        <Text style={styles.title} accessibilityRole="header">{forDriver ? "Ride history" : "Request history"}</Text>
         {fixedFilters ? filters : null}
       </View>
 
@@ -58,9 +66,9 @@ export default function ResidentRequestHistory({ requests, loading, error }) {
 
         <View style={styles.list}>
           {loading ? (
-            <ListSkeleton label="Loading your requests" />
+            <ListSkeleton label={forDriver ? "Loading your rides" : "Loading your requests"} />
           ) : filteredRequests.length ? (
-            filteredRequests.map((request) => <HistoryRow key={request.id} request={request} onPress={() => setSelected(request)} />)
+            filteredRequests.map((request) => <HistoryRow key={request.id} request={request} forDriver={forDriver} onPress={() => setSelected(request)} />)
           ) : (
             // Empty state (DESIGN.md Style): an icon in a tinted circle, a title and one sentence.
             <View style={styles.empty}>
@@ -68,42 +76,45 @@ export default function ResidentRequestHistory({ requests, loading, error }) {
                 <MaterialCommunityIcons name={requests.length ? "filter-variant-remove" : "van-passenger"} size={48} color={GREEN[700]} />
               </View>
               <Text style={styles.emptyTitle}>{requests.length ? "No matching requests" : "No rides yet"}</Text>
-              <Text style={styles.emptyText}>{requests.length ? "Try a different status or ride filter." : "When you request a ride, it will show here."}</Text>
+              <Text style={styles.emptyText}>{requests.length ? "Try a different status or ride filter." : forDriver ? "Rides dispatch gives you will show here." : "When you request a ride, it will show here."}</Text>
             </View>
           )}
         </View>
       </ScrollView>
 
-      <ResidentRequestDetails request={selected} visible={Boolean(selected)} onClose={() => setSelected(null)} />
+      {forDriver ? null : <ResidentRequestDetails request={selected} visible={Boolean(selected)} onClose={() => setSelected(null)} />}
     </View>
   );
 }
 
 // One request: reference and status badge, what it is for, when, where, and when it was sent.
-function HistoryRow({ request, onPress }) {
-  const status = getRequestStatusMeta(request.status);
-  const badge = getStatusBadgeColors(request.status);
+// For a driver: the same card, but it can't be tapped (no arrow), and it says when the ride was assigned.
+function HistoryRow({ request, forDriver, onPress }) {
+  const statusLabel = forDriver ? DRIVER_STATUS_WORDS[request.status] || request.status : getRequestStatusMeta(request.status).label;
+  // Driver pill colors: a ride still going = green, a finished one = grey (the resident's colors for the same meaning).
+  const badge = forDriver ? getStatusBadgeColors(DRIVER_ACTIVE.includes(request.status) ? "Assigned" : "Completed") : getStatusBadgeColors(request.status);
   return (
     <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`View ${request.reference}, ${status.label}`}
+      style={({ pressed }) => [styles.row, pressed && !forDriver && styles.rowPressed]}
+      onPress={forDriver ? undefined : onPress}
+      disabled={forDriver}
+      accessibilityRole={forDriver ? undefined : "button"}
+      accessibilityLabel={forDriver ? undefined : `View ${request.reference}, ${statusLabel}`}
     >
       <View style={styles.rowCopy}>
         <View style={styles.rowTop}>
           <Text style={styles.reference}>{request.reference}</Text>
           <View style={[styles.badge, { backgroundColor: badge.backgroundColor }]}>
-            <Text style={[styles.badgeText, { color: badge.color }]}>{status.label}</Text>
+            <Text style={[styles.badgeText, { color: badge.color }]}>{statusLabel}</Text>
           </View>
         </View>
         <Text style={styles.rowTitle}>{request.title || request.serviceType || "Transport request"}</Text>
         {getScheduledDate(request) ? <Text style={styles.scheduled}>Scheduled: {getWhenText(request)}</Text> : null}
         <Text style={styles.meta}>{getPickupLabel(request)}</Text>
-        <Text style={styles.meta}>Sent {formatRequestDate(request.createdAt)}</Text>
-        {canResidentCancel(request) ? <Text style={styles.cancelHint}>You can still cancel this request</Text> : null}
+        <Text style={styles.meta}>{forDriver ? "Assigned" : "Sent"} {formatRequestDate(request.createdAt)}</Text>
+        {!forDriver && canResidentCancel(request) ? <Text style={styles.cancelHint}>You can still cancel this request</Text> : null}
       </View>
-      <MaterialCommunityIcons name="chevron-right" size={24} color={NEUTRAL[700]} />
+      {forDriver ? null : <MaterialCommunityIcons name="chevron-right" size={24} color={NEUTRAL[700]} />}
     </Pressable>
   );
 }

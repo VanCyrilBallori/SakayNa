@@ -13,6 +13,7 @@ import DriverDutyCard from "../features/driver/components/DriverDutyCard";
 import DriverMissionActions from "../features/driver/components/DriverMissionActions";
 import DriverNavigateButton from "../features/driver/components/DriverNavigateButton";
 import DriverRideCard from "../features/driver/components/DriverRideCard";
+import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import { clearCancelledRide } from "../features/driver/services/driverMissionService";
 import { startLiveLocation } from "../features/driver/services/driverLocationService";
@@ -26,7 +27,7 @@ import {
   isEmergencyFormRide,
 } from "../features/driver/utils/driverMissionMapper";
 import { getAssistanceText, getPassengerCountText, getPassengerName, getWhenText } from "../features/resident/utils/requestMapper";
-import { formatDay, formatWhen } from "../lib/dates";
+import { formatDay } from "../lib/dates";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 import FeedbackMessage from "../components/ui/FeedbackMessage";
 import ListSkeleton from "../components/ui/ListSkeleton";
@@ -423,6 +424,27 @@ export default function DriverHome() {
     return unsubscribe;
   }, [accessStatus, authUser?.uid]);
 
+  // The Availability page shows the driver's rides on the resident's History cards, so each ride gets the names those
+  // cards read: the same SKN reference the resident and dispatcher see, the driver's step as the status,
+  // what the ride is for (title = the resident's purpose), the pickup, and when it was assigned.
+  const driverHistory = useMemo(
+    () =>
+      assignmentHistory.map((assignment) => {
+        const title = assignment.title || assignment.requestType || assignment.emergencyType || "Transport Request";
+        return {
+          id: assignment.id,
+          reference: `SKN-${(assignment.requestId || assignment.id).slice(0, 8).toUpperCase()}`,
+          status: getMissionStatus(assignment),
+          title,
+          // The ride filter reads the purpose. The title is the purpose, except "Other: …" rides.
+          purpose: title.startsWith("Other: ") ? "Other" : title,
+          pickupLocation: assignment.pickupLocation,
+          createdAt: assignment.assignedAt || assignment.createdAt,
+        };
+      }),
+    [assignmentHistory]
+  );
+
   useEffect(() => {
     if (!authUser?.uid || accessStatus !== "approved") {
       setDriverSchedules([]);
@@ -787,13 +809,14 @@ export default function DriverHome() {
           </View>
         </View>
 
-        {/* Availability page (Task 3.12): the duty card stays fixed at the top and the ride history scrolls by itself
-            under it. The history's white panel starts 24 higher, behind the card, so its rows slide under the card's
-            round bottom edge. The card may use at most 60% of the space; if it is taller (small phone, large text),
-            the card scrolls inside itself, so the history always keeps room. */}
+        {/* Availability page (owner's choice, Oct 20), laid out like the resident's History page: the duty card on top
+            where the resident has Emergency (it does not scroll away), and the resident's History list under it with
+            the driver's own rides (forDriver = driver status words, the cards can't be tapped). The list keeps its
+            title at the top and scrolls by itself. One difference: the duty card is taller than Emergency, so it may
+            use at most 60% of the page; if it is taller (small phone, large text) it scrolls inside itself. */}
         {activePage === "availability" ? (
-          <View style={[styles.pageColumn, styles.availabilityPage]}>
-            <ScrollView style={styles.dutyCardArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.availabilityPage}>
+            <ScrollView style={styles.dutyCardArea} contentContainerStyle={styles.dutyCardContent} showsVerticalScrollIndicator={false}>
               {/* Until the duty status (and whether there is a ride) has answered: a grey placeholder, not a false
                   "Off duty" with a Punch in button. */}
               {dutyLoaded && assignmentsLoaded ? (
@@ -808,18 +831,7 @@ export default function DriverHome() {
                 <ListSkeleton rows={1} label="Loading your duty status" />
               )}
             </ScrollView>
-            <ScrollView style={styles.historyPanel} contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
-              <Text style={styles.historyHeading} accessibilityRole="header">
-                Ride history
-              </Text>
-              {!historyLoaded ? (
-                <ListSkeleton rows={3} label="Loading your ride history" />
-              ) : assignmentHistory.length ? (
-                assignmentHistory.map((assignment, index) => <HistoryRow key={assignment.id} assignment={assignment} first={index === 0} />)
-              ) : (
-                <Text style={styles.historyMeta}>No rides yet. Rides you get will show here.</Text>
-              )}
-            </ScrollView>
+            <ResidentRequestHistory requests={driverHistory} loading={!historyLoaded} forDriver />
           </View>
         ) : (
         <ScrollView style={styles.pageScroll} contentContainerStyle={styles.pageScrollContent} showsVerticalScrollIndicator={false}>
@@ -1163,24 +1175,6 @@ function DetailLine({ label, value, last = false }) {
   );
 }
 
-// One ride in the Availability page's history (Task 3.12): title and status, then place · date.
-function HistoryRow({ assignment, first }) {
-  const title = assignment.title || assignment.requestType || assignment.emergencyType || "Transport Request";
-  const date = getDateFromValue(assignment.updatedAt || assignment.createdAt);
-  const when = date ? formatWhen(date) : "Date not recorded";
-  return (
-    <View style={[styles.historyRow, !first && styles.historyRowLine]}>
-      <View style={styles.historyRowTop}>
-        <Text style={styles.historyTitle}>{title}</Text>
-        <Text style={styles.historyStatus}>{getMissionStatus(assignment)}</Text>
-      </View>
-      <Text style={styles.historyMeta}>
-        {formatPlace(assignment.pickupLocation) || "Pickup not recorded"} · {when}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   // "Delete account" in Settings: a pill with a red edge and red words, after a thin line (Task 3.15).
   dangerDivider: { height: 1, marginTop: 24, backgroundColor: NEUTRAL[200] },
@@ -1219,23 +1213,11 @@ const styles = StyleSheet.create({
   // Map page: the map takes all the space left above the button, but never less than 280.
   // A map frame (DESIGN.md Style): 16 corners and a thin neutral edge.
   bigMap: { flex: 1, minHeight: 280, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], overflow: "hidden", backgroundColor: NEUTRAL[0] },
-  // Availability page (Task 3.12): no gap, so the history panel can tuck 16 under the card.
-  availabilityPage: { gap: 0 },
-  // The duty card: drawn above the history (zIndex) and at most 60% of the page; scrolls inside if taller.
-  dutyCardArea: { flexGrow: 0, maxHeight: "60%", zIndex: 1 },
-  // The history: a white card (16 corners, thin edge, Level 1 shadow) that starts 16 up, behind the duty card's
-  // round bottom edge, and scrolls by itself.
-  historyPanel: { flex: 1, marginTop: -CORNER.card, borderRadius: CORNER.card, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
-  historyList: { paddingTop: CORNER.card + 12, paddingBottom: 16, paddingHorizontal: 16 },
-  historyHeading: { marginBottom: 4, fontSize: 17, lineHeight: 22, fontFamily: FONT.bold, color: NEUTRAL[900] },
-  // One short row per ride: title + status on top, place · date under it. A thin line between rows.
-  historyRow: { paddingVertical: 12, gap: 4 },
-  historyRowLine: { borderTopWidth: 1, borderTopColor: NEUTRAL[200] },
-  historyRowTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  historyTitle: { flexShrink: 1, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
-  // Status badge (DESIGN.md Style): a pill with a tinted background and the status word.
-  historyStatus: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: CORNER.pill, overflow: "hidden", backgroundColor: NEUTRAL[100], fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
-  historyMeta: { fontFamily: FONT.medium, fontSize: 15, lineHeight: 20, color: NEUTRAL[700] },
+  // Availability page: the same layout as the resident's History page (historyPage / historyEmergency there).
+  availabilityPage: { flex: 1 },
+  // The duty card: at most 60% of the page, so the list always keeps room; scrolls inside itself if taller.
+  dutyCardArea: { flexGrow: 0, maxHeight: "60%", width: "100%", maxWidth: 640, alignSelf: "center" },
+  dutyCardContent: { paddingHorizontal: 16, paddingTop: 12 },
   mapNote: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700], textAlign: "center" },
   // Bottom bar (same as the resident bar, Task 3.18): white, a thin line and a soft shadow on top.
   // paddingBottom (in the code) keeps it above the phone's own buttons.
