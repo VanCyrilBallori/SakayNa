@@ -147,7 +147,8 @@ Phone R stays **on the SakayNa screen** until Answer.
 - [ ] Phone R: tap **Emergency**. Expected: the waiting screen.
 - [ ] Dispatcher: a **red strip** under the header, the "ding-dong" sound every 2 seconds, and the tab
       title "EMERGENCY – SakayNa". (If the browser blocks sound: "Sound blocked: click to turn sound on".)
-- [ ] Dispatcher: **Sound off** stops the sound. The strip stays.
+- [ ] Dispatcher: profile circle → **Sound off** stops the sound. The strip stays, and a muted-speaker icon
+      shows next to the profile circle. Turn it back on (the icon goes away).
 - [ ] Dispatcher: **Answer**. Phone R: counts down 3 seconds, then **calls** dispatcher0's phone.
       Answer that phone, then hang up.
 - [ ] Dispatcher: fill in the Emergency request form (type Medical, 2 patients, a few details), choose

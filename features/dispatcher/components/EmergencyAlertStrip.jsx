@@ -104,7 +104,7 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
       {soundMuted ? (
         <View style={styles.soundRow}>
           <MaterialCommunityIcons name="bell-off-outline" size={22} color={DESIGN_COLORS.paperWhite} />
-          <Text style={styles.soundText}>Sound off (turn it back on with the Sound button at the top right)</Text>
+          <Text style={styles.soundText}>Sound off (turn it back on in your profile menu at the top right)</Text>
         </View>
       ) : soundBlocked ? (
         <View style={styles.soundRow}>

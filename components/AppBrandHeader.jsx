@@ -11,7 +11,9 @@ import { CORNER, DESIGN_COLORS, FONT, GREEN, NEUTRAL, SHADOW } from "../constant
 // The menu closes when you click outside it or press Escape (the website's Modal calls onRequestClose on Escape).
 // barangay = the profile's barangay, e.g. "Daanglungsod, Toledo City" (", Toledo City" is not shown).
 // soundMuted / onToggleSound (optional): the "Sound on / Sound off" button for the emergency alert sound (Task 3.13b).
-//   "Sound off" is shown in orange so a muted page is hard to miss. Muting lasts until the page is reloaded.
+//   It sits in the account menu. While the sound is off, a small muted-speaker icon shows next to the circle, so a
+//   muted page is hard to miss. Muting lasts until the page is reloaded. (The button doesn't "unlock" the browser's
+//   sound: useAlertSound does that on any click on the page.)
 export default function AppBrandHeader({ role = "Resident", name = "User", email = "", barangay = "", onLogoutPress = () => {}, soundMuted = false, onToggleSound }) {
   const { width } = useWindowDimensions();
   const compact = width < 900;
@@ -42,16 +44,10 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
       <HeaderBrand barangay={barangay} compact={compact} />
 
       <View style={styles.rightWrap}>
-        {onToggleSound ? (
-          <Pressable
-            style={({ pressed }) => [styles.soundButton, soundMuted && styles.soundButtonOff, pressed && styles.soundButtonPressed]}
-            onPress={onToggleSound}
-            accessibilityRole="button"
-            accessibilityLabel={soundMuted ? "Alert sound is off. Turn it on" : "Alert sound is on. Turn it off"}
-          >
-            <MaterialCommunityIcons name={soundMuted ? "bell-off-outline" : "bell-outline"} size={22} color={soundMuted ? DESIGN_COLORS.ink : DESIGN_COLORS.inkMuted} />
-            <Text style={[styles.soundText, soundMuted && styles.soundTextOff]}>{soundMuted ? "Sound off" : "Sound on"}</Text>
-          </Pressable>
+        {onToggleSound && soundMuted ? (
+          <View style={styles.mutedIcon} accessible accessibilityLabel="Alert sound is off">
+            <MaterialCommunityIcons name="volume-off" size={20} color={DESIGN_COLORS.ink} />
+          </View>
         ) : null}
         <Pressable
           ref={avatarRef}
@@ -81,6 +77,18 @@ export default function AppBrandHeader({ role = "Resident", name = "User", email
             {role} · {barangayText}
           </Text>
           <View style={styles.menuRule} />
+          {/* The menu stays open after a tap, so the dispatcher sees the new state. */}
+          {onToggleSound ? (
+            <Pressable
+              style={({ pressed }) => [styles.soundButton, soundMuted && styles.soundButtonOff, pressed && styles.soundButtonPressed]}
+              onPress={onToggleSound}
+              accessibilityRole="button"
+              accessibilityLabel={soundMuted ? "Alert sound is off. Turn it on" : "Alert sound is on. Turn it off"}
+            >
+              <MaterialCommunityIcons name={soundMuted ? "volume-off" : "volume-high"} size={22} color={soundMuted ? DESIGN_COLORS.ink : DESIGN_COLORS.inkMuted} />
+              <Text style={[styles.soundText, soundMuted && styles.soundTextOff]}>{soundMuted ? "Sound off" : "Sound on"}</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}
             onPress={logOut}
@@ -135,8 +143,11 @@ const styles = StyleSheet.create({
   // The barangay name: small (15) and quiet (lighter gray-green, still 4.9:1 on white), so "SakayNa" stands out.
   barangay: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700] },
   rightWrap: { flexDirection: "row", alignItems: "center", gap: 12 },
-  // Sound on: quiet (no edge, muted words). Sound off: orange edge on peach, dark bold words (Task 3.13b). A pill (DESIGN.md Style).
-  soundButton: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 2, borderColor: "transparent" },
+  // The small muted-speaker icon next to the circle while the sound is off: orange edge on peach, like "Sound off".
+  mutedIcon: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: DESIGN_COLORS.sakayOrange, backgroundColor: DESIGN_COLORS.peachTint, alignItems: "center", justifyContent: "center" },
+  // In the menu, above Log out. Sound on: quiet (no edge, muted words). Sound off: orange edge on peach, dark bold
+  // words (Task 3.13b). A pill (DESIGN.md Style).
+  soundButton: { alignSelf: "stretch", marginBottom: 8, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 14, borderRadius: CORNER.pill, borderWidth: 2, borderColor: "transparent" },
   soundButtonOff: { borderColor: DESIGN_COLORS.sakayOrange, backgroundColor: DESIGN_COLORS.peachTint },
   soundButtonPressed: { opacity: 0.75 },
   soundText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.semiBold, color: DESIGN_COLORS.inkMuted },
