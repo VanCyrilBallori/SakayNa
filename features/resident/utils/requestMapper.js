@@ -1,5 +1,5 @@
 import { REQUEST_STATUSES, RESIDENT_CANCELLABLE_STATUSES } from "../../../constants/app";
-import { formatWhen, getDateFromValue } from "../../../lib/dates";
+import { formatDay, formatTime, formatWhen, getDateFromValue } from "../../../lib/dates";
 import { formatPlace } from "../../../lib/placeText";
 import { GREEN, NEUTRAL, ORANGE } from "../../../constants/design";
 import { VULNERABLE_GROUP_OPTIONS } from "./requestOptions";
@@ -100,9 +100,25 @@ export const getRideProgress = (request = {}) => {
 
 // The ride for the home "Your ride" card. requests = newest first (from useResidentRequests).
 // A ride a driver is on right now (Assigned or In Progress) comes first, so a newer ride scheduled
-// for tomorrow never hides a driver who is on the way. If there is none, the newest ride.
+// for tomorrow never hides a driver who is on the way. Then a ride still waiting (Pending).
+// A finished ride (Completed or Cancelled) is not shown: the card goes back to its empty state, and the
+// ride is in History (owner's choice, Oct 20). A Rejected ride stays on the card while it is the newest,
+// so the resident always finds out (until they send a new request).
 export const getHomeRide = (requests = []) =>
-  requests.find((request) => [REQUEST_STATUSES.ASSIGNED, REQUEST_STATUSES.IN_PROGRESS].includes(request.status)) ?? requests[0] ?? null;
+  requests.find((request) => [REQUEST_STATUSES.ASSIGNED, REQUEST_STATUSES.IN_PROGRESS].includes(request.status)) ??
+  requests.find((request) => request.status === REQUEST_STATUSES.PENDING) ??
+  (requests[0]?.status === "Rejected" ? requests[0] : null);
+
+// The small grey line under the empty "Your ride" card: "Last ride: Completed · 2:00 PM" when the newest
+// ride was completed (with the date too if it wasn't today). "" for anything else (for example Cancelled).
+export const getLastRideText = (requests = []) => {
+  const newest = requests[0];
+  if (newest?.status !== REQUEST_STATUSES.COMPLETED) return "";
+  const finishedAt = newest.completedAt || newest.updatedAt;
+  if (!getDateFromValue(finishedAt)) return "Last ride: Completed";
+  const today = formatDay(new Date()) === formatDay(finishedAt);
+  return `Last ride: Completed · ${today ? formatTime(finishedAt) : formatWhen(finishedAt)}`;
+};
 
 export const canResidentCancel = (request = {}) => RESIDENT_CANCELLABLE_STATUSES.includes(request.status || REQUEST_STATUSES.PENDING);
 

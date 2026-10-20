@@ -18,7 +18,8 @@ const getBandColor = (step) => {
 // The home screen's "Your ride" card: the ride's step, a progress bar, From / To, and the driver once assigned.
 // request = the ride to show (getHomeRide in requestMapper.js), null if there is none.
 // loading / error = from useResidentRequests. onPress = opens Request Details.
-export default function LatestRequestCard({ request, loading, error, onPress }) {
+// lastRideText = the small grey line under the empty state ("Last ride: Completed · 2:00 PM"), or "".
+export default function LatestRequestCard({ request, loading, error, onPress, lastRideText = "" }) {
   if (error) {
     return (
       <View style={[styles.messageBox, styles.errorBox]}>
@@ -32,15 +33,17 @@ export default function LatestRequestCard({ request, loading, error, onPress }) 
     return <ListSkeleton rows={1} label="Loading your ride" />;
   }
 
-  // Empty state (DESIGN.md Style): an icon in a tinted circle, a title and one sentence.
+  // Empty state (DESIGN.md Style): an icon in a tinted circle, a title and one sentence. Also shown after a ride
+  // is completed or cancelled (getHomeRide); then the ride is in History.
   if (!request) {
     return (
       <View style={[styles.card, styles.emptyCard]}>
         <View style={styles.emptyIcon}>
           <MaterialCommunityIcons name="van-passenger" size={48} color={GREEN[700]} />
         </View>
-        <Text style={styles.emptyTitle}>No rides yet</Text>
-        <Text style={styles.emptyText}>When you request a ride, it will show here.</Text>
+        <Text style={styles.emptyTitle}>No ride right now</Text>
+        <Text style={styles.emptyText}>Tap Request below to ask for a ride. Your past rides are in History.</Text>
+        {lastRideText ? <Text style={styles.lastRideText}>{lastRideText}</Text> : null}
       </View>
     );
   }
@@ -216,9 +219,11 @@ const styles = StyleSheet.create({
   messageText: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: NEUTRAL[700] },
   errorBox: { backgroundColor: RED[50] },
   errorText: { color: RED[600] },
-  // "No rides yet" (DESIGN.md Style empty state).
+  // "No ride right now" (DESIGN.md Style empty state).
   emptyCard: { alignItems: "center", paddingVertical: 24, paddingHorizontal: 16 },
   emptyIcon: { width: 96, height: 96, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[50] },
   emptyTitle: { marginTop: 16, fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: NEUTRAL[900], textAlign: "center" },
   emptyText: { marginTop: 4, fontSize: 17, lineHeight: 24, fontFamily: FONT.regular, color: NEUTRAL[700], textAlign: "center" },
+  // "Last ride: Completed · 2:00 PM": Small size (15, the floor), grey.
+  lastRideText: { marginTop: 8, fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700], textAlign: "center" },
 });

@@ -37,8 +37,10 @@ Suspended) can log in and look around, but they **cannot send emergency
 alerts or transport requests** (sections 2.5 and 4.1).
 
 The home screen has a **green Toledo City/barangay heading** with a
-**☰ side menu**. Below it is a scrolling page with Emergency, Request a Ride,
-and **Your ride** (an active ride first, otherwise the newest request).
+**☰ side menu**. Below it is a scrolling page with Emergency and **Your ride**
+(an active or waiting ride; empty after a ride is completed or cancelled).
+**Request a Ride** is the **Request** (+) button in the middle of the bottom
+bar (October 20, 2026).
 It no longer has a full-screen home map (section 2.5).
 
 On the **Android app**, the resident stays logged in after closing the app
@@ -268,8 +270,10 @@ permissions, one after another:
 - **A scrolling page below the heading**, so large text is not cut off:
   1. An account banner if the Resident is not Active.
   2. Big red **Emergency** — Send an alert to the dispatchers.
-  3. Green **Request a Ride**.
-  4. **Your ride** (section 2.5 c).
+  3. **Your ride** (section 2.5 c).
+- **Bottom bar:** **Your ride** | **Request** (white + in a green circle) |
+  **History**, all three the same size. Request opens the Request a Ride form
+  (`handleQuickAction("transport")`, the same rules as the old button).
 - **Account banner:** Pending is peach/orange and says the barangay Admin is
   checking their proof. Rejected is red and shows the rejection reason,
   with Call the office if a number is saved. Other non-Active accounts get
@@ -462,15 +466,23 @@ request**.
 
 #### c) Your ride card — `LatestRequestCard` in `features/resident/components/LatestRequestCard.jsx`
 
-- Shows an **active ride first**, otherwise the newest request
-  (`getHomeRide` in `features/resident/utils/requestMapper.js`).
+- Shows an **active ride first** (Assigned or In Progress), then a
+  **Pending** ride (`getHomeRide` in `features/resident/utils/requestMapper.js`).
+- A **Completed** or **Cancelled** ride is not shown: the card goes back to
+  the empty state, and the ride is in History (October 20, 2026).
+- A **Rejected** ride stays on the card while it is the newest request, so
+  the resident finds out. (Dispatch has no Decline button for ride requests
+  today; Rejected comes from older data.)
 - Shows the ride step in a colored status band, a progress bar, From/To,
   when, and the assigned driver/vehicle/plate where available.
 - **Call driver** is shown only when the saved phone is available and the
   passenger has not yet been picked up. Older rides may have no phone.
 - It updates **live** through `useResidentRequests`.
 - **See details** opens Request Details (section 2.6), which reads the live ride.
-- No requests: **No rides yet. When you request a ride, it will show here.**
+- Nothing to show: **No ride right now. Tap Request below to ask for a ride.
+  Your past rides are in History.** If the newest ride was Completed, a small
+  grey line follows: "Last ride: Completed · 2:00 PM" (with the date if it
+  wasn't today; `getLastRideText`). Nothing extra after a Cancelled ride.
 
 #### d) ☰ Side menu — `ResidentSideMenu` in `features/resident/components/ResidentSideMenu.jsx:18`
 

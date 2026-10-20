@@ -21,7 +21,7 @@ import ResidentRequestHistory from "../features/resident/components/ResidentRequ
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
 import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
-import { getHomeRide } from "../features/resident/utils/requestMapper";
+import { getHomeRide, getLastRideText } from "../features/resident/utils/requestMapper";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
 
 const NO_ANSWER_TIMEOUT_MS = 30_000;
@@ -39,6 +39,8 @@ const PAGES = [
   { key: "ride", label: "Your ride", icon: "van-passenger" },
   { key: "history", label: "History", icon: "history" },
 ];
+// The middle button of the bottom bar: opens the Request a Ride form (owner's choice, Oct 20).
+const REQUEST_BUTTON = { key: "request", label: "Request", icon: "plus" };
 
 export default function ResidentHome() {
   const { width } = useWindowDimensions();
@@ -49,6 +51,8 @@ export default function ResidentHome() {
   const latestRequest = requestHistory[0] ?? null;
   // The ride on the "Your ride" card: a ride a driver is on right now first, otherwise the newest one.
   const homeRide = getHomeRide(requestHistory);
+  // "Last ride: Completed · 2:00 PM" under the empty "Your ride" card (from the same list, no extra reads).
+  const lastRideText = getLastRideText(requestHistory);
   const [menuOpen, setMenuOpen] = useState(false);
   // A Rejected resident's reason from the proof-of-residency review. null = not read (yet), or the read failed.
   const [verificationReason, setVerificationReason] = useState(null);
@@ -641,19 +645,9 @@ export default function ResidentHome() {
             </View>
           ) : null}
 
-          {/* Emergency is always the first button under the place strip (and the banner), so it is always one tap away. */}
+          {/* Emergency is always the first button under the place strip (and the banner), so it is always one tap away.
+              Request a Ride is the "Request" button in the bottom bar (owner's choice, Oct 20). */}
           <EmergencyButton onPress={() => handleQuickAction("emergency-call")} />
-
-          <Pressable
-            style={({ pressed }) => [styles.rideButton, pressed && styles.rideButtonPressed]}
-            onPress={() => handleQuickAction("transport")}
-            android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
-            accessibilityRole="button"
-          >
-            {/* A van, not a car: the city's vehicles are vans and ambulances. */}
-            <MaterialCommunityIcons name="van-passenger" size={30} color="#FFFFFF" />
-            <Text style={styles.rideButtonText}>Request a Ride</Text>
-          </Pressable>
 
           {/* No "Your ride" heading: the open tab says it, and the card's status band is its title. This keeps the
               page on one screen at normal text size; it still scrolls when it doesn't fit (small phone, big text). */}
@@ -662,6 +656,7 @@ export default function ResidentHome() {
             loading={requestHistoryLoading}
             error={requestHistoryError}
             onPress={() => setLatestDetailsOpen(true)}
+            lastRideText={lastRideText}
           />
         </ScrollView>
         ) : (
@@ -676,27 +671,14 @@ export default function ResidentHome() {
         )}
 
         {/* Bottom bar (Task 3.18): icon + word for each page. The open page has a green pill behind its icon and a
-            bold green word (shape and weight, not color alone). paddingBottom keeps it above the phone's own buttons. */}
+            bold green word (shape and weight, not color alone). paddingBottom keeps it above the phone's own buttons.
+            In the middle: "Request" (owner's choice, Oct 20), the same look as the other two. It is not a page: it opens
+            the Request a Ride form, with the same rules as the old button (handleQuickAction), so it never looks open. */}
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom }]}>
           <View style={styles.bottomBarRow} accessibilityRole="tablist">
-            {PAGES.map((page) => {
-              const isOpen = activePage === page.key;
-              return (
-                <Pressable
-                  key={page.key}
-                  style={styles.tabButton}
-                  onPress={() => setActivePage(page.key)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isOpen }}
-                  accessibilityLabel={page.label}
-                >
-                  <View style={[styles.tabIcon, isOpen && styles.tabIconOpen]}>
-                    <MaterialCommunityIcons name={page.icon} size={28} color={isOpen ? GREEN[700] : NEUTRAL[700]} />
-                  </View>
-                  <Text style={[styles.tabLabel, isOpen && styles.tabLabelOpen]}>{page.label}</Text>
-                </Pressable>
-              );
-            })}
+            <BottomTab page={PAGES[0]} isOpen={activePage === PAGES[0].key} onPress={() => setActivePage(PAGES[0].key)} />
+            <BottomTab page={REQUEST_BUTTON} isOpen={false} onPress={() => handleQuickAction("transport")} role="button" spokenLabel="Request a ride" circle />
+            <BottomTab page={PAGES[1]} isOpen={activePage === PAGES[1].key} onPress={() => setActivePage(PAGES[1].key)} />
           </View>
         </View>
       </View>
@@ -743,7 +725,7 @@ export default function ResidentHome() {
               </>
             ) : (
               <>
-                {/* The same van as the Request a Ride button. */}
+                {/* A van, not a car: the city's vehicles are vans and ambulances. */}
                 <MaterialCommunityIcons name="van-passenger" size={52} color={NEUTRAL[700]} />
                 <Text style={styles.callTitle}>Request a Ride</Text>
                 <Text style={styles.notVerifiedText}>
@@ -1080,6 +1062,32 @@ export default function ResidentHome() {
 }
 
 // "Reason: …" line in the Rejected / on-hold banner. Shows nothing when there is no reason to show.
+// One button in the bottom bar: icon + word. The open page has a green-100 pill behind its icon and a bold green word.
+// role / spokenLabel: the Request button is a plain button (it opens a form, not a page) and is read as "Request a ride".
+// circle: its "+" sits in a green circle, as tall as the other icons' pills, so the bar keeps its size.
+function BottomTab({ page, isOpen, onPress, role = "tab", spokenLabel = "", circle = false }) {
+  return (
+    <Pressable
+      style={styles.tabButton}
+      onPress={onPress}
+      accessibilityRole={role}
+      accessibilityState={role === "tab" ? { selected: isOpen } : undefined}
+      accessibilityLabel={spokenLabel || page.label}
+    >
+      {circle ? (
+        <View style={styles.tabCircle}>
+          <MaterialCommunityIcons name={page.icon} size={28} color="#FFFFFF" />
+        </View>
+      ) : (
+        <View style={[styles.tabIcon, isOpen && styles.tabIconOpen]}>
+          <MaterialCommunityIcons name={page.icon} size={28} color={isOpen ? GREEN[700] : NEUTRAL[700]} />
+        </View>
+      )}
+      <Text style={[styles.tabLabel, isOpen && styles.tabLabelOpen]}>{page.label}</Text>
+    </Pressable>
+  );
+}
+
 // The Emergency button (the same on the Your ride and History pages). Emergency Red, the biggest words in the
 // app, 24 corners (its own shape: every other button is a pill) and the only Level 2 shadow on the page.
 function EmergencyButton({ onPress }) {
@@ -1161,22 +1169,6 @@ const styles = StyleSheet.create({
   // "Board" size from DESIGN.md: the biggest text in the app.
   emergencyTitle: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   emergencySubtitle: { marginTop: 2, fontSize: 17, lineHeight: 22, fontFamily: FONT.semiBold, color: "#FFE9E7" },
-  // Request a Ride: a green pill (DESIGN.md Style), smaller and calmer than Emergency.
-  rideButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    minHeight: 56,
-    paddingHorizontal: 20,
-    borderRadius: CORNER.pill,
-    overflow: "hidden",
-    backgroundColor: GREEN[600],
-    ...SHADOW.level1,
-  },
-  rideButtonPressed: { backgroundColor: GREEN[800] },
-  // "Title" size from DESIGN.md: the home screen's second big action.
-  rideButtonText: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: "#FFFFFF" },
   // Account status banner (residents who are not Active only). Big, dark text for seniors.
   // Tinted info box (DESIGN.md Style): 16 corners and a thin colored edge.
   statusBanner: {
@@ -1230,13 +1222,15 @@ const styles = StyleSheet.create({
   },
   bannerCallButtonPressed: { backgroundColor: NEUTRAL[100] },
   bannerCallText: { fontSize: 17, fontFamily: FONT.semiBold, color: NEUTRAL[900] },
-  // Bottom bar (Task 3.18): white, a thin line and a soft shadow on top, two equal tabs at least 56 tall.
+  // Bottom bar (Task 3.18): white, a thin line and a soft shadow on top, three equal buttons at least 56 tall.
   bottomBar: { borderTopWidth: 1, borderTopColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], boxShadow: "0 -2px 8px rgba(20, 33, 28, 0.06)" },
   bottomBarRow: { flexDirection: "row", width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 8, paddingVertical: 6 },
   tabButton: { flex: 1, minHeight: 56, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 4, borderRadius: CORNER.card },
   // The open tab: a green-100 pill behind the icon (a shape, so it is not color alone) and a bold green word.
   tabIcon: { paddingHorizontal: 20, paddingVertical: 4, borderRadius: CORNER.pill },
   tabIconOpen: { backgroundColor: GREEN[100] },
+  // Request: a 36 green 600 circle with a white "+" (the same height as the pills above, so the bar keeps its size).
+  tabCircle: { width: 36, height: 36, borderRadius: CORNER.pill, alignItems: "center", justifyContent: "center", backgroundColor: GREEN[600] },
   tabLabel: { fontSize: 15, lineHeight: 20, fontFamily: FONT.medium, color: NEUTRAL[700], textAlign: "center" },
   tabLabelOpen: { fontFamily: FONT.bold, color: GREEN[700] },
   // ---- Pop-ups (DESIGN.md Style): a dark see-through backdrop, white dialogs with 16 corners and a

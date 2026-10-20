@@ -1,7 +1,8 @@
 # Pre-release test: big-update
 
 Written October 19, 2026. Updated October 20: the driver's ride history (new look, on the Availability page) and the duty
-card's "i" label (groups A, B, C, H). This is step 2 of the release plan (ROADMAP.md, Phase 3, "Next steps").
+card's "i" label (groups A, B, C, H); the Resident's Request button in the bottom bar and the
+empty "Your ride" card after a ride ends (groups A, B, C, G, H). This is step 2 of the release plan (ROADMAP.md, Phase 3, "Next steps").
 Test everything on `big-update` once, on the phone and the website, before the release.
 
 **Do not start the release** (merge into master, website, demo-ready-19 APK) until every group below
@@ -53,8 +54,11 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 
 ## A. Start-up and log in, every role (5 min)
 
-- [ ] Phone R: log in as the Resident. Expected: green header with the barangay, bottom bar **Your ride** /
-      **History**, red Emergency at the top. Plus Jakarta Sans font, white cards.
+- [ ] Phone R: log in as the Resident. Expected: green header with the barangay, red Emergency at the top,
+      no green Request a Ride button on the page. Bottom bar: **Your ride**, **Request** (white + in a green circle),
+      **History**, all three the same size, nothing sticking up above the bar. Plus Jakarta Sans font, white cards.
+- [ ] Phone R: Your ride with no open ride: "No ride right now" and "Tap Request below to ask for a ride.
+      Your past rides are in History."
 - [ ] Phone D: log in as jeb. Expected: three tabs at the bottom (Ride, Map, Availability). The open tab
       has a light-green pill.
 - [ ] Website window 1: log in as dispatcher0. Expected: requests (left), map (middle), drivers (right),
@@ -62,6 +66,7 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 - [ ] Website window 2: log in as admin1. Expected: header shows the icon, "SakayNa", "Daanglungsod".
 - [ ] While each screen loads: grey placeholder cards, never a false "Inbox empty", "No rides yet" or 0s.
 - [ ] Phone R and D: no buttons or last cards hidden under Android's bottom bar (◁ ○ □ or the swipe line).
+- [ ] Phone R: scroll to the bottom of Your ride and of History. The last card is fully visible above the bar.
 
 ## B. Normal ride + live location + route line (25 min)
 
@@ -78,8 +83,8 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 - [ ] Dispatcher: jeb's card → **Show on map**. Expected: the map slides to jeb's pin.
 
 **Resident asks for a ride**
-- [ ] Phone R: **Request a Ride**. Purpose **Medical / Health**, **As soon as possible**, Someone else
-      (fill in a name and phone), people **2**, pin the pickup on the map, type a destination that exists
+- [ ] Phone R: tap **Request** (+) in the bottom bar. The Request a Ride form opens. Purpose
+      **Medical / Health**, **As soon as possible**, Someone else (fill in a name and phone), people **2**, pin the pickup on the map, type a destination that exists
       (for example "Toledo City Hall"). **Review** → **Send request**.
 - [ ] Phone R: Your ride shows the ride as waiting (orange band). A pinned pickup shows as
       "Pinned location", not numbers.
@@ -96,7 +101,8 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 - [ ] Dispatcher after Picked up: the line turns **orange** toward the destination, "Drop-off · jeb".
       (If the destination was not found on the map, there is **no line**. That is expected, not a ❌.)
 - [ ] Phone D: **Complete mission**. Issues encountered: leave empty. Confirm.
-- [ ] Phone R: the ride shows Completed. **History** tab: the ride is there with a Completed badge.
+- [ ] Phone R: Your ride goes back to empty ("No ride right now"), with a small grey line
+      "Last ride: Completed · [time]". **History** tab: the ride is there with a Completed badge.
       Filters and search work.
 - [ ] Phone D: **Availability**. Expected: laid out like the Resident's History page: the duty card on top
       (where the Resident has Emergency), then "Ride history" with filters and search, then one white card per
@@ -121,10 +127,11 @@ dispatcher0). Answering an alert makes the Resident's phone **really call** that
 
 ## C. Cancellation, scheduled ride, "I can't do this ride" (10 min)
 
-- [ ] Phone R: **Request a Ride**, **Scheduled**. The calendar opens. Past days are greyed out. Pick
+- [ ] Phone R: **Request** (+), **Scheduled**. The calendar opens. Past days are greyed out. Pick
       tomorrow, and pick a time with the scroll-wheel. Purpose **Community Activity**. Send.
-- [ ] Phone R: open the ride → **Cancel request** → confirm. Expected: Cancelled (grey, not red). The
-      dispatcher's queue no longer shows it.
+- [ ] Phone R: open the ride → **Cancel request** → confirm. Expected: Your ride goes back to empty, with
+      **no** "Last ride" line. History shows it as Cancelled (grey, not red). The dispatcher's queue no
+      longer shows it.
 - [ ] Phone R: a new ride, As soon as possible. Dispatcher assigns it to jeb.
 - [ ] Phone D: **Accept**, then **I can't do this ride** → Why? **Vehicle problem** → confirm.
 - [ ] Dispatcher: orange **"Needs a new driver"** banner. jeb's card says "Reported: can't do a ride".
@@ -217,7 +224,7 @@ Use admin1 in window 2. Chrome's size can be set with F12 → Ctrl+Shift+M → R
 Android: Settings → Display → Font size → **largest** (and Display size larger, if your phone has it).
 Then reopen SakayNa.
 
-- [ ] Phone R: home, Request a Ride form (all steps to Review), History, the ☰ menu, Settings, the
+- [ ] Phone R: home, the bottom bar (the three words not cut off), Request a Ride form (all steps to Review), History, the ☰ menu, Settings, the
       Delete account sheet. Expected: words wrap, cards grow, nothing is cut off or overlapping, the sheets
       scroll, and Emergency is still visible.
 - [ ] Phone R: ☰ → Terms, then Privacy Policy. They open on top of the menu with no flash. **← Back**

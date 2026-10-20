@@ -249,6 +249,11 @@ Ink = neutral 900. Ratios are against white unless stated.
   band colors still apply to full bands.
 - **Empty states**: a 48 icon in a 96dp tinted circle, a title, one
   sentence, and the next action if there is one.
+- **Request in the resident's bottom bar** (owner's choice, Oct 20, 2026):
+  the middle of three buttons (Your ride | Request | History), the same size
+  and look as the other two: a white "+" in a 36 green 600 circle (in the
+  bar, not raised above it), with the word "Request" under it. It opens the
+  Request a Ride form, so it never shows the green "open" pill.
 - **Place strip** and **route board** stay (they make it local and clear),
   restyled with the new font, scales and corners.
 
