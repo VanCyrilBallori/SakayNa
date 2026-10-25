@@ -27,7 +27,7 @@ A normal ride goes: request -> Dispatcher assigns -> Driver accepts -> En route 
 
 For emergencies, an alert reaches the Dispatcher first. After Answer, the Resident's phone counts down three seconds, then calls the Dispatcher. The Resident can cancel the countdown. This uses their SIM, not an internet voice call. The number used is the Dispatcher's account phone, then their Operational phone, then the office number.
 
-During the call, the Dispatcher fills in an Emergency Request Form: type, priority, patient count, incident details, age, conscious/breathing facts, route, driver, and vehicle. Submit saves one assigned ride and links it to the alert. **Even 50 patients still creates only one driver/vehicle assignment.** The alert stays connected until someone ends it.
+During the call, the Dispatcher fills in an Emergency Request Form: type, priority, patient count, incident details, age, conscious/breathing facts, route, driver, and vehicle. Submit saves one assigned ride and links it to the alert. **Even 50 patients still creates only one driver/vehicle assignment.** Submit also ends the alert, and the resident's pop-up says "Help is on the way" with the driver's name. The form can't be closed until the emergency is finished; alerts that need no ride are closed with "End emergency (no ride needed)".
 
 Drivers share location only at Punch in, Accept, En route, Arrived, and Picked up. It is a last known place, not live tracking. Dispatchers and the driver themselves can read it. Punch out removes it.
 

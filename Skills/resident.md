@@ -898,9 +898,12 @@ blocked; broad update permissions remain an open issue.
 - **Emergency request form** (added 2026-10-05,
   `emergency-request-form-plan.md`; `EmergencyRequestForm` in
   `features/dispatcher/components/EmergencyRequestForm.jsx`): Answer also
-  opens a form on the dispatcher's website (only if no form is open yet;
-  otherwise the alert's Active emergency card has an **Open emergency
-  form** button).
+  opens a form on the dispatcher's website (one at a time; a second answered
+  alert's form opens when the first is finished). Since 2026-10-25 the form
+  can't be closed until the emergency is finished: no Back or Cancel, and a
+  reload opens it again for any answered alert that is still going. Its top
+  box shows the resident's name, number (big), barangay / place and **Open
+  location in Maps** (the old Active emergency card is gone).
   - Filled in by itself: caller name and number (from the alert), barangay
     (from the resident's profile), pickup location (the GPS address once it
     arrives), date / time received, dispatcher. The dispatcher types the
@@ -927,7 +930,9 @@ blocked; broad update permissions remain an open issue.
     `emergencyAlertId`, `createdBy`), the driver's assignment, the vehicle
     marked busy, and the alert's link (`linkedRequestId`,
     `linkedRequestReference`, `emergencyType`). The GPS pin is saved only if
-    the dispatcher kept the GPS address as the pickup.
+    the dispatcher kept the GPS address as the pickup. A Plus Code address
+    fills the Pickup box with "Pinned location" (saved as that text, with the
+    GPS pin) since 2026-10-25 (`getPickupBoxText` in `lib/placeText.js`).
   - The resident sees it like any assigned ride: the "Your ride" card
     (under the alert pop-up, then after Done), Request Details (with
     "Dispatcher"), and they can cancel it while it is Assigned.
@@ -935,16 +940,20 @@ blocked; broad update permissions remain an open issue.
     except Other. The new facts appear in Request Details → Notes without
     changing resident screens or needing a new APK. A large patient count
     still creates one assigned ride, not multiple vehicles.
-  - The alert stays `"connected"`, so the resident's pop-up does not change.
-    The dispatcher's card shows "Ride SKN-… created · driver · vehicle"
-    until the alert ends as before.
-  - Cancel or Back saves nothing. One ride per alert (Submit checks the
-    alert has no ride yet).
+  - Changed 2026-10-25: the same save also ends the alert (`status:
+    "ended"`), so the form closes. The resident's pop-up then says **"Help is on the way"** with the
+    driver's name and vehicle ("… See Your ride for updates."), keeps the
+    Call button and Done, and never just "Alert closed" (`helpOnTheWay` in
+    `app/resident-home.jsx`; needs the new APK — an older APK shows "Alert
+    closed").
+  - The only other way out: **End emergency (no ride needed)** (asks "End
+    this emergency?" first) for a false alarm or advice only. It ends the
+    alert and saves no ride. One ride per alert (Submit checks the alert has
+    no ride yet).
 - **The resident always calls the dispatcher**, never the other way around,
   because dispatchers use a computer. The Incoming Emergency pop-up and the
-  Active emergency card show the resident's number as **plain text** for
-  reference, not a call button (`EmergencyCallerDetails` in
-  `app/dispatcher-home.jsx:88`, changed 2026-10-05).
+  emergency form's top box show the resident's number as **plain text** for
+  reference, not a call button (`EmergencyRequestForm.jsx`, changed 2026-10-05).
 - **Decline** → adds the dispatcher's uid to `declinedBy`. The alert keeps
   ringing for the **other** dispatchers (`declineIncomingCall` in
   `app/dispatcher-home.jsx:560-574`).
@@ -1057,10 +1066,10 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
    location.** The dispatcher's "Incoming Emergency Call" pop-up shows the
    resident's phone as plain text (the Resident makes the SIM call), their
    barangay or GPS address, and an **Open location in Maps** button once the location arrives
-   (`EmergencyCallerDetails` in `app/dispatcher-home.jsx`). After Answer, an
-   "Active emergency" card at the top of the dispatcher screen keeps showing
-   the same details until the resident taps Done or the dispatcher taps "End
-   emergency". So the resident's confirm pop-up ("Dispatchers will see your
+   (since 2026-10-25: the top box of the emergency form, which stays open
+   until Submit or End emergency). A GPS address that is only a Plus Code
+   ("9JQX+XH7, …") shows the resident's profile barangay there instead, and
+   the ringing strip leaves the code out. So the resident's confirm pop-up ("Dispatchers will see your
    name and phone number") is now true. The accepted state only says "can see
    where you are" once the location was really sent.
 7. **Still open — The "Dispatcher could not accept" state can never happen.**

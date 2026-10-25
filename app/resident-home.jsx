@@ -73,6 +73,8 @@ export default function ResidentHome() {
   const [callDispatcherPhone, setCallDispatcherPhone] = useState("");
   // True when the dispatcher had no phone, so the website gave the office number instead.
   const [callDispatcherPhoneIsOffice, setCallDispatcherPhoneIsOffice] = useState(false);
+  // The ride the dispatcher made from this alert ({ driverName, vehicleName }), or null while there is none.
+  const [callRide, setCallRide] = useState(null);
   const [officePhone, setOfficePhone] = useState("");
   const [alertLocationStatus, setAlertLocationStatus] = useState("idle");
   const [noAnswerTimedOut, setNoAnswerTimedOut] = useState(false);
@@ -145,6 +147,7 @@ export default function ResidentHome() {
         setCallDispatcherName(callData?.dispatcherName ?? "");
         setCallDispatcherPhone(callData?.dispatcherPhone ?? "");
         setCallDispatcherPhoneIsOffice(callData?.dispatcherPhoneIsOffice === true);
+        setCallRide(callData?.linkedRequestId ? { driverName: callData.linkedDriverName || "", vehicleName: callData.linkedVehicleName || "" } : null);
 
         // A snapshot with no pending writes means the server has it — including a
         // queued offline write that synced after we already showed the error state.
@@ -408,6 +411,7 @@ export default function ResidentHome() {
     setCallDispatcherName("");
     setCallDispatcherPhone("");
     setCallDispatcherPhoneIsOffice(false);
+    setCallRide(null);
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("pending");
     setCallSessionId(alertId);
@@ -447,6 +451,7 @@ export default function ResidentHome() {
     setCallDispatcherName("");
     setCallDispatcherPhone("");
     setCallDispatcherPhoneIsOffice(false);
+    setCallRide(null);
     setNoAnswerTimedOut(false);
     setAlertLocationStatus("idle");
     // Done or Back during the countdown: no call.
@@ -809,32 +814,44 @@ export default function ResidentHome() {
               const waitingForAnswer = confirmed && callStatus === "ringing" && !noAnswerTimedOut;
               const unanswered = confirmed && callStatus === "ringing" && noAnswerTimedOut;
               const accepted = confirmed && callStatus === "connected";
+              // The dispatcher made a ride from this alert. Saving that ride also ends the alert
+              // (dispatcherAssignmentService.js), so "ended" counts too: the resident sees who is coming,
+              // never just "Alert closed".
+              const helpOnTheWay = confirmed && Boolean(callRide) && (callStatus === "connected" || callStatus === "ended");
+              // A dispatcher has the alert: the same Call button and Done button as "Dispatcher accepted".
+              const dispatcherHasAlert = accepted || helpOnTheWay;
               const declined = confirmed && callStatus === "declined";
               const showOfficeFallback = sendFailed || unanswered || declined;
               // While the alert is still live (sending, waiting, or possibly queued), the
               // bottom button cancels and goes through the confirmation question.
               const stillLive = sending || sendFailed || waitingForAnswer || unanswered;
 
-              const icon = accepted ? "check-circle-outline" : sending || waitingForAnswer ? "bell-ring-outline" : "alert-circle-outline";
-              const iconColor = accepted ? GREEN[600] : RED[600];
-              const title = sending
-                ? "Sending alert…"
-                : sendFailed
-                  ? "Alert not confirmed"
-                  : accepted
-                    ? "Dispatcher accepted"
-                    : waitingForAnswer
-                      ? "Emergency alert sent"
-                      : unanswered
-                        ? "No dispatcher has accepted yet"
-                        : declined
-                          ? "Dispatcher could not accept"
-                          : "Alert closed";
+              const icon = dispatcherHasAlert ? "check-circle-outline" : sending || waitingForAnswer ? "bell-ring-outline" : "alert-circle-outline";
+              const iconColor = dispatcherHasAlert ? GREEN[600] : RED[600];
+              const title = helpOnTheWay
+                ? "Help is on the way"
+                : sending
+                  ? "Sending alert…"
+                  : sendFailed
+                    ? "Alert not confirmed"
+                    : accepted
+                      ? "Dispatcher accepted"
+                      : waitingForAnswer
+                        ? "Emergency alert sent"
+                        : unanswered
+                          ? "No dispatcher has accepted yet"
+                          : declined
+                            ? "Dispatcher could not accept"
+                            : "Alert closed";
 
               // The body states what the resident can do next, so it never promises a
               // call button that isn't there.
               let body = "This alert is no longer active.";
-              if (sending) {
+              if (helpOnTheWay) {
+                // e.g. "Juan Dela Cruz is coming with Ambulance 1. See Your ride for updates."
+                const vehicleText = callRide.vehicleName ? ` with ${callRide.vehicleName}` : "";
+                body = `${callRide.driverName || "A driver"} is coming${vehicleText}. See Your ride for updates.`;
+              } else if (sending) {
                 body = "Sending to dispatchers.";
               } else if (sendFailed) {
                 // The queued write only survives while the app stays open (memory cache).
@@ -865,13 +882,13 @@ export default function ResidentHome() {
                       ? "Location: not available — dispatchers will see your barangay."
                       : "";
               // "Calling Maria in 3…" replaces the Call button until it calls or the resident taps Cancel call.
-              const countingDown = accepted && autoCallSeconds !== null;
-              const showCallDispatcher = accepted && Boolean(callDispatcherPhone) && !countingDown;
+              const countingDown = dispatcherHasAlert && autoCallSeconds !== null;
+              const showCallDispatcher = dispatcherHasAlert && Boolean(callDispatcherPhone) && !countingDown;
               // Who the countdown and the Call button say they are calling: the office when the number is the office number.
               const autoCallLabel = callDispatcherPhoneIsOffice ? "the dispatch office" : dispatcherLabel;
               const callDispatcherLabel = `Call ${autoCallLabel}${autoCalled ? " again" : ""}`;
               const showCallOffice = showOfficeFallback && Boolean(officePhone);
-              const closeLabel = accepted ? "Done" : stillLive ? "Cancel alert" : "Close";
+              const closeLabel = dispatcherHasAlert ? "Done" : stillLive ? "Cancel alert" : "Close";
               // Cancel alert = white with a red edge. Done / Close = white with a grey edge.
               const onClosePress = stillLive ? handleAlertBack : closeEmergencyAlert;
 
@@ -889,7 +906,7 @@ export default function ResidentHome() {
                     </View>
                   ) : null}
                   {sending || waitingForAnswer ? <ActivityIndicator color={RED[600]} style={styles.alertSpinner} /> : null}
-                  {locationLine && (sending || waitingForAnswer || unanswered || accepted) ? <Text style={styles.alertLocationText}>{locationLine}</Text> : null}
+                  {locationLine && (sending || waitingForAnswer || unanswered || dispatcherHasAlert) ? <Text style={styles.alertLocationText}>{locationLine}</Text> : null}
 
                   {sendFailed ? (
                     <TouchableOpacity style={styles.callNowButton} onPress={retryEmergencyAlert} accessibilityRole="button" accessibilityLabel="Try sending the alert again">

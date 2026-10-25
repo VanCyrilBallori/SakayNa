@@ -1,6 +1,7 @@
 import { collection, doc, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+import { getPickupBoxText } from "../../../lib/placeText";
 import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
 
 // Assigns a pending request to a driver + vehicle.
@@ -129,10 +130,13 @@ export const createEmergencyRide = async ({ requestId, alert, form, driver, vehi
   const title = `Emergency: ${form.emergencyType}`;
   const pickupAddress = oneLine(form.pickupLocation);
   const destination = oneLine(form.destination);
-  // The GPS spot is saved only if the dispatcher kept the GPS address. If they typed another place, the pin would be wrong.
+  // The GPS spot is saved only if the dispatcher kept what the form filled in from GPS: the GPS address, or
+  // "Pinned location" when that address was a Plus Code (getPickupBoxText). If they typed another place, the pin would be wrong.
   const location = alert.location;
   const pickupIsGps =
-    typeof location?.latitude === "number" && typeof location?.longitude === "number" && pickupAddress === oneLine(alert.pickupLocation || "");
+    typeof location?.latitude === "number" &&
+    typeof location?.longitude === "number" &&
+    pickupAddress === oneLine(getPickupBoxText(alert.pickupLocation || ""));
   const pickup = pickupIsGps
     ? { latitude: location.latitude, longitude: location.longitude, address: pickupAddress, barangay: form.barangay, source: "gps" }
     : { address: pickupAddress, barangay: form.barangay };
@@ -244,7 +248,9 @@ export const createEmergencyRide = async ({ requestId, alert, form, driver, vehi
       updatedAt: serverTimestamp(),
     });
 
-    // Link the alert to its ride. Its status stays "connected", so the resident's pop-up doesn't change mid-call.
+    // Link the alert to its ride and end it (the same "ended" as the End emergency button), so its strip on the
+    // dispatcher page closes. The resident's pop-up then says "Help is on the way" with the driver's name
+    // (resident-home.jsx), and the ride is in their Your ride page.
     // emergencyType also fills "Type:" in the Admin's Emergency Calls list.
     transaction.update(alertRef, {
       linkedRequestId: requestId,
@@ -252,6 +258,7 @@ export const createEmergencyRide = async ({ requestId, alert, form, driver, vehi
       linkedDriverName: driverName,
       linkedVehicleName: vehicleName,
       emergencyType: form.emergencyType,
+      status: "ended",
       updatedAt: serverTimestamp(),
     });
   });

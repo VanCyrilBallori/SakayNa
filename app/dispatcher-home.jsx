@@ -46,7 +46,8 @@ const SECTION_GAP = 18;
 const DETAILS_HEIGHT = 208; // top line 36 + 12 + columns 126 (the passenger box) + padding 32 + border 2
 const DETAILS_GIVEN_BACK_EXTRA = 50; // the peach "Driver can't do this ride" line
 const COLUMNS_MIN_HEIGHT = 240; // requests, map and drivers: never shorter than this
-const TOP_ALERTS_MIN_HEIGHT = 140; // Active emergency cards: at least this much shows (they scroll inside)
+// "Needs a new driver" banners: their box is never taller than this (one banner); more scroll inside it.
+const TOP_ALERTS_HEIGHT = 140;
 
 // Why a driver can't be given a ride right now, or "" if they can (driver-duty-plan.md Step 5).
 const getAssignBlockReason = (driver) => {
@@ -124,48 +125,6 @@ const openLocationInMaps = async (location) => {
     Alert.alert("Map not opened", "The map could not be opened on this device.");
   }
 };
-
-// Who sent an emergency alert and how to reach them: the resident's number (plain text, for reference),
-// barangay or place, and the map link. The number is not a button: the resident calls the dispatcher, and a computer can't call.
-// call = the alert (callSessions document). It updates by itself when the resident's location arrives a few seconds later.
-function EmergencyCallerDetails({ call }) {
-  const phone = call?.residentPhone || "";
-  const location = call?.location;
-  const hasLocation = typeof location?.latitude === "number" && typeof location?.longitude === "number";
-  // pickupLocation starts as the resident's barangay and becomes the GPS address once the location arrives.
-  const place = formatPlace(call?.pickupLocation) || "Not provided";
-
-  return (
-    <View style={styles.callerDetails}>
-      {phone ? (
-        <View>
-          <Text style={styles.callerLabel}>{"Resident's number:"}</Text>
-          <Text style={styles.callerPhoneText}>{formatPhoneForDialing(phone)}</Text>
-        </View>
-      ) : (
-        <Text style={styles.callerLine}>No phone number on file.</Text>
-      )}
-
-      <Text style={styles.callerLine}>
-        <Text style={styles.callerLabel}>Barangay / place: </Text>
-        {place}
-      </Text>
-
-      {hasLocation ? (
-        <Pressable
-          style={({ pressed }) => [styles.callerMapButton, pressed && styles.callerMapButtonPressed]}
-          onPress={() => openLocationInMaps(location)}
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="map-marker-outline" size={24} color={DESIGN_COLORS.hallGreen} />
-          <Text style={styles.callerMapText}>Open location in Maps</Text>
-        </Pressable>
-      ) : (
-        <Text style={styles.callerLine}>Location not sent (yet). Use the barangay above.</Text>
-      )}
-    </View>
-  );
-}
 
 // Rides scheduled more than this far ahead get the "Assign it closer to the time" warning.
 const ASSIGN_EARLY_WARNING_MS = 2 * 60 * 60_000;
@@ -451,7 +410,7 @@ export default function DispatcherHome() {
   const [assignedRequestIds, setAssignedRequestIds] = useState([]);
   const [activeAssignments, setActiveAssignments] = useState([]);
   const [ringingCalls, setRingingCalls] = useState([]);
-  // Alerts this dispatcher answered that are still going ("Active emergency" cards).
+  // Alerts this dispatcher answered that are still going (each opens its emergency form).
   const [activeCalls, setActiveCalls] = useState([]);
   // The alert whose "End this emergency?" question is open (null = closed), and its error message.
   const [endingCall, setEndingCall] = useState(null);
@@ -886,8 +845,9 @@ export default function DispatcherHome() {
     return unsubscribe;
   }, [authUser?.uid]);
 
-  // Answered alerts stay on screen until they end: the resident taps Done, or this dispatcher taps "End emergency".
-  // That way the phone number and location are still at hand after the "Incoming Emergency Call" pop-up closes.
+  // Answered alerts that are still going. Each one has its emergency form open (one at a time) until it ends:
+  // Submit (the ride's save ends it) or "End emergency (no ride needed)". The resident tapping Done ends it too,
+  // but then the form stays open with its last copy so it can still be finished.
   useEffect(() => {
     if (!authUser?.uid) return undefined;
 
@@ -903,8 +863,10 @@ export default function DispatcherHome() {
 
   // Keep the open form's alert up to date (for example when the resident's GPS location arrives).
   // If the alert ended (the resident tapped Done), the form keeps the last copy, so it can still be finished.
+  // No form open but an answered alert is still going (the page was reloaded, or a second answered alert
+  // waited for the first form): its form opens by itself. It only closes with Submit or End emergency.
   useEffect(() => {
-    setFormAlert((current) => (current ? activeCalls.find((call) => call.id === current.id) ?? current : null));
+    setFormAlert((current) => (current ? activeCalls.find((call) => call.id === current.id) ?? current : activeCalls[0] ?? null));
   }, [activeCalls]);
 
   // Opening or closing the form starts at the top of the page.
@@ -938,7 +900,7 @@ export default function DispatcherHome() {
   // (requests | map | drivers on top, Selected Request along the bottom). The height needed is worked out
   // from the fixed parts above; a narrow window (a phone using the website) or a short one keeps the
   // stacked page that scrolls, so nothing is ever cut off.
-  const hasTopAlerts = activeCalls.length > 0 || givenBackRequests.length > 0;
+  const hasTopAlerts = givenBackRequests.length > 0;
   const neededHeight =
     HEADER_HEIGHT +
     PAGE_PADDING +
@@ -946,7 +908,7 @@ export default function DispatcherHome() {
     (selectedRequest && getGivenBackReason(selectedRequest) ? DETAILS_GIVEN_BACK_EXTRA : 0) +
     SECTION_GAP +
     COLUMNS_MIN_HEIGHT +
-    (hasTopAlerts ? TOP_ALERTS_MIN_HEIGHT + SECTION_GAP : 0);
+    (hasTopAlerts ? TOP_ALERTS_HEIGHT + SECTION_GAP : 0);
   const fillWindow = !compact && height - stripHeight >= neededHeight;
 
   // While an alert rings, the browser tab says "EMERGENCY – SakayNa", so it shows even from another tab.
@@ -1044,8 +1006,8 @@ export default function DispatcherHome() {
     }
   };
 
-  // "End emergency": marks the alert "ended", so its card closes.
-  // If the resident's alert screen is still open, it shows "Alert closed".
+  // "End emergency (no ride needed)" in the form, for false alarms and advice only: marks the alert "ended"
+  // and closes the form without making a ride. If the resident's alert screen is still open, it shows "Alert closed".
   const endEmergency = async () => {
     if (!endingCall) return;
 
@@ -1054,6 +1016,7 @@ export default function DispatcherHome() {
         status: "ended",
         updatedAt: serverTimestamp(),
       });
+      setFormAlert((current) => (current?.id === endingCall.id ? null : current));
       setEndingCall(null);
     } catch (error) {
       console.log("End emergency failed:", error);
@@ -1079,46 +1042,8 @@ export default function DispatcherHome() {
   // The page under the header and the red strip: the emergency form (when open) or the dashboard.
   // fillWindow = the no-scrolling layout (Task 3.13); otherwise the stacked page, as before.
   const renderPageBody = () => {
-    const topAlerts = activeCalls.length || givenBackRequests.length ? (
+    const topAlerts = givenBackRequests.length ? (
       <>
-        {/* One card per answered emergency that is still going, above everything else. */}
-        {activeCalls.map((call) => (
-          <View key={call.id} style={styles.activeCard}>
-            <Text style={styles.activeTitle} accessibilityRole="header">
-              Active emergency · {call.residentName || "Resident"}
-            </Text>
-            <EmergencyCallerDetails call={call} />
-            {/* One ride per alert: once the form's ride is saved, the button becomes a "Ride created" line. */}
-            {call.linkedRequestId ? (
-              <View style={styles.rideCreatedLine}>
-                <MaterialCommunityIcons name="check-circle-outline" size={24} color={DESIGN_COLORS.hallGreen} />
-                <Text style={styles.rideCreatedText}>
-                  Ride {call.linkedRequestReference} created · {call.linkedDriverName || "Driver"} · {call.linkedVehicleName || "Vehicle"}
-                </Text>
-              </View>
-            ) : (
-              <Pressable
-                style={({ pressed }) => [styles.formButton, pressed && styles.formButtonPressed]}
-                onPress={() => setFormAlert(call)}
-                accessibilityRole="button"
-              >
-                <MaterialCommunityIcons name="clipboard-text-outline" size={24} color={DESIGN_COLORS.paperWhite} />
-                <Text style={styles.formButtonText}>Open emergency form</Text>
-              </Pressable>
-            )}
-            <Pressable
-              style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
-              onPress={() => {
-                setEndError("");
-                setEndingCall(call);
-              }}
-              accessibilityRole="button"
-            >
-              <Text style={styles.outlineButtonText}>End emergency</Text>
-            </Pressable>
-          </View>
-        ))}
-
         {/* "Needs a new driver": one orange banner per ride a driver gave back (driver-pages-plan.md Step 2b).
             Orange with dark words: important, but not an emergency. Tapping it shows the ride in Selected Request. */}
         {givenBackRequests.map((request) => {
@@ -1161,9 +1086,13 @@ export default function DispatcherHome() {
           alert={formAlert}
           dispatcherId={authUser?.uid ?? ""}
           dispatcherName={displayName}
-          onCancel={() => setFormAlert(null)}
+          onEndEmergency={() => {
+            setEndError("");
+            setEndingCall(formAlert);
+          }}
           onSubmitted={() => setFormAlert(null)}
           onOpenLocation={openLocationInMaps}
+          formatPhone={formatPhoneForDialing}
           drivers={dispatcherAvailabilityRows.filter((driver) => !driver.blockReason)}
           vehicles={assignableVehicles}
           vehiclesDriverId={selectedDriver?.id ?? ""}
@@ -1191,7 +1120,10 @@ export default function DispatcherHome() {
         ]}
       >
         <View style={[styles.mapPlaceholder, fillWindow && styles.mapPlaceholderFill]}>
-          <LeafletMap key={mapRebuildCount} title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={formatPlace(selectedRequest?.pickupLocation) || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${formatPlace(selectedRequest.pickupLocation)} - ${selectedRequest.pickupDetails}` : formatPlace(selectedRequest?.pickupLocation) || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} liveDrivers={liveMapDrivers} focusLiveDriver={mapFocus} focusPickup minHeight={fillWindow ? 0 : 280} />
+          {/* Not built while the emergency form covers the dashboard: a map that starts hidden measures its box as
+              0 × 0 and stays blank. When the form closes (Submit, End emergency, or after a reload), a fresh map
+              is built while it can be seen, so it measures itself correctly. */}
+          {formAlert ? null : <LeafletMap key={mapRebuildCount} title={selectedRequest ? `Request ${selectedRequest.reference || selectedRequest.id}` : "Dispatcher Toledo City Map"} markerLabel={formatPlace(selectedRequest?.pickupLocation) || "Toledo City, Cebu"} pickupLabel={selectedRequest?.pickupDetails ? `${formatPlace(selectedRequest.pickupLocation)} - ${selectedRequest.pickupDetails}` : formatPlace(selectedRequest?.pickupLocation) || ""} destinationLabel={selectedRequest?.destination || ""} pickupCoordinates={typeof selectedRequest?.pickup?.latitude === "number" && typeof selectedRequest?.pickup?.longitude === "number" ? [selectedRequest.pickup.latitude, selectedRequest.pickup.longitude] : null} destinationCoordinates={typeof selectedRequest?.destinationLocation?.latitude === "number" && typeof selectedRequest?.destinationLocation?.longitude === "number" ? [selectedRequest.destinationLocation.latitude, selectedRequest.destinationLocation.longitude] : null} liveDrivers={liveMapDrivers} focusLiveDriver={mapFocus} focusPickup minHeight={fillWindow ? 0 : 280} />}
         </View>
       </View>
     );
@@ -1207,10 +1139,10 @@ export default function DispatcherHome() {
           formView
         )}
 
-        {/* While the form is open, the normal page is hidden, not removed, so the map doesn't reload when the form closes. */}
+        {/* While the form is open, the normal page is hidden, not removed, so the lists keep their place. Only the map is left out (see above). */}
         <View style={[styles.container, compact && styles.containerCompact, fillWindow && styles.containerFill, formAlert && styles.hidden]}>
-          {/* Active emergency cards and "Needs a new driver" banners stay at the top. In the no-scrolling layout they
-              use at most 40% of the height and scroll inside themselves if there are more, so the columns keep room. */}
+          {/* "Needs a new driver" banners stay at the top. In the no-scrolling layout they use at most
+              TOP_ALERTS_HEIGHT and scroll inside themselves if there are more, so the columns keep room. */}
           {topAlerts && fillWindow ? (
             <ScrollView style={styles.topAlertsFill} contentContainerStyle={styles.topAlertsContent} showsVerticalScrollIndicator={false}>
               {topAlerts}
@@ -1464,8 +1396,8 @@ export default function DispatcherHome() {
           <View style={styles.endCard}>
             <Text style={styles.endTitle}>End this emergency?</Text>
             <Text style={styles.endText}>
-              The card for {endingCall?.residentName || "this resident"} will close. If their alert screen is still open, it will say
-              &quot;Alert closed&quot;.
+              The form for {endingCall?.residentName || "this resident"} closes and no ride is made. Use this for a false alarm
+              or advice only. If their alert screen is still open, it will say &quot;Alert closed&quot;.
             </Text>
             {endError ? <Text style={styles.endError}>{endError}</Text> : null}
             <Pressable
@@ -1499,8 +1431,8 @@ const styles = StyleSheet.create({
   pageFill: { flex: 1, minHeight: 0 },
   fillScroll: { flex: 1 },
   containerFill: { flex: 1, minHeight: 0 },
-  // Only as tall as its cards (at most 40%); the height check (neededHeight) keeps TOP_ALERTS_MIN_HEIGHT free for it.
-  topAlertsFill: { flexGrow: 0, flexShrink: 1, maxHeight: "40%" },
+  // Only as tall as its banners (at most TOP_ALERTS_HEIGHT); the height check (neededHeight) keeps that much free for it.
+  topAlertsFill: { flexGrow: 0, flexShrink: 0, maxHeight: TOP_ALERTS_HEIGHT },
   topAlertsContent: { gap: 18 },
   // No-scrolling layout: the three columns take all the height left after the fixed parts (at least COLUMNS_MIN_HEIGHT).
   mainGridFill: { flex: 1, minHeight: COLUMNS_MIN_HEIGHT, flexWrap: "nowrap" },
@@ -1523,7 +1455,7 @@ const styles = StyleSheet.create({
   panelScrollContent: { gap: 10, paddingBottom: 4, paddingHorizontal: 2 },
   // A white card (DESIGN.md Style): 16 corners, a thin neutral edge, a Level 1 shadow. The level is the pill on top.
   requestCard: { borderRadius: CORNER.card, padding: 16, borderWidth: 1, borderColor: NEUTRAL[200], backgroundColor: NEUTRAL[0], ...SHADOW.level1 },
-  // An Emergency ride: a 2px red edge all around, like the Active emergency card (owner's choice Oct 19; DESIGN.md
+  // An Emergency ride: a 2px red edge all around, like the old Active emergency card (owner's choice Oct 19; DESIGN.md
   // allows no side stripes). The red "Emergency" pill stays, so it is never color alone.
   requestCardEmergency: { borderWidth: 2, borderColor: RED[600] },
   // The tapped card: a thicker green edge AND a light green fill (not color alone: the edge is thicker too).
@@ -1687,55 +1619,7 @@ const styles = StyleSheet.create({
   },
   assignButtonText: { fontSize: 17, fontFamily: FONT.extraBold, color: "#FFFFFF" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 22 },
-  // Emergency caller details (DESIGN.md look): big resident's number (text only), then barangay and the map link.
-  callerDetails: { marginTop: 16, gap: 12 },
-  callerPhoneText: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
-  callerLine: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
-  callerLabel: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  // "Open location in Maps": a secondary pill (white, grey edge, green words).
-  callerMapButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minHeight: 52,
-    paddingHorizontal: 20,
-    borderRadius: CORNER.pill,
-    borderWidth: 1.5,
-    borderColor: NEUTRAL[500],
-  },
-  callerMapButtonPressed: { backgroundColor: NEUTRAL[100] },
-  callerMapText: { fontSize: 17, fontFamily: FONT.semiBold, color: GREEN[700] },
-  // "Active emergency" card: a white card with a red edge (it is an emergency), at most 640 wide on a computer.
-  // 16 corners and a Level 1 shadow (DESIGN.md Style); the red edge stays.
-  activeCard: {
-    width: "100%",
-    maxWidth: 640,
-    padding: 16,
-    borderRadius: CORNER.card,
-    borderWidth: 2,
-    borderColor: DESIGN_COLORS.emergencyRed,
-    backgroundColor: DESIGN_COLORS.paperWhite,
-    ...SHADOW.level1,
-  },
-  activeTitle: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
-  // "Open emergency form" on the card: the main action, so a solid green pill.
-  formButton: {
-    minHeight: 52,
-    marginTop: 16,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: CORNER.pill,
-    backgroundColor: DESIGN_COLORS.hallGreen,
-  },
-  formButtonPressed: { backgroundColor: DESIGN_COLORS.hallGreenDeep },
-  formButtonText: { fontSize: 17, fontFamily: FONT.semiBold, color: DESIGN_COLORS.paperWhite },
   hidden: { display: "none" },
-  rideCreatedLine: { marginTop: 16, flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  rideCreatedText: { flex: 1, fontSize: 17, lineHeight: 24, fontFamily: FONT.semiBold, color: DESIGN_COLORS.ink },
   // "Needs a new driver" banner (driver-pages-plan.md Step 2b): Sakay Orange with Ink words, 16 corners (DESIGN.md Style banner).
   givenBackBanner: {
     width: "100%",

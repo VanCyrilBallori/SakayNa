@@ -9,6 +9,7 @@ import { db } from "../../../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import { formatDay, formatTime, getDateFromValue } from "../../../lib/dates";
 import { formatDutyDuration } from "../../../lib/dutyTime";
+import { formatPlace, getPickupBoxText, hasPlusCode, removePlusCode } from "../../../lib/placeText";
 import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
 import { createEmergencyRide } from "../services/dispatcherAssignmentService";
 
@@ -69,9 +70,11 @@ const checkEmergencyForm = (form, chosenDriver, chosenVehicle) => {
 
 // The Emergency request form (emergency-request-form-plan.md). Opens when the dispatcher answers an alert.
 // alert = the live alert (callSessions document). It updates by itself, for example when the GPS location arrives.
-// dispatcherId / dispatcherName = the logged-in dispatcher. onCancel = back to the dispatcher page, nothing saved.
-// onSubmitted = the ride was saved: back to the dispatcher page (the Active emergency card says "Ride created").
-// onOpenLocation = opens the resident's GPS spot in Google Maps.
+// It can't be closed until the emergency is finished (no Back or Cancel). The only two ways out:
+// onSubmitted = the ride was saved and the alert ended: back to the dispatcher page.
+// onEndEmergency = "End emergency (no ride needed)": the dispatcher page asks first, then ends the alert (false alarm, advice only).
+// dispatcherId / dispatcherName = the logged-in dispatcher.
+// onOpenLocation = opens the resident's GPS spot in Google Maps. formatPhone = "+639171234567" → "0917 123 4567".
 // drivers = the drivers who can be given a ride now (Available, no ride in hand).
 // vehicles = the vehicles for vehiclesDriverId, worked out by the dispatcher page the same way as for the Assign window.
 // onChooseDriver(driver) = tells the dispatcher page which driver was picked, so it can work out that driver's vehicles.
@@ -79,9 +82,10 @@ export default function EmergencyRequestForm({
   alert,
   dispatcherId,
   dispatcherName,
-  onCancel,
+  onEndEmergency,
   onSubmitted,
   onOpenLocation,
+  formatPhone,
   drivers,
   vehicles,
   vehiclesDriverId,
@@ -96,7 +100,7 @@ export default function EmergencyRequestForm({
     callerName: alert.residentName || "",
     contactNumber: alert.residentPhone || "",
     barangay: "",
-    pickupLocation: alert.pickupLocation || "",
+    pickupLocation: getPickupBoxText(alert.pickupLocation || ""),
     landmark: "",
     emergencyType: "",
     emergencyTypeOther: "",
@@ -146,13 +150,19 @@ export default function EmergencyRequestForm({
   // The GPS address often arrives a few seconds after Answer. Fill it in, unless the dispatcher already typed here.
   useEffect(() => {
     if (!pickupEditedRef.current && alert.pickupLocation) {
-      setForm((current) => ({ ...current, pickupLocation: alert.pickupLocation }));
+      // A Plus Code address shows as "Pinned location" (getPickupBoxText).
+      setForm((current) => ({ ...current, pickupLocation: getPickupBoxText(alert.pickupLocation) }));
     }
   }, [alert.pickupLocation]);
 
   const location = alert.location;
   const hasLocation = typeof location?.latitude === "number" && typeof location?.longitude === "number";
   const receivedAt = getDateFromValue(alert.createdAt);
+  // The place at the top. pickupLocation starts as the resident's barangay and becomes the GPS address once the
+  // location arrives. A GPS address that is only a Plus Code ("9JQX+XH7, Toledo, Central Visayas") shows the
+  // barangay from the resident's profile instead (form.barangay, loaded above); until then, the address without the code.
+  const alertPlace = alert.pickupLocation || "";
+  const topPlace = (hasPlusCode(alertPlace) ? form.barangay || removePlusCode(alertPlace) : formatPlace(alertPlace)) || "Not provided";
   // The profile's barangay may be spelled differently from our list; add it so the dropdown can still show it.
   const barangayOptions =
     form.barangay && !TOLEDO_BARANGAY_PICKER_OPTIONS.some((option) => option.value === form.barangay)
@@ -213,17 +223,6 @@ export default function EmergencyRequestForm({
   return (
     <View style={styles.page}>
       <View style={styles.header}>
-        <Pressable
-          style={({ pressed }) => [styles.backButton, pressed && styles.outlinePressed]}
-          onPress={onCancel}
-          disabled={saving}
-          accessibilityRole="button"
-          accessibilityLabel="Back. Nothing is saved."
-          accessibilityState={{ disabled: saving }}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color={DESIGN_COLORS.ink} />
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
         {/* A round red badge: red means emergency (DESIGN.md). */}
         <View style={styles.headerBadge}>
           <MaterialCommunityIcons name="alarm-light-outline" size={28} color={DESIGN_COLORS.paperWhite} />
@@ -237,6 +236,38 @@ export default function EmergencyRequestForm({
         <View style={styles.referenceTag}>
           <Text style={styles.referenceText}>Reference: {reference}</Text>
         </View>
+      </View>
+
+      {/* Who is calling and where they are, always at the top while on the call. */}
+      <View style={styles.callerBox}>
+        <View style={styles.callerCopy}>
+          <Text style={styles.callerName}>{alert.residentName || "Resident"}</Text>
+          {alert.residentPhone ? (
+            // Plain text, not a call button: the resident calls the dispatcher, and a computer can't call.
+            <View style={styles.callerPhoneRow}>
+              <Text style={styles.callerLabel}>{"Resident's number:"}</Text>
+              <Text style={styles.callerPhone}>{formatPhone(alert.residentPhone)}</Text>
+            </View>
+          ) : (
+            <Text style={styles.callerLine}>No phone number on file.</Text>
+          )}
+          <Text style={styles.callerLine}>
+            <Text style={styles.callerLabel}>Barangay / place: </Text>
+            {topPlace}
+          </Text>
+        </View>
+        {hasLocation ? (
+          <Pressable
+            style={({ pressed }) => [styles.smallOutlineButton, pressed && styles.outlinePressed]}
+            onPress={() => onOpenLocation(location)}
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+            <Text style={styles.smallOutlineText}>Open location in Maps</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.hint}>Location not sent (yet). Ask the caller where they are.</Text>
+        )}
       </View>
 
       <View style={[styles.card, desktop && styles.desktopCard]}>
@@ -309,21 +340,7 @@ export default function EmergencyRequestForm({
             />
           </Field>
         </View>
-        {hasLocation ? (
-          <View style={styles.locationLine}>
-            <Text style={styles.hint}>From the resident&apos;s GPS.</Text>
-            <Pressable
-              style={({ pressed }) => [styles.smallOutlineButton, pressed && styles.outlinePressed]}
-              onPress={() => onOpenLocation(location)}
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
-              <Text style={styles.smallOutlineText}>Open location in Maps</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Text style={styles.hint}>Location not sent (yet). Ask the caller where they are.</Text>
-        )}
+        {hasLocation ? <Text style={styles.hint}>From the resident&apos;s GPS.</Text> : null}
         </View>
 
         {/* ---- Emergency details (typed during the call) ---- */}
@@ -539,7 +556,8 @@ export default function EmergencyRequestForm({
           </Text>
         ) : null}
 
-        {/* DESIGN.md website exception: the note on the left, [Submit request] [Cancel] side by side on the right. */}
+        {/* DESIGN.md website exception: the note on the left, [Submit request] [End emergency (no ride needed)] side by side
+            on the right. These are the only two ways out of the form. */}
         <View style={styles.footer}>
           <View style={styles.infoLine}>
             <MaterialCommunityIcons name="information-outline" size={22} color={DESIGN_COLORS.inkMuted} />
@@ -556,16 +574,17 @@ export default function EmergencyRequestForm({
               <MaterialCommunityIcons name="send-outline" size={20} color={DESIGN_COLORS.paperWhite} />
               <Text style={styles.submitText}>{saving ? "Saving…" : "Submit request"}</Text>
             </Pressable>
+            {/* For a false alarm or advice only. The dispatcher page asks "End this emergency?" first. */}
             <Pressable
               style={({ pressed }) => [styles.cancelButton, pressed && styles.outlinePressed]}
-              onPress={onCancel}
+              onPress={onEndEmergency}
               accessibilityRole="button"
-              accessibilityLabel="Cancel. Nothing is saved."
-              // Not while saving: the save would still finish, so "Cancel" would not be true.
+              accessibilityLabel="End emergency, no ride needed. Nothing is saved."
+              // Not while saving: the ride is being made, so "no ride" would not be true.
               disabled={saving}
               accessibilityState={{ disabled: saving }}
             >
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>End emergency (no ride needed)</Text>
             </Pressable>
           </View>
         </View>
@@ -687,18 +706,6 @@ function ReadOnly({ label, value }) {
 const styles = StyleSheet.create({
   page: { width: "100%", maxWidth: 1280, alignSelf: "center", gap: 12 },
   header: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 16 },
-  backButton: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: DESIGN_COLORS.controlOutline,
-    backgroundColor: DESIGN_COLORS.paperWhite,
-  },
-  backText: { fontSize: 17, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   headerBadge: { width: 48, height: 48, borderRadius: 999, alignItems: "center", justifyContent: "center", backgroundColor: DESIGN_COLORS.emergencyRed },
   headerCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 280 },
   title: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
@@ -706,6 +713,26 @@ const styles = StyleSheet.create({
   // A small orange tag with dark words (DESIGN.md: orange has dark words).
   referenceTag: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: DESIGN_COLORS.sakayOrange },
   referenceText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.ink, fontVariant: ["tabular-nums"] },
+  // Who is calling and where, at the top: white with a red edge (it is an emergency), 16 corners (DESIGN.md Style).
+  // The words on the left, "Open location in Maps" on the right (under the words on a narrow screen).
+  callerBox: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: DESIGN_COLORS.emergencyRed,
+    backgroundColor: DESIGN_COLORS.paperWhite,
+  },
+  callerCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 320, minWidth: 0, gap: 4 },
+  callerName: { fontSize: 22, lineHeight: 28, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  callerPhoneRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: 8 },
+  callerLabel: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
+  callerPhone: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  callerLine: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
   card: { padding: 24, gap: 16, borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
   desktopCard: { padding: 16, gap: 12 },
   // Each part of the form sits on its own soft color, inside the white card (Board Tint fields, DESIGN.md).
@@ -747,7 +774,6 @@ const styles = StyleSheet.create({
   textArea: { minHeight: 144, textAlignVertical: "top" },
   hint: { fontFamily: FONT.regular, fontSize: 15, lineHeight: 20, color: DESIGN_COLORS.inkMuted },
   errorText: { fontSize: 15, lineHeight: 20, fontFamily: FONT.bold, color: DESIGN_COLORS.emergencyRed },
-  locationLine: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
   smallOutlineButton: {
     minHeight: 48,
     paddingHorizontal: 14,
