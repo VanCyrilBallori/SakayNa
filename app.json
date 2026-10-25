@@ -14,8 +14,8 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./Photos_/Logo (Secondary).png",
-        "monochromeImage": "./Photos_/Logo (Secondary).png"
+        "foregroundImage": "./Photos_/app-icon-foreground.png",
+        "monochromeImage": "./Photos_/app-icon-foreground.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -36,7 +36,7 @@
         "expo-splash-screen",
         {
           "image": "./Photos_/Logo (Secondary).png",
-          "imageWidth": 200,
+          "imageWidth": 140,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
