@@ -162,6 +162,24 @@ export const reviewResidentVerification = async ({ adminId, residentUid, decisio
   });
 };
 
+// The status that lets each role work: Drivers "Approved"; Residents, Dispatchers (and Admins) "Active".
+export const getWorkingStatus = (role) => (role === ROLES.DRIVER ? ACCOUNT_STATUSES.APPROVED : ACCOUNT_STATUSES.ACTIVE);
+
+// Operations → Accounts: the only status changes allowed, worked out from the current status.
+// - Working → Suspended (for a while) or Deactivated (access removed).
+// - Suspended → back to working, or Deactivated. An old "Disabled" account counts as Suspended ("Disabled" is
+//   no longer offered), and so does a status that doesn't fit the role (for example a Driver set to "Active").
+// - Deactivated → back to working (restore).
+// - Pending and Rejected: none here. They are decided in Resident Verification / Driver Applications, with the documents.
+export const getAllowedNextStatuses = (user) => {
+  const working = getWorkingStatus(user?.role);
+  const current = user?.accountStatus || user?.approvalStatus || ACCOUNT_STATUSES.ACTIVE;
+  if ([ACCOUNT_STATUSES.PENDING, ACCOUNT_STATUSES.REJECTED].includes(current)) return [];
+  if (current === working) return [ACCOUNT_STATUSES.SUSPENDED, ACCOUNT_STATUSES.DEACTIVATED];
+  if (current === ACCOUNT_STATUSES.DEACTIVATED) return [working];
+  return [working, ACCOUNT_STATUSES.DEACTIVATED];
+};
+
 export const changeAccountStatus = async ({ adminId, targetUser, nextStatus, reason, activeAssignments = [] }) => {
   if (!Object.values(ACCOUNT_STATUSES).includes(nextStatus)) throw new Error("Choose a supported account status.");
   if (!hasText(reason, 3)) throw new Error("A reason of at least 3 characters is required.");
@@ -177,6 +195,10 @@ export const changeAccountStatus = async ({ adminId, targetUser, nextStatus, rea
     const targetSnapshot = await transaction.get(targetRef);
     if (!targetSnapshot.exists()) throw new Error("This profile no longer exists.");
     const previousStatus = targetSnapshot.data().accountStatus || ACCOUNT_STATUSES.ACTIVE;
+    // Checked on the saved profile (not the copy on screen), in case it changed meanwhile.
+    if (!getAllowedNextStatuses({ role: targetSnapshot.data().role, accountStatus: previousStatus }).includes(nextStatus)) {
+      throw new Error(`${previousStatus} can't be changed to ${nextStatus} here.`);
+    }
     const patch = {
       accountStatus: nextStatus,
       previousAccountStatus: previousStatus,

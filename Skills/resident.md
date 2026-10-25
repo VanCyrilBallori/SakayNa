@@ -694,6 +694,17 @@ works the same from History and from the home card (`requestCancellation` in
   The app's "can send" check (`notActive` in `app/resident-home.jsx`) is the
   same as the rules: only `Active` can send.
 
+  Since 2026-10-25, Admin → Operations → Accounts offers only these changes
+  (`getAllowedNextStatuses` in `features/admin/services/adminOperationsService.js`,
+  checked again on the saved profile before saving): working status (Resident /
+  Dispatcher `Active`, Driver `Approved`) → `Suspended` or `Deactivated`;
+  `Suspended` (and an old `Disabled`, or a status that doesn't fit the role) →
+  working or `Deactivated`; `Deactivated` → working. `Pending` and `Rejected`
+  can't be changed there (Resident Verification / Driver Applications decide
+  them). "Disabled" is no longer offered. A reason is still required and the
+  change is still logged. A Suspended Driver sees "Account on hold" with the
+  reason on `app/driver-status.jsx`.
+
 - The profile is watched **live** (`useCurrentUserProfile` in
   `lib/session.js:91`, listener at `116`), so when the Admin approves a
   resident, the banner disappears and the buttons work right away.

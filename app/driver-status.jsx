@@ -9,13 +9,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BrandLogo from "../components/BrandLogo";
 import ListSkeleton from "../components/ui/ListSkeleton";
 import { ACCOUNT_STATUSES, FIRESTORE_COLLECTIONS } from "../constants/app";
-import { COLORS, FONT, LIGHT_COLORS } from "../constants/design";
+import { COLORS, DESIGN_COLORS, FONT, LIGHT_COLORS } from "../constants/design";
 import { db } from "../firebase";
 import { formatDateTime, getDateFromValue } from "../lib/dates";
 import { getAccountStatusLabel } from "../lib/roles";
 import { getAuthErrorMessage, logoutCurrentUser, useCurrentUserProfile } from "../lib/session";
 
 // Where a new Driver waits until an Admin of their barangay approves or rejects their application.
+// A Driver whose account an Admin put on hold (Suspended) sees "Account on hold" with the reason here instead.
 // It watches two documents live:
 // - users/{uid}: the status. Approved → straight to driver home.
 // - Driver_Applications/{uid}: the date it was sent, and the reason if it was rejected.
@@ -99,6 +100,10 @@ export default function DriverStatus() {
   };
 
   const isRejected = driverProfile?.accountStatus === ACCOUNT_STATUSES.REJECTED;
+  // Not Pending and not Rejected: an Admin put the account on hold in Operations (Suspended, or an old "Disabled").
+  // (Approved goes to driver home above, and a Deactivated account never reaches this page: AuthRouteGate stops it.)
+  // Then the page says so, with the Admin's reason, instead of the "being reviewed" timeline.
+  const isOnHold = Boolean(driverProfile) && ![ACCOUNT_STATUSES.PENDING, ACCOUNT_STATUSES.REJECTED].includes(driverProfile.accountStatus);
   const submittedValue = application?.submittedAt ?? application?.createdAt;
   const submittedText = getDateFromValue(submittedValue) ? formatDateTime(submittedValue) : "";
 
@@ -130,12 +135,26 @@ export default function DriverStatus() {
         <BrandLogo variant="main" height={40} style={styles.logo} accessibilityLabel="SakayNa" />
 
         <Text style={[styles.title, { color: colors.heading }]} accessibilityRole="header">
-          Application Status
+          {isOnHold ? "Account on hold" : "Application Status"}
         </Text>
 
         {/* Still loading: three grey rows where the three timeline points will be (Task 3.16 placeholder). */}
         {isLoading || !applicationLoaded ? (
           <ListSkeleton rows={3} label="Checking application status" />
+        ) : isOnHold ? (
+          // A peach box: important, but not an emergency (DESIGN.md Style tinted boxes).
+          <View style={styles.onHoldBox} accessible accessibilityLabel={`Your driver account is on hold. You can't punch in or take rides for now. Reason: ${driverProfile.accountStatusReason || "No reason was given."} If you have questions, please contact your barangay office.`}>
+            <View style={styles.onHoldTitleRow}>
+              <MaterialCommunityIcons name="pause-circle-outline" size={28} color={DESIGN_COLORS.ink} />
+              <Text style={styles.onHoldTitle}>Your driver account is on hold.</Text>
+            </View>
+            <Text style={styles.onHoldText}>You can&apos;t punch in or take rides for now.</Text>
+            <Text style={styles.onHoldText}>
+              <Text style={styles.onHoldLabel}>Reason: </Text>
+              {driverProfile.accountStatusReason || "No reason was given."}
+            </Text>
+            <Text style={styles.onHoldText}>If you have questions, please contact your barangay office.</Text>
+          </View>
         ) : (
           <View style={styles.timeline}>
             {points.map((point, index) => (
@@ -242,6 +261,12 @@ const styles = StyleSheet.create({
   pointDetail: { fontFamily: FONT.regular, marginTop: 4, fontSize: 17, lineHeight: 25 },
   rejectedPanel: { padding: 16, paddingTop: 8, borderRadius: 14, backgroundColor: COLORS.emergencySurface },
   contactText: { marginTop: 12 },
+  // "Account on hold": peach box with dark words, 16 corners.
+  onHoldBox: { gap: 8, padding: 16, borderRadius: 16, backgroundColor: DESIGN_COLORS.peachTint },
+  onHoldTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  onHoldTitle: { flex: 1, fontSize: 19, lineHeight: 26, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
+  onHoldText: { fontSize: 17, lineHeight: 25, fontFamily: FONT.regular, color: DESIGN_COLORS.ink },
+  onHoldLabel: { fontFamily: FONT.bold },
   spacer: { flexGrow: 1, minHeight: 32 },
   logoutButton: {
     minHeight: 56,

@@ -13,6 +13,7 @@ import {
   buildCsv,
   changeAccountStatus,
   createDispatcherAccount,
+  getAllowedNextStatuses,
   getDate,
   getProfileName,
   getUserMissionConflicts,
@@ -89,6 +90,17 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
   }, [filterRole, filterStatus, search, users]);
   const vehicleMaintenance = useMemo(() => vehicles.filter((vehicle) => vehicle.maintenanceStatus && vehicle.maintenanceStatus !== "Completed").length, [vehicles]);
   const canManageSelectedUser = canManageUser(users.find((user) => user.id === selectedUser?.id));
+  // The live copy of the open account (users updates by itself), so after a change the buttons fit the new status.
+  const liveSelectedUser = selectedUser ? users.find((user) => user.id === selectedUser.id) ?? selectedUser : null;
+  // Only the status changes that make sense from the current status (getAllowedNextStatuses). Empty for Pending
+  // and Rejected: those are decided in Resident Verification / Driver Applications.
+  const allowedStatuses = liveSelectedUser ? getAllowedNextStatuses(liveSelectedUser) : [];
+  // When the allowed choices change (for example right after a change), the chosen one moves to the first allowed.
+  const allowedKey = allowedStatuses.join(",");
+  useEffect(() => {
+    const choices = allowedKey ? allowedKey.split(",") : [];
+    setNextStatus((current) => (choices.includes(current) ? current : choices[0] ?? ""));
+  }, [allowedKey]);
 
   const openUser = (user) => {
     setError("");
@@ -99,7 +111,7 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
     }
     setSelectedUser(user);
     setReason("");
-    setNextStatus(statusOf(user));
+    setNextStatus(getAllowedNextStatuses(user)[0] ?? "");
     setScopeAreas(user.serviceAreas || []);
     setScopePhone(user.operationalPhone || "");
     setScopeOffice(user.office || "");
@@ -278,8 +290,25 @@ export default function AdminOperationsPanel({ users, vehicles, assignments, req
         {selectedUser?.role === ROLES.RESIDENT && [ACCOUNT_STATUSES.REJECTED, ACCOUNT_STATUSES.SUSPENDED, ACCOUNT_STATUSES.DISABLED].includes(nextStatus) ? (
           <Text style={[styles.copy, { color: theme.mutedText }]}>The resident will see this reason.</Text>
         ) : null}
-        <Text style={[styles.label, { color: theme.text }]}>Account status</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{Object.values(ACCOUNT_STATUSES).map((item) => chip(item, nextStatus === item, () => setNextStatus(item)))}</ScrollView>
-        <AppButton label={`Apply status: ${nextStatus}`} loading={busy} disabled={!canManageSelectedUser} onPress={() => confirm("Confirm account status", `Update this profile to ${nextStatus}? Active Driver missions must be resolved first.`, () => run(() => changeAccountStatus({ adminId, targetUser: selectedUser, nextStatus, reason, activeAssignments: assignments }), "Account status updated.", selectedUser))} style={styles.button} />
+        <Text style={[styles.label, { color: theme.text }]}>Account status</Text>
+        {liveSelectedUser ? (
+          <Text style={[styles.copy, { color: theme.mutedText }]}>
+            Now: {statusOf(liveSelectedUser)}{statusOf(liveSelectedUser) === ACCOUNT_STATUSES.DISABLED ? " (treated as Suspended)" : ""}
+          </Text>
+        ) : null}
+        {allowedStatuses.length ? (
+          <>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{allowedStatuses.map((item) => chip(item, nextStatus === item, () => setNextStatus(item)))}</ScrollView>
+            <AppButton label={`Apply status: ${nextStatus}`} loading={busy} disabled={!canManageSelectedUser} onPress={() => confirm("Confirm account status", `Update this profile to ${nextStatus}? Active Driver missions must be resolved first.`, () => run(() => changeAccountStatus({ adminId, targetUser: selectedUser, nextStatus, reason, activeAssignments: assignments }), "Account status updated.", selectedUser))} style={styles.button} />
+          </>
+        ) : (
+          // Pending and Rejected are not changed here, so verification can't be skipped.
+          <Text style={[styles.copy, { color: theme.mutedText }]}>
+            {selectedUser?.role === ROLES.DRIVER
+              ? "A Pending or Rejected driver is decided in Driver Applications, where the application documents are."
+              : "A Pending or Rejected resident is decided in Resident Verification, where the proof of residency is."}
+          </Text>
+        )}
         {selectedUser?.role === ROLES.DISPATCHER ? <><Text style={[styles.label, { color: theme.text }]}>Dispatcher office</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={scopeOffice} onChangeText={setScopeOffice} /><Text style={[styles.label, { color: theme.text }]}>Operational phone</Text><TextInput style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: NEUTRAL[500] }]} value={scopePhone} onChangeText={setScopePhone} keyboardType="phone-pad" /><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{TOLEDO_BARANGAY_OPTIONS.map((item) => chip(item.label, scopeAreas.includes(item.value), () => setScopeAreas((current) => current.includes(item.value) ? current.filter((value) => value !== item.value) : [...current, item.value])))}</ScrollView><AppButton label="Save Dispatcher scope" variant="secondary" loading={busy} disabled={!canManageSelectedUser} onPress={() => run(() => updateDispatcherScope({ adminId, targetUser: selectedUser, serviceAreas: scopeAreas, operationalPhone: scopePhone, office: scopeOffice }), "Dispatcher scope updated.", selectedUser)} style={styles.button} /></> : null}
         <Text style={[styles.copy, { color: theme.mutedText }]}>Active mission conflicts: {selectedUser ? getUserMissionConflicts(selectedUser.id, assignments).length : 0}</Text>
         <Text style={[styles.copy, { color: theme.mutedText }]}>Permanent deletion is coming soon. It requires a trusted backend to remove the Firebase Authentication account; nothing is queued or deleted from here. Use Deactivated status above to revoke access today.</Text>
