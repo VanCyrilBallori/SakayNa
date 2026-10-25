@@ -328,6 +328,15 @@ Tag **`pre-admin-layout`** (pushed) points to `604ed84`, the code just before 3.
 
 **Next steps, in order:** (1) ~~Admin text 15 px fix~~ done (`ec140b1`), and 3.19 done; (2) full pre-release test of big-update on phone and website from `docs/pre-release-test.md`; (3) release: merge big-update into master once, master → main (Vercel "Ready", check live pages), local build of **demo-ready-19** from that merge (EAS free builds are used up until November 1), phone test, tag; (4) October 22: data cleanup, demo accounts for every role, rehearsal. **Do not start the release before steps 1–2 are done and the owner says so.**
 
+### Pre-release test results (`docs/pre-release-test.md`)
+
+| Date | Commit tested | Groups | Result |
+|---|---|---|---|
+| October 20, 2026 | `6fa68d0` | A Start-up, B Ride + live location (full), C Cancel / unable | Pass |
+| October 25, 2026 | `9363914` (checklist `cc2103b`) | B (quick normal ride), C, D Emergency, E Admin, F Dispatcher extras + driver "on hold", G Delete Account, H Big text | Pass |
+
+Problems list: empty. The October 25 run used the demo accounts (AdminDemo, DispDemo, DriDemo, ResDemo; Daanglungsod) with one phone and Edge. A and the rest of B were not repeated: the changes after `6fa68d0` don't touch log in or the driver duty card. C was repeated because `dispatcherAssignmentService.js` changed.
+
 ### Safety/security backlog: before real use; outside the freeze unless separately approved
 
 | Item | Problem / handling now |
