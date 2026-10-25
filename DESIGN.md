@@ -227,7 +227,11 @@ Ink = neutral 900. Ratios are against white unless stated.
   (except the documented "Back to home" house button, and the driver duty
   card's "i" button: 48 to tap, read as "Punch info" by screen readers; it
   opens a small label with the card's explaining sentences. Owner's choice,
-  Oct 20, 2026).
+  Oct 20, 2026; and the dispatcher's muted-bell button at the end of the red
+  emergency strip's first line while the sound is off: 48 to tap, never
+  shrinks, hover and screen readers say "Sound is off. Turn it on in your
+  profile menu.", a click turns the sound back on. Owner's choice, Oct 25,
+  2026).
 
 ### Motion
 - Press: 100 ms, slightly darker fill (and scale 0.98 for cards and big buttons).

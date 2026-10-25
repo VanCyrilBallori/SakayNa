@@ -24,9 +24,10 @@ const formatRinging = (ms) => {
 
 // calls = the live ringing alerts, oldest first. onAnswer(call) / onDecline(call) = the dispatcher page's own Answer and Decline.
 // formatPhone = the page's phone formatter ("0917 123 4567").
-// soundMuted / soundBlocked / onEnableSound = the alert sound (Task 3.13b, useAlertSound): a last line says
-// "Sound off" while muted, or offers "Sound blocked: click to turn sound on" when the browser refused to play.
-export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, formatPhone, soundMuted = false, soundBlocked = false, onEnableSound }) {
+// soundMuted / soundBlocked / onEnableSound / onUnmute = the alert sound (Task 3.13b, useAlertSound). While muted,
+// the first row ends with a muted-bell button (hover: what it means; click: onUnmute turns the sound back on).
+// When the browser refused to play, a last line offers "Sound blocked: click to turn sound on".
+export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, formatPhone, soundMuted = false, soundBlocked = false, onEnableSound, onUnmute }) {
   // A 1-second clock for the ringing times, only while something rings.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
     // The browser tab title ("EMERGENCY – SakayNa") and the buttons' labels say what is happening.
     <View style={styles.strip} accessibilityLabel="Emergency alerts">
       {Platform.OS === "web" ? <style>{TICKER_CSS}</style> : null}
-      {rows.map((call) => {
+      {rows.map((call, index) => {
         const name = call.residentName || "Resident";
         const phone = call.residentPhone ? formatPhone(call.residentPhone) : "No phone number on file";
         // A Plus Code ("9JQX+XH7, Toledo, …") means nothing to a person, so it is left out: "GPS location: Toledo, …".
@@ -71,6 +72,9 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
               </Text>
             </View>
             <Ticker text={`${phone} · ${place}`} />
+            {/* Sound off: only a muted bell at the end of the first row's line. It never shrinks, so a long
+                line can't push it out of sight (the ticker gets narrower instead). */}
+            {soundMuted && index === 0 ? <MutedBellButton onPress={onUnmute} /> : null}
             <View style={styles.buttons}>
               <Pressable
                 style={({ pressed }) => [styles.button, styles.declineButton, pressed && styles.declinePressed]}
@@ -101,13 +105,8 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
           <Ticker text={waiting.map((call) => `${call.residentName || "Resident"} (${getBarangay(call)}, ${ringingFor(call)})`).join(" · ")} />
         </View>
       ) : null}
-      {/* The alert sound's state, as the last line so the alert rows above never move when it appears or goes. */}
-      {soundMuted ? (
-        <View style={styles.soundRow}>
-          <MaterialCommunityIcons name="bell-off-outline" size={22} color={DESIGN_COLORS.paperWhite} />
-          <Text style={styles.soundText}>Sound off (turn it back on in your profile menu at the top right)</Text>
-        </View>
-      ) : soundBlocked ? (
+      {/* "Sound blocked", as the last line so the alert rows above never move when it appears or goes. */}
+      {!soundMuted && soundBlocked ? (
         <View style={styles.soundRow}>
           <Pressable
             style={({ pressed }) => [styles.soundButton, pressed && styles.declinePressed]}
@@ -120,6 +119,27 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
         </View>
       ) : null}
     </View>
+  );
+}
+
+// The muted-bell button (DESIGN.md Icons exception): 48 to tap, no word next to it. Hovering shows the
+// browser's tooltip ("title", set on the page element like OneLine in dispatcher-home.jsx); screen readers
+// read the same sentence. Clicking turns the alert sound back on.
+const MUTED_BELL_TEXT = "Sound is off. Turn it on in your profile menu.";
+function MutedBellButton({ onPress }) {
+  const setTooltip = (node) => {
+    if (Platform.OS === "web" && node?.setAttribute) node.setAttribute("title", MUTED_BELL_TEXT);
+  };
+  return (
+    <Pressable
+      ref={setTooltip}
+      style={({ pressed }) => [styles.mutedBell, pressed && styles.declinePressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${MUTED_BELL_TEXT} Click to turn the sound on.`}
+    >
+      <MaterialCommunityIcons name="bell-off-outline" size={24} color={DESIGN_COLORS.paperWhite} />
+    </Pressable>
   );
 }
 
@@ -221,6 +241,8 @@ const styles = StyleSheet.create({
   answerButton: { backgroundColor: DESIGN_COLORS.paperWhite },
   answerPressed: { backgroundColor: DESIGN_COLORS.redTint },
   answerText: { fontSize: 17, fontFamily: FONT.extraBold, color: DESIGN_COLORS.emergencyRed },
+  // The muted bell: a 48 white-edged circle that never shrinks (flexShrink 0).
+  mutedBell: { width: 48, height: 48, flexShrink: 0, borderRadius: 24, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite, alignItems: "center", justifyContent: "center" },
   // The last line about the alert sound (Task 3.13b).
   soundRow: { flexDirection: "row", alignItems: "center", paddingVertical: 6 },
   soundButton: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, borderRadius: 16, borderWidth: 2, borderColor: DESIGN_COLORS.paperWhite },

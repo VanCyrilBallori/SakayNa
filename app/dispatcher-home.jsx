@@ -1260,6 +1260,8 @@ export default function DispatcherHome() {
             soundMuted={alertSound.muted}
             soundBlocked={alertSound.blocked}
             onEnableSound={alertSound.startSound}
+            // The muted bell only shows while muted, so toggling turns the sound back on.
+            onUnmute={alertSound.toggleMute}
           />
         </View>
         {fillWindow ? (
