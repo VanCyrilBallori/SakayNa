@@ -32,6 +32,70 @@ const toAddress = (place, latitude, longitude) => {
   return [place.name, place.street, place.district, place.city, place.region].filter(Boolean).join(", ") || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 };
 
+// ---- For the emergency alert (resident-home.jsx attachAlertLocation) ----
+
+// Can SakayNa use the location? Asks for permission if it hasn't yet (the same question as detectLocation).
+// Returns "" when allowed, or why not.
+export const checkLocationAllowed = async () => {
+  try {
+    const existingPermission = await Location.getForegroundPermissionsAsync();
+    const permission = existingPermission.granted ? existingPermission : await Location.requestForegroundPermissionsAsync();
+    if (!permission.granted) return "Location permission was not granted.";
+    if (!(await Location.hasServicesEnabledAsync())) return "Location services are turned off.";
+    return "";
+  } catch {
+    return "Location could not be checked.";
+  }
+};
+
+// A phone position turned into the alert's location: map numbers, the address, the barangay,
+// source ("gps" = a fresh position, "last-known" = the one the phone remembered) and takenAt
+// (when the phone got that position, in milliseconds), so the dispatcher can see how old it is.
+const toAlertLocation = async (position, source) => {
+  const { latitude, longitude } = position.coords;
+  let address = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+  let barangay = null;
+  try {
+    const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+    address = toAddress(places[0], latitude, longitude);
+    barangay = places[0]?.district || places[0]?.subregion || null;
+  } catch {
+    // No address (for example no internet): the map numbers are kept, the pin still works.
+  }
+  return { latitude, longitude, address, barangay, source, takenAt: position.timestamp };
+};
+
+// The fast step: the position the phone already remembers, if it is not older than maxAgeMs. Ready at once
+// (no waiting for GPS). Returns null when there is none.
+export const getLastKnownAlertLocation = async (maxAgeMs) => {
+  try {
+    const position = await Location.getLastKnownPositionAsync({ maxAge: maxAgeMs });
+    return position ? await toAlertLocation(position, "last-known") : null;
+  } catch {
+    return null;
+  }
+};
+
+// The slow step: asks for a fresh position up to `tries` times, waiting up to waitMs each time
+// (indoors the first try often fails). shouldStop() = true when the alert was closed: then it gives up.
+// Returns null when every try failed.
+export const getFreshAlertLocation = async ({ tries, waitMs, shouldStop }) => {
+  for (let attempt = 1; attempt <= tries; attempt += 1) {
+    if (shouldStop()) return null;
+    try {
+      const position = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), waitMs)),
+      ]);
+      if (shouldStop()) return null;
+      return await toAlertLocation(position, "gps");
+    } catch {
+      // Timed out or failed: try again.
+    }
+  }
+  return null;
+};
+
 export default function useCurrentLocation() {
   const [locating, setLocating] = useState(false);
 

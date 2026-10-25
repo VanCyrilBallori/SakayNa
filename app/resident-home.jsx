@@ -19,7 +19,7 @@ import ResidentRequestDetails from "../features/resident/components/ResidentRequ
 import ResidentRequestForm from "../features/resident/components/ResidentRequestForm";
 import ResidentRequestHistory from "../features/resident/components/ResidentRequestHistory";
 import ResidentSideMenu from "../features/resident/components/ResidentSideMenu";
-import useCurrentLocation from "../features/resident/hooks/useCurrentLocation";
+import { checkLocationAllowed, getFreshAlertLocation, getLastKnownAlertLocation } from "../features/resident/hooks/useCurrentLocation";
 import useResidentRequests from "../features/resident/hooks/useResidentRequests";
 import { getHomeRide, getLastRideText } from "../features/resident/utils/requestMapper";
 import { normalizePhilippinePhone } from "../features/resident/utils/requestValidation";
@@ -32,6 +32,11 @@ const SEND_TIMEOUT_MS = 10_000;
 // Dispatchers hide a ringing alert that has gone 2 minutes without one (crashed or closed app).
 const ALERT_HEARTBEAT_MS = 20_000;
 const KEEP_AWAKE_TAG = "emergency-alert";
+// The alert's location (attachAlertLocation): the phone's remembered position may be at most this old,
+// and a fresh position is asked for this many times, waiting up to this long each time (about 2 minutes in all).
+const LAST_KNOWN_MAX_AGE_MS = 30 * 60_000;
+const FRESH_LOCATION_TRIES = 4;
+const FRESH_LOCATION_WAIT_MS = 30_000;
 // After a dispatcher answers, the phone calls them after this many seconds, unless the resident taps Cancel call.
 const AUTO_CALL_SECONDS = 3;
 // The bottom bar's pages (ROADMAP Task 3.18). "Chat" is added only when Task 3.23 is built.
@@ -93,7 +98,6 @@ export default function ResidentHome() {
   const [autoCalled, setAutoCalled] = useState(false);
   // The alert the countdown already ran for, so each alert counts down (and calls) only once.
   const autoCallAlertRef = useRef("");
-  const { detectLocation } = useCurrentLocation();
   const [settingsForm, setSettingsForm] = useState({
     fullName: "",
     phoneNumber: "",
@@ -310,38 +314,71 @@ export default function ResidentHome() {
     }
   };
 
-  // GPS is attached after the alert is already sent, so a slow or denied location never delays it.
-  // detectLocation() resolves within 15 s at most and never rejects.
+  // The location is attached after the alert is already sent, so a slow or denied location never delays it.
+  // Two steps run at the same time:
+  // - fast: the position the phone remembers (at most 30 min old), saved as "last-known" so dispatchers see something at once;
+  // - slow: a fresh position (up to 4 tries of 30 s), saved as "gps" (live) when it arrives.
+  // Rule: once the live position is saved, a last-known one never overwrites it. liveSaved is set just before the
+  // live save is sent, and the last-known step checks it just before sending its own save (after its address
+  // lookup). One phone's saves reach Firestore in the order they were sent, so the live one always wins.
+  // Location status: "pending" → "last-known" (still looking) → "sent" (live), or "last-known-only" if no fresh
+  // position came, or "failed" (no permission or no location at all: dispatchers use the barangay).
   const attachAlertLocation = async (alertId) => {
-    const result = await detectLocation();
+    const stillThisAlert = () => activeAlertIdRef.current === alertId;
 
-    if (activeAlertIdRef.current !== alertId) {
-      return;
-    }
-
-    if (result.error || !result.location) {
+    const notAllowed = await checkLocationAllowed();
+    if (!stillThisAlert()) return;
+    if (notAllowed) {
       setAlertLocationStatus("failed");
       return;
     }
 
-    const { latitude, longitude, address, barangay } = result.location;
-
-    try {
-      await updateDoc(doc(db, "callSessions", alertId), {
-        location: { latitude, longitude, address, barangay: barangay ?? null, source: "gps" },
-        pickupLocation: address,
+    let liveSaved = false;
+    const saveLocation = (found) =>
+      updateDoc(doc(db, "callSessions", alertId), {
+        location: {
+          latitude: found.latitude,
+          longitude: found.longitude,
+          address: found.address,
+          barangay: found.barangay ?? null,
+          source: found.source,
+          takenAt: found.takenAt ?? null,
+        },
+        pickupLocation: found.address,
         updatedAt: serverTimestamp(),
       });
 
-      if (activeAlertIdRef.current === alertId) {
-        setAlertLocationStatus("sent");
-      }
-    } catch (error) {
-      console.log("Emergency alert location warning:", error);
-      if (activeAlertIdRef.current === alertId) {
-        setAlertLocationStatus("failed");
-      }
-    }
+    const lastKnownStep = async () => {
+      const found = await getLastKnownAlertLocation(LAST_KNOWN_MAX_AGE_MS);
+      // Checked right before saving: if the live position was saved meanwhile, this older one is dropped.
+      if (!found || liveSaved || !stillThisAlert()) return false;
+      await saveLocation(found);
+      if (stillThisAlert() && !liveSaved) setAlertLocationStatus("last-known");
+      return true;
+    };
+
+    const liveStep = async () => {
+      const found = await getFreshAlertLocation({ tries: FRESH_LOCATION_TRIES, waitMs: FRESH_LOCATION_WAIT_MS, shouldStop: () => !stillThisAlert() });
+      if (!found || !stillThisAlert()) return false;
+      liveSaved = true;
+      await saveLocation(found);
+      if (stillThisAlert()) setAlertLocationStatus("sent");
+      return true;
+    };
+
+    const [lastKnownOk, liveOk] = await Promise.all([
+      lastKnownStep().catch((error) => {
+        console.log("Emergency alert last known location warning:", error);
+        return false;
+      }),
+      liveStep().catch((error) => {
+        console.log("Emergency alert location warning:", error);
+        return false;
+      }),
+    ]);
+
+    if (!stillThisAlert() || liveOk) return;
+    setAlertLocationStatus(lastKnownOk ? "last-known-only" : "failed");
   };
 
   // Writes the alert under the ID generated once per attempt. Retries reuse the same ID,
@@ -878,9 +915,13 @@ export default function ResidentHome() {
                   ? "Location: sending…"
                   : alertLocationStatus === "sent"
                     ? "Location: sent"
-                    : alertLocationStatus === "failed"
-                      ? "Location: not available — dispatchers will see your barangay."
-                      : "";
+                    : alertLocationStatus === "last-known"
+                      ? "Location: last known sent, still looking…"
+                      : alertLocationStatus === "last-known-only"
+                        ? "Location: last known sent (no fresh GPS)."
+                        : alertLocationStatus === "failed"
+                          ? "Location: not available — dispatchers will see your barangay."
+                          : "";
               // "Calling Maria in 3…" replaces the Call button until it calls or the resident taps Cancel call.
               const countingDown = dispatcherHasAlert && autoCallSeconds !== null;
               const showCallDispatcher = dispatcherHasAlert && Boolean(callDispatcherPhone) && !countingDown;

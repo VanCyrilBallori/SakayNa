@@ -310,11 +310,17 @@ not-verified pop-up in `app/resident-home.jsx`):
      name, phone, barangay (as `pickupLocation`), `targetRole: "Dispatcher"`,
      `status: "ringing"` and `lastActiveAt` (the "I'm still here" time)
      (`writeAlert` in `app/resident-home.jsx:281-325`).
-   - At the same time, `attachAlertLocation` tries to get the GPS location and
-     adds it to the same alert afterwards (`attachAlertLocation` in
-     `app/resident-home.jsx:247`). This way, slow GPS never delays the
-     alert. (This uses `detectLocation`, which **may ask** for location
-     permission, because the resident just asked for help.)
+   - At the same time, `attachAlertLocation` adds the location to the same
+     alert afterwards (`app/resident-home.jsx`), so slow GPS never delays the
+     alert. It **may ask** for location permission (`checkLocationAllowed`),
+     because the resident just asked for help. Since 2026-10-25 two steps run
+     at once (`useCurrentLocation.js`): the phone's remembered position (at
+     most 30 min old) is saved at once as `location.source: "last-known"`, and
+     a fresh one (up to 4 tries of 30 s) is saved as `"gps"` (live) when it
+     arrives. `location.takenAt` = when the phone got that position. A live
+     position is never overwritten by a last-known one. Dispatchers see
+     "Live" or "Last known · 5 min ago" (`getLocationAgeLabel` in
+     `lib/placeText.js`).
 3. **The screen watches the alert live** (a Firestore "listener", which is
    like asking Firestore "tell me every time this alert changes")
    (alert watcher `useEffect` in `ResidentHome`,
@@ -345,7 +351,7 @@ not-verified pop-up in `app/resident-home.jsx`):
    | Nobody accepted after 30 seconds (`NO_ANSWER_TIMEOUT_MS` in `app/resident-home.jsx:26`) | "No dispatcher has accepted yet" + **Call the office** (if a number exists) |
    | A dispatcher accepted | "Dispatcher accepted". If there is a phone number (phone app only): **"Calling {dispatcher name} in 3…"** (2…, 1…) with **Cancel call**, then the phone calls them (see item 12). After that: **Call {dispatcher name} again**. After Cancel call: **Call {dispatcher name}**. When the number is the office number, "the dispatch office" replaces the name (item 12). No number at all: no countdown, no Call button |
    | Sending, waiting, or nobody accepted yet | A bold line: **"Keep this screen open until a dispatcher accepts."** |
-   | Location line | "Location: sending…", "Location: sent", or "Location: not available — dispatchers will see your barangay." |
+   | Location line | "Location: sending…", "Location: last known sent, still looking…", "Location: sent", "Location: last known sent (no fresh GPS).", or "Location: not available — dispatchers will see your barangay." |
 
 7. **Try again** (`retryEmergencyAlert` in `app/resident-home.jsx:357-361`)
    re-sends using the **same ID**, so you can never end up with two alerts.
@@ -633,7 +639,7 @@ works the same from History and from the home card (`requestCancellation` in
 | `saveResidentSettings` | `app/resident-home.jsx:407` | Saves name, phone and email changes. |
 | `saveResidentPassword` | `app/resident-home.jsx:477` | Checks the current password, then saves the new one. |
 | `useResidentRequests` | `features/resident/hooks/useResidentRequests.js:10` | Watches the resident's own requests live, newest first, and keeps the top 50. |
-| `useCurrentLocation` / `detectLocation` | `features/resident/hooks/useCurrentLocation.js` | Gets the phone's GPS location (asks for permission if needed, gives up after 15 s) and turns it into an address. Used by the form and the emergency alert. |
+| `useCurrentLocation` / `detectLocation` | `features/resident/hooks/useCurrentLocation.js` | Gets the phone's GPS location (asks for permission if needed, gives up after 15 s) and turns it into an address. Used by the ride form; the emergency alert uses `checkLocationAllowed`, `getLastKnownAlertLocation` and `getFreshAlertLocation` in the same file. |
 | `addCurrentLocation` | `features/resident/components/ResidentRequestForm.jsx:107` | "Use Current Location" in the form: saves the exact spot, keeps the chosen barangay. |
 | `openReview` / `submit` | `ResidentRequestForm.jsx:123`, `133` | Checks the form → Review page; checks again → saves the request. |
 | `createResidentRequest` | `features/resident/services/residentRequestService.js:11` | Saves a new transport request with status "Pending" and a reference number. |
@@ -1092,8 +1098,9 @@ start at #35. Short, repo-wide known problems are also in `Known-Issue.md`.
    available, the answering Dispatcher, and `linkedRequestReference` with
    driver/vehicle. Without that saved ride link it says **No ride was made
    from this call**; the old Type: Not specified description is obsolete.
-10. **Still open — "Location: sending…" may take longer than 15 seconds.**
-    Only the GPS reading has a 15-second limit. Turning the coordinates into
+10. **Still open — "Location: sending…" may take a while.** Since
+    2026-10-25 the fresh GPS reading gets up to 4 tries of 30 seconds (a
+    remembered position is sent first, if there is one). Turning the coordinates into
     an address (`reverseGeocodeAsync` in `useCurrentLocation.js`) has no time
     limit. The alert itself is not delayed, only the location line.
 

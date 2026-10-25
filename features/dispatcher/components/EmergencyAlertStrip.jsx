@@ -4,7 +4,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { DESIGN_COLORS, FONT } from "../../../constants/design";
 import { getTimestampMillis } from "../../../lib/dates";
-import { formatPlace, removePlusCode } from "../../../lib/placeText";
+import { formatPlace, getLocationAgeLabel, removePlusCode } from "../../../lib/placeText";
 
 // The red emergency strip at the very top of the dispatcher page (Task 3.13). It replaces the full-screen
 // "Incoming Emergency Call" pop-up and stays until each alert is answered, declined or ends.
@@ -60,8 +60,11 @@ export default function EmergencyAlertStrip({ calls, onAnswer, onDecline, format
       {rows.map((call, index) => {
         const name = call.residentName || "Resident";
         const phone = call.residentPhone ? formatPhone(call.residentPhone) : "No phone number on file";
-        // A Plus Code ("9JQX+XH7, Toledo, …") means nothing to a person, so it is left out: "GPS location: Toledo, …".
-        const place = call.location?.address ? `GPS location: ${removePlusCode(call.location.address) || "sent"}` : "Location not sent yet";
+        // A Plus Code ("9JQX+XH7, Toledo, …") means nothing to a person, so it is left out. The brackets say whether
+        // it is a fresh position or the one the phone remembered: "GPS location (last known · 5 min ago): Toledo, …".
+        const place = call.location?.address
+          ? `GPS location (${getLocationAgeLabel(call.location, now).toLowerCase()}): ${removePlusCode(call.location.address) || "sent"}`
+          : "Location not sent yet";
         return (
           <View key={call.id} style={styles.row}>
             <View style={styles.fixedPart}>

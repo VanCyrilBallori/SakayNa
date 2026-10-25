@@ -9,7 +9,7 @@ import { db } from "../../../firebase";
 import { TOLEDO_BARANGAY_PICKER_OPTIONS } from "../../../lib/barangays";
 import { formatDay, formatTime, getDateFromValue } from "../../../lib/dates";
 import { formatDutyDuration } from "../../../lib/dutyTime";
-import { formatPlace, getPickupBoxText, hasPlusCode, removePlusCode } from "../../../lib/placeText";
+import { formatPlace, getLocationAgeLabel, getPickupBoxText, hasPlusCode, removePlusCode } from "../../../lib/placeText";
 import { normalizePhilippinePhone } from "../../resident/utils/requestValidation";
 import { createEmergencyRide } from "../services/dispatcherAssignmentService";
 
@@ -257,14 +257,18 @@ export default function EmergencyRequestForm({
           </Text>
         </View>
         {hasLocation ? (
-          <Pressable
-            style={({ pressed }) => [styles.smallOutlineButton, pressed && styles.outlinePressed]}
-            onPress={() => onOpenLocation(location)}
-            accessibilityRole="button"
-          >
-            <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
-            <Text style={styles.smallOutlineText}>Open location in Maps</Text>
-          </Pressable>
+          <View style={styles.callerMapPart}>
+            {/* "Live" or "Last known · 5 min ago": an old remembered spot may not be where they are now. */}
+            <Text style={styles.callerLocationAge}>{getLocationAgeLabel(location, now)}</Text>
+            <Pressable
+              style={({ pressed }) => [styles.smallOutlineButton, pressed && styles.outlinePressed]}
+              onPress={() => onOpenLocation(location)}
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="map-marker-outline" size={22} color={DESIGN_COLORS.hallGreen} />
+              <Text style={styles.smallOutlineText}>Open location in Maps</Text>
+            </Pressable>
+          </View>
         ) : (
           <Text style={styles.hint}>Location not sent (yet). Ask the caller where they are.</Text>
         )}
@@ -733,6 +737,9 @@ const styles = StyleSheet.create({
   callerLabel: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   callerPhone: { fontSize: 28, lineHeight: 34, fontFamily: FONT.extraBold, color: DESIGN_COLORS.ink },
   callerLine: { fontFamily: FONT.regular, fontSize: 17, lineHeight: 24, color: DESIGN_COLORS.ink },
+  // "Live" / "Last known · 5 min ago" next to "Open location in Maps".
+  callerMapPart: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 },
+  callerLocationAge: { fontSize: 17, lineHeight: 24, fontFamily: FONT.bold, color: DESIGN_COLORS.ink },
   card: { padding: 24, gap: 16, borderRadius: 24, borderWidth: 1, borderColor: DESIGN_COLORS.rule, backgroundColor: DESIGN_COLORS.paperWhite },
   desktopCard: { padding: 16, gap: 12 },
   // Each part of the form sits on its own soft color, inside the white card (Board Tint fields, DESIGN.md).
